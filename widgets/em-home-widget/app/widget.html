@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EM Home</title>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+  :root {
+    --ground: #F4F6F6;
+    --surface: #FFFFFF;
+    --surface-2: #EDF1F1;
+    --ink: #17262A;
+    --ink-2: #44555A;
+    --muted: #7A8A8E;
+    --line: #DCE3E4;
+    --line-strong: #C4CFD1;
+    --focus: #1F6F7A;
+
+    --jp: #FF934F;       --jp-ink: #A84C14;    --jp-tint: #FFEFE4;
+
+    --good: #1B7446; --warn: #9A6A00; --bad: #B3261E;
+    --good-tint: #E3F7EC; --warn-tint: #FFF3D6; --bad-tint: #FCE8E6;
+    --accent-ink: #23727E;
+
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(23,38,42,.06), 0 6px 18px -12px rgba(23,38,42,.18);
+    --font-ui: "Public Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0F1618; --surface: #172022; --surface-2: #1F2A2D;
+      --ink: #E7EEEF; --ink-2: #B4C1C4; --muted: #7F9095;
+      --line: #273337; --line-strong: #3A484D; --focus: #7FD0DB;
+      --jp-ink: #FFA66E; --jp-tint: #2E2119;
+      --good: #5FDB9A; --warn: #E8B84A; --bad: #F08A82;
+      --good-tint: #142B20; --warn-tint: #2E2710; --bad-tint: #33191A;
+      --accent-ink: #8CCBD4;
+      --shadow: 0 1px 2px rgba(0,0,0,.4);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0F1618; --surface: #172022; --surface-2: #1F2A2D;
+    --ink: #E7EEEF; --ink-2: #B4C1C4; --muted: #7F9095;
+    --line: #273337; --line-strong: #3A484D; --focus: #7FD0DB;
+    --jp-ink: #FFA66E; --jp-tint: #2E2119;
+    --good: #5FDB9A; --warn: #E8B84A; --bad: #F08A82;
+    --good-tint: #142B20; --warn-tint: #2E2710; --bad-tint: #33191A;
+    --accent-ink: #8CCBD4;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+    padding-block: 20px 28px;
+    padding-inline: clamp(16px, 2.5vw, 32px);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  a:hover .link-label, a.link:hover { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  button { font: inherit; color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .page { max-width: 1320px; margin: 0 auto; display: grid; gap: 22px; }
+
+  /* ---------- masthead ---------- */
+  .mast { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
+  .brands { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .brand-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 8px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line);
+    font-weight: 600; font-size: 12.5px; letter-spacing: .01em; color: var(--ink-2);
+    transition: border-color .15s, transform .15s;
+  }
+  .brand-chip:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+  .brand-chip .dot { width: 14px; height: 14px; border-radius: 4px; flex: none; background: var(--jp); }
+  .brands .unit { font-size: 11.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+
+  .greet { text-align: right; }
+  .greet h1 {
+    margin: 0; font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(26px, 2.6vw, 34px); line-height: 1.1; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .greet h1 em { font-style: italic; color: var(--jp-ink); }
+  .greet .date { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .greet .date .sep { margin: 0 8px; opacity: .5; }
+  .greet .refresh { background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .greet .refresh:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .display { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
+  .seg button { background: none; border: 0; padding: 3px 10px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+  .bright { display: inline-flex; align-items: center; gap: 6px; }
+  .bright input[type=range] { width: 96px; accent-color: var(--accent-ink); margin: 0; }
+  .bright .sun { font-size: 13px; line-height: 1; }
+  @media (max-width: 860px) { .display { justify-content: flex-start; } }
+
+  /* ---------- quick actions ---------- */
+  .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .qa-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line);
+    font-weight: 600; font-size: 13px; color: var(--ink-2);
+    cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .qa-btn:hover { border-color: var(--focus); color: var(--ink); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .qa-btn .plus {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--focus); color: #fff; font-size: 12px; line-height: 1; flex: none;
+  }
+
+  /* ---------- announcement ---------- */
+  .notice {
+    display: grid; grid-template-columns: 4px 1fr auto; gap: 14px; align-items: start;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px 12px 0; overflow: hidden;
+  }
+  .notice[hidden] { display: none; }
+  .notice .rule { align-self: stretch; background: var(--jp); }
+  .notice.urgent .rule { background: var(--bad); }
+  .notice .kicker { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+  .notice .title { font-weight: 600; margin: 2px 0 0; }
+  .notice .body { margin: 2px 0 0; color: var(--ink-2); max-width: 78ch; }
+  .notice .dismiss { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px 8px; margin-right: 4px; font-size: 13px; }
+  .notice .dismiss:hover { color: var(--ink); }
+
+  /* ---------- KPI tiles ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .kpi {
+    display: flex; flex-direction: column; gap: 6px; min-height: 118px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 16px 12px; position: relative;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--jp); border-radius: var(--radius) 0 0 var(--radius); opacity: .9; }
+  a.kpi:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
+  .kpi .label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+  .kpi .value { font-size: 34px; line-height: 1; font-weight: 600; letter-spacing: -.02em; margin-top: 4px; }
+  .kpi .value small { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+  .kpi .ctx { color: var(--ink-2); font-size: 12.5px; margin-top: auto; }
+  .kpi.attention .value { color: var(--bad); }
+  .kpi.watch .value { color: var(--warn); }
+  .kpi .flag { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: var(--bad-tint); color: var(--bad); letter-spacing: .04em; font-weight: 600; text-transform: none; }
+  .kpi .flag.ok { background: var(--good-tint); color: var(--good); }
+
+  /* ---------- section rule ---------- */
+  .band { display: flex; align-items: center; gap: 10px; margin-bottom: -8px; }
+  .band .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--jp); flex: none; }
+  .band h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.005em; }
+  .band .role { font-size: 12px; color: var(--muted); }
+
+  /* ---------- lower grid ---------- */
+  .lower { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 14px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .card > .head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .card > .head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .card > .head .meta { font-size: 12px; color: var(--muted); }
+
+  .work section { padding: 10px 16px 12px; }
+  .work section + section { border-top: 1px solid var(--line); }
+  .work h3 { margin: 0 0 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; }
+  .work h3 a { color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .work h3 a:hover { color: var(--ink); }
+  .rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px dashed var(--line); }
+  .row:first-child { border-top: 0; }
+  .row .id { font-size: 11.5px; color: var(--muted); font-weight: 600; min-width: 62px; }
+  .row .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .t .who { color: var(--muted); }
+  .row .t .who::before { content: " · "; }
+  .row .when { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .row .when.over { color: var(--bad); font-weight: 600; }
+  .row .when.today { color: var(--warn); font-weight: 600; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+  .pill.new { background: var(--jp-tint); color: var(--jp-ink); }
+  .pill.esc { background: var(--bad-tint); color: var(--bad); }
+  .pill.wait { background: var(--warn-tint); color: var(--warn); }
+  .pill.prog { background: var(--good-tint); color: var(--good); }
+  .empty { color: var(--muted); font-size: 13px; padding: 6px 0 2px; }
+  .empty.good::before { content: "✓ "; color: var(--good); }
+
+  .links { padding: 6px 16px 12px; display: grid; grid-template-columns: 1fr; gap: 6px 20px; }
+  .lgroup { padding: 8px 0 6px; }
+  .lgroup + .lgroup { border-top: 1px solid var(--line); }
+  .lgroup h3 { margin: 0 0 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .lgroup h3 .dot { width: 8px; height: 8px; border-radius: 2px; background: var(--jp); }
+  .lgroup ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .lgroup li a { display: flex; align-items: center; gap: 8px; padding: 3px 0; color: var(--ink-2); font-size: 13px; }
+  .lgroup li a:hover { color: var(--ink); }
+  .lgroup li a .kind { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; line-height: 16px; flex: none; }
+  .lgroup .more { background: none; border: 0; padding: 3px 0; color: var(--muted); cursor: pointer; font-size: 12.5px; text-align: left; }
+  .lgroup .more:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- footer ---------- */
+  .foot-note { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; color: var(--muted); font-size: 12px; padding-top: 4px; }
+  .foot-note .sample { color: var(--warn); font-weight: 600; }
+
+  /* ---------- loading & errors ---------- */
+  .sk { position: relative; color: transparent !important; border-radius: 6px; background: var(--surface-2); background-image: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); background-size: 200% 100%; animation: sh 1.4s infinite; }
+  .sk * { visibility: hidden; }
+  @keyframes sh { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .err { color: var(--bad); font-size: 12.5px; }
+  .err button { background: none; border: 0; padding: 0; color: var(--bad); text-decoration: underline; cursor: pointer; margin-left: 6px; }
+  @media (prefers-reduced-motion: reduce) { .sk { animation: none; } .brand-chip, .kpi { transition: none; } }
+
+  /* ---------- quick-create modal ---------- */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15,22,24,.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
+  .modal-overlay[hidden] { display: none; }
+  .modal { background: var(--surface); border-radius: var(--radius); box-shadow: 0 12px 40px -8px rgba(0,0,0,.35); width: 100%; max-width: 420px; max-height: 86vh; overflow: auto; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .modal-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .modal-close { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 15px; padding: 4px; line-height: 1; }
+  .modal-close:hover { color: var(--ink); }
+  .modal-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .qa-step[hidden] { display: none; }
+  .qa-step { display: flex; flex-direction: column; gap: 10px; }
+  #qa-search, .qa-step input[type="text"], .qa-step textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+    font: inherit; font-size: 13.5px; color: var(--ink); background: var(--surface);
+  }
+  .qa-step textarea { resize: vertical; min-height: 90px; }
+  #qa-search:focus, .qa-step input:focus, .qa-step textarea:focus { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
+  .qa-results { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .qa-results:empty { display: none; border: 0; }
+  .qa-results li + li { border-top: 1px solid var(--line); }
+  .qa-results button { display: block; width: 100%; text-align: left; padding: 9px 11px; background: none; border: 0; cursor: pointer; font-size: 13px; }
+  .qa-results button:hover { background: var(--surface-2); }
+  .qa-results .qa-hint { display: block; padding: 9px 11px; color: var(--muted); font-size: 12.5px; }
+  .qa-target { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .qa-target .qa-change { background: none; border: 0; color: var(--focus); cursor: pointer; font-size: 12px; padding: 0; margin-left: 6px; text-decoration: underline; }
+  .qa-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+  .qa-cancel { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; color: var(--ink-2); }
+  .qa-save { background: var(--focus); border: 1px solid var(--focus); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 13px; color: #fff; font-weight: 600; }
+  .qa-save[disabled] { opacity: .55; cursor: default; }
+  .qa-msg { font-size: 12.5px; margin: 0; }
+  .qa-msg.ok { color: var(--good); }
+  .qa-msg.bad { color: var(--bad); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 860px) { .lower { grid-template-columns: 1fr; } .greet { text-align: left; } .mast { align-items: flex-start; flex-direction: column-reverse; } }
+  @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } .kpi .value { font-size: 28px; } }
+</style>
+</head>
+<body>
+
+<div class="page" id="page">
+
+  <header class="mast">
+    <div class="brands" aria-label="Team">
+      <a class="brand-chip" id="chip-jp" target="_top" title="Accounts under JusticePoint"><span class="dot" aria-hidden="true"></span>JusticePoint</a>
+      <span class="unit">Electronic monitoring</span>
+    </div>
+    <div class="greet">
+      <h1 id="greeting">Good morning, <em>there</em>.</h1>
+      <p class="date"><span id="today">—</span><span class="sep">·</span><button class="refresh" id="refresh" type="button" title="Reload the numbers">Refreshed <span id="refreshed">just now</span></button></p>
+      <div class="display" aria-label="Display settings">
+        <span class="seg" role="group" aria-label="Color theme">
+          <button type="button" id="theme-auto" data-theme-choice="auto" aria-pressed="true" title="Follow your system setting">Auto</button>
+          <button type="button" id="theme-light" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button type="button" id="theme-dark" data-theme-choice="dark" aria-pressed="false">Dark</button>
+        </span>
+        <label class="bright" title="Brightness"><span class="sun" aria-hidden="true">☼</span><input type="range" id="brightness" min="70" max="120" step="5" value="100" aria-label="Brightness"><span id="brightness-v" class="num">100%</span></label>
+      </div>
+    </div>
+  </header>
+
+  <section class="quick-actions" aria-label="Quick create">
+    <a class="qa-btn" id="qa-case" target="_top"><span class="plus" aria-hidden="true">+</span>Case Creation</a>
+    <a class="qa-btn" id="qa-task" target="_top"><span class="plus" aria-hidden="true">+</span>Task Creation</a>
+    <button type="button" class="qa-btn" id="qa-note"><span class="plus" aria-hidden="true">+</span>Note Creation</button>
+  </section>
+
+  <aside class="notice" id="notice" hidden aria-live="polite">
+    <div class="rule" aria-hidden="true"></div>
+    <div>
+      <div class="kicker" id="notice-kicker">Team notice</div>
+      <p class="title" id="notice-title"></p>
+      <p class="body" id="notice-body"></p>
+    </div>
+    <button class="dismiss" id="notice-dismiss" type="button" aria-label="Dismiss notice">Dismiss</button>
+  </aside>
+
+  <div class="band"><span class="dot" aria-hidden="true"></span><h2>JusticePoint electronic monitoring</h2><span class="role">Live from CRM</span></div>
+
+  <section class="kpis" aria-label="Key numbers">
+    <a class="kpi" id="k-cases" target="_top" data-view="openCases" title="Opens Support - All Open">
+      <span class="label">Open cases <span class="flag" id="k-cases-flag" hidden></span></span>
+      <span class="value num" id="k-cases-v">—</span>
+      <span class="ctx" id="k-cases-c">not Resolved or Closed</span>
+    </a>
+    <a class="kpi" id="k-units" target="_top" title="Opens Daily Unit Counts">
+      <span class="label">Units on leg</span>
+      <span class="value num" id="k-units-v">—</span>
+      <span class="ctx" id="k-units-c">GPS units, leased and purchased</span>
+    </a>
+    <a class="kpi" id="k-cust" target="_top" data-view="emCustomers" title="Opens CS - EM Customers">
+      <span class="label">EM customers</span>
+      <span class="value num" id="k-cust-v">—</span>
+      <span class="ctx" id="k-cust-c">accounts classed as EM Customer</span>
+    </a>
+    <a class="kpi" id="k-ops" target="_top" data-view="operated" title="Opens CS - Operated Programs">
+      <span class="label">Operated programs</span>
+      <span class="value num" id="k-ops-v">—</span>
+      <span class="ctx" id="k-ops-c">accounts classed as Operated Program</span>
+    </a>
+  </section>
+
+  <section class="lower">
+    <div class="card work" aria-label="My work today">
+      <div class="head"><h2>My work today</h2><span class="meta" id="work-meta"></span></div>
+      <section>
+        <h3>Tasks due or overdue <a id="tasks-all" target="_top">All my tasks</a></h3>
+        <ul class="rows" id="tasks"></ul>
+      </section>
+      <section>
+        <h3>My open cases <a id="cases-all" target="_top" data-view="myOpenCases">All my open cases</a></h3>
+        <ul class="rows" id="mycases"></ul>
+      </section>
+    </div>
+
+    <div class="card" aria-label="Quick links">
+      <div class="head"><h2>Quick links</h2><span class="meta">EM support and operations</span></div>
+      <div class="links" id="links"></div>
+    </div>
+  </section>
+
+  <footer class="foot-note">
+    <span id="source">Live from Zoho CRM</span>
+    <span id="asof"></span>
+  </footer>
+</div>
+
+<div class="modal-overlay" id="note-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="note-modal-title">
+    <div class="modal-head">
+      <h2 id="note-modal-title">Add a note</h2>
+      <button type="button" class="modal-close" id="note-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="qa-step" id="qa-step-pick">
+        <div class="seg" role="group" aria-label="Attach the note to" id="qa-module-seg">
+          <button type="button" data-mod="Accounts" aria-pressed="true">Account</button>
+          <button type="button" data-mod="Cases" aria-pressed="false">Case</button>
+        </div>
+        <input type="text" id="qa-search" placeholder="Search by name…" autocomplete="off">
+        <ul class="qa-results" id="qa-results"></ul>
+      </div>
+      <div class="qa-step" id="qa-step-write" hidden>
+        <p class="qa-target">Adding a note to <strong id="qa-target-name"></strong><button type="button" class="qa-change" id="qa-change">change</button></p>
+        <input type="text" id="qa-note-title" placeholder="Title (optional)">
+        <textarea id="qa-note-content" rows="5" placeholder="What do you want to log?"></textarea>
+        <div class="qa-actions">
+          <button type="button" class="qa-cancel" id="qa-cancel">Cancel</button>
+          <button type="button" class="qa-save" id="qa-save">Save note</button>
+        </div>
+        <p class="qa-msg" id="qa-msg" hidden></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================================
+     EM Home — the electronic-monitoring home page.
+
+     This is a SEPARATE BUILD from Network Home, not a scoped variant of it.
+     Nothing outside JusticePoint electronic monitoring is queried, rendered or
+     hidden here: there is no Deals/pipeline query, no brand-group query, no
+     all-accounts count, and no markup for the other two brands. Opening dev
+     tools on this page reveals nothing that is not already on it, which was the
+     known leak in the CSS-scoped version of Network Home.
+
+     Queries this page makes, and nothing else:
+       1. Cases  — open cases, status breakdown           (KPI + escalation flag)
+       2. Daily_Unit_Counts — one 14-day window query, GPS   (units on leg)
+       3. Accounts where Record_Classes in ('EM Customer')
+       4. Accounts where Record_Classes in ('Operated Program')
+       5. Tasks  — the viewer's own open tasks
+       6. Cases  — the viewer's own open cases
+       7. getCustomViews for Accounts, Cases, Support_Emails, Contacts, Tasks
+       8. HOME_ANNOUNCEMENT org variable
+     ========================================================================= */
+
+  /* ---------- config ---------- */
+  var ORG = 'org882980956';
+  var TAB = 'https://crm.zoho.com/crm/' + ORG + '/tab/';
+  var TIMEOUT_MS = 15000;   /* ~8 COQL calls share one SDK postMessage channel at load */
+  var ANNOUNCE_VAR = 'HOME_ANNOUNCEMENT';
+  var UNIT_WINDOW_DAYS = 14; /* a few missed imports must not empty the tile */
+
+  /* Views reachable from this page. Ids read from the org Sep 15, 2026; at load each
+     is re-resolved by name through getCustomViews, which only returns views the
+     current user can open. A view this user cannot see falls back to the module tab.
+       pub = visible to every profile, so the id is safe before the lookup returns. */
+  var VIEWS = {
+    openCases:   { module: 'Cases',    name: 'Support - All Open',      id: '6715134000005278099', pub: true },
+    myOpenCases: { module: 'Cases',    name: 'Support - My Open Cases', id: '6715134000005278091', pub: true },
+    emCustomers: { module: 'Accounts', name: 'CS - EM Customers',       id: '6715134000005278706', pub: false },
+    operated:    { module: 'Accounts', name: 'CS - Operated Programs',  id: '6715134000005278714', pub: false },
+    brandJp:     { module: 'Accounts', name: 'Brand - JusticePoint',    id: '6715134000005531056', pub: true }
+  };
+
+  var PREVIEW = (typeof ZOHO === 'undefined') || /[?&]preview=1/.test(location.search);
+
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return (Number(n) || 0).toLocaleString('en-US'); };
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var ymd = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  var addDays = function (d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+
+  /* Custom modules are addressed in CRM URLs by internal module name (CustomModuleN),
+     not by API name; standard modules use the API name. Read from the org Sep 15, 2026. */
+  var MODULE_SLUG = {
+    Daily_Unit_Counts: 'CustomModule18', EM_Stock_Alerts: 'CustomModule19', EM_Reorder_Rules: 'CustomModule20',
+    Contracts: 'CustomModule17', Support_Emails: 'CustomModule15', Issue_Resolution: 'CustomModule10',
+    Customer_Onboarding: 'CustomModule4', Annual_Inventory_Audits: 'CustomModule12'
+  };
+  var slug = function (m) { return MODULE_SLUG[m] || m; };
+  var url = { tab: function (m) { return TAB + slug(m); }, view: function (m, id) { return TAB + slug(m) + '/custom-view/' + id; }, rec: function (m, id) { return TAB + slug(m) + '/' + id; } };
+  var viewHref = function (v) { return (v.id && (v.pub || v.visible)) ? url.view(v.module, v.id) : url.tab(v.module); };
+  function applyViewLinks() {
+    var els = document.querySelectorAll('[data-view]');
+    for (var i = 0; i < els.length; i++) {
+      var v = VIEWS[els[i].getAttribute('data-view')];
+      if (v) { els[i].href = viewHref(v); }
+    }
+  }
+  var withTimeout = function (p, ms, label) {
+    return new Promise(function (res, rej) {
+      var t = setTimeout(function () { rej(new Error((label || 'request') + ' timed out')); }, ms || TIMEOUT_MS);
+      Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); });
+    });
+  };
+  var rowsOf = function (resp) {
+    if (!resp) return [];
+    if (Array.isArray(resp)) return resp;
+    if (Array.isArray(resp.data)) return resp.data;
+    if (resp.data && Array.isArray(resp.data.data)) return resp.data.data;
+    return [];
+  };
+
+  /* ---------- data layer ---------- */
+  /* The widget SDK's coql runs against API v2: no aggregate functions, lookups come
+     back as bare ids. So every query pulls plain rows, 200 at a time, and counting
+     happens here in the page. */
+  var PAGE = 200;
+  var live = {
+    coql: function (q) { return withTimeout(ZOHO.CRM.API.coql({ select_query: q }), TIMEOUT_MS, 'query').then(rowsOf); },
+    all: function (q, maxPages) {
+      var out = [];
+      var step = function (page) {
+        return live.coql(q + ' limit ' + PAGE + ' offset ' + (page * PAGE)).then(function (rows) {
+          out = out.concat(rows);
+          if (rows.length < PAGE || page + 1 >= (maxPages || 6)) return out;
+          return step(page + 1);
+        });
+      };
+      return step(0);
+    },
+    user: function () { return withTimeout(ZOHO.CRM.CONFIG.getCurrentUser(), 6000, 'user').then(function (r) { return (r && r.users && r.users[0]) || {}; }); },
+    orgVar: function (name) {
+      return withTimeout(ZOHO.CRM.API.getOrgVariable(name), 6000, 'variable').then(function (r) {
+        var v = r && r.Success && r.Success.Content; if (v == null && r && r.Content) v = r.Content; return v || '';
+      }).catch(function () { return ''; });
+    },
+    views: function (module) {
+      return withTimeout(ZOHO.CRM.META.getCustomViews({ Entity: module }), 7000, 'views').then(function (r) { return (r && r.custom_views) || []; }).catch(function () { return []; });
+    }
+  };
+
+  var today = new Date();
+  var rep = function (n, row) { var a = []; for (var i = 0; i < n; i++) a.push(row); return a; };
+  var MOCK = {
+    user: { full_name: 'Stacey Loosen', id: '6715134000000503002', email: 'sloosen@differenceprinciple.org' },
+    announcement: '[JP] Welcome to EM Home | This page reads live electronic-monitoring numbers from CRM every time it opens. Edit this notice in Setup > Developer Hub > CRM Variables > HOME_ANNOUNCEMENT.',
+    emCust: rep(80, { id: 'x' }),
+    ops: rep(8, { id: 'x' }),
+    cases: rep(5, { Status: 'New' }).concat(rep(2, { Status: 'In Progress' })),
+    units: rep(9, { Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Leased', On_Leg: 56, Total_Units: 79 }).concat([{ Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Purchased', On_Leg: 6, Total_Units: 35.4 }]).concat(rep(10, { Count_Date: '2026-09-13', Device_Family: 'Remote Breath', On_Leg: 19, Total_Units: 90.4 }), [{ Count_Date: '2026-09-13', Device_Family: 'RF', On_Leg: 4, Total_Units: 5 }], rep(10, { Count_Date: '2026-09-13', Device_Family: 'Accessory', On_Leg: 15.7, Total_Units: 30.7 }), rep(4, { Count_Date: '2026-09-12', Device_Family: 'GPS', On_Leg: 49, Total_Units: 74.6 })),
+    tasks: [
+      { id: '1', Subject: 'Talk with Matt about the watch. Get a zoom call setup for activation', Due_Date: '2026-07-22', Priority: 'Immediate', 'Who_Id.First_Name': 'Matt', 'Who_Id.Last_Name': 'Thayer' },
+      { id: '2', Subject: 'Training for Iowa County Sheriff', Due_Date: '2026-02-16', Priority: 'High', 'Who_Id.First_Name': 'Nick', 'Who_Id.Last_Name': 'Portzen' },
+      { id: '3', Subject: 'Training video for Sheboygan', Due_Date: '2026-04-01', Priority: 'Normal', 'Who_Id.First_Name': 'Richard', 'Who_Id.Last_Name': 'Wassink' }
+    ],
+    myCases: [
+      { id: 'c1', Case_ID: 'EM-1036', Subject: 'New worker', Status: 'New', Priority: 'Medium', 'Account_Name.Account_Name': 'Columbia County Treatment Court' },
+      { id: 'c2', Case_ID: 'EM-1035', Subject: 'Supplies', Status: 'New', Priority: 'Medium', 'Account_Name.Account_Name': 'Professional Services Group' }
+    ],
+    views: {
+      Cases: [{ id: '6715134000005278083', display_value: 'Support - New' }, { id: '6715134000005278091', display_value: 'Support - My Open Cases' }, { id: '6715134000005278099', display_value: 'Support - All Open' }, { id: '6715134000005278107', display_value: 'Support - Waiting on Vendor' }, { id: '6715134000005278123', display_value: 'Support - Escalated' }, { id: '6715134000005278131', display_value: 'Support - Resolved This Week' }],
+      Support_Emails: [{ id: 'v8', display_value: 'Support - Unlinked Inbound' }],
+      Accounts: [{ id: '6715134000005531056', display_value: 'Brand - JusticePoint' }, { id: '6715134000005278706', display_value: 'CS - EM Customers' }, { id: '6715134000005278714', display_value: 'CS - Operated Programs' }],
+      Contacts: [], Tasks: []
+    }
+  };
+  var mock = {
+    pick: function (q) {
+      var d = function (k) { return Promise.resolve(MOCK[k].slice()); };
+      if (/'EM Customer'/.test(q)) return d('emCust');
+      if (/'Operated Program'/.test(q)) return d('ops');
+      if (/from Cases where Owner/.test(q)) return d('myCases');
+      if (/from Cases/.test(q)) return d('cases');
+      if (/Daily_Unit_Counts/.test(q)) return d('units');
+      if (/from Tasks/.test(q)) return d('tasks');
+      return Promise.resolve([]);
+    },
+    coql: function (q) { return mock.pick(q); },
+    all: function (q) { return mock.pick(q); },
+    user: function () { return Promise.resolve(MOCK.user); },
+    orgVar: function (name) { return Promise.resolve(name === ANNOUNCE_VAR ? MOCK.announcement : ''); },
+    views: function (m) { return Promise.resolve(MOCK.views[m] || []); }
+  };
+  var api = PREVIEW ? mock : live;
+
+  /* ---------- rendering helpers ---------- */
+  var skel = function (ids) { ids.forEach(function (id) { var el = $(id); if (el) el.classList.add('sk'); }); };
+  var unskel = function (ids) { ids.forEach(function (id) { var el = $(id); if (el) el.classList.remove('sk'); }); };
+  var setText = function (id, t) { var el = $(id); if (el) el.textContent = t; };
+  var setHTML = function (id, h) { var el = $(id); if (el) el.innerHTML = h; };
+  var fail = function (id, msg, retry) {
+    var el = $(id); if (!el) return; el.classList.remove('sk');
+    el.innerHTML = '<span class="err">' + esc(msg || 'Could not load') + (retry ? '<button type="button">Retry</button>' : '') + '</span>';
+    if (retry) el.querySelector('button').addEventListener('click', retry);
+  };
+  var resize = function () {
+    if (PREVIEW) return;
+    try { ZOHO.CRM.UI.Resize({ height: (document.documentElement.scrollHeight + 8) + 'px' }); } catch (e) { /* not every placement supports Resize */ }
+  };
+  var stampRefresh = function () {
+    setText('refreshed', new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+  };
+
+  /* ---------- masthead ---------- */
+  function renderMast(user) {
+    var h = today.getHours();
+    var part = h < 5 ? 'Working late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    var first = ((user && user.full_name) || 'there').split(' ')[0];
+    $('greeting').innerHTML = esc(part) + ', <em>' + esc(first) + '</em>.';
+    setText('today', today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));
+    $('chip-jp').href = viewHref(VIEWS.brandJp);
+    $('tasks-all').href = url.tab('Tasks');
+    $('k-units').href = url.tab('Daily_Unit_Counts');
+    applyViewLinks();
+  }
+
+  /* ---------- quick actions ---------- */
+  /* Popup.create leaves the create form to Zoho, so each viewer gets whatever layout
+     their own profile already shows for "+ Create". If the Popup API is unavailable
+     the anchor's own href takes over and opens the module tab. */
+  function popupOrNavigate(module, fallbackHref, ev) {
+    if (PREVIEW) return;
+    if (window.ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Popup && typeof ZOHO.CRM.UI.Popup.create === 'function') {
+      ev.preventDefault();
+      try {
+        ZOHO.CRM.UI.Popup.create({ Entity: module }).catch(function () { window.top.location.href = fallbackHref; });
+      } catch (e) { window.top.location.href = fallbackHref; }
+    }
+  }
+  function renderQuickActions() {
+    [['qa-case', 'Cases'], ['qa-task', 'Tasks']].forEach(function (pair) {
+      var el = $(pair[0]); if (!el) return;
+      var href = url.tab(pair[1]);
+      el.href = href;
+      el.addEventListener('click', function (ev) { popupOrNavigate(pair[1], href, ev); });
+    });
+  }
+
+  /* ---------- note quick-create ---------- */
+  /* Notes always belong to a parent record (Parent_Id + se_module) — Zoho has no
+     standalone "create a note" form, so this opens a picker: choose Account or Case,
+     search, then write and save via ZOHO.CRM.API.insertRecord. */
+  var NOTE_SEARCH = {
+    Accounts: { field: 'Account_Name', label: 'Account' },
+    Cases: { field: 'Subject', label: 'Case' }
+  };
+  var qcode = function (s) { return String(s == null ? '' : s).replace(/'/g, "''"); };
+  var noteState = { module: 'Accounts', picked: null, timer: null };
+  var NOTE_MOCK = {
+    Accounts: [{ id: 'a1', name: 'Columbia County Treatment Court' }, { id: 'a2', name: 'Professional Services Group' }, { id: 'a3', name: 'Allied Wisconsin Sheriff Assn' }],
+    Cases: [{ id: 'c1', name: 'EM-1036 · New worker' }, { id: 'c2', name: 'EM-1035 · Supplies' }]
+  };
+  function noteSearch(term) {
+    var mod = noteState.module, cfg = NOTE_SEARCH[mod];
+    if (PREVIEW) {
+      var rows = NOTE_MOCK[mod].filter(function (r) { return !term || r.name.toLowerCase().indexOf(term.toLowerCase()) >= 0; });
+      return Promise.resolve(rows);
+    }
+    var q = "select id, " + cfg.field + " from " + mod + (term ? " where " + cfg.field + " like '%" + qcode(term) + "%'" : "") + " limit 8";
+    return api.coql(q).then(function (rows) { return rows.map(function (r) { return { id: r.id, name: r[cfg.field] }; }); }).catch(function () { return []; });
+  }
+  function renderNoteResults(rows) {
+    var ul = $('qa-results');
+    if (!rows.length) { ul.innerHTML = '<li class="qa-hint">No matches yet — keep typing, or try a different name.</li>'; return; }
+    ul.innerHTML = rows.map(function (r) { return '<li><button type="button" data-id="' + esc(r.id) + '" data-name="' + esc(r.name) + '">' + esc(r.name) + '</button></li>'; }).join('');
+    Array.prototype.forEach.call(ul.querySelectorAll('button'), function (b) {
+      b.addEventListener('click', function () { pickNoteTarget(b.getAttribute('data-id'), b.getAttribute('data-name')); });
+    });
+  }
+  function pickNoteTarget(id, name) {
+    noteState.picked = { id: id, name: name };
+    $('qa-step-pick').hidden = true;
+    $('qa-step-write').hidden = false;
+    $('qa-target-name').textContent = name;
+    $('qa-note-content').value = '';
+    $('qa-note-title').value = '';
+    var msg = $('qa-msg'); msg.hidden = true; msg.textContent = ''; msg.className = 'qa-msg';
+    $('qa-note-content').focus();
+  }
+  function backToPick() {
+    $('qa-step-write').hidden = true;
+    $('qa-step-pick').hidden = false;
+    $('qa-search').focus();
+  }
+  function saveNote() {
+    var content = $('qa-note-content').value.trim();
+    var msg = $('qa-msg');
+    if (!content) { msg.hidden = false; msg.className = 'qa-msg bad'; msg.textContent = 'Write something before saving.'; return; }
+    var title = $('qa-note-title').value.trim();
+    var saveBtn = $('qa-save'); saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    var finish = function (ok, text) {
+      saveBtn.disabled = false; saveBtn.textContent = 'Save note';
+      msg.hidden = false; msg.className = 'qa-msg ' + (ok ? 'ok' : 'bad'); msg.textContent = text;
+      if (ok) setTimeout(closeNoteModal, 1100);
+    };
+    if (PREVIEW) { setTimeout(function () { finish(true, 'Saved to ' + noteState.picked.name + ' (preview — nothing was written to CRM).'); }, 400); return; }
+    var config = { Entity: 'Notes', APIData: { Note_Title: title || ('Note on ' + noteState.picked.name), Note_Content: content, Parent_Id: noteState.picked.id, se_module: noteState.module } };
+    withTimeout(ZOHO.CRM.API.insertRecord(config), 10000, 'save note').then(function (resp) {
+      var row = resp && resp.data && resp.data[0];
+      if (row && (row.status === 'success' || row.code === 'SUCCESS')) finish(true, 'Saved to ' + noteState.picked.name + '.');
+      else finish(false, (row && row.message) || 'Could not save the note.');
+    }).catch(function (e) { finish(false, e.message || 'Could not save the note.'); });
+  }
+  function openNoteModal() {
+    $('note-overlay').hidden = false;
+    noteState.picked = null;
+    $('qa-step-write').hidden = true;
+    $('qa-step-pick').hidden = false;
+    $('qa-search').value = '';
+    $('qa-results').innerHTML = '';
+    noteSearch('').then(renderNoteResults);
+    $('qa-search').focus();
+  }
+  function closeNoteModal() { $('note-overlay').hidden = true; }
+  function setNoteModule(mod) {
+    noteState.module = mod;
+    var seg = $('qa-module-seg');
+    Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-mod') === mod)); });
+    noteSearch($('qa-search').value.trim()).then(renderNoteResults);
+  }
+  function initNoteModal() {
+    $('qa-note').addEventListener('click', openNoteModal);
+    $('note-close').addEventListener('click', closeNoteModal);
+    $('note-overlay').addEventListener('click', function (ev) { if (ev.target === $('note-overlay')) closeNoteModal(); });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('note-overlay').hidden) closeNoteModal(); });
+    Array.prototype.forEach.call($('qa-module-seg').querySelectorAll('button'), function (b) {
+      b.addEventListener('click', function () { setNoteModule(b.getAttribute('data-mod')); });
+    });
+    $('qa-search').addEventListener('input', function () {
+      var term = $('qa-search').value.trim();
+      clearTimeout(noteState.timer);
+      noteState.timer = setTimeout(function () { noteSearch(term).then(renderNoteResults); }, 250);
+    });
+    $('qa-change').addEventListener('click', backToPick);
+    $('qa-cancel').addEventListener('click', closeNoteModal);
+    $('qa-save').addEventListener('click', saveNote);
+  }
+
+  /* ---------- announcement ---------- */
+  /* The org variable is shared with Network Home. A notice addressed to another part
+     of the network is not shown here at all, rather than shown with a foreign kicker. */
+  function renderNotice(text) {
+    var box = $('notice');
+    text = (text || '').trim();
+    if (!text) { box.hidden = true; return; }
+    var cls = 'notice', kicker = 'Team notice';
+    var m = text.match(/^\[([A-Z!]+)\]\s*/i);
+    if (m) {
+      var tag = m[1].toUpperCase();
+      text = text.slice(m[0].length);
+      if (tag === 'JP' || tag === 'JUSTICEPOINT' || tag === 'EM') { kicker = 'JusticePoint'; }
+      else if (tag === 'URGENT' || tag === '!') { cls += ' urgent'; kicker = 'Needs attention'; }
+      else { box.hidden = true; return; } /* addressed elsewhere in the network: not this page's notice */
+    }
+    var key = 'em-home-notice-dismissed';
+    var sig = text.length + ':' + text.slice(0, 40);
+    try { if (localStorage.getItem(key) === sig) { box.hidden = true; return; } } catch (e) {}
+    var parts = text.split('|');
+    var title = parts.length > 1 ? parts.shift().trim() : '';
+    var body = parts.join('|').trim();
+    box.className = cls;
+    setText('notice-kicker', kicker);
+    setText('notice-title', title);
+    $('notice-title').hidden = !title;
+    setText('notice-body', body);
+    box.hidden = false;
+    $('notice-dismiss').onclick = function () { box.hidden = true; try { localStorage.setItem(key, sig); } catch (e) {} resize(); };
+  }
+
+  /* ---------- KPIs ---------- */
+  var countBy = function (rows, key) { var by = {}; rows.forEach(function (r) { var k = r[key] == null ? 'None' : r[key]; by[k] = (by[k] || 0) + 1; }); return by; };
+
+  function loadCases() {
+    skel(['k-cases-v']);
+    return api.all("select Status from Cases where Status not in ('Closed','Resolved')", 3).then(function (rows) {
+      var by = countBy(rows, 'Status');
+      var total = rows.length, newC = by['New'] || 0, escl = by['Escalated'] || 0, wait = 0;
+      Object.keys(by).forEach(function (k) { if (/^Waiting/.test(k)) wait += by[k]; });
+      unskel(['k-cases-v']);
+      setText('k-cases-v', fmt(total));
+      var bits = []; if (newC) bits.push(fmt(newC) + ' new'); if (escl) bits.push(fmt(escl) + ' escalated'); if (wait) bits.push(fmt(wait) + ' waiting');
+      setText('k-cases-c', bits.length ? bits.join(' · ') : (total ? 'all in progress' : 'nothing open'));
+      var f = $('k-cases-flag'); f.hidden = !escl; f.textContent = escl ? escl + ' escalated' : '';
+      $('k-cases').classList.toggle('attention', escl > 0);
+      $('k-cases').classList.toggle('watch', !escl && newC > 0);
+    }).catch(function (e) { fail('k-cases-v', 'Unavailable', loadCases); setText('k-cases-c', e.message); }).then(resize);
+  }
+
+  /* Newest-first, and stop as soon as a row from an older date appears.
+     WHY THE ORDER MATTERS: Daily Unit Counts holds roughly 115 rows per import, so a
+     14-day window is ~1,600 rows — more than a paged fetch will pull back. Without
+     `order by Count_Date desc` the rows come in id order, oldest first, and the newest
+     import is the part that gets cut off. The tile then sums a fraction of the latest
+     day and silently reports a number far too low (511 GPS on leg read as 176 on
+     Sep 16, 2026). Sorting newest-first puts the whole latest day in the first page.
+     Still one query per page and no sequential dependency, so the timeout problem the
+     old two-step version had does not come back. */
+  function loadUnits() {
+    skel(['k-units-v']);
+    var from = ymd(addDays(today, -UNIT_WINDOW_DAYS));
+    var base = "select Count_Date, Device_Family, Acquisition, On_Leg, Total_Units from Daily_Unit_Counts where Count_Date >= '" + from + "' and Device_Family = 'GPS' order by Count_Date desc";
+    var keep = [], latest = '';
+    var step = function (page) {
+      return api.coql(base + ' limit ' + PAGE + ' offset ' + (page * PAGE)).then(function (batch) {
+        if (!batch.length) return;
+        if (!latest) latest = batch[0].Count_Date || '';
+        var reachedOlder = false;
+        batch.forEach(function (r) { if (r.Count_Date === latest) keep.push(r); else reachedOlder = true; });
+        if (reachedOlder || batch.length < PAGE || page >= 4) return;
+        return step(page + 1); /* a single day bigger than one page: keep going */
+      });
+    };
+    return step(0).then(function () {
+      if (!keep.length || !latest) { unskel(['k-units-v']); setText('k-units-v', '—'); setText('k-units-c', 'no counts imported in the last ' + UNIT_WINDOW_DAYS + ' days'); return; }
+      /* GPS only. Remote Breath, RF and Accessory rows were dropped from Daily Unit Counts on
+         Sep 16, 2026 and the nightly import no longer writes them, so the query above asks for
+         GPS and this guard is belt-and-braces (it also keeps the preview mock honest). */
+      /* Acquisition splits the GPS fleet by which Allied contract the row came from:
+         Purchased = the Justice Point, Inc. (WI) - Purchase Agreement contract, Leased = every
+         other contract. Rows written before Sep 16, 2026 were backfilled; a row with no value
+         is counted as leased, which is the safe reading for anything the import misses. */
+      var gps = 0, tot = 0, leased = 0, purchased = 0;
+      keep.forEach(function (r) {
+        if (r.Device_Family !== 'GPS') return;
+        var on = Number(r.On_Leg) || 0;
+        gps += on;
+        /* Purchased devices are owned, so an undeployed one is not a spare: only its deployed
+           units count toward the fleet total. Leased rows contribute on leg + spare. */
+        if (r.Acquisition === 'Purchased') { purchased += on; tot += on; }
+        else { leased += on; tot += Number(r.Total_Units) || 0; }
+      });
+      var on = Math.round(gps); tot = Math.round(tot);
+      unskel(['k-units-v']);
+      $('k-units-v').innerHTML = fmt(on) + '<small>of ' + fmt(tot) + '</small>';
+      var d = new Date(latest + 'T12:00:00');
+      setText('k-units-c', fmt(Math.round(leased)) + ' leased · ' + fmt(Math.round(purchased)) + ' purchased · as of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }).catch(function (e) { fail('k-units-v', 'Unavailable', loadUnits); setText('k-units-c', e.message); }).then(resize);
+  }
+
+  function loadClassCount(cls, valueId, ctxId, retry) {
+    skel([valueId]);
+    return api.all("select id from Accounts where Record_Classes in ('" + cls + "')", 3).then(function (rows) {
+      unskel([valueId]); setText(valueId, fmt(rows.length));
+    }).catch(function (e) { fail(valueId, 'Unavailable', retry); setText(ctxId, e.message); }).then(resize);
+  }
+  function loadCustomers() { return loadClassCount('EM Customer', 'k-cust-v', 'k-cust-c', loadCustomers); }
+  function loadPrograms() { return loadClassCount('Operated Program', 'k-ops-v', 'k-ops-c', loadPrograms); }
+
+  /* ---------- my work ---------- */
+  function loadWork(user) {
+    var me = user && user.id;
+    var t = ymd(today);
+    ['tasks', 'mycases'].forEach(function (id) { setHTML(id, '<li class="row sk"><span class="t">Loading…</span></li>'); });
+    var meClause = me ? "Owner.id = " + me + " and " : '';
+
+    /* v2 COQL cannot filter Tasks on Due_Date, so pull the oldest open tasks and filter here */
+    api.coql("select Subject, Due_Date, Status, Priority, Who_Id.First_Name, Who_Id.Last_Name from Tasks where " + meClause + "Status not in ('Completed','Deferred') order by Due_Date asc limit 60").then(function (all) {
+      var rows = all.filter(function (r) { return r.Due_Date && r.Due_Date <= t; }).slice(0, 8);
+      if (!rows.length) { setHTML('tasks', '<li class="empty good">Nothing due today or overdue.</li>'); setText('work-meta', all.length ? fmt(all.length) + ' open task' + (all.length === 1 ? '' : 's') + ', none due yet' : ''); return; }
+      setHTML('tasks', rows.map(function (r) {
+        var over = r.Due_Date < t, due = new Date(r.Due_Date + 'T12:00:00');
+        var when = over ? 'Overdue · ' + due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today';
+        var who = [r['Who_Id.First_Name'], r['Who_Id.Last_Name']].filter(Boolean).join(' ');
+        return '<li class="row"><a class="id" target="_top" href="' + esc(url.rec('Tasks', r.id)) + '">' + esc(r.Priority === 'Immediate' || r.Priority === 'High' ? r.Priority : 'Task') + '</a><a class="t link" target="_top" href="' + esc(url.rec('Tasks', r.id)) + '">' + esc(r.Subject) + (who ? '<span class="who">' + esc(who) + '</span>' : '') + '</a><span class="when ' + (over ? 'over' : 'today') + '">' + when + '</span></li>';
+      }).join(''));
+      var dueCount = all.filter(function (r) { return r.Due_Date && r.Due_Date <= t; }).length;
+      setText('work-meta', fmt(dueCount) + ' task' + (dueCount === 1 ? '' : 's') + ' waiting');
+    }).catch(function (e) { fail('tasks', 'Tasks unavailable · ' + e.message); }).then(resize);
+
+    api.coql("select Case_ID, Subject, Status, Priority, Account_Name.Account_Name, Modified_Time from Cases where " + meClause + "Status not in ('Closed','Resolved') order by Modified_Time desc limit 6").then(function (rows) {
+      if (!rows.length) { setHTML('mycases', '<li class="empty good">No open cases assigned to you.</li>'); return; }
+      var pillClass = function (s) { return s === 'New' ? 'new' : s === 'Escalated' ? 'esc' : /^Waiting|On Hold/.test(s) ? 'wait' : 'prog'; };
+      setHTML('mycases', rows.map(function (r) {
+        var acct = r['Account_Name.Account_Name'] || (r.Account_Name && r.Account_Name.name) || '';
+        return '<li class="row"><a class="id" target="_top" href="' + esc(url.rec('Cases', r.id)) + '">' + esc(r.Case_ID || '') + '</a><a class="t link" target="_top" href="' + esc(url.rec('Cases', r.id)) + '">' + esc(r.Subject) + (acct ? '<span class="who">' + esc(acct) + '</span>' : '') + '</a><span class="pill ' + pillClass(r.Status) + '">' + esc(r.Status) + '</span></li>';
+      }).join(''));
+    }).catch(function (e) { fail('mycases', 'Cases unavailable · ' + e.message); }).then(resize);
+  }
+
+  /* ---------- quick links ---------- */
+  /* Two groups only, and the same two for everyone who can open this page — there is no
+     per-user rule table here, because the page itself is the EM boundary.
+     Deals is deliberately absent from every group's `modules`, so an "EM - Pipeline"
+     style view can never surface in this list. */
+  var GROUPS = [
+    { key: 'support', title: 'EM Support', prefixes: ['Support -'], modules: ['Cases', 'Support_Emails'], tabs: [['Cases', 'Cases'], ['Support Emails', 'Support_Emails'], ['Solutions', 'Solutions'], ['Issue Resolution', 'Issue_Resolution']] },
+    { key: 'em', title: 'EM Operations', prefixes: ['EM -'], modules: ['Accounts', 'Contacts', 'Tasks'], tabs: [['Daily Unit Counts', 'Daily_Unit_Counts'], ['EM Stock Alerts', 'EM_Stock_Alerts'], ['Contracts', 'Contracts'], ['Vendors', 'Vendors'], ['Customer Onboarding', 'Customer_Onboarding'], ['Accounts', 'Accounts'], ['Contacts', 'Contacts']] }
+  ];
+  var LIMIT = 7;
+
+  function loadLinks() { renderLinks($('links')); }
+
+  /* Re-resolve each VIEWS entry against what getCustomViews returned for this user:
+     a name match wins over the stored id (so a recreated view keeps working); a view
+     missing from the list is one this user cannot open, so its links stay on the tab. */
+  function resolveViews(viewsByModule) {
+    Object.keys(VIEWS).forEach(function (k) {
+      var v = VIEWS[k], list = viewsByModule[v.module];
+      if (!list) return;
+      var found = null;
+      for (var i = 0; i < list.length; i++) { var name = list[i].display_value || list[i].name || ''; if (name === v.name) { found = list[i]; break; } }
+      if (found && found.id) { v.id = String(found.id); v.visible = true; } else { v.visible = false; }
+    });
+    applyViewLinks();
+    $('chip-jp').href = viewHref(VIEWS.brandJp);
+  }
+
+  function renderLinks(box) {
+    box.innerHTML = GROUPS.map(function (g) { return '<div class="lgroup" id="lg-' + g.key + '"><h3><span class="dot" aria-hidden="true"></span>' + esc(g.title) + '</h3><ul class="sk"><li><a>Loading…</a></li></ul></div>'; }).join('');
+    var modules = { Accounts: true, Cases: true };
+    GROUPS.forEach(function (g) { g.modules.forEach(function (m) { modules[m] = true; }); });
+    var names = Object.keys(modules);
+    Promise.all(names.map(function (m) { return api.views(m).then(function (v) { return { m: m, v: v }; }); })).then(function (res) {
+      var viewsByModule = {}; res.forEach(function (r) { viewsByModule[r.m] = r.v || []; });
+      resolveViews(viewsByModule);
+      GROUPS.forEach(function (g) {
+        var items = [];
+        g.modules.forEach(function (m) {
+          (viewsByModule[m] || []).forEach(function (v) {
+            var name = v.display_value || v.name || '';
+            g.prefixes.forEach(function (p) { if (name.indexOf(p) === 0) items.push({ label: name.slice(p.length).trim(), kind: m.replace(/_/g, ' '), href: url.view(m, v.id) }); });
+          });
+        });
+        items.sort(function (a, b) { return a.label.localeCompare(b.label); });
+        g.tabs.forEach(function (t) { items.push({ label: t[0], kind: 'module', href: url.tab(t[1]) }); });
+        renderGroup(g.key, items);
+      });
+    }).catch(function () {
+      GROUPS.forEach(function (g) { renderGroup(g.key, g.tabs.map(function (t) { return { label: t[0], kind: 'module', href: url.tab(t[1]) }; })); });
+    }).then(resize);
+  }
+  function renderGroup(key, items) {
+    var el = $('lg-' + key), ul = el.querySelector('ul'); ul.classList.remove('sk');
+    var li = function (it) { return '<li><a target="_top" href="' + esc(it.href) + '"><span class="link-label">' + esc(it.label) + '</span><span class="kind">' + esc(it.kind) + '</span></a></li>'; };
+    var shown = items.slice(0, LIMIT), rest = items.slice(LIMIT);
+    ul.innerHTML = shown.map(li).join('');
+    if (rest.length) {
+      var more = document.createElement('button'); more.type = 'button'; more.className = 'more'; more.textContent = '+ ' + rest.length + ' more';
+      more.addEventListener('click', function () { ul.insertAdjacentHTML('beforeend', rest.map(li).join('')); more.remove(); resize(); });
+      el.appendChild(more);
+    }
+  }
+
+  /* ---------- display: theme + brightness (per viewer, remembered in this browser) ---------- */
+  var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  function applyTheme(choice) {
+    var root = document.documentElement;
+    if (choice === 'light' || choice === 'dark') root.setAttribute('data-theme', choice); else { root.removeAttribute('data-theme'); choice = 'auto'; }
+    ['auto', 'light', 'dark'].forEach(function (k) { var b = $('theme-' + k); if (b) b.setAttribute('aria-pressed', String(k === choice)); });
+    store.set('em-home-theme', choice);
+  }
+  function applyBrightness(pct) {
+    pct = Math.min(120, Math.max(70, Number(pct) || 100));
+    document.body.style.filter = pct === 100 ? '' : 'brightness(' + (pct / 100) + ')';
+    var r = $('brightness'); if (r && Number(r.value) !== pct) r.value = pct;
+    setText('brightness-v', pct + '%');
+    store.set('em-home-brightness', String(pct));
+  }
+  function initDisplay() {
+    applyTheme(store.get('em-home-theme') || 'auto');
+    applyBrightness(store.get('em-home-brightness') || 100);
+    ['auto', 'light', 'dark'].forEach(function (k) { var b = $('theme-' + k); if (b) b.addEventListener('click', function () { applyTheme(k); }); });
+    var r = $('brightness'); if (r) { r.addEventListener('input', function () { applyBrightness(r.value); }); r.addEventListener('dblclick', function () { applyBrightness(100); }); }
+  }
+
+  /* ---------- boot ---------- */
+  function loadAll(user) {
+    stampRefresh();
+    loadCases();
+    loadUnits();
+    loadCustomers();
+    loadPrograms();
+    loadWork(user);
+    api.orgVar(ANNOUNCE_VAR).then(renderNotice).then(resize);
+  }
+  var currentUser = null;
+  function start() {
+    initDisplay();
+    renderQuickActions();
+    initNoteModal();
+    setText('today', today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));
+    if (PREVIEW) {
+      setText('source', 'Preview with sample numbers');
+      $('source').className = 'sample';
+      setText('asof', 'Sample data · the live widget reads Zoho CRM on every load');
+    } else {
+      setText('asof', 'Numbers refresh each time this page opens · every number opens the view it was counted from');
+    }
+    api.user().then(function (u) { currentUser = u; renderMast(u); loadAll(u); loadLinks(); })
+      .catch(function () { renderMast(null); loadAll(null); loadLinks(); });
+    $('refresh').addEventListener('click', function () { today = new Date(); loadAll(currentUser); });
+    window.addEventListener('resize', resize);
+  }
+  if (PREVIEW) { start(); }
+  else {
+    var booted = false;
+    ZOHO.embeddedApp.on('PageLoad', function () { if (!booted) { booted = true; start(); } });
+    ZOHO.embeddedApp.init();
+    setTimeout(function () { if (!booted) { booted = true; start(); } }, 2500); /* never sit on a skeleton if PageLoad is late */
+  }
+})();
+</script>
+
+</body>
+</html>

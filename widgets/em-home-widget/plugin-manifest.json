@@ -1,0 +1,15 @@
+{
+	"locale": ["en"],
+	"csp": "",
+	"storage": false,
+	"whiteListedDomain": "",
+	"modules": {
+		"widgets": [
+			{
+				"url": "/widget.html",
+				"name": "EM Home",
+				"logo": "app/logo.svg"
+			}
+		]
+	}
+}
