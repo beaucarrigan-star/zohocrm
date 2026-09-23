@@ -572,10 +572,10 @@
      the anchor's own href takes over and opens the module tab. */
   function popupOrNavigate(module, fallbackHref, ev) {
     if (PREVIEW) return;
-    if (window.ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Popup && typeof ZOHO.CRM.UI.Popup.create === 'function') {
+    if (window.ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record && typeof ZOHO.CRM.UI.Record.create === 'function') {
       ev.preventDefault();
       try {
-        ZOHO.CRM.UI.Popup.create({ Entity: module }).catch(function () { window.top.location.href = fallbackHref; });
+        ZOHO.CRM.UI.Record.create({ Entity: module }).catch(function () { window.top.location.href = fallbackHref; });
       } catch (e) { window.top.location.href = fallbackHref; }
     }
   }
