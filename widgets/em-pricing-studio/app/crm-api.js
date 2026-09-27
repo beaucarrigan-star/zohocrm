@@ -312,7 +312,7 @@
         var all = {
           Name: String(sc.name || 'Pricing scenario').slice(0, 120),
           Valid_Until: addDays(today(), num(sc.proposal.validDays) || 30).toISOString().slice(0, 10),
-          Pricing_Model: MODEL_PICK[res.model], Vendor_Source: res.vendorSource === 'buy' ? 'JP-owned fleet' : 'Lease',
+          Pricing_Model: MODEL_PICK[res.model], Vendor_Source: res.vendorSource === 'buy' ? 'JP-owned devices' : 'Lease',
           Proposal_Options: opts.map(function (m) { return MODEL_PICK[m]; }).join(', ').slice(0, 120),
           Term_Months: res.term.months, Active_Units: Math.round(res.units.active),
           Est_Monthly_Revenue: round2(res.monthly.revenue), Est_Monthly_Cost: round2(res.monthly.cost), Est_Monthly_Margin: round2(res.monthly.margin),

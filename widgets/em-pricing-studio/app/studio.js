@@ -96,7 +96,7 @@
   });
 
   /* ---------- state ---------- */
-  var state = { openTiers: {}, catalog: [], vendors: [], vendorFilter: '', scenario: null, saved: [], dirty: false, tab: 'scenario', catDirty: {}, user: null,
+  var state = { internal: true, openTiers: {}, catalog: [], vendors: [], vendorFilter: '', scenario: null, saved: [], dirty: false, tab: 'scenario', catDirty: {}, user: null,
     setup: { products: [], prices: [], scenarios: [], vendors: [], productsReadOnly: [], pricesReadOnly: [] } };
   var itemById = function (id) { return state.catalog.filter(function (c) { return String(c.id) === String(id); })[0]; };
   var calc = function (opts) { return E.price(state.scenario, state.catalog, opts); };
@@ -143,7 +143,7 @@
     var el = '<input type="' + t + '" data-bind="' + path + '" data-kind="' + type + '"' + (t === 'number' ? ' inputmode="decimal" step="' + step + '" min="0"' : '') + ' value="' + esc(v == null ? '' : v) + '"' + (attrs.ph ? ' placeholder="' + esc(attrs.ph) + '"' : '') + (attrs.label ? ' aria-label="' + esc(attrs.label) + '"' : '') + '>';
     return cls ? '<span class="' + cls + '">' + el + '</span>' : el;
   }
-  function field(label, html, hint, wide) { return '<label class="f' + (wide ? ' wide' : '') + '"><span>' + esc(label) + (hint ? ' <span class="hint">· ' + esc(hint) + '</span>' : '') + '</span>' + html + '</label>'; }
+  function field(label, html, hint, wide, cls) { return '<label class="f' + (wide ? ' wide' : '') + (cls ? ' ' + cls : '') + '"><span>' + esc(label) + (hint ? ' <span class="hint">· ' + esc(hint) + '</span>' : '') + '</span>' + html + '</label>'; }
 
   /* ---------- builder ---------- */
   /* ---------- what vendors charge JusticePoint ---------- */
@@ -167,64 +167,88 @@
       e.name = v ? v.name : (vendorDevices(vid)[0] || {}).vendor || '';
     });
   }
+  /* ---------- pro-forma P&L (internal) with expandable vendor tier details ---------- */
   function vendorPanel(buy) {
     var vids = scenarioVendors(), s = state.scenario;
-    if (!vids.length) return '';
-    var rl = buy ? 'Owned svc $/day' : 'Lease $/day';
-    var h = '<div class="card"><div class="head"><h2>What vendors charge ' + esc(BRAND.company) + '</h2><span class="meta">tiers use total units with the vendor · or type the vendor’s price</span></div><div class="body scroll-x">';
-    h += '<table class="tbl vv"><thead><tr><th>Vendor / device</th><th class="r">Current units<div class="sub">from Zoho</div></th><th class="r">Override<div class="sub">this scenario</div></th><th class="r">+ This scenario</th><th class="r">= Total</th><th>Catalog tier cost</th><th>Next tier</th><th>Vendor price<div class="sub">' + esc(rl) + ' · blank = catalog</div></th></tr></thead><tbody>';
-    vids.forEach(function (vid) {
-      var e = s.vendorVolume[vid] || {};
-      h += '<tr class="vhead"><td><b>' + esc(e.name || 'Vendor') + '</b></td>';
-      h += '<td class="r num">' + (e.zoho == null ? '<span class="fine" style="margin:0">not set</span>' : int(e.zoho)) + '</td>';
-      h += '<td class="w-sm">' + inp('vendorVolume.' + vid + '.override', 'vol', { step: '1', ph: e.zoho == null ? '0' : String(e.zoho), label: 'Current units override for ' + (e.name || 'vendor') }) + '</td>';
-      h += '<td class="r num" id="vv-s-' + esc(vid) + '"></td><td class="r num" id="vv-t-' + esc(vid) + '"></td>';
-      h += '<td colspan="2" id="vv-n-' + esc(vid) + '"></td>';
-      h += '<td><label class="check"><input type="checkbox" data-bind="vendorVolume.' + vid + '.useNext" data-kind="bool"' + (e.useNext ? ' checked' : '') + '> Use next tier</label></td></tr>';
-      vendorDevices(vid).forEach(function (it) {
-        var key = esc(vid + '-' + it.id);
-        h += '<tr class="vdev"><td colspan="5" style="padding-left:18px">' + esc(it.name || 'Device') + (it.family ? ' <span class="fine" style="margin:0">· ' + esc(it.family) + '</span>' : '') + '</td>';
-        h += '<td id="vd-r-' + key + '"></td><td id="vd-n-' + key + '"></td>';
-        h += '<td class="w-md">' + inp('vendorVolume.' + vid + '.rates.' + it.id, 'vol', { step: '0.01', label: 'Vendor price for ' + (it.name || 'device') }) + '<div class="zslot" id="vd-m-' + key + '"></div></td></tr>';
+    var h = '<div class="card pf"><div class="head"><h2><span class="int">Pro-forma P&amp;L</span><span class="ext">Revenue summary</span></h2><span class="meta" id="pf-meta"></span></div>';
+    h += '<div class="scroll-x" id="pf-body"></div><div id="vv-lock" class="int"></div>';
+    if (vids.length) {
+      h += '<div class="body pf-vendors int"><h3 class="pf-h">Vendor cost detail</h3>';
+      vids.forEach(function (vid) {
+        var e = s.vendorVolume[vid] || {};
+        h += '<details class="vd" data-vd="' + esc(vid) + '"' + (state.openTiers['v' + vid] ? ' open' : '') + '><summary><span class="vd-name">' + esc(e.name || 'Vendor') + '</span><span class="vd-sum" id="vd-sum-' + esc(vid) + '"></span></summary><div class="vd-body">';
+        h += '<div class="vd-vol"><label class="f"><span>Current units with ' + esc(e.name || 'vendor') + ' <span class="hint">· Zoho: ' + (e.zoho == null ? 'not set' : int(e.zoho)) + '</span></span>' + inp('vendorVolume.' + vid + '.override', 'vol', { step: '1', ph: e.zoho == null ? '0' : String(e.zoho), label: 'Current units override' }) + '</label>';
+        h += '<div class="vd-calc" id="vd-calc-' + esc(vid) + '"></div>';
+        h += '<label class="check"><input type="checkbox" data-bind="vendorVolume.' + vid + '.useNext" data-kind="bool"' + (e.useNext ? ' checked' : '') + '> Model the next tier</label></div>';
+        h += '<table class="tbl vd-tbl"><thead><tr><th>Device</th><th class="r">Catalog tier</th><th class="r">Next tier</th><th class="r">Vendor quote <span class="hint">· ' + (buy ? 'svc' : 'lease') + ' $/day</span></th></tr></thead><tbody>';
+        vendorDevices(vid).forEach(function (it) {
+          var key = esc(vid + '-' + it.id);
+          h += '<tr><td>' + esc(it.name || 'Device') + '</td><td class="r" id="vd-r-' + key + '"></td><td class="r" id="vd-n-' + key + '"></td><td class="w-md">' + inp('vendorVolume.' + vid + '.rates.' + it.id, 'vol', { step: '0.01', ph: 'catalog', label: 'Vendor quote for ' + (it.name || 'device') }) + '</td></tr>';
+        });
+        h += '</tbody></table><p class="fine">Tiers use total units with the vendor. A vendor quote overrides the catalog for this scenario only.</p></div></details>';
       });
-    });
-    h += '</tbody></table><div id="vv-lock" style="margin-top:10px"></div>';
-    h += '<p class="fine">Current units come from <code>' + esc(VENDOR_UNITS_FIELD) + '</code> on the Zoho vendor; the override replaces it for this scenario. <b>Vendor price</b> is what the vendor quoted you for this deal; it replaces the catalog tier for this scenario only. Clear it to go back to the catalog. <b>Use next tier</b> models the next cheaper catalog tier.</p></div></div>';
-    return h;
+      h += '</div>';
+    }
+    return h + '</div>';
   }
-  function tierTxt(min) { return min ? int(min) + '+ tier' : 'base rate'; }
+  function tierTxt(min) { return min ? int(min) + '+' : 'base'; }
+  function renderProForma(r) {
+    var body = $('pf-body'); if (!body) return;
+    var M = r.monthly, R = M.rev, C = M.costs, rev = M.revenue;
+    var pc = function (v) { return rev > 0 ? pctf(v / rev * 100) : '—'; };
+    var row = function (label, v, cls, sub) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + (sub ? '<div class="pf-sub">' + sub + '</div>' : '') + '</td><td class="r num">' + money(v) + '</td><td class="r num">' + money(v * 12) + '</td><td class="r num">' + pc(v) + '</td></tr>'; };
+    var opt = function (label, v, sub) { return Math.abs(v) > 0.005 ? row(label, v, '', sub) : ''; };
+    var h = '<table class="pft"><thead><tr><th></th><th class="r">Monthly</th><th class="r">Annual</th><th class="r">% of rev</th></tr></thead><tbody>';
+    h += '<tr class="sec"><td colspan="4">Revenue</td></tr>';
+    h += opt('Equipment and monitoring', R.device) + opt('Spare equipment', R.spares) + opt('Loss recovery fees', R.lost) + opt('Staff services', R.staffing) + opt('Recurring fees', R.fees) + opt('Minimum billing adjustment', R.minimum);
+    h += row('Total revenue', rev, 'tot') + '</tbody>';
+    h += '<tbody class="int"><tr class="sec"><td colspan="4">Cost of revenue</td></tr>';
+    var byV = {}, orderV = [], other = 0;
+    r.lines.forEach(function (l) { var c = l.cost.device + l.cost.spares; if (l.vendorId) { if (byV[l.vendorId] == null) { byV[l.vendorId] = 0; orderV.push(l.vendorId); } byV[l.vendorId] += c; } else other += c; });
+    orderV.forEach(function (vid) {
+      var v = (r.vendors || []).filter(function (x) { return x.vendorId === vid; })[0] || {};
+      var sub = (v.lines || []).map(function (l) { return esc(l.name) + ' ' + rate(l.effective) + '/day' + (l.manual != null ? ' · quote' : l.modelled ? ' · next tier' : ''); }).join(' · ');
+      h += row(esc(v.name || 'Vendor') + ' · equipment and airtime', byV[vid], '', (v.total != null ? int(v.total) + ' units · ' : '') + sub);
+    });
+    h += opt('Other equipment', other) + opt('Lost and damaged equipment', C.lost) + opt('Device depreciation', C.amort) + opt('Staff services', C.staffing) + opt('Recurring fees', C.fees);
+    h += row('Total cost of revenue', M.cost, 'tot');
+    h += row('Gross profit', M.margin, 'gp' + (M.margin < 0 ? ' neg' : ''));
+    h += '</tbody></table>';
+    var O = r.once, T = r.term;
+    h += '<div class="pf-foot int"><div><span>One-time</span><b>' + money(O.rev) + '</b> revenue · <b>' + money(O.cost + O.capex) + '</b> cost' + (O.capex > 0 ? ' incl. device purchase' : '') + '</div>';
+    h += '<div><span>Term · ' + T.months + ' mo</span><b>' + money(T.revenue) + '</b> revenue · <b>' + money(T.margin) + '</b> gross profit · <b>' + pctf(T.marginPct) + '</b></div></div>';
+    body.innerHTML = h;
+    var meta = $('pf-meta'); if (meta) meta.textContent = r.modelLabel + ' · year one · ' + int(r.units.active) + ' active units' + (state.internal ? ' · internal only' : '');
+  }
   function renderVendorResults(r) {
+    renderProForma(r);
     (r.vendors || []).forEach(function (v) {
-      var el = function (p) { return $('vv-' + p + '-' + v.vendorId); };
-      if (!el('t')) return;
-      el('s').textContent = int(v.scenarioUnits);
-      el('t').innerHTML = '<b>' + int(v.total) + '</b>' + (v.override != null ? '<div class="fine" style="margin:0">using override</div>' : '');
-      var n = el('n');
-      if (!v.hasTiers) n.innerHTML = '<span class="fine" style="margin:0">No cost tiers in the catalog</span>';
-      else if (v.nextMin == null) n.innerHTML = v.lines.some(function (l) { return l.manual != null; }) ? '<span class="fine" style="margin:0">Vendor prices entered</span>' : '<span class="chip strong">Top tier</span>';
-      else n.innerHTML = '<b>' + int(v.unitsToNext) + '</b> more unit' + (v.unitsToNext === 1 ? '' : 's') + ' to the ' + int(v.nextMin) + '+ tier · saves <b>' + money(v.savingsMonthly) + '</b>/mo on this scenario';
+      var sum = $('vd-sum-' + v.vendorId); if (!sum) return;
+      var tip = v.lines.some(function (l) { return l.manual != null; }) ? 'vendor quote applied' : !v.hasTiers ? 'no catalog tiers' : v.nextMin == null ? 'top tier' : int(v.unitsToNext) + ' units to next tier · saves ' + money(v.savingsMonthly) + '/mo';
+      sum.textContent = int(v.total) + ' units · ' + tip + (v.useNext ? ' · modelling next tier' : '');
+      var calc = $('vd-calc-' + v.vendorId);
+      if (calc) calc.innerHTML = int(v.current) + (v.override != null ? ' (override)' : '') + ' current + ' + int(v.scenarioUnits) + ' this scenario = <b>' + int(v.total) + '</b> units';
       v.lines.forEach(function (l) {
-        var key = v.vendorId + '-' + l.itemId, R = $('vd-r-' + key), N = $('vd-n-' + key), M = $('vd-m-' + key);
-        if (R) R.innerHTML = '<b>' + rate(l.rate) + '</b>/day <span class="fine" style="margin:0">(' + tierTxt(l.tierMin) + ')</span>' + (l.modelled && l.next ? '<div class="zc diff">Modelling ' + rate(l.next.rate) + ' (' + tierTxt(l.next.min) + ')</div>' : '');
-        if (N) N.innerHTML = l.next ? rate(l.next.rate) + '/day at ' + int(l.next.min) + '+' : '<span class="fine" style="margin:0">—</span>';
-        if (M) M.innerHTML = l.manual != null ? '<span class="zc kept">Using vendor price ' + rate(l.manual) + (Math.abs(l.manual - l.rate) > 0.004 ? ' · ' + (l.manual < l.rate ? rate(l.rate - l.manual) + ' under' : rate(l.manual - l.rate) + ' over') + ' catalog' : '') + '</span>' : '';
+        var key = v.vendorId + '-' + l.itemId, R = $('vd-r-' + key), N = $('vd-n-' + key);
+        if (R) R.innerHTML = '<b>' + rate(l.rate) + '</b> <span class="fine" style="margin:0">' + tierTxt(l.tierMin) + '</span>';
+        if (N) N.innerHTML = l.next ? rate(l.next.rate) + ' <span class="fine" style="margin:0">' + int(l.next.min) + '+</span>' : '<span class="fine" style="margin:0">—</span>';
       });
     });
     var lk = $('vv-lock'); if (!lk) return;
-    var pa = state.scenario.pricedAt;
-    if (!pa || !pa.vendors) { lk.innerHTML = '<span class="fine" style="margin:0">Vendor costs are locked onto the scenario when you save it.</span>'; return; }
-    var changes = [], lockedTxt = pa.vendors.map(function (sv) {
+    var pa = state.scenario.pricedAt, meta = $('pf-meta');
+    if (!pa || !pa.vendors) { lk.innerHTML = ''; if (meta && state.internal) meta.textContent += ' · costs lock on save'; return; }
+    var changes = [];
+    pa.vendors.forEach(function (sv) {
       var cur = (r.vendors || []).filter(function (x) { return x.vendorId === sv.vendorId; })[0];
       sv.lines.forEach(function (sl) {
         var cl = cur && cur.lines.filter(function (x) { return String(x.itemId) === String(sl.itemId); })[0];
-        if (!cl) changes.push(esc(sl.name) + ' is no longer in the scenario');
-        else if (Math.abs(cl.effective - sl.effective) > 0.004) changes.push(esc(sl.name) + ' is now ' + rate(cl.effective) + ' (was ' + rate(sl.effective) + ')');
+        if (!cl) changes.push(esc(sl.name) + ' removed');
+        else if (Math.abs(cl.effective - sl.effective) > 0.004) changes.push(esc(sl.name) + ' ' + rate(sl.effective) + ' → ' + rate(cl.effective));
       });
-      if (cur && cur.total !== sv.total) changes.push(esc(sv.name) + ' total is now ' + int(cur.total) + ' units (was ' + int(sv.total) + ')');
-      return esc(sv.name) + ' at ' + int(sv.total) + ' units: ' + sv.lines.map(function (sl) { return esc(sl.name) + ' ' + rate(sl.effective) + (sl.manual != null ? ' (vendor price)' : sl.modelled ? ' (next tier)' : ''); }).join(', ');
-    }).join(' · ');
-    lk.innerHTML = '<div class="' + (changes.length ? 'alert' : 'target') + '"><span><b>Vendor costs locked ' + esc(longDate(pa.date)) + ':</b> ' + lockedTxt + '</span>' +
-      (changes.length ? '<ul>' + changes.map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ul><span>Save the scenario to lock the new costs.</span>' : '') + '</div>';
+      if (cur && cur.total !== sv.total) changes.push(esc(sv.name) + ' ' + int(sv.total) + ' → ' + int(cur.total) + ' units');
+    });
+    if (meta && state.internal) meta.textContent += ' · costs locked ' + longDate(pa.date);
+    lk.innerHTML = changes.length ? '<div class="alert pf-alert">Vendor costs changed since they were locked: ' + changes.join(' · ') + '. Save to re-lock.</div>' : '';
   }
   function costSnapshot(r) {
     return { date: today(), vendors: (r.vendors || []).map(function (v) {
@@ -243,29 +267,29 @@
     h += field('Name on proposal', inp('customerName', 'text', { ph: s.account ? s.account.name : 'e.g. Rock County' }));
     h += field('Program', inp('program', 'text', { ph: 'e.g. Pretrial Services' }));
     h += field('Term', inp('termMonths', 'int'), 'months');
-    h += field('Target margin', inp('targetMarginPct', 'pct'));
+    h += field('Target margin', inp('targetMarginPct', 'pct'), null, false, 'int');
     h += field('Price escalator', inp('priceEscalatorPct', 'pct'), 'per year');
-    h += field('Cost escalator', inp('costEscalatorPct', 'pct'), 'per year');
+    h += field('Cost escalator', inp('costEscalatorPct', 'pct'), 'per year', false, 'int');
     h += '</div><div style="display:flex;flex-wrap:wrap;gap:12px 24px;margin-top:14px;align-items:center">';
     h += '<div><div class="fine" style="margin:0 0 5px">Customer pricing model</div><span class="seg" role="group" aria-label="Pricing model">' + Object.keys(E.MODELS).map(function (k) { return '<button type="button" data-act="model" data-v="' + k + '" aria-pressed="' + (m === k) + '">' + esc(E.MODELS[k].label) + '</button>'; }).join('') + '</span></div>';
-    h += '<div><div class="fine" style="margin:0 0 5px">How ' + esc(BRAND.company) + ' gets the devices</div><span class="seg" role="group" aria-label="Device sourcing"><button type="button" data-act="source" data-v="lease" aria-pressed="' + !buy + '"' + (m === 'purchase' ? ' disabled' : '') + '>Lease</button><button type="button" data-act="source" data-v="buy" aria-pressed="' + buy + '"' + (m === 'purchase' ? ' disabled' : '') + '>Purchase</button></span></div>';
-    h += '</div><p class="fine">' + modelNote(m, buy) + '</p></div></div>';
+    h += '<div class="int"><div class="fine" style="margin:0 0 5px">How ' + esc(BRAND.company) + ' gets the devices</div><span class="seg" role="group" aria-label="Device sourcing"><button type="button" data-act="source" data-v="lease" aria-pressed="' + !buy + '"' + (m === 'purchase' ? ' disabled' : '') + '>Lease</button><button type="button" data-act="source" data-v="buy" aria-pressed="' + buy + '"' + (m === 'purchase' ? ' disabled' : '') + '>Purchase</button></span></div>';
+    h += '</div><p class="fine int">' + modelNote(m, buy) + '</p><p class="fine ext">' + esc(optionBlurb(m)) + '</p></div></div>';
 
     /* devices */
     var keys = scenarioKeys(m);
     h += '<div class="card"><div class="head"><h2>Devices and prices</h2><span style="display:flex;gap:8px;align-items:center"><span class="meta">volumes are average daily units · prices are stored in this scenario</span><button class="btn sm" type="button" data-act="add-line">+ Add device</button></span></div><div class="body scroll-x">';
     if (!s.lines.length) h += '<p class="empty">No devices yet. Add one to start pricing.</p>';
     else {
-      h += '<table class="tbl"><thead><tr><th>Device</th><th class="r">Active</th><th class="r" title="Spares on the shelf, as a % of active">Spares %</th>' + keys.map(function (k) { return '<th class="r">' + esc(PRICE_LABEL[k]) + '</th>'; }).join('') + '<th class="r">Margin</th><th></th></tr></thead><tbody>';
+      h += '<table class="tbl"><thead><tr><th>Device</th><th class="r">Active</th><th class="r" title="Spares on the shelf, as a % of active">Spares %</th>' + keys.map(function (k) { return '<th class="r">' + esc(PRICE_LABEL[k]) + '</th>'; }).join('') + '<th class="r int">Margin</th><th></th></tr></thead><tbody>';
       s.lines.forEach(function (l, i) {
         if (!l.confirmed) l.confirmed = {};
         var it = itemById(l.itemId);
-        h += '<tr data-line="' + i + '"><td style="min-width:210px"><select data-bind="lines.' + i + '.itemId" data-kind="text" aria-label="Device">' + catalogOptions(l.itemId) + '</select><div class="fine" id="line-hint-' + i + '">' + esc(costHint(it, buy)) + '</div></td>';
+        h += '<tr data-line="' + i + '"><td style="min-width:210px"><select data-bind="lines.' + i + '.itemId" data-kind="text" aria-label="Device">' + catalogOptions(l.itemId) + '</select><div class="fine int" id="line-hint-' + i + '">' + esc(costHint(it, buy)) + '</div></td>';
         h += '<td class="w-sm">' + inp('lines.' + i + '.units', 'num', { label: 'Active units', step: '1' }) + '</td>';
         h += '<td class="w-sm">' + inp('lines.' + i + '.sparePct', 'pct', { label: 'Spares %' }) + '</td>';
         keys.forEach(function (k) { h += '<td class="w-md pcell">' + inp('lines.' + i + '.price.' + k, 'money', { label: PRICE_LABEL[k] }) + '<div class="zslot" id="zc-l-' + i + '-' + k + '">' + lineBadgeHtml(l, i, k) + '</div></td>'; });
         var nt = (l.priceTiers || []).length, open = !!state.openTiers['l' + i];
-        h += '<td class="r" id="line-m-' + i + '"></td><td style="white-space:nowrap"><button class="btn sm" type="button" data-act="tog-ptier" data-i="' + i + '" aria-expanded="' + open + '" title="Volume price tiers">Tiers' + (nt ? ' (' + nt + ')' : '') + '</button> <button class="btn ghost sm" type="button" data-act="del-line" data-i="' + i + '" aria-label="Remove device">✕</button></td></tr>';
+        h += '<td class="r int" id="line-m-' + i + '"></td><td style="white-space:nowrap"><button class="btn sm" type="button" data-act="tog-ptier" data-i="' + i + '" aria-expanded="' + open + '" title="Volume price tiers">Tiers' + (nt ? ' (' + nt + ')' : '') + '</button> <button class="btn ghost sm" type="button" data-act="del-line" data-i="' + i + '" aria-label="Remove device">✕</button></td></tr>';
         if (open) h += '<tr class="tier-row"><td colspan="' + (5 + keys.length) + '">' + priceTierEditor(l, i, keys) + '</td></tr>';
       });
       h += '</tbody></table>';
@@ -278,27 +302,27 @@
     h += '<div class="card"><div class="head"><h2>Spares, losses and minimums</h2></div><div class="body">';
     h += '<div class="fgrid">';
     h += field('Spares included free', inp('spareBilling.overPct', 'pct'), '% of active');
-    h += field('Annual loss rate', inp('lostRatePct', 'pct'), '% of fleet per year');
-    h += field('Loss fees recovered', inp('lostRecoveryPct', 'pct'), '% actually collected');
+    h += field('Annual loss rate', inp('lostRatePct', 'pct'), '% of devices per year', false, 'int');
+    h += field('Loss fees recovered', inp('lostRecoveryPct', 'pct'), '% actually collected', false, 'int');
     h += field('Minimum monthly billing', inp('minimumMonthly', 'money'));
-    h += '</div><p class="fine">Spares above the free % are billed at each device’s <b>$/spare day</b> (Devices table; leave it at 0 to not charge). Your spare cost comes from the Cost catalog: spares above each device’s free % cost its Spare $/day. Losses do not apply to purchased equipment, which the customer owns.</p></div></div>';
+    h += '</div><p class="fine">Spares above the free % are billed at each device’s <b>$/spare day</b> (Devices table; leave it at 0 to not charge). <span class="int">Your spare cost comes from the Cost catalog: spares above each device’s free % cost its Spare $/day. Losses do not apply to purchased equipment, which the customer owns.</span></p></div></div>';
 
     /* staffing */
     h += '<div class="card"><div class="head"><h2>' + esc(BRAND.company) + ' staffing services</h2><button class="btn sm" type="button" data-act="add-staff">+ Add service</button></div><div class="body scroll-x">';
     if (!s.staffing.length) h += '<p class="empty">No staffed services. Add monitoring-center or case-management work priced per participant or per month.</p>';
     else {
-      h += '<table class="tbl"><thead><tr><th>Service</th><th class="r">Participants</th><th>Cost basis</th><th class="r">Cost inputs</th><th>Price basis</th><th class="r">Price</th><th class="r">Margin</th><th></th></tr></thead><tbody>';
+      h += '<table class="tbl"><thead><tr><th>Service</th><th class="r">Participants</th><th class="int">Cost basis</th><th class="r int">Cost inputs</th><th>Price basis</th><th class="r">Price</th><th class="r int">Margin</th><th></th></tr></thead><tbody>';
       s.staffing.forEach(function (st, i) {
         var p = 'staffing.' + i + '.';
         h += '<tr><td style="min-width:180px">' + inp(p + 'name', 'text', { label: 'Service name' }) + '</td>';
         h += '<td class="w-sm">' + inp(p + 'participants', 'num', { ph: 'all', label: 'Participants (blank = all active units)', step: '1' }) + '</td>';
-        h += '<td><select data-bind="' + p + 'costMethod" data-kind="text" data-rerender="1"><option value="hours"' + (st.costMethod !== 'fte' ? ' selected' : '') + '>Hours per participant</option><option value="fte"' + (st.costMethod === 'fte' ? ' selected' : '') + '>Dedicated FTEs</option></select></td>';
-        h += '<td style="min-width:230px"><div style="display:flex;gap:6px">' + (st.costMethod === 'fte'
+        h += '<td class="int"><select data-bind="' + p + 'costMethod" data-kind="text" data-rerender="1"><option value="hours"' + (st.costMethod !== 'fte' ? ' selected' : '') + '>Hours per participant</option><option value="fte"' + (st.costMethod === 'fte' ? ' selected' : '') + '>Dedicated FTEs</option></select></td>';
+        h += '<td class="int" style="min-width:230px"><div style="display:flex;gap:6px">' + (st.costMethod === 'fte'
           ? inp(p + 'fte', 'num', { label: 'FTEs', ph: 'FTEs' }) + inp(p + 'fteMonthlyCost', 'money', { label: 'Loaded cost per FTE per month', ph: 'per FTE / mo' })
           : inp(p + 'hoursPerParticipant', 'num', { label: 'Hours per participant per month', ph: 'hrs / mo' }) + inp(p + 'costPerHour', 'money', { label: 'Cost per hour', ph: 'per hr' }) + inp(p + 'overheadPct', 'pct', { label: 'Overhead %', ph: 'ovhd' })) + '</div></td>';
         h += '<td><select data-bind="' + p + 'priceMethod" data-kind="text" data-rerender="1"><option value="perDay"' + (st.priceMethod !== 'monthly' ? ' selected' : '') + '>Per participant per day</option><option value="monthly"' + (st.priceMethod === 'monthly' ? ' selected' : '') + '>Flat monthly</option></select></td>';
         h += '<td class="w-md">' + (st.priceMethod === 'monthly' ? inp(p + 'priceMonthly', 'money', { label: 'Monthly price' }) : inp(p + 'priceDaily', 'money', { label: 'Price per participant per day' })) + '</td>';
-        h += '<td class="r" id="staff-m-' + i + '"></td><td><button class="btn ghost sm" type="button" data-act="del-staff" data-i="' + i + '" aria-label="Remove service">✕</button></td></tr>';
+        h += '<td class="r int" id="staff-m-' + i + '"></td><td><button class="btn ghost sm" type="button" data-act="del-staff" data-i="' + i + '" aria-label="Remove service">✕</button></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -308,13 +332,13 @@
     h += '<div class="card"><div class="head"><h2>One-time and service fees</h2><button class="btn sm" type="button" data-act="add-fee">+ Add fee</button></div><div class="body scroll-x">';
     if (!s.fees.length) h += '<p class="empty">No fees. Add installation, training, shipping or other charges.</p>';
     else {
-      h += '<table class="tbl"><thead><tr><th>Fee</th><th>When</th><th>Quantity</th><th class="r">Price each</th><th class="r">Your cost each</th><th class="r">Total</th><th></th></tr></thead><tbody>';
+      h += '<table class="tbl"><thead><tr><th>Fee</th><th>When</th><th>Quantity</th><th class="r">Price each</th><th class="r int">Your cost each</th><th class="r">Total</th><th></th></tr></thead><tbody>';
       s.fees.forEach(function (f, i) {
         var p = 'fees.' + i + '.';
         h += '<tr><td style="min-width:180px">' + inp(p + 'name', 'text', { label: 'Fee name' }) + '</td>';
         h += '<td><select data-bind="' + p + 'when" data-kind="text"><option value="once"' + (f.when !== 'monthly' ? ' selected' : '') + '>One-time</option><option value="monthly"' + (f.when === 'monthly' ? ' selected' : '') + '>Monthly</option></select></td>';
-        h += '<td style="min-width:190px"><div style="display:flex;gap:6px"><select data-bind="' + p + 'qtyBasis" data-kind="text" data-rerender="1"><option value="fixed"' + (f.qtyBasis !== 'perUnit' ? ' selected' : '') + '>Fixed</option><option value="perUnit"' + (f.qtyBasis === 'perUnit' ? ' selected' : '') + '>Per fleet unit</option></select>' + (f.qtyBasis === 'perUnit' ? '' : inp(p + 'qty', 'num', { label: 'Quantity', step: '1' })) + '</div></td>';
-        h += '<td class="w-md">' + inp(p + 'price', 'money', { label: 'Price each' }) + '</td><td class="w-md">' + inp(p + 'cost', 'money', { label: 'Cost each' }) + '</td>';
+        h += '<td style="min-width:190px"><div style="display:flex;gap:6px"><select data-bind="' + p + 'qtyBasis" data-kind="text" data-rerender="1"><option value="fixed"' + (f.qtyBasis !== 'perUnit' ? ' selected' : '') + '>Fixed</option><option value="perUnit"' + (f.qtyBasis === 'perUnit' ? ' selected' : '') + '>Per device</option></select>' + (f.qtyBasis === 'perUnit' ? '' : inp(p + 'qty', 'num', { label: 'Quantity', step: '1' })) + '</div></td>';
+        h += '<td class="w-md">' + inp(p + 'price', 'money', { label: 'Price each' }) + '</td><td class="w-md int">' + inp(p + 'cost', 'money', { label: 'Cost each' }) + '</td>';
         h += '<td class="r" id="fee-t-' + i + '"></td><td><button class="btn ghost sm" type="button" data-act="del-fee" data-i="' + i + '" aria-label="Remove fee">✕</button></td></tr>';
       });
       h += '</tbody></table>';
@@ -364,8 +388,8 @@
   }
 
   function modelNote(m, buy) {
-    if (m === 'lease') return 'Customer pays per active unit per day, plus a spare rate for spares above the free %. ' + (buy ? BRAND.company + ' owns the fleet: purchase cost is spread over each device’s life, plus owned monitoring cost.' : 'Lease cost, spare cost and losses come from the Cost catalog.');
-    if (m === 'saas') return 'Transparent Pricing: one all-in monthly price per active unit, covering device, monitoring and support, with no add-on charges. ' + (buy ? BRAND.company + ' owns the fleet.' : BRAND.company + ' leases the devices.');
+    if (m === 'lease') return 'Customer pays per active unit per day, plus a spare rate for spares above the free %. ' + (buy ? BRAND.company + ' owns the devices: purchase cost is spread over each device’s life, plus owned monitoring cost.' : 'Lease cost, spare cost and losses come from the Cost catalog.');
+    if (m === 'saas') return 'Transparent Pricing: one all-in monthly price per active unit, covering device, monitoring and support, with no add-on charges. ' + (buy ? BRAND.company + ' owns the devices.' : BRAND.company + ' leases the devices.');
     return 'Customer buys the equipment up front and pays a monitoring service fee per active unit per day. ' + BRAND.company + ' buys the units, so Buy $/unit and Owned svc $/day must be in the Cost catalog.';
   }
   /* devices grouped by their Zoho vendor */
@@ -384,10 +408,10 @@
       var g = vendorName(c) || 'No vendor';
       if (!groups[g]) { groups[g] = []; order.push(g); }
       if (String(c.id) === String(sel)) has = true;
-      groups[g].push('<option value="' + esc(c.id) + '"' + (String(c.id) === String(sel) ? ' selected' : '') + '>' + esc(c.name || 'Unnamed device') + (c.family ? ' · ' + esc(c.family) : '') + '</option>');
+      groups[g].push('<option value="' + esc(c.id) + '"' + (String(c.id) === String(sel) ? ' selected' : '') + '>' + (state.internal ? esc(c.name || 'Unnamed device') + (c.family ? ' · ' + esc(c.family) : '') : esc(GENERIC[c.family] || 'Monitoring equipment')) + '</option>');
     });
     order.sort(function (a, b) { return a === 'No vendor' ? 1 : b === 'No vendor' ? -1 : a.localeCompare(b); });
-    return (has ? '' : '<option value="" selected>Choose a device…</option>') + order.map(function (g) { return '<optgroup label="' + esc(g) + '">' + groups[g].join('') + '</optgroup>'; }).join('');
+    return (has ? '' : '<option value="" selected>Choose a device…</option>') + order.map(function (g) { return state.internal ? '<optgroup label="' + esc(g) + '">' + groups[g].join('') + '</optgroup>' : groups[g].join(''); }).join('');
   }
   function costHint(it, buy, lr) {
     if (!it) return '';
@@ -418,7 +442,7 @@
     var h = '<div class="kpis">';
     h += '<div class="kpi big"><div class="k">Monthly gross margin · ' + esc(r.modelLabel) + '</div><div class="v num' + (M.margin < 0 ? ' neg' : '') + '">' + money(M.margin) + ' <span class="chip ' + r.tier.key + '" style="vertical-align:5px">' + (M.revenue > 0 ? pctf(M.marginPct) + ' · ' : '') + esc(r.tier.label) + '</span></div><div class="c">year one, at ' + int(r.units.active) + ' active units</div></div>';
     h += '<div class="kpi"><div class="k">Monthly revenue</div><div class="v num">' + money(M.revenue) + '</div>' + (M.rev.minimum > 0 ? '<div class="c">incl. ' + money(M.rev.minimum) + ' minimum top-up</div>' : '') + '</div>';
-    h += '<div class="kpi"><div class="k">Monthly cost</div><div class="v num">' + money(M.cost) + '</div>' + (M.costs.amort > 0 ? '<div class="c">incl. ' + money(M.costs.amort) + ' fleet depreciation</div>' : '') + '</div>';
+    h += '<div class="kpi"><div class="k">Monthly cost</div><div class="v num">' + money(M.cost) + '</div>' + (M.costs.amort > 0 ? '<div class="c">incl. ' + money(M.costs.amort) + ' device depreciation</div>' : '') + '</div>';
     h += '<div class="kpi"><div class="k">Term margin · ' + T.months + ' mo</div><div class="v num' + (T.margin < 0 ? ' neg' : '') + '">' + money(T.margin) + '</div><div class="c">' + pctf(T.marginPct) + ' of ' + money(T.revenue) + '</div></div>';
     h += '<div class="kpi"><div class="k">Cash payback</div><div class="v num">' + (T.paybackMonth == null ? 'Never' : T.paybackMonth === 0 ? 'Day one' : 'Month ' + T.paybackMonth) + '</div><div class="c">' + (O.capex + O.cost > 0 ? money(O.capex + O.cost) + ' out up front' : 'nothing out up front') + '</div></div>';
     h += '</div>';
@@ -443,14 +467,14 @@
     if (r.perUnitDay) h += '<div class="sect"><h3>Per active unit per day</h3><dl class="facts"><dt>Revenue</dt><dd>' + rate(r.perUnitDay.revenue) + '</dd><dt>Cost (break-even)</dt><dd>' + rate(r.perUnitDay.cost) + '</dd>' + (r.perUnitDay.target != null ? '<dt>Needed for ' + pctf(s.targetMarginPct, 0) + ' margin</dt><dd>' + rate(r.perUnitDay.target) + '</dd>' : '') + '</dl></div>';
 
     var revParts = [['Devices', M.rev.device], ['Spare charges', M.rev.spares], ['Loss fees', M.rev.lost], ['Staffing', M.rev.staffing], ['Monthly fees', M.rev.fees], ['Minimum top-up', M.rev.minimum]];
-    var costParts = [['Devices', M.costs.device], ['Spares', M.costs.spares], ['Lost units', M.costs.lost], ['Fleet depreciation', M.costs.amort], ['Staffing', M.costs.staffing], ['Monthly fees', M.costs.fees]];
+    var costParts = [['Devices', M.costs.device], ['Spares', M.costs.spares], ['Lost units', M.costs.lost], ['Device depreciation', M.costs.amort], ['Staffing', M.costs.staffing], ['Monthly fees', M.costs.fees]];
     var max = Math.max.apply(null, revParts.concat(costParts).map(function (p) { return p[1]; }).concat([1]));
     var bars = function (parts, c) { return parts.filter(function (p) { return p[1] > 0.005; }).map(function (p) { return '<div class="barrow"><span class="l">' + esc(p[0]) + '</span><span class="t"><i' + (c ? ' class="c"' : '') + ' style="width:' + (p[1] / max * 100).toFixed(1) + '%"></i></span><span class="a">' + money(p[1]) + '</span></div>'; }).join('') || '<div class="fine">—</div>'; };
     h += '<div class="sect"><h3>Where the month goes</h3><div class="bars">' + bars(revParts, false) + '</div><div class="bars" style="margin-top:10px">' + bars(costParts, true) + '</div></div>';
     h += '<div class="sect"><h3>Up front and over the term</h3><dl class="facts"><dt>One-time revenue</dt><dd>' + money(O.rev) + '</dd><dt>One-time cost</dt><dd>' + money(O.cost) + '</dd>';
-    if (O.capex > 0) h += '<dt>Fleet purchase</dt><dd>' + money(O.capex) + '</dd>';
-    h += '<span class="sep"></span><dt>Fleet units</dt><dd>' + one(r.units.fleet) + '</dd><dt>Term revenue</dt><dd>' + money(T.revenue) + '</dd><dt>Term cost</dt><dd>' + money(T.cost) + '</dd>';
-    if (T.residual > 0) h += '<dt>Fleet book value at end</dt><dd>' + money(T.residual) + '</dd>';
+    if (O.capex > 0) h += '<dt>Device purchase</dt><dd>' + money(O.capex) + '</dd>';
+    h += '<span class="sep"></span><dt>Total devices</dt><dd>' + one(r.units.fleet) + '</dd><dt>Term revenue</dt><dd>' + money(T.revenue) + '</dd><dt>Term cost</dt><dd>' + money(T.cost) + '</dd>';
+    if (T.residual > 0) h += '<dt>Device book value at end</dt><dd>' + money(T.residual) + '</dd>';
     h += '</dl></div>';
     $('results').innerHTML = h;
     if (state.tab === 'compare') renderCompare();
@@ -466,7 +490,7 @@
     if (!be) return '';
     var noBuy = lines.some(function (l) { return l.breakEven && !(l.breakEven.perUnitCost > 0); });
     var dm = be.deviceMonths, late = dm == null || dm > be.termMonths;
-    var h = '<div class="sect"><h3>Device break-even' + (whatIf ? ' · if ' + esc(BRAND.company) + ' bought the fleet' : '') + '</h3>';
+    var h = '<div class="sect"><h3>Device break-even' + (whatIf ? ' · if ' + esc(BRAND.company) + ' bought the devices' : '') + '</h3>';
     if (noBuy) h += '<div class="alert" style="margin-bottom:8px">Enter a Buy $/unit in the Cost catalog for every device to see a reliable break-even.</div>';
     h += '<dl class="facts"><dt>Device investment</dt><dd>' + money(be.investment) + '</dd>';
     if (be.upfront > 0) h += '<dt>Customer pays up front</dt><dd>' + money(be.upfront) + '</dd>';
@@ -479,7 +503,7 @@
       rows.forEach(function (l) { var b = l.breakEven, bad = b.months == null || b.months > b.lifeMonths; h += '<tr><td>' + esc(l.name) + '</td><td class="r">' + one(b.units) + '</td><td class="r">' + money(b.investment) + '</td><td class="r"' + (bad ? ' style="color:var(--bad);font-weight:700"' : '') + '>' + monthsTxt(b.months) + '</td><td class="r">' + int(b.lifeMonths) + ' mo</td></tr>'; });
       h += '</tbody></table>';
     }
-    h += '<p class="fine">' + (whatIf ? 'Sourcing is set to Lease, so this is a what-if using Buy $/unit and Owned svc $/day from the Cost catalog. ' : '') + '“Devices” recovers the fleet cost from device, spare and loss-fee margin only; “whole deal” adds fees, staffing, the minimum and escalators. Red = no payback within the term or the device’s life.</p></div>';
+    h += '<p class="fine">' + (whatIf ? 'Sourcing is set to Lease, so this is a what-if using Buy $/unit and Owned svc $/day from the Cost catalog. ' : '') + '“Devices” recovers the device purchase cost from device, spare and loss-fee margin only; “whole deal” adds fees, staffing, the minimum and escalators. Red = no payback within the term or the device’s life.</p></div>';
     return h;
   }
 
@@ -500,7 +524,7 @@
       ['Cash out up front', function (r) { return money(r.once.capex + r.once.cost); }, function (r) { return -(r.once.capex + r.once.cost); }],
       ['Customer pays up front', function (r) { return money(r.once.rev); }, null],
       ['Cash payback', function (r) { return r.term.paybackMonth == null ? 'Never' : r.term.paybackMonth === 0 ? 'Day one' : 'Month ' + r.term.paybackMonth; }, function (r) { return r.term.paybackMonth == null ? -1e9 : -r.term.paybackMonth; }],
-      ['Device break-even', function (r) { return r.breakEven ? monthsTxt(r.breakEven.deviceMonths) : '<span class="fine" style="margin:0">leased fleet</span>'; }, function (r) { return r.breakEven ? (r.breakEven.deviceMonths == null ? -1e9 : -r.breakEven.deviceMonths) : -Infinity; }],
+      ['Device break-even', function (r) { return r.breakEven ? monthsTxt(r.breakEven.deviceMonths) : '<span class="fine" style="margin:0">leased devices</span>'; }, function (r) { return r.breakEven ? (r.breakEven.deviceMonths == null ? -1e9 : -r.breakEven.deviceMonths) : -Infinity; }],
       ['Revenue per active unit-day', function (r) { return r.perUnitDay ? rate(r.perUnitDay.revenue) : '—'; }, null],
       ['Cost per active unit-day', function (r) { return r.perUnitDay ? rate(r.perUnitDay.cost) : '—'; }, null],
       ['Missing costs', function (r) { return r.missing.length ? '<span class="chip thin">' + r.missing.length + '</span>' : 'none'; }, null]
@@ -724,52 +748,76 @@
   }
   function renderPropControls() {
     var s = state.scenario, p = s.proposal, opts = propOptions();
-    var h = '<div class="head"><h2>Proposal</h2><span class="meta">customer-facing: no costs or margins</span></div><div class="body stack" style="gap:12px">';
+    var h = '<div class="head"><h2>Proposal</h2><span class="meta">customer-facing · no costs, margins or vendors</span></div><div class="body stack" style="gap:12px">';
     h += '<div><div class="fine" style="margin:0 0 6px">Pricing options to present</div>' + Object.keys(E.MODELS).map(function (k) { return '<label class="check" style="display:flex;margin:4px 0"><input type="checkbox" data-popt="' + k + '"' + (opts.indexOf(k) >= 0 ? ' checked' : '') + '> ' + esc(E.MODELS[k].label) + (k === s.model ? ' (current)' : '') + '</label>'; }).join('') + '</div>';
     h += field('Prepared by', inp('proposal.preparedBy', 'text', { ph: state.user || 'Your name' }));
     h += field('Valid for', inp('proposal.validDays', 'int'), 'days');
     h += '<label class="f"><span>Opening paragraph <span class="hint">· blank uses the default</span></span><textarea data-bind="proposal.intro" data-kind="text" rows="4" placeholder="' + esc(defaultIntro()) + '">' + esc(p.intro || '') + '</textarea></label>';
     h += '<label class="f"><span>Extra terms <span class="hint">· one per line</span></span><textarea data-bind="proposal.extraTerms" data-kind="text" rows="3">' + esc(p.extraTerms || '') + '</textarea></label>';
+    h += '<label class="check"><input type="checkbox" data-bind="proposal.genericNames" data-kind="bool"' + (p.genericNames !== false ? ' checked' : '') + '> Describe devices generically (hide manufacturer and model)</label>';
+    h += '<label class="check"><input type="checkbox" data-bind="proposal.showSchedule" data-kind="bool"' + (p.showSchedule ? ' checked' : '') + '> Show the full volume rate schedule</label>';
     h += '<label class="check"><input type="checkbox" data-bind="proposal.showMonthlyEstimate" data-kind="bool"' + (p.showMonthlyEstimate !== false ? ' checked' : '') + '> Show estimated monthly and term totals</label>';
     h += '<div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn primary" type="button" data-act="pdf">Download PDF</button><button class="btn" type="button" data-act="print">Print</button><button class="btn" type="button" data-act="attach">' + (PREVIEW ? 'Attach to scenario' : 'Attach to scenario in Zoho') + '</button></div>';
     var missing = opts.map(function (m) { return E.price(s, state.catalog, { model: m }); }).filter(function (r) { return r.lines.length && r.monthly.rev.device === 0 && r.once.rev === 0; });
     if (missing.length) h += '<div class="alert">No device prices entered for ' + missing.map(function (r) { return esc(r.modelLabel); }).join(', ') + '. Enter them on the Scenario tab with that model selected.</div>';
     var un = unresolvedLines(); if (un.length) h += '<div class="alert">' + un.length + ' price' + (un.length === 1 ? '' : 's') + ' still differ from Zoho. Confirm them on the Scenario tab before sending.</div>';
-    h += '<p class="fine" style="margin:0">The proposal uses the prices on the Scenario tab and updates as you change them.</p></div>';
+    h += '<div id="leak"></div><p class="fine" style="margin:0">Only customer prices and contract terms appear. By default only the rate for the proposed volume is shown, so lower volume tiers stay private.</p></div>';
     $('prop-controls').innerHTML = h;
+  }
+  /* customer-facing device descriptions: hide manufacturer and model names */
+  var GENERIC = { 'GPS': 'GPS location monitoring', 'CAM': 'Continuous alcohol monitoring', 'Remote Breath': 'Remote breath alcohol testing', 'RF': 'Radio-frequency home monitoring', 'Victim / DV': 'Victim notification monitoring', 'Accessory': 'Monitoring accessory', 'Service': 'Monitoring service', 'Other': 'Monitoring equipment' };
+  function propDeviceNames() {
+    var s = state.scenario, generic = s.proposal.genericNames !== false, base = [], cnt = {}, seen = {};
+    s.lines.forEach(function (l) { var it = itemById(l.itemId) || {}; var nm = generic ? (GENERIC[it.family] || 'Monitoring equipment') : (it.name || 'Monitoring equipment'); base.push(nm); cnt[nm] = (cnt[nm] || 0) + 1; });
+    return base.map(function (nm) { if (cnt[nm] < 2) return nm; seen[nm] = (seen[nm] || 0) + 1; return nm + ' · Type ' + 'ABCDEFGH'.charAt(seen[nm] - 1); });
+  }
+  /* words that must never appear in the customer document */
+  function leakCheck() {
+    var doc = $('doc'); if (!doc) return [];
+    var text = doc.textContent.toLowerCase(), hits = [], words = [];
+    state.vendors.forEach(function (v) { if (v.name && v.name.length > 2) words.push(v.name); });
+    state.scenario.lines.forEach(function (l) { var it = itemById(l.itemId); if (it && it.vendor) words.push(it.vendor); if (it && state.scenario.proposal.genericNames !== false && it.name) words.push(it.name); });
+    ['margin', 'markup', 'our cost', 'vendor', 'break-even', 'wholesale'].forEach(function (w) { words.push(w); });
+    words.forEach(function (w) { if (text.indexOf(String(w).toLowerCase()) >= 0 && hits.indexOf(w) < 0) hits.push(w); });
+    return hits;
   }
   function custName() { var s = state.scenario; return s.customerName || (s.account && s.account.name) || 'Customer'; }
   function defaultIntro() { var s = state.scenario; return BRAND.company + ' is pleased to present pricing for electronic monitoring services' + (s.program ? ' for the ' + s.program + ' program' : '') + ' at ' + custName() + '. This proposal covers equipment, 24/7 monitoring and support' + (s.staffing.length ? ', and the ' + BRAND.company + ' staff services described below' : '') + '.'; }
   function propNumber() { var s = state.scenario, tail = (String(s.id || '').replace(/\D/g, '') || '0000').slice(-4); while (tail.length < 4) tail = '0' + tail; return BRAND.proposalPrefix + '-' + today().replace(/-/g, '') + '-' + tail; }
   var UNIT_TEXT = { leaseDaily: 'per active unit per day', spareDaily: 'per spare unit per day, above the included spares', saasMonthly: 'all-in, per active unit per month', purchasePrice: 'per unit, one-time purchase', serviceDaily: 'monitoring service per active unit per day' };
-  function rateRows(model) {
-    var s = state.scenario, rows = [];
-    s.lines.forEach(function (l) {
-      var nm = (itemById(l.itemId) || {}).name || 'Monitoring device', any = false;
+  function rateRows(model, r) {
+    var s = state.scenario, rows = [], names = propDeviceNames(), full = !!s.proposal.showSchedule;
+    s.lines.forEach(function (l, i) {
+      var nm = names[i], any = false, lr = r && r.lines[i];
       var tiers = tierSort(l.priceTiers).filter(function (t) { return num(t.min) > 1; }), bands = bandLabels(tiers);
       E.PRICE_KEYS[model].forEach(function (k) {
-        var base = num(l.price[k]), tiered = tiers.some(function (t) { return !blank(t[k]); });
-        if (!tiered) { if (base > 0) { any = true; rows.push([nm, UNIT_TEXT[k], rate(base)]); } return; }
-        /* whole volume: every unit is billed at the rate for the band the program's volume falls in */
-        var cur = base;
+        var tiered = tiers.some(function (t) { return !blank(t[k]); });
+        if (!tiered || !full) {
+          var v = lr && lr.rates ? num(lr.rates[k]) : num(l.price[k]);   /* rate at the proposed volume only */
+          if (v > 0) { any = true; rows.push([nm, UNIT_TEXT[k], rate(v)]); }
+          return;
+        }
+        var cur = num(l.price[k]);
         [null].concat(tiers).forEach(function (t, j) { if (t && !blank(t[k])) cur = num(t[k]); if (cur > 0) { any = true; rows.push([nm + ' · ' + bands[j] + ' active units', UNIT_TEXT[k], rate(cur)]); } });
       });
       if (!any) rows.push([nm, UNIT_TEXT[E.PRICE_KEYS[model][0]], 'To be confirmed']);
     });
     return rows;
   }
-  function optionBlurb(m) { return { lease: 'Pay only for equipment in use: a daily rate per active unit, billed monthly in arrears.', saas: 'Transparent Pricing: one all-in monthly price per unit covering equipment, monitoring and support, with no hidden or add-on charges.', purchase: 'Own the equipment outright with a one-time purchase, plus a daily monitoring service fee per active unit.' }[m]; }
+  function optionBlurb(m) { return { lease: 'A daily rate for each unit in active use, billed monthly in arrears. Units not in use are not billed.', saas: 'A single all-inclusive monthly rate per active unit covering equipment, 24/7 monitoring and support.', purchase: 'A one-time equipment purchase, with monitoring service billed at a daily rate per active unit.' }[m]; }
   function terms(opts) {
     var s = state.scenario, p = s.proposal, t = [];
     t.push('Term of ' + s.termMonths + ' months from the start of service.');
     if (opts.indexOf('lease') >= 0) t.push('Daily lease: billed monthly for each day a unit is active; units not in use are not billed.');
     if (opts.indexOf('saas') >= 0) t.push('Transparent Pricing: billed monthly in advance at one all-in rate for each active unit.');
-    if (s.lines.some(function (l) { return (l.priceTiers || []).length; })) t.push('Volume pricing: where rates are shown by volume, the average number of active units for that device in the billing month sets the rate, and that rate applies to all of its units.');
+    var anyTier = s.lines.some(function (l) { return (l.priceTiers || []).length; });
+    if (anyTier && s.proposal.showSchedule) t.push('Volume pricing: the average number of active units of each device type in the billing month determines the rate, which applies to all units of that type.');
+    else if (anyTier) t.push('Rates are based on the program volume shown in this proposal and may be reviewed if average monthly volume changes materially.');
     if (opts.indexOf('purchase') >= 0) t.push('Purchase: equipment is invoiced on delivery and becomes the customer’s property; monitoring service is billed monthly per active unit.');
     var spareOn = s.lines.some(function (l) { return num(l.price.spareDaily) > 0 || (l.priceTiers || []).some(function (t) { return num(t.spareDaily) > 0; }); });
     if (spareOn && opts.some(function (m) { return m !== 'purchase'; })) t.push('Spare equipment up to ' + one(s.spareBilling.overPct) + '% of active units is included at no charge; spares above that level are billed at the spare rate shown.');
     var lf = s.lines.filter(function (l) { return num(l.price.lostFee) > 0; });
-    if (lf.length && opts.some(function (m) { return m !== 'purchase'; })) t.push('Equipment that is lost, stolen or damaged beyond repair is charged at ' + lf.map(function (l) { return money(l.price.lostFee) + ' per ' + ((itemById(l.itemId) || {}).name || 'unit'); }).join(', ') + '.');
+    if (lf.length && opts.some(function (m) { return m !== 'purchase'; })) t.push('Equipment that is lost, stolen or damaged beyond repair is charged at ' + lf.map(function (l) { return money(l.price.lostFee) + ' per ' + propDeviceNames()[s.lines.indexOf(l)] + ' unit'; }).join(', ') + '.');
     if (num(s.minimumMonthly) > 0) t.push('A minimum monthly charge of ' + money(s.minimumMonthly) + ' applies' + (opts.indexOf('purchase') >= 0 && opts.length > 1 ? ' to recurring charges' : '') + '.');
     if (num(s.priceEscalatorPct) > 0) t.push('Rates adjust by ' + one(s.priceEscalatorPct) + '% on each anniversary of the start of service.');
     t.push('Estimated amounts use the volumes shown in this proposal; invoices reflect actual usage.');
@@ -786,23 +834,23 @@
     var sec = 0, H2 = function (t) { sec++; return '<h2><span class="n">' + sec + '</span>' + esc(t) + '</h2>'; };
     var blocks = [], h = '', cut = function () { if (h) blocks.push(h); h = ''; };
     h += '<h1>' + esc(BRAND.docLine) + '<br>Pricing Proposal</h1><p class="sub">Prepared for ' + esc(custName()) + (s.program ? ' · ' + esc(s.program) : '') + '</p>';
-    h += '<div class="meta"><div><span>Program volume</span><b>' + int(res[0] ? res[0].units.active : 0) + ' active units</b></div><div><span>Proposed term</span><b>' + esc(s.termMonths) + ' months</b></div><div><span>' + (multi ? 'Options' : 'Pricing model') + '</span><b>' + (multi ? opts.length + ' to choose from' : esc(E.MODELS[opts[0]].label)) + '</b></div></div>';
+    h += '<div class="meta"><div><span>Estimated program volume</span><b>' + int(res[0] ? res[0].units.active : 0) + ' active units</b></div><div><span>Proposed term</span><b>' + esc(s.termMonths) + ' months</b></div><div><span>' + (multi ? 'Options' : 'Pricing model') + '</span><b>' + (multi ? opts.length + ' to choose from' : esc(E.MODELS[opts[0]].label)) + '</b></div></div>';
     cut();
-    h += H2('Overview') + '<p>' + esc(p.intro || defaultIntro()) + '</p>';
+    h += H2('Executive summary') + '<p>' + esc(p.intro || defaultIntro()) + '</p>';
     if (multi) {
       h += '<p>' + opts.length + ' pricing structures are offered so that ' + esc(custName()) + ' can choose the one that fits its budget and procurement rules. Each option covers the same equipment and service levels.</p>';
       h += '<div class="optcards">' + res.map(function (r, i) { var lead = r.model === 'purchase' ? money(r.once.rev) + ' equipment' : money(r.monthly.revenue) + '/mo'; return '<div class="oc"><div class="t">Option ' + letters[i] + ' · ' + esc(r.modelLabel) + '</div><div class="v">' + (p.showMonthlyEstimate !== false ? esc(lead) : '&nbsp;') + '</div><div class="d">' + esc(optionBlurb(r.model)) + '</div></div>'; }).join('') + '</div>';
     }
     res.forEach(function (r, i) {
       cut();
-      h += H2((multi ? 'Option ' + letters[i] + ': ' : 'Pricing: ') + r.modelLabel) + '<p class="note">' + esc(optionBlurb(r.model)) + '</p>';
-      h += '<table><thead><tr><th>Equipment / service</th><th>Billing unit</th><th class="r">Rate</th></tr></thead><tbody>' + rateRows(r.model).map(function (row) { return '<tr><td>' + esc(row[0]) + '</td><td>' + esc(row[1]) + '</td><td class="r">' + row[2] + '</td></tr>'; }).join('');
+      h += H2((multi ? 'Option ' + letters[i] + ': ' : 'Investment: ') + r.modelLabel) + '<p class="note">' + esc(optionBlurb(r.model)) + '</p>';
+      h += '<table><thead><tr><th>Equipment / service</th><th>Billing unit</th><th class="r">Rate</th></tr></thead><tbody>' + rateRows(r.model, r).map(function (row) { return '<tr><td>' + esc(row[0]) + '</td><td>' + esc(row[1]) + '</td><td class="r">' + row[2] + '</td></tr>'; }).join('');
       s.staffing.forEach(function (st) { h += '<tr><td>' + esc(st.name || BRAND.company + ' staff services') + '</td><td>' + (st.priceMethod === 'monthly' ? 'per month' : 'per participant per day') + '</td><td class="r">' + (st.priceMethod === 'monthly' ? money(st.priceMonthly, 2) : rate(st.priceDaily)) + '</td></tr>'; });
       s.fees.filter(function (f) { return f.when === 'monthly'; }).forEach(function (f) { h += '<tr><td>' + esc(f.name) + '</td><td>per month' + (f.qtyBasis === 'perUnit' ? ', per unit' : '') + '</td><td class="r">' + money(f.price, 2) + '</td></tr>'; });
       h += '</tbody></table>';
       if (p.showMonthlyEstimate !== false) {
         cut();
-        h += '<table><tbody><tr><td>Estimated monthly investment at ' + int(r.units.active) + ' active units' + (r.monthly.rev.minimum > 0 ? ' (monthly minimum applies)' : '') + '</td><td class="r">' + money(r.monthly.revenue) + '</td></tr>';
+        h += '<table><tbody><tr><td>Estimated monthly investment at ' + int(r.units.active) + ' active units</td><td class="r">' + money(r.monthly.revenue) + '</td></tr>';
         if (r.once.rev > 0) h += '<tr><td>One-time charges' + (r.model === 'purchase' ? ', including equipment purchase' : '') + '</td><td class="r">' + money(r.once.rev) + '</td></tr>';
         h += '<tr class="tot"><td>Estimated total over ' + esc(s.termMonths) + ' months' + (num(s.priceEscalatorPct) > 0 ? ', including annual adjustments' : '') + '</td><td class="r">' + money(r.term.revenue) + '</td></tr></tbody></table>';
       }
@@ -810,12 +858,14 @@
     var onceFees = s.fees.filter(function (f) { return f.when !== 'monthly'; });
     if (onceFees.length) { cut(); h += H2('One-time charges') + '<table><thead><tr><th>Item</th><th>Basis</th><th class="r">Rate</th></tr></thead><tbody>' + onceFees.map(function (f) { return '<tr><td>' + esc(f.name) + '</td><td>' + (f.qtyBasis === 'perUnit' ? 'per unit deployed' : (num(f.qty) === 1 ? 'one-time' : 'each, ' + one(f.qty) + ' included')) + '</td><td class="r">' + money(f.price, 2) + '</td></tr>'; }).join('') + '</tbody></table>'; }
     cut();
-    h += H2('Terms') + '<ul class="terms">' + terms(opts).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+    h += H2('Terms and conditions') + '<ul class="terms">' + terms(opts).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
     h += H2('Acceptance') + '<p>To accept, sign below' + (multi ? ', mark the option selected,' : '') + ' and return this proposal to ' + esc(p.preparedBy || 'your ' + BRAND.company + ' representative') + '.</p>';
     if (multi) h += '<p>' + opts.map(function (m, i) { return '☐ Option ' + letters[i] + ': ' + esc(E.MODELS[m].label); }).join(' &nbsp;&nbsp; ') + '</p>';
     h += '<div class="sign"><div>Authorized signature, ' + esc(custName()) + '</div><div>Date</div><div>Printed name and title</div><div>' + esc(BRAND.company) + (p.preparedBy ? ' · ' + esc(p.preparedBy) : '') + '</div></div>';
     cut();
     paginate(blocks, lh, foot);
+    var lk = $('leak');
+    if (lk) { var hits = leakCheck(); lk.innerHTML = hits.length ? '<div class="alert"><b>Review before sending.</b> The proposal mentions: ' + hits.map(esc).join(', ') + '. Rename that item, or turn on generic device descriptions.</div>' : '<div class="target"><span>✓ No costs, margins, vendor or model names in the proposal.</span></div>'; }
   }
   function paginate(blocks, lh, foot) {
     var doc = $('doc'), prevZoom = doc.style.zoom; doc.style.zoom = '1'; doc.innerHTML = '';
@@ -991,6 +1041,7 @@
   function wire() {
     ['builder', 'prop-controls'].forEach(function (id) { var el = $(id); el.addEventListener('input', onBind); el.addEventListener('change', onBind); el.addEventListener('click', onAct); });
     $('builder').addEventListener('click', onZoho);
+    $('builder').addEventListener('toggle', function (ev) { var d = ev.target; if (d && d.getAttribute && d.getAttribute('data-vd')) state.openTiers['v' + d.getAttribute('data-vd')] = d.open; }, true);
     $('cat-table').addEventListener('click', onZoho);
     $('results').addEventListener('click', onAct);
     $('cmp-table').addEventListener('click', onAct);
@@ -1027,9 +1078,19 @@
     });
     window.addEventListener('beforeunload', function (ev) { if (state.dirty || Object.keys(state.catDirty).length) { ev.preventDefault(); ev.returnValue = ''; } });
   }
+  /* internal-only toggle: hides vendor names, costs, margins and the cost tabs (e.g. when screen-sharing) */
+  function applyInternal(on) {
+    state.internal = !!on; store.set('em-pricing-internal', on ? '1' : '0');
+    document.body.classList.toggle('hide-internal', !on);
+    var b = $('btn-internal'); if (b) { b.setAttribute('aria-pressed', String(!!on)); b.textContent = on ? 'Internal details: On' : 'Internal details: Off'; }
+    if (!on && (state.tab === 'compare' || state.tab === 'catalog')) showTab('scenario');
+    if (state.scenario) { renderBuilder(); renderResults(); }
+  }
   function start() {
     $('brand-company').textContent = BRAND.company; $('brand-product').textContent = BRAND.product; document.title = BRAND.product;
     wire();
+    $('btn-internal').addEventListener('click', function () { applyInternal(!state.internal); });
+    applyInternal(store.get('em-pricing-internal') !== '0');
     $('source').innerHTML = PREVIEW ? '<span class="sample">Preview mode</span> · sample data saved in this browser only' : 'Live from Zoho CRM · Products, Vendors and Pricing Scenarios';
     Promise.all([api.catalog(), api.vendors(), api.currentUser(), api.listScenarios(), api.setupReport().catch(function () { return state.setup; })]).then(function (res) {
       state.catalog = res[0]; state.vendors = res[1]; state.user = res[2]; state.saved = res[3]; state.setup = res[4];

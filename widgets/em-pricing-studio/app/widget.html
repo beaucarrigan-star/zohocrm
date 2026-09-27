@@ -178,9 +178,33 @@
   .tip { position: fixed; z-index: 90; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12px; padding: 6px 9px; border-radius: var(--radius-sm); box-shadow: 0 8px 20px -8px rgba(0,0,0,.4); white-space: nowrap; }
   /* catalog */
   .cat td input[type=number] { width: 104px; }
-  .vv th .sub { margin: 0; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 11px; color: var(--muted); }
-  .vv tr.vhead > td { background: var(--surface-2); border-top: 1px solid var(--line-strong); }
-  .vv tr.vdev > td { font-size: 12.5px; }
+  .pft { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .pft th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; padding: 8px 16px 6px; border-bottom: 1px solid var(--line-strong); }
+  .pft td { padding: 5px 16px; border-bottom: 1px solid var(--line); }
+  .pft td.r, .pft th.r { text-align: right; white-space: nowrap; width: 1%; }
+  .pft tr.sec td { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; padding-top: 12px; border-bottom: 0; }
+  .pft tr:not(.sec):not(.tot):not(.gp) td:first-child { padding-left: 28px; }
+  .pft tr.tot td { font-weight: 700; border-top: 1px solid var(--line-strong); }
+  .pft tr.gp td { font-weight: 700; font-size: 14px; border-top: 2px solid var(--ink); border-bottom: 3px double var(--ink); background: var(--surface-2); }
+  .pft tr.gp.neg td { color: var(--bad); }
+  .pf-sub { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .pf-foot { display: flex; flex-wrap: wrap; gap: 6px 28px; padding: 10px 16px; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--line); }
+  .pf-foot span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .pf-alert { margin: 0 16px 10px; }
+  .pf-vendors { border-top: 1px solid var(--line); }
+  .pf-h { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
+  details.vd { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 8px; background: var(--surface); }
+  details.vd > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 9px 12px; }
+  details.vd > summary::-webkit-details-marker { display: none; }
+  details.vd > summary::before { content: "▸"; color: var(--muted); width: 10px; }
+  details.vd[open] > summary::before { content: "▾"; }
+  .vd-name { font-weight: 600; }
+  .vd-sum { font-size: 12px; color: var(--muted); }
+  .vd-body { padding: 4px 12px 12px; border-top: 1px solid var(--line); }
+  .vd-vol { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: end; margin: 8px 0 10px; }
+  .vd-vol label.f { width: 200px; }
+  .vd-calc { font-size: 12.5px; color: var(--ink-2); padding-bottom: 7px; }
+  .vd-tbl { width: auto; min-width: 520px; }
   .tier-row > td { background: var(--surface-2); padding: 10px 12px 12px !important; }
   .tiers-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 6px; font-size: 12.5px; }
   .tier-tbl { width: auto; min-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
@@ -255,6 +279,15 @@
     .ppage { box-shadow: none; margin: 0; page-break-after: always; }
     @page { size: letter; margin: 0; }
   }
+
+  /* internal-only toggle */
+  .ext { display: none; }
+  body.hide-internal .int { display: none !important; }
+  body.hide-internal .ext { display: inline; }
+  body.hide-internal p.ext { display: block; }
+  body.hide-internal #results { display: none; }
+  body.hide-internal .split { grid-template-columns: minmax(0, 1fr); }
+  .mast .mbtn[aria-pressed="false"] { background: #FFC59E; color: #1B1B1B; border-color: #FFC59E; }
 </style>
 </head>
 <body>
@@ -264,14 +297,15 @@
     <select id="scen-pick" aria-label="Open a saved scenario"></select>
     <button class="mbtn" id="btn-new" type="button">New</button>
     <button class="mbtn" id="btn-copy" type="button" title="Save a copy under a new name">Duplicate</button>
+    <button class="mbtn" id="btn-internal" type="button" aria-pressed="true" title="Show or hide vendor names, costs and margins">Internal details: On</button>
     <button class="mbtn primary" id="btn-save" type="button">Save scenario</button>
     <span class="status" id="save-status" aria-live="polite"></span>
   </div>
 </header>
 <nav class="tabs" role="tablist" aria-label="Studio">
   <button role="tab" data-tab="scenario" aria-selected="true">Scenario</button>
-  <button role="tab" data-tab="compare" aria-selected="false">Compare models</button>
-  <button role="tab" data-tab="catalog" aria-selected="false">Cost catalog</button>
+  <button role="tab" class="int" data-tab="compare" aria-selected="false">Compare models</button>
+  <button role="tab" class="int" data-tab="catalog" aria-selected="false">Cost catalog</button>
   <button role="tab" data-tab="proposal" aria-selected="false">Proposal</button>
 </nav>
 <main>
@@ -284,7 +318,7 @@
   <section id="tab-compare" role="tabpanel" hidden>
     <div class="stack">
       <div class="card"><div class="head"><h2>Same scenario, three pricing models</h2><span class="meta" id="cmp-meta"></span></div><div class="scroll-x" id="cmp-table"></div></div>
-      <div class="card"><div class="head"><h2>Cumulative cash margin over the term</h2><span class="meta">month 0 carries hardware, one-time fees and any fleet purchase</span></div><div class="chartbox" id="cmp-chart"></div><div class="legend" id="cmp-legend"></div></div>
+      <div class="card"><div class="head"><h2>Cumulative cash margin over the term</h2><span class="meta">month 0 carries hardware, one-time fees and any device purchase</span></div><div class="chartbox" id="cmp-chart"></div><div class="legend" id="cmp-legend"></div></div>
       <div class="card"><div class="head"><h2>Volume sensitivity</h2><span class="meta" id="sens-meta"></span></div><div class="scroll-x" id="sens"></div></div>
     </div>
   </section>
@@ -307,7 +341,7 @@
     </div>
   </section>
 </main>
-<footer class="foot"><span id="source">Live from Zoho CRM</span><span>Costs from the catalog · prices from the scenario · a month is 365 ÷ 12 days</span></footer>
+<footer class="foot"><span id="source">Live from Zoho CRM</span><span><span class="int">Costs from the catalog · </span>prices from the scenario · a month is 365 ÷ 12 days</span></footer>
 <div class="tip" id="tip" hidden></div>
 <div class="toast" id="toast" hidden role="status"></div>
 <script src="engine.js"></script>
