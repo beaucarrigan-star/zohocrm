@@ -1,0 +1,7 @@
+{
+  "service": "CRM",
+  "locale": ["en"],
+  "config": [],
+  "cspDomains": { "connect-src": [], "font-src": ["https://fonts.gstatic.com"], "style-src": ["https://fonts.googleapis.com"] },
+  "modules": { "widgets": [ { "location": "web_tab", "name": "EM Pricing Studio", "url": "/app/widget.html" } ] }
+}
