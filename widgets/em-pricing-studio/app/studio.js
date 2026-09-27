@@ -27,7 +27,8 @@
   var CAT = {
     family: 'EM_Device_Family', costLeaseDaily: 'Cost_Lease_Daily', spareAllowancePct: 'Spare_Allowance_Pct',
     spareOverageDaily: 'Spare_Overage_Daily', costPurchase: 'Cost_Purchase_Unit', costOwnedDaily: 'Cost_Owned_Daily',
-    usefulLifeMonths: 'Useful_Life_Months', replacementCost: 'Replacement_Cost', notes: 'Cost_Source', updated: 'Cost_Updated'
+    usefulLifeMonths: 'Useful_Life_Months', replacementCost: 'Replacement_Cost', notes: 'Cost_Source', updated: 'Cost_Updated',
+    costTiers: 'Cost_Tiers'   /* Multi Line: volume tiers stored as JSON */
   };
   /* catalog columns: t = money | pct | int ; type = Zoho field type to create if missing */
   var CAT_COLS = [
@@ -39,14 +40,19 @@
     { k: 'usefulLifeMonths', h: 'Life (mo)', t: 'int', type: 'Number', tip: 'Months an owned unit is depreciated over' },
     { k: 'replacementCost', h: 'Replace $', t: 'money', type: 'Currency', tip: 'What a lost, stolen or damaged unit costs you' }
   ];
-  var CAT_OTHER = { family: { h: 'Family', type: 'Picklist' }, notes: { h: 'Notes', type: 'Multi Line' }, updated: { h: 'Cost updated', type: 'Date' } };
+  var CAT_OTHER = { family: { h: 'Family', type: 'Picklist' }, notes: { h: 'Notes', type: 'Multi Line' }, updated: { h: 'Cost updated', type: 'Date' }, costTiers: { h: 'Volume tiers', type: 'Multi Line' } };
+  /* tier editor columns: whole-volume tiers, blank = use the base rate */
+  var COST_TIER_COLS = [
+    { k: 'costLeaseDaily', h: 'Lease $/day' }, { k: 'spareOverageDaily', h: 'Spare $/day' },
+    { k: 'costPurchase', h: 'Buy $/unit' }, { k: 'costOwnedDaily', h: 'Owned svc $/day' }
+  ];
 
   /* customer price fields on Products that scenario prices are checked against */
   var PRICE_FIELDS = {
-    leaseDaily: 'Price_Lease_Daily', inactiveDaily: 'Price_Inactive_Daily', saasMonthly: 'Price_Transparent_Monthly',
+    leaseDaily: 'Price_Lease_Daily', spareDaily: 'Price_Spare_Daily', saasMonthly: 'Price_Transparent_Monthly',
     purchasePrice: 'Unit_Price', serviceDaily: 'Price_Service_Daily', lostFee: 'Price_Lost_Fee'
   };
-  var PRICE_LABEL = { leaseDaily: '$/active day', inactiveDaily: '$/inactive day', saasMonthly: '$/unit/month', purchasePrice: 'Unit price', serviceDaily: 'Service $/day', lostFee: 'Lost fee' };
+  var PRICE_LABEL = { leaseDaily: '$/active day', spareDaily: '$/spare day', saasMonthly: '$/unit/month', purchasePrice: 'Unit price', serviceDaily: 'Service $/day', lostFee: 'Lost fee' };
 
   var SCENARIO_FIELDS = ['Valid_Until', 'Pricing_Model', 'Vendor_Source', 'Proposal_Options', 'Term_Months', 'Active_Units', 'Est_Monthly_Revenue',
     'Est_Monthly_Cost', 'Est_Monthly_Margin', 'Est_Margin_Pct', 'Target_Margin_Pct', 'Term_Revenue', 'Term_Margin', 'Upfront_Cash',
@@ -85,7 +91,7 @@
   });
 
   /* ---------- state ---------- */
-  var state = { catalog: [], vendors: [], vendorFilter: '', scenario: null, saved: [], dirty: false, tab: 'scenario', catDirty: {}, user: null,
+  var state = { openTiers: {}, catalog: [], vendors: [], vendorFilter: '', scenario: null, saved: [], dirty: false, tab: 'scenario', catDirty: {}, user: null,
     setup: { products: [], prices: [], scenarios: [], productsReadOnly: [], pricesReadOnly: [] } };
   var itemById = function (id) { return state.catalog.filter(function (c) { return String(c.id) === String(id); })[0]; };
   var calc = function (opts) { return E.price(state.scenario, state.catalog, opts); };
@@ -126,9 +132,9 @@
   function inp(path, type, attrs) {
     attrs = attrs || {};
     var v = getPath(state.scenario, path);
-    var cls = type === 'money' ? 'money' : type === 'pct' ? 'pctw' : '';
+    var cls = type === 'money' || type === 'tmoney' ? 'money' : type === 'pct' ? 'pctw' : '';
     var t = type === 'text' ? 'text' : 'number';
-    var step = attrs.step || (type === 'money' ? '0.01' : type === 'int' ? '1' : 'any');
+    var step = attrs.step || (type === 'money' || type === 'tmoney' ? '0.01' : type === 'int' ? '1' : 'any');
     var el = '<input type="' + t + '" data-bind="' + path + '" data-kind="' + type + '"' + (t === 'number' ? ' inputmode="decimal" step="' + step + '" min="0"' : '') + ' value="' + esc(v == null ? '' : v) + '"' + (attrs.ph ? ' placeholder="' + esc(attrs.ph) + '"' : '') + (attrs.label ? ' aria-label="' + esc(attrs.label) + '"' : '') + '>';
     return cls ? '<span class="' + cls + '">' + el + '</span>' : el;
   }
@@ -157,16 +163,17 @@
     h += '<div class="card"><div class="head"><h2>Devices and prices</h2><span style="display:flex;gap:8px;align-items:center"><span class="meta">volumes are average daily units · prices are stored in this scenario</span><button class="btn sm" type="button" data-act="add-line">+ Add device</button></span></div><div class="body scroll-x">';
     if (!s.lines.length) h += '<p class="empty">No devices yet. Add one to start pricing.</p>';
     else {
-      h += '<table class="tbl"><thead><tr><th>Device</th><th class="r">Active</th><th class="r" title="Assigned but not on leg, as a % of active">Inactive %</th><th class="r" title="Spares on the shelf, as a % of active">Spares %</th>' + keys.map(function (k) { return '<th class="r">' + esc(PRICE_LABEL[k]) + '</th>'; }).join('') + '<th class="r">Margin</th><th></th></tr></thead><tbody>';
+      h += '<table class="tbl"><thead><tr><th>Device</th><th class="r">Active</th><th class="r" title="Spares on the shelf, as a % of active">Spares %</th>' + keys.map(function (k) { return '<th class="r">' + esc(PRICE_LABEL[k]) + '</th>'; }).join('') + '<th class="r">Margin</th><th></th></tr></thead><tbody>';
       s.lines.forEach(function (l, i) {
         if (!l.confirmed) l.confirmed = {};
         var it = itemById(l.itemId);
         h += '<tr data-line="' + i + '"><td style="min-width:210px"><select data-bind="lines.' + i + '.itemId" data-kind="text" aria-label="Device">' + catalogOptions(l.itemId) + '</select><div class="fine" id="line-hint-' + i + '">' + esc(costHint(it, buy)) + '</div></td>';
         h += '<td class="w-sm">' + inp('lines.' + i + '.units', 'num', { label: 'Active units', step: '1' }) + '</td>';
-        h += '<td class="w-sm">' + inp('lines.' + i + '.inactivePct', 'pct', { label: 'Inactive %' }) + '</td>';
         h += '<td class="w-sm">' + inp('lines.' + i + '.sparePct', 'pct', { label: 'Spares %' }) + '</td>';
         keys.forEach(function (k) { h += '<td class="w-md pcell">' + inp('lines.' + i + '.price.' + k, 'money', { label: PRICE_LABEL[k] }) + '<div class="zslot" id="zc-l-' + i + '-' + k + '">' + lineBadgeHtml(l, i, k) + '</div></td>'; });
-        h += '<td class="r" id="line-m-' + i + '"></td><td><button class="btn ghost sm" type="button" data-act="del-line" data-i="' + i + '" aria-label="Remove device">✕</button></td></tr>';
+        var nt = (l.priceTiers || []).length, open = !!state.openTiers['l' + i];
+        h += '<td class="r" id="line-m-' + i + '"></td><td style="white-space:nowrap"><button class="btn sm" type="button" data-act="tog-ptier" data-i="' + i + '" aria-expanded="' + open + '" title="Volume price tiers">Tiers' + (nt ? ' (' + nt + ')' : '') + '</button> <button class="btn ghost sm" type="button" data-act="del-line" data-i="' + i + '" aria-label="Remove device">✕</button></td></tr>';
+        if (open) h += '<tr class="tier-row"><td colspan="' + (5 + keys.length) + '">' + priceTierEditor(l, i, keys) + '</td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -174,14 +181,12 @@
 
     /* spares, losses, minimums */
     h += '<div class="card"><div class="head"><h2>Spares, losses and minimums</h2></div><div class="body">';
-    h += '<label class="check"><input type="checkbox" data-bind="spareBilling.enabled" data-kind="bool"' + (s.spareBilling.enabled ? ' checked' : '') + (m === 'purchase' ? ' disabled' : '') + '> Charge the customer for spares above a set percentage</label>';
-    h += '<div class="fgrid" style="margin-top:10px">';
+    h += '<div class="fgrid">';
     h += field('Spares included free', inp('spareBilling.overPct', 'pct'), '% of active');
-    h += field('Customer spare rate', inp('spareBilling.dailyRate', 'money'), 'per spare per day');
     h += field('Annual loss rate', inp('lostRatePct', 'pct'), '% of fleet per year');
     h += field('Loss fees recovered', inp('lostRecoveryPct', 'pct'), '% actually collected');
     h += field('Minimum monthly billing', inp('minimumMonthly', 'money'));
-    h += '</div><p class="fine">Your spare cost comes from the Cost catalog: spares above each device’s free % cost its Spare $/day. Losses do not apply to purchased equipment, which the customer owns.</p></div></div>';
+    h += '</div><p class="fine">Spares above the free % are billed at each device’s <b>$/spare day</b> (Devices table; leave it at 0 to not charge). Your spare cost comes from the Cost catalog: spares above each device’s free % cost its Spare $/day. Losses do not apply to purchased equipment, which the customer owns.</p></div></div>';
 
     /* staffing */
     h += '<div class="card"><div class="head"><h2>' + esc(BRAND.company) + ' staffing services</h2><button class="btn sm" type="button" data-act="add-staff">+ Add service</button></div><div class="body scroll-x">';
@@ -223,9 +228,49 @@
     $('builder').innerHTML = h;
   }
 
+  /* ---------- volume tiers (whole volume) ---------- */
+  var tierSort = function (list) { return (list || []).slice().sort(function (a, b) { return num(a.min) - num(b.min); }); };
+  /* "1–50", "51–100", "101+" labels from the sorted tier starts */
+  function bandLabels(tiers) {
+    var t = tierSort(tiers).filter(function (x) { return num(x.min) > 1; }), out = [];
+    var starts = [1].concat(t.map(function (x) { return Math.round(num(x.min)); }));
+    starts.forEach(function (st, j) { var nx = starts[j + 1]; out.push(nx ? int(st) + '–' + int(nx - 1) : int(st) + '+'); });
+    return out;
+  }
+  function priceTierEditor(l, i, keys) {
+    var tiers = l.priceTiers || [], cols = keys.filter(function (k) { return k !== 'lostFee'; });
+    var h = '<div class="tiers"><div class="tiers-head"><b>Volume price tiers</b><span class="fine" style="margin:0">Whole volume: the device’s active units pick one tier and that rate applies to every unit. Blank = base price. Below the first tier the base price applies.</span></div>';
+    h += '<table class="tbl tier-tbl"><thead><tr><th class="r">From active units</th>' + cols.map(function (k) { return '<th class="r">' + esc(PRICE_LABEL[k]) + '</th>'; }).join('') + '<th></th></tr></thead><tbody>';
+    h += '<tr class="base"><td class="r fine" style="margin:0">1 (base)</td>' + cols.map(function (k) { return '<td class="r num">' + rate(l.price[k]) + '</td>'; }).join('') + '<td></td></tr>';
+    tiers.forEach(function (t, j) {
+      var p = 'lines.' + i + '.priceTiers.' + j + '.';
+      h += '<tr><td class="w-sm">' + inp(p + 'min', 'tier', { label: 'Tier starts at active units', step: '1', ph: 'e.g. 51' }) + '</td>' + cols.map(function (k) { return '<td class="w-md">' + inp(p + k, 'tmoney', { label: PRICE_LABEL[k] + ' for this tier', ph: num(l.price[k]).toFixed(2) }) + '</td>'; }).join('') + '<td><button class="btn ghost sm" type="button" data-act="del-ptier" data-i="' + i + '" data-j="' + j + '" aria-label="Remove tier">✕</button></td></tr>';
+    });
+    h += '</tbody></table><div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button class="btn sm" type="button" data-act="add-ptier" data-i="' + i + '">+ Add tier</button><span class="fine" style="margin:0" id="ptier-now-' + i + '"></span></div></div>';
+    return h;
+  }
+  function costTierEditor(c, i) {
+    var tiers = c.costTiers || [];
+    var h = '<div class="tiers"><div class="tiers-head"><b>Volume cost tiers · ' + esc(c.name || 'device') + '</b><span class="fine" style="margin:0">Whole volume: a scenario’s active units for this device pick one tier. Blank = base cost. Saved to <code>' + esc(CAT.costTiers) + '</code> on the product.</span></div>';
+    h += '<table class="tbl tier-tbl"><thead><tr><th class="r">From active units</th>' + COST_TIER_COLS.map(function (x) { return '<th class="r">' + esc(x.h) + '</th>'; }).join('') + '<th></th></tr></thead><tbody>';
+    h += '<tr class="base"><td class="r fine" style="margin:0">1 (base)</td>' + COST_TIER_COLS.map(function (x) { return '<td class="r num">' + (blank(c[x.k]) ? '—' : rate(c[x.k])) + '</td>'; }).join('') + '<td></td></tr>';
+    tiers.forEach(function (t, j) {
+      var cell = function (k, ph, step) { return '<input type="number" min="0" inputmode="decimal" step="' + (step || 'any') + '" data-ctier="' + j + '" data-k="' + k + '" value="' + esc(blank(t[k]) ? '' : t[k]) + '" placeholder="' + esc(ph) + '">'; };
+      h += '<tr><td class="w-sm">' + cell('min', 'e.g. 51', '1') + '</td>' + COST_TIER_COLS.map(function (x) { return '<td class="w-md"><span class="money">' + cell(x.k, blank(c[x.k]) ? '' : num(c[x.k]).toFixed(2)) + '</span></td>'; }).join('') + '<td><button class="btn ghost sm" type="button" data-cact="del-ctier" data-j="' + j + '" aria-label="Remove tier">✕</button></td></tr>';
+    });
+    h += '</tbody></table><button class="btn sm" type="button" data-cact="add-ctier" style="margin-top:6px">+ Add tier</button></div>';
+    return h;
+  }
+  function tierNote(r) {
+    var bits = [];
+    if (r.priceTier) bits.push('price tier ' + int(r.priceTier) + '+');
+    if (r.costTier) bits.push('cost tier ' + int(r.costTier) + '+');
+    return bits.join(' · ');
+  }
+
   function modelNote(m, buy) {
-    if (m === 'lease') return 'Customer pays per active unit per day (and optionally per inactive unit). ' + (buy ? BRAND.company + ' owns the fleet: purchase cost is spread over each device’s life, plus owned monitoring cost.' : 'Lease cost, spare cost and losses come from the Cost catalog.');
-    if (m === 'saas') return 'Transparent Pricing: one all-in monthly price per assigned unit (active plus inactive), covering device, monitoring and support, with no add-on charges. ' + (buy ? BRAND.company + ' owns the fleet.' : BRAND.company + ' leases the devices.');
+    if (m === 'lease') return 'Customer pays per active unit per day, plus a spare rate for spares above the free %. ' + (buy ? BRAND.company + ' owns the fleet: purchase cost is spread over each device’s life, plus owned monitoring cost.' : 'Lease cost, spare cost and losses come from the Cost catalog.');
+    if (m === 'saas') return 'Transparent Pricing: one all-in monthly price per active unit, covering device, monitoring and support, with no add-on charges. ' + (buy ? BRAND.company + ' owns the fleet.' : BRAND.company + ' leases the devices.');
     return 'Customer buys the equipment up front and pays a monitoring service fee per active unit per day. ' + BRAND.company + ' buys the units, so Buy $/unit and Owned svc $/day must be in the Cost catalog.';
   }
   /* devices grouped by their Zoho vendor */
@@ -241,9 +286,11 @@
     order.sort(function (a, b) { return a === 'No vendor' ? 1 : b === 'No vendor' ? -1 : a.localeCompare(b); });
     return (has ? '' : '<option value="" selected>Choose a device…</option>') + order.map(function (g) { return '<optgroup label="' + esc(g) + '">' + groups[g].join('') + '</optgroup>'; }).join('');
   }
-  function costHint(it, buy) {
+  function costHint(it, buy, lr) {
     if (!it) return '';
-    var vn = vendorName(it); return (vn ? vn + ' · ' : '') + costHintBody(it, buy);
+    var eff = it;
+    if (lr && lr.costTier) { eff = Object.assign({}, it); var ct = E.pickTier(it.costTiers, lr.active); E.COST_TIER_KEYS.forEach(function (k) { if (ct && !blank(ct[k])) eff[k] = num(ct[k]); }); }
+    var vn = vendorName(it); return (vn ? vn + ' · ' : '') + costHintBody(eff, buy);
   }
   function costHintBody(it, buy) {
     if (buy) return num(it.costPurchase) ? 'Buy ' + rate(it.costPurchase) + ' · owned svc ' + rate(it.costOwnedDaily || 0) + '/day · ' + (it.usefulLifeMonths || 36) + ' mo life' : 'No Buy $/unit in the Cost catalog';
@@ -256,7 +303,9 @@
     var r = calc(), s = state.scenario;
     r.lines.forEach(function (l, i) {
       var el = $('line-m-' + i); if (el) el.innerHTML = l.revMonthly > 0 || l.costMonthly > 0 ? '<span class="chip ' + E.tierOf(l.marginPct, l.revMonthly).key + '" title="' + esc(money(l.marginMonthly) + ' a month on ' + money(l.revMonthly) + ' revenue') + '">' + (l.revMonthly > 0 ? pctf(l.marginPct, 0) : 'no price') + '</span>' : '';
-      var hint = $('line-hint-' + i); if (hint) hint.textContent = costHint(itemById(s.lines[i].itemId), r.vendorSource === 'buy');
+      var hint = $('line-hint-' + i), tn = tierNote(l);
+      if (hint) hint.textContent = costHint(itemById(s.lines[i].itemId), r.vendorSource === 'buy', l) + (tn ? ' · ' + tn : '');
+      var now = $('ptier-now-' + i); if (now) now.textContent = int(l.active) + ' active units → ' + (l.priceTier ? 'tier ' + int(l.priceTier) + '+ applies' : 'base price applies');
     });
     r.staffing.forEach(function (st, i) { var el = $('staff-m-' + i); if (el) el.innerHTML = '<span class="num">' + money(st.marginMonthly) + '</span><div class="fine" style="margin:0">' + int(st.participants) + ' participants</div>'; });
     r.fees.forEach(function (f, i) { var el = $('fee-t-' + i); if (el) el.innerHTML = '<span class="num">' + money(f.rev) + '</span><div class="fine" style="margin:0">' + (f.when === 'monthly' ? 'a month' : 'once') + ' · qty ' + one(f.qty) + '</div>'; });
@@ -421,7 +470,7 @@
     renderSetup();
     renderVendorBar();
     var vf = state.vendorFilter;
-    var h = '<table class="tbl cat"><thead><tr><th>Device</th><th>Vendor</th><th>Family</th>' + CAT_COLS.map(function (c) { return '<th class="r" title="' + esc(c.tip) + '">' + esc(c.h) + '</th>'; }).join('') + '<th>Notes</th></tr></thead><tbody>';
+    var h = '<table class="tbl cat"><thead><tr><th>Device</th><th>Vendor</th><th>Family</th>' + CAT_COLS.map(function (c) { return '<th class="r" title="' + esc(c.tip) + '">' + esc(c.h) + '</th>'; }).join('') + '<th>Notes</th><th>Tiers</th></tr></thead><tbody>';
     var shown = 0;
     state.catalog.forEach(function (c, i) {
       if (!c.ack) c.ack = {};
@@ -435,7 +484,10 @@
       CAT_COLS.forEach(function (col) {
         h += '<td class="r pcell"><span class="' + (col.t === 'money' ? 'money' : col.t === 'pct' ? 'pctw' : '') + '"><input type="number" min="0" inputmode="decimal" step="' + (col.t === 'int' ? '1' : 'any') + '" data-cat="' + col.k + '" value="' + esc(blank(c[col.k]) ? '' : c[col.k]) + '" aria-label="' + esc((c.name || 'Device') + ' ' + col.h) + '"></span><div class="zslot" id="zc-c-' + i + '-' + col.k + '">' + catBadgeHtml(c, i, col.k, col.t) + '</div></td>';
       });
-      h += '<td><input type="text" class="src" data-cat="notes" value="' + esc(c.notes || '') + '" placeholder="Optional" aria-label="Notes"></td></tr>';
+      h += '<td><input type="text" class="src" data-cat="notes" value="' + esc(c.notes || '') + '" placeholder="Optional" aria-label="Notes"></td>';
+      var nct = (c.costTiers || []).length, copen = !!state.openTiers['c' + c.id];
+      h += '<td><button class="btn sm" type="button" data-cact="tog-ctier" aria-expanded="' + copen + '">Tiers' + (nct ? ' (' + nct + ')' : '') + '</button></td></tr>';
+      if (copen) h += '<tr class="tier-row" data-ci="' + i + '"><td colspan="' + (5 + CAT_COLS.length) + '">' + costTierEditor(c, i) + '</td></tr>';
     });
     h += '</tbody></table>';
     if (!state.catalog.length) h = '<p class="empty">No active products in Zoho. Add a device.</p>';
@@ -457,8 +509,15 @@
       '<span class="fine" style="margin:0">' + state.vendors.length + ' vendor' + (state.vendors.length === 1 ? '' : 's') + ' in Zoho · ' + linked + ' with products' + (none ? ' · <b>' + none + ' product' + (none === 1 ? '' : 's') + ' without a vendor</b>' : '') + '</span></div>';
   }
   function onCatInput(ev) {
-    var t = ev.target, key = t.getAttribute && t.getAttribute('data-cat'); if (!key) return;
-    var tr = t.closest('tr'), i = Number(tr.getAttribute('data-ci')), c = state.catalog[i]; if (!c) return;
+    var t = ev.target;
+    if (t.getAttribute && t.getAttribute('data-ctier') != null) {
+      var row = t.closest('[data-ci]'), ci = state.catalog[Number(row.getAttribute('data-ci'))]; if (!ci) return;
+      var tj = (ci.costTiers || [])[Number(t.getAttribute('data-ctier'))]; if (!tj) return;
+      tj[t.getAttribute('data-k')] = t.value === '' ? null : Number(t.value);
+      state.catDirty[ci.id] = true; $('cat-save').disabled = false; renderResults(); return;
+    }
+    var key = t.getAttribute && t.getAttribute('data-cat'); if (!key) return;
+    var tr = t.closest('[data-ci]'), i = Number(tr.getAttribute('data-ci')), c = state.catalog[i]; if (!c) return;
     var col = colOf(key);
     if (col) c[key] = t.value === '' ? null : Number(t.value);
     else if (key === 'vendorId') { c.vendorId = t.value; c.vendor = (state.vendors.filter(function (v) { return v.id === t.value; })[0] || {}).name || ''; }
@@ -466,6 +525,16 @@
     state.catDirty[c.id] = true; tr.classList.add('changed'); $('cat-save').disabled = false;
     if (col) updCatBadge(i, key);
     renderResults();
+  }
+  function onCatAct(ev) {
+    var b = ev.target.closest && ev.target.closest('[data-cact]'); if (!b) return;
+    var row = b.closest('[data-ci]'), c = state.catalog[Number(row.getAttribute('data-ci'))]; if (!c) return;
+    var a = b.getAttribute('data-cact');
+    if (!Array.isArray(c.costTiers)) c.costTiers = [];
+    if (a === 'tog-ctier') { state.openTiers['c' + c.id] = !state.openTiers['c' + c.id]; renderCatalog(); return; }
+    if (a === 'add-ctier') { var last = tierSort(c.costTiers).pop(); c.costTiers.push({ min: last ? Math.round(num(last.min)) + 50 : 51 }); }
+    else if (a === 'del-ctier') c.costTiers.splice(Number(b.getAttribute('data-j')), 1);
+    state.catDirty[c.id] = true; renderCatalog(); renderResults();
   }
   function catInputEl(i, k) { return $('cat-table').querySelector('tr[data-ci="' + i + '"] [data-cat="' + k + '"]'); }
   function saveCatalog() {
@@ -561,25 +630,33 @@
   function custName() { var s = state.scenario; return s.customerName || (s.account && s.account.name) || 'Customer'; }
   function defaultIntro() { var s = state.scenario; return BRAND.company + ' is pleased to present pricing for electronic monitoring services' + (s.program ? ' for the ' + s.program + ' program' : '') + ' at ' + custName() + '. This proposal covers equipment, 24/7 monitoring and support' + (s.staffing.length ? ', and the ' + BRAND.company + ' staff services described below' : '') + '.'; }
   function propNumber() { var s = state.scenario, tail = (String(s.id || '').replace(/\D/g, '') || '0000').slice(-4); while (tail.length < 4) tail = '0' + tail; return BRAND.proposalPrefix + '-' + today().replace(/-/g, '') + '-' + tail; }
-  var UNIT_TEXT = { leaseDaily: 'per active unit per day', inactiveDaily: 'per inactive unit per day', saasMonthly: 'all-in, per assigned unit per month', purchasePrice: 'per unit, one-time purchase', serviceDaily: 'monitoring service per active unit per day' };
+  var UNIT_TEXT = { leaseDaily: 'per active unit per day', spareDaily: 'per spare unit per day, above the included spares', saasMonthly: 'all-in, per active unit per month', purchasePrice: 'per unit, one-time purchase', serviceDaily: 'monitoring service per active unit per day' };
   function rateRows(model) {
     var s = state.scenario, rows = [];
     s.lines.forEach(function (l) {
       var nm = (itemById(l.itemId) || {}).name || 'Monitoring device', any = false;
-      E.PRICE_KEYS[model].forEach(function (k) { var v = num(l.price[k]); if (v > 0) { any = true; rows.push([nm, UNIT_TEXT[k], rate(v)]); } });
+      var tiers = tierSort(l.priceTiers).filter(function (t) { return num(t.min) > 1; }), bands = bandLabels(tiers);
+      E.PRICE_KEYS[model].forEach(function (k) {
+        var base = num(l.price[k]), tiered = tiers.some(function (t) { return !blank(t[k]); });
+        if (!tiered) { if (base > 0) { any = true; rows.push([nm, UNIT_TEXT[k], rate(base)]); } return; }
+        /* whole volume: every unit is billed at the rate for the band the program's volume falls in */
+        var cur = base;
+        [null].concat(tiers).forEach(function (t, j) { if (t && !blank(t[k])) cur = num(t[k]); if (cur > 0) { any = true; rows.push([nm + ' · ' + bands[j] + ' active units', UNIT_TEXT[k], rate(cur)]); } });
+      });
       if (!any) rows.push([nm, UNIT_TEXT[E.PRICE_KEYS[model][0]], 'To be confirmed']);
     });
-    if (model !== 'purchase' && s.spareBilling.enabled && num(s.spareBilling.dailyRate) > 0) rows.push(['Additional spare equipment', 'per spare unit per day above ' + one(s.spareBilling.overPct) + '% of active units', rate(s.spareBilling.dailyRate)]);
     return rows;
   }
   function optionBlurb(m) { return { lease: 'Pay only for equipment in use: a daily rate per active unit, billed monthly in arrears.', saas: 'Transparent Pricing: one all-in monthly price per unit covering equipment, monitoring and support, with no hidden or add-on charges.', purchase: 'Own the equipment outright with a one-time purchase, plus a daily monitoring service fee per active unit.' }[m]; }
   function terms(opts) {
     var s = state.scenario, p = s.proposal, t = [];
     t.push('Term of ' + s.termMonths + ' months from the start of service.');
-    if (opts.indexOf('lease') >= 0) t.push('Daily lease: billed monthly for each day a unit is active' + (s.lines.some(function (l) { return num(l.price.inactiveDaily) > 0; }) ? '; units assigned but inactive are billed at the inactive rate shown.' : '; units not in use are not billed.'));
-    if (opts.indexOf('saas') >= 0) t.push('Transparent Pricing: billed monthly in advance at one all-in rate for each unit assigned to the program, active or inactive.');
+    if (opts.indexOf('lease') >= 0) t.push('Daily lease: billed monthly for each day a unit is active; units not in use are not billed.');
+    if (opts.indexOf('saas') >= 0) t.push('Transparent Pricing: billed monthly in advance at one all-in rate for each active unit.');
+    if (s.lines.some(function (l) { return (l.priceTiers || []).length; })) t.push('Volume pricing: where rates are shown by volume, the average number of active units for that device in the billing month sets the rate, and that rate applies to all of its units.');
     if (opts.indexOf('purchase') >= 0) t.push('Purchase: equipment is invoiced on delivery and becomes the customer’s property; monitoring service is billed monthly per active unit.');
-    if (s.spareBilling.enabled && opts.some(function (m) { return m !== 'purchase'; })) t.push('Spare equipment up to ' + one(s.spareBilling.overPct) + '% of active units is included at no charge' + (num(s.spareBilling.dailyRate) > 0 ? '; spares above that level are billed at ' + rate(s.spareBilling.dailyRate) + ' per unit per day.' : '.'));
+    var spareOn = s.lines.some(function (l) { return num(l.price.spareDaily) > 0 || (l.priceTiers || []).some(function (t) { return num(t.spareDaily) > 0; }); });
+    if (spareOn && opts.some(function (m) { return m !== 'purchase'; })) t.push('Spare equipment up to ' + one(s.spareBilling.overPct) + '% of active units is included at no charge; spares above that level are billed at the spare rate shown.');
     var lf = s.lines.filter(function (l) { return num(l.price.lostFee) > 0; });
     if (lf.length && opts.some(function (m) { return m !== 'purchase'; })) t.push('Equipment that is lost, stolen or damaged beyond repair is charged at ' + lf.map(function (l) { return money(l.price.lostFee) + ' per ' + ((itemById(l.itemId) || {}).name || 'unit'); }).join(', ') + '.');
     if (num(s.minimumMonthly) > 0) t.push('A minimum monthly charge of ' + money(s.minimumMonthly) + ' applies' + (opts.indexOf('purchase') >= 0 && opts.length > 1 ? ' to recurring charges' : '') + '.');
@@ -689,7 +766,17 @@
     Object.keys(b).forEach(function (k) { if (sc[k] == null) sc[k] = b[k]; });
     sc.proposal = Object.assign(E.blankScenario().proposal, sc.proposal || {});
     sc.spareBilling = Object.assign(E.blankScenario().spareBilling, sc.spareBilling || {});
-    sc.lines.forEach(function (l) { l.price = Object.assign(E.blankLine().price, l.price || {}); if (!l.confirmed) l.confirmed = {}; });
+    var oldSpare = sc.spareBilling && sc.spareBilling.enabled !== false && num(sc.spareBilling.dailyRate) > 0 ? num(sc.spareBilling.dailyRate) : 0;
+    sc.lines.forEach(function (l) {
+      l.price = Object.assign(E.blankLine().price, l.price || {});
+      /* older scenarios: Inactive % and $/inactive day are gone; the flat spare rate moves onto each device */
+      delete l.inactivePct; delete l.price.inactiveDaily;
+      if (!num(l.price.spareDaily) && oldSpare) l.price.spareDaily = oldSpare;
+      if (!Array.isArray(l.priceTiers)) l.priceTiers = [];
+      if (!l.confirmed) l.confirmed = {};
+    });
+    delete sc.spareBilling.enabled; delete sc.spareBilling.dailyRate;
+    state.openTiers = {};
     state.scenario = sc; setDirty(false); renderAll(); renderPicker();
   }
   function confirmDiscard() { return !state.dirty || window.confirm('Discard unsaved changes to this scenario?'); }
@@ -724,7 +811,7 @@
     var kind = t.getAttribute('data-kind'), v;
     if (kind === 'bool') v = !!t.checked;
     else if (kind === 'text') v = t.value;
-    else v = t.value === '' ? (/participants$/.test(path) ? null : 0) : Number(t.value);
+    else v = t.value === '' ? (/participants$|\.priceTiers\./.test(path) ? null : 0) : Number(t.value);
     setPath(state.scenario, path, v);
     setDirty(true);
     if (t.getAttribute('data-rerender') || /itemId$/.test(path)) { if (ev.type === 'change') { renderBuilder(); renderResults(); } return; }
@@ -738,7 +825,14 @@
     if (a === 'model') s.model = b.getAttribute('data-v');
     else if (a === 'source') s.vendorSource = b.getAttribute('data-v');
     else if (a === 'add-line') { var used = {}; s.lines.forEach(function (l) { used[l.itemId] = 1; }); var saved = state.catalog.filter(function (c) { return !c.isNew; }); var next = saved.filter(function (c) { return !used[c.id]; })[0] || saved[0]; s.lines.push(E.blankLine(next ? next.id : null)); }
-    else if (a === 'del-line') s.lines.splice(i, 1);
+    else if (a === 'del-line') { s.lines.splice(i, 1); state.openTiers = {}; }
+    else if (a === 'tog-ptier') { state.openTiers['l' + i] = !state.openTiers['l' + i]; renderBuilder(); renderResults(); return; }
+    else if (a === 'add-ptier') {
+      var ln = s.lines[i]; if (!ln.priceTiers) ln.priceTiers = [];
+      var last = tierSort(ln.priceTiers).pop(), start = last ? Math.round(num(last.min)) + 50 : Math.max(2, Math.round(num(ln.units)) + 1);
+      ln.priceTiers.push({ min: start }); state.openTiers['l' + i] = true;
+    }
+    else if (a === 'del-ptier') s.lines[i].priceTiers.splice(Number(b.getAttribute('data-j')), 1);
     else if (a === 'add-staff') s.staffing.push({ name: 'Case management', costMethod: 'hours', hoursPerParticipant: 1, costPerHour: 35, overheadPct: 20, participants: null, priceMethod: 'perDay', priceDaily: 1 });
     else if (a === 'del-staff') s.staffing.splice(i, 1);
     else if (a === 'add-fee') s.fees.push({ name: 'Installation', when: 'once', qtyBasis: 'perUnit', qty: 1, price: 0, cost: 0 });
@@ -799,13 +893,14 @@
     });
     $('cat-table').addEventListener('input', onCatInput);
     $('cat-table').addEventListener('change', onCatInput);
+    $('cat-table').addEventListener('click', onCatAct);
     $('cat-save').addEventListener('click', saveCatalog);
     $('cat-vendors').addEventListener('change', function (ev) { if (ev.target.id !== 'cat-vendor') return; state.vendorFilter = ev.target.value; renderCatalog(); });
     $('cat-refresh').addEventListener('click', function () { refreshFromZoho($('cat-refresh')); });
     $('cat-add').addEventListener('click', function () {
       var vf = state.vendorFilter && state.vendorFilter !== '_none' ? state.vendorFilter : '';
       var vv = state.vendors.filter(function (v) { return v.id === vf; })[0];
-      var c = { id: 'new-' + Date.now(), isNew: true, name: '', vendor: vv ? vv.name : '', vendorId: vf, family: '', notes: '', usefulLifeMonths: 36, zoho: {}, zohoPrice: {}, ack: {} };
+      var c = { id: 'new-' + Date.now(), isNew: true, name: '', vendor: vv ? vv.name : '', vendorId: vf, family: '', notes: '', usefulLifeMonths: 36, costTiers: [], zoho: {}, zohoPrice: {}, ack: {} };
       state.catalog.push(c); state.catDirty[c.id] = true; renderCatalog();
       var ins = $('cat-table').querySelectorAll('input[data-cat="name"]'); if (ins.length) ins[ins.length - 1].focus();
     });

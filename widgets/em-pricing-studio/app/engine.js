@@ -4,9 +4,11 @@
 
    Conventions
    - A month is 365/12 = 30.4167 days. Daily rates x units x DAYS = one month.
-   - "Active" units are on leg. Inactive units are assigned but not on leg and carry
-     no JusticePoint device cost. Spares are units the customer holds on the shelf.
-     Fleet = active + inactive + spares.
+   - "Active" units are on leg. Spares are units the customer holds on the shelf.
+     Fleet = active + spares. Spares above the free % are billed at each device's $/spare day.
+   - Volume tiers (whole volume): a device's active-unit count picks ONE tier, and that
+     tier's rates apply to every unit. Blank tier values fall back to the base rate.
+     Cost tiers live on the catalog item (costTiers), price tiers on the scenario line.
    - Costs are whatever you enter in the Cost catalog. Free spares % and Spare $/day:
      spares up to that % of active units cost nothing; each spare above costs Spare $/day.
    - The customer model (daily lease, Transparent Pricing, purchase) is separate from how
@@ -32,9 +34,24 @@
     { max: Infinity, key: 'strong', label: 'Strong' }
   ];
   /* customer price keys each model uses (drives the builder columns and the target solver) */
-  var PRICE_KEYS = { lease: ['leaseDaily', 'inactiveDaily'], saas: ['saasMonthly'], purchase: ['purchasePrice', 'serviceDaily'] };
+  var PRICE_KEYS = { lease: ['leaseDaily', 'spareDaily'], saas: ['saasMonthly', 'spareDaily'], purchase: ['purchasePrice', 'serviceDaily'] };
 
   var n = function (v) { v = Number(v); return isFinite(v) ? v : 0; };
+  var set = function (v) { return v != null && v !== '' && isFinite(Number(v)); };
+  /* whole-volume tier: the tier with the highest "from" that qty reaches (null = base rates) */
+  function pickTier(tiers, qty) {
+    if (!Array.isArray(tiers)) return null;
+    var best = null;
+    tiers.forEach(function (t) { if (t && set(t.min) && n(t.min) > 0 && qty >= n(t.min) && (!best || n(t.min) > n(best.min))) best = t; });
+    return best;
+  }
+  function overlay(base, tier, keys) {
+    var o = Object.assign({}, base || {});
+    if (tier) keys.forEach(function (k) { if (set(tier[k])) o[k] = n(tier[k]); });
+    return o;
+  }
+  var COST_TIER_KEYS = ['costLeaseDaily', 'spareOverageDaily', 'costPurchase', 'costOwnedDaily'];
+  var PRICE_TIER_KEYS = ['leaseDaily', 'spareDaily', 'saasMonthly', 'purchasePrice', 'serviceDaily'];
   var pct = function (v) { return n(v) / 100; };
 
   function tierOf(marginPct, revenue) {
@@ -49,16 +66,16 @@
       model: 'lease', vendorSource: 'lease', termMonths: 36, targetMarginPct: 35,
       priceEscalatorPct: 0, costEscalatorPct: 0,
       lines: [], staffing: [], fees: [],
-      spareBilling: { enabled: false, overPct: 20, dailyRate: 0 },
+      spareBilling: { overPct: 20 },
       lostRatePct: 0, lostRecoveryPct: 0,
       minimumMonthly: 0,
       proposal: { validDays: 30, preparedBy: '', intro: '', options: ['current'], extraTerms: '', showMonthlyEstimate: true }
     };
   }
   function blankLine(itemId) {
-    return { itemId: itemId || null, units: 10, inactivePct: 0, sparePct: 20,
-      price: { leaseDaily: 0, inactiveDaily: 0, saasMonthly: 0, purchasePrice: 0, serviceDaily: 0, lostFee: 0 },
-      priceTiers: {},
+    return { itemId: itemId || null, units: 10, sparePct: 20,
+      price: { leaseDaily: 0, spareDaily: 0, saasMonthly: 0, purchasePrice: 0, serviceDaily: 0, lostFee: 0 },
+      priceTiers: [],   /* [{ min, leaseDaily, spareDaily, saasMonthly, purchasePrice, serviceDaily }] */
       confirmed: {} };   /* price key -> value you chose to keep when it differs from Zoho */
   }
 
@@ -68,18 +85,20 @@
     k = k == null ? 1 : k;                       /* price multiplier (target solver) */
     var src = model === 'purchase' ? 'buy' : ((srcOverride || sc.vendorSource) === 'buy' ? 'buy' : 'lease');
     var A = Math.max(0, n(line.units));
-    var I = A * pct(line.inactivePct);
     var S = A * pct(line.sparePct);
-    var F = A + I + S;
-    var p = line.price || {};
-    var out = { itemId: line.itemId, name: item.name || 'Device', active: A, inactive: I, spares: S, fleet: F, source: src,
+    var F = A + S;
+    var ct = pickTier(item.costTiers, A), pt = pickTier(line.priceTiers, A);
+    item = overlay(item, ct, COST_TIER_KEYS);
+    var p = overlay(line.price, pt, PRICE_TIER_KEYS);
+    var out = { itemId: line.itemId, name: item.name || 'Device', active: A, spares: S, fleet: F, source: src,
+      costTier: ct ? n(ct.min) : null, priceTier: pt ? n(pt.min) : null, rates: p,
       rev: { device: 0, spares: 0, lost: 0 }, cost: { device: 0, spares: 0, lost: 0, amort: 0 },
       onceRev: 0, onceCost: 0, capex: 0, missing: [] };
 
     /* JusticePoint cost */
     if (src === 'lease') {
       if (!(n(item.costLeaseDaily) > 0)) out.missing.push('lease $/day');
-      out.cost.device = A * n(item.costLeaseDaily) * DAYS;          /* inactive units cost nothing */
+      out.cost.device = A * n(item.costLeaseDaily) * DAYS;          
       out.sparesOverAllowance = Math.max(0, S - A * pct(item.spareAllowancePct));
       out.cost.spares = out.sparesOverAllowance * n(item.spareOverageDaily) * DAYS;
     } else {
@@ -101,14 +120,14 @@
     }
 
     /* customer revenue */
-    if (model === 'lease') out.rev.device = k * (A * n(p.leaseDaily) * DAYS + I * n(p.inactiveDaily) * DAYS);
-    else if (model === 'saas') out.rev.device = k * (A + I) * n(p.saasMonthly);
+    if (model === 'lease') out.rev.device = k * A * n(p.leaseDaily) * DAYS;
+    else if (model === 'saas') out.rev.device = k * A * n(p.saasMonthly);
     else { out.rev.device = k * A * n(p.serviceDaily) * DAYS; out.onceRev = k * F * n(p.purchasePrice); }
 
-    if (model !== 'purchase' && sc.spareBilling && sc.spareBilling.enabled) {
-      var billable = Math.max(0, S - A * pct(sc.spareBilling.overPct));
+    if (model !== 'purchase' && n(p.spareDaily) > 0) {
+      var billable = Math.max(0, S - A * pct((sc.spareBilling || {}).overPct));
       out.sparesBillable = billable;
-      out.rev.spares = billable * n(sc.spareBilling.dailyRate) * DAYS;
+      out.rev.spares = billable * n(p.spareDaily) * DAYS;
     }
     out.revMonthly = out.rev.device + out.rev.spares + out.rev.lost;
     out.costMonthly = out.cost.device + out.cost.spares + out.cost.lost + out.cost.amort;
@@ -267,12 +286,16 @@
   }
 
   function applyMultiplier(sc, model, k) {
-    var keys = PRICE_KEYS[model] || [];
-    sc.lines.forEach(function (l) { keys.forEach(function (key) { l.price[key] = Math.round(n(l.price[key]) * k * 100) / 100; }); });
+    var keys = (PRICE_KEYS[model] || []).filter(function (x) { return x !== 'spareDaily'; });   /* solver scales device prices only */
+    var r2 = function (v) { return Math.round(n(v) * k * 100) / 100; };
+    sc.lines.forEach(function (l) {
+      keys.forEach(function (key) { l.price[key] = r2(l.price[key]); });
+      (l.priceTiers || []).forEach(function (t) { keys.forEach(function (key) { if (set(t[key])) t[key] = r2(t[key]); }); });
+    });
     return sc;
   }
 
-  var api = { DAYS: DAYS, MODELS: MODELS, TIERS: TIERS, PRICE_KEYS: PRICE_KEYS, tierOf: tierOf, price: price, compare: compare,
+  var api = { DAYS: DAYS, MODELS: MODELS, TIERS: TIERS, PRICE_KEYS: PRICE_KEYS, tierOf: tierOf, pickTier: pickTier, COST_TIER_KEYS: COST_TIER_KEYS, PRICE_TIER_KEYS: PRICE_TIER_KEYS, price: price, compare: compare,
     sensitivity: sensitivity, applyMultiplier: applyMultiplier, blankScenario: blankScenario, blankLine: blankLine };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PricingEngine = api;
 })(this);

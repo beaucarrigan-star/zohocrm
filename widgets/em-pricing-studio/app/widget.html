@@ -178,6 +178,11 @@
   .tip { position: fixed; z-index: 90; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12px; padding: 6px 9px; border-radius: var(--radius-sm); box-shadow: 0 8px 20px -8px rgba(0,0,0,.4); white-space: nowrap; }
   /* catalog */
   .cat td input[type=number] { width: 104px; }
+  .tier-row > td { background: var(--surface-2); padding: 10px 12px 12px !important; }
+  .tiers-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 6px; font-size: 12.5px; }
+  .tier-tbl { width: auto; min-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+  .tier-tbl input[type=number] { width: 104px; }
+  .tier-tbl tr.base td { color: var(--muted); }
   .cat td input[type=text] { min-width: 170px; }
   .cat tr.changed > td { background: var(--jp-tint); }
   .cat .src { min-width: 160px; }

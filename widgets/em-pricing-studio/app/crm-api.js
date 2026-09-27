@@ -26,6 +26,23 @@
     var rowsOf = function (r) { if (!r) return []; if (Array.isArray(r)) return r; if (Array.isArray(r.data)) return r.data; if (r.data && Array.isArray(r.data.data)) return r.data.data; return []; };
     var qs = function (v) { return String(v || '').replace(/'/g, "''"); };
     var round2 = function (v) { return Math.round(num(v) * 100) / 100; };
+    /* catalog keys that are not plain numbers */
+    var TEXT_KEYS = { updated: 1, family: 1, notes: 1, costTiers: 1 };
+    var isNumKey = function (k) { return !TEXT_KEYS[k]; };
+    /* Cost_Tiers is a Multi Line field holding JSON: [{"min":51,"costLeaseDaily":2.25}, ...] */
+    var parseTiers = function (v) {
+      if (Array.isArray(v)) return v;
+      if (v == null || v === '') return [];
+      try { var a = JSON.parse(v); return Array.isArray(a) ? a.filter(function (t) { return t && typeof t === 'object'; }) : []; } catch (e) { return []; }
+    };
+    var tierText = function (list) {
+      var clean = (list || []).filter(function (t) { return t && num(t.min) > 0; }).map(function (t) {
+        var o = { min: Math.round(num(t.min)) };
+        Object.keys(t).forEach(function (k) { if (k !== 'min' && t[k] != null && t[k] !== '' && isFinite(Number(t[k]))) o[k] = Number(t[k]); });
+        return o;
+      }).sort(function (a, b) { return a.min - b.min; });
+      return clean.length ? JSON.stringify(clean) : null;
+    };
     var store = {
       get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
       set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -59,7 +76,7 @@
     if (PREVIEW) {
       var ZKEY = 'em-pricing-preview-zoho-v3';
       var SAMPLE = [
-        { id: 'p-gps', name: 'GPS device', vendor: 'Sample vendor A', vendorId: 'v1', family: 'GPS', costs: { costLeaseDaily: 2.50, spareAllowancePct: 25, spareOverageDaily: 1.00, costPurchase: 450, costOwnedDaily: 1.00, usefulLifeMonths: 36, replacementCost: 450 }, prices: { leaseDaily: 4.00, inactiveDaily: 0, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 } },
+        { id: 'p-gps', name: 'GPS device', vendor: 'Sample vendor A', vendorId: 'v1', family: 'GPS', costs: { costLeaseDaily: 2.50, spareAllowancePct: 25, spareOverageDaily: 1.00, costPurchase: 450, costOwnedDaily: 1.00, usefulLifeMonths: 36, replacementCost: 450 }, costTiers: [{ min: 101, costLeaseDaily: 2.25 }, { min: 251, costLeaseDaily: 2.00 }], prices: { leaseDaily: 4.00, spareDaily: 1.50, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 } },
         { id: 'p-cam', name: 'Continuous alcohol monitor (CAM)', vendor: 'Sample vendor A', vendorId: 'v1', family: 'CAM', costs: { costLeaseDaily: 7.00, usefulLifeMonths: 36, replacementCost: 1200 }, prices: { leaseDaily: 11.00, saasMonthly: 340, lostFee: 1200 } },
         { id: 'p-rb', name: 'Remote breath device', vendor: 'Sample vendor B', vendorId: 'v2', family: 'Remote Breath', costs: {}, prices: {} },
         { id: 'p-rf', name: 'RF device', vendor: 'Sample vendor B', vendorId: 'v2', family: 'RF', costs: {}, prices: {} }
@@ -68,7 +85,8 @@
       var zsave = function (list) { store.set(ZKEY, JSON.stringify(list)); };
       var toItem = function (z) {
         var c = { id: z.id, name: z.name, vendor: z.vendor, vendorId: z.vendorId || '', family: z.family || '', notes: z.notes || '' };
-        Object.keys(CAT).forEach(function (k) { if (k !== 'updated' && k !== 'family' && k !== 'notes') c[k] = z.costs[k] == null ? null : z.costs[k]; });
+        Object.keys(CAT).forEach(function (k) { if (isNumKey(k)) c[k] = z.costs[k] == null ? null : z.costs[k]; });
+        c.costTiers = parseTiers(z.costTiers);
         c.zoho = zohoSnapshot(c); c.zohoPrice = clone(z.prices || {});
         return c;
       };
@@ -82,7 +100,8 @@
           var z = list.filter(function (x) { return x.id === c.id; })[0];
           if (!z) { z = { id: c.isNew ? 'p-' + Date.now() + Math.floor(Math.random() * 1000) : c.id, costs: {}, prices: {} }; list.push(z); c.id = z.id; c.isNew = false; }
           z.name = c.name; z.vendor = c.vendor; z.vendorId = c.vendorId; z.family = c.family; z.notes = c.notes;
-          Object.keys(CAT).forEach(function (k) { if (k !== 'updated' && k !== 'family' && k !== 'notes') z.costs[k] = c[k] === '' ? null : c[k]; });
+          Object.keys(CAT).forEach(function (k) { if (isNumKey(k)) z.costs[k] = c[k] === '' ? null : c[k]; });
+          z.costTiers = parseTiers(tierText(c.costTiers));
         });
         zsave(list);
         return Promise.resolve({ count: rows.length, skipped: [] });
@@ -174,6 +193,7 @@
             var vid = r.Vendor_Name ? String(r.Vendor_Name.id || r.Vendor_Name) : '';
             var c = { id: String(r.id), name: r.Product_Name || '', vendorId: vid, vendor: (r.Vendor_Name && r.Vendor_Name.name) || vmap[vid] || '' };
             Object.keys(CAT).forEach(function (k) { if (k !== 'updated') c[k] = r[CAT[k]] == null ? null : r[CAT[k]]; });
+            c.costTiers = parseTiers(c.costTiers);
             c.zoho = zohoSnapshot(c);
             c.zohoPrice = {};
             Object.keys(PRICE).forEach(function (k) { if (has(P, PRICE[k]) && r[PRICE[k]] != null && r[PRICE[k]] !== '') c.zohoPrice[k] = num(r[PRICE[k]]); });
@@ -225,8 +245,9 @@
             if (c.vendorId) data.Vendor_Name = { id: c.vendorId };
             Object.keys(CAT).forEach(function (k) {
               var a = CAT[k]; if (k === 'updated') return;
-              if (!writable(P, a)) { if (c[k] != null && c[k] !== '') skipped[a] = true; return; }
-              data[a] = c[k] === '' ? null : c[k];
+              var v = k === 'costTiers' ? tierText(c.costTiers) : (c[k] === '' ? null : c[k]);
+              if (!writable(P, a)) { if (v != null && v !== '' && !(Array.isArray(v) && !v.length)) skipped[a] = true; return; }
+              data[a] = v;
             });
             if (CAT.updated && writable(P, CAT.updated)) data[CAT.updated] = today();
             if (c.isNew) {
@@ -316,20 +337,21 @@
     return finish(api);
 
     /* ---------- shared ---------- */
-    function zohoSnapshot(c) { var s = {}; Object.keys(CAT).forEach(function (k) { if (k !== 'updated' && k !== 'family' && k !== 'notes') s[k] = c[k] == null || c[k] === '' ? null : num(c[k]); }); return s; }
+    function zohoSnapshot(c) { var s = {}; Object.keys(CAT).forEach(function (k) { if (isNumKey(k)) s[k] = c[k] == null || c[k] === '' ? null : num(c[k]); }); return s; }
     function finish(a) { a.snapshot = zohoSnapshot; return a; }
     function sampleScenario() {
       var s = E.blankScenario();
       s.name = 'Example County - Pretrial GPS and CAM (sample)'; s.customerName = 'Example County'; s.program = 'Pretrial Services';
       s.priceEscalatorPct = 3;
-      var g = E.blankLine('p-gps'); g.units = 150; g.inactivePct = 8; g.sparePct = 30;
-      g.price = { leaseDaily: 4.25, inactiveDaily: 0, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 };
+      var g = E.blankLine('p-gps'); g.units = 150; g.sparePct = 30;
+      g.priceTiers = [{ min: 101, leaseDaily: 4.00 }, { min: 251, leaseDaily: 3.75 }];
+      g.price = { leaseDaily: 4.25, spareDaily: 1.50, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 };
       var c = E.blankLine('p-cam'); c.units = 20; c.sparePct = 15;
-      c.price = { leaseDaily: 11.00, inactiveDaily: 0, saasMonthly: 350, purchasePrice: 0, serviceDaily: 0, lostFee: 1200 };
+      c.price = { leaseDaily: 11.00, spareDaily: 0, saasMonthly: 350, purchasePrice: 0, serviceDaily: 0, lostFee: 1200 };
       s.lines = [g, c];
       s.staffing = [{ name: 'Monitoring center and case support', costMethod: 'hours', hoursPerParticipant: 0.5, costPerHour: 38, overheadPct: 25, participants: null, priceMethod: 'perDay', priceDaily: 0.75 }];
       s.fees = [{ name: 'Installation', when: 'once', qtyBasis: 'perUnit', qty: 0, price: 25, cost: 8 }];
-      s.spareBilling = { enabled: true, overPct: 25, dailyRate: 1.50 };
+      s.spareBilling = { overPct: 25 };
       s.lostRatePct = 3; s.lostRecoveryPct = 50;
       s.proposal.preparedBy = 'Beau Carrigan';
       return s;
