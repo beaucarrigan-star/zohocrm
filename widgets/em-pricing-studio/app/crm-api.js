@@ -16,7 +16,9 @@
     var E = o.engine;
     var CAT = o.catalogFields || {};          /* cost key -> Products API name */
     var PRICE = o.priceFields || {};          /* customer price key -> Products API name */
-    var SCEN = o.scenarioFields || [];        /* Pricing_Scenarios API names the Studio writes */
+    var SCEN = o.scenarioFields || [];
+    var VUNITS = o.vendorUnitsField || 'EM_Units_Current';   /* Vendors: current units JusticePoint has with the vendor */
+    var VJP = o.vendorFlagField || 'EM_JusticePoint_Vendor'; /* Vendors: checkbox, ticked = a JusticePoint vendor */        /* Pricing_Scenarios API names the Studio writes */
     var MODEL_PICK = o.modelPick || {};
     var timeout = o.timeout || function (p) { return Promise.resolve(p); };
     var today = o.today, addDays = o.addDays;
@@ -74,9 +76,9 @@
        PREVIEW: a pretend "Zoho" kept in this browser, so matching can be tried
        ===================================================================== */
     if (PREVIEW) {
-      var ZKEY = 'em-pricing-preview-zoho-v3';
+      var ZKEY = 'em-pricing-preview-zoho-v4';
       var SAMPLE = [
-        { id: 'p-gps', name: 'GPS device', vendor: 'Sample vendor A', vendorId: 'v1', family: 'GPS', costs: { costLeaseDaily: 2.50, spareAllowancePct: 25, spareOverageDaily: 1.00, costPurchase: 450, costOwnedDaily: 1.00, usefulLifeMonths: 36, replacementCost: 450 }, costTiers: [{ min: 101, costLeaseDaily: 2.25 }, { min: 251, costLeaseDaily: 2.00 }], prices: { leaseDaily: 4.00, spareDaily: 1.50, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 } },
+        { id: 'p-gps', name: 'GPS device', vendor: 'Sample vendor A', vendorId: 'v1', family: 'GPS', costs: { costLeaseDaily: 3.25, spareAllowancePct: 25, spareOverageDaily: 1.00, costPurchase: 450, costOwnedDaily: 1.00, usefulLifeMonths: 36, replacementCost: 450 }, costTiers: [{ min: 1501, costLeaseDaily: 3.05 }, { min: 2001, costLeaseDaily: 2.82 }], prices: { leaseDaily: 4.00, spareDaily: 1.50, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 } },
         { id: 'p-cam', name: 'Continuous alcohol monitor (CAM)', vendor: 'Sample vendor A', vendorId: 'v1', family: 'CAM', costs: { costLeaseDaily: 7.00, usefulLifeMonths: 36, replacementCost: 1200 }, prices: { leaseDaily: 11.00, saasMonthly: 340, lostFee: 1200 } },
         { id: 'p-rb', name: 'Remote breath device', vendor: 'Sample vendor B', vendorId: 'v2', family: 'Remote Breath', costs: {}, prices: {} },
         { id: 'p-rf', name: 'RF device', vendor: 'Sample vendor B', vendorId: 'v2', family: 'RF', costs: {}, prices: {} }
@@ -90,10 +92,10 @@
         c.zoho = zohoSnapshot(c); c.zohoPrice = clone(z.prices || {});
         return c;
       };
-      api.setupReport = function () { return Promise.resolve({ products: [], prices: [], scenarios: [], metadata: true }); };
+      api.setupReport = function () { return Promise.resolve({ products: [], prices: [], scenarios: [], vendors: [], metadata: true }); };
       api.currentUser = function () { return Promise.resolve('Beau Carrigan'); };
       api.catalog = function () { return Promise.resolve(zload().map(toItem)); };
-      api.vendors = function () { return Promise.resolve([{ id: 'v1', name: 'Sample vendor A' }, { id: 'v2', name: 'Sample vendor B' }]); };
+      api.vendors = function () { return Promise.resolve([{ id: 'v1', name: 'Sample vendor A', units: 1700, jp: true }, { id: 'v2', name: 'Sample vendor B', units: 300, jp: true }, { id: 'v3', name: 'Office supplies vendor', units: null, jp: false }]); };
       api.saveCatalog = function (rows) {
         var list = zload();
         rows.forEach(function (c) {
@@ -151,15 +153,16 @@
 
     /* what is missing in Zoho, for the setup panel */
     api.setupReport = function (fresh) {
-      return Promise.all([fieldsOf('Products', fresh), fieldsOf('Pricing_Scenarios', fresh)]).then(function (res) {
-        var P = res[0], S = res[1];
+      return Promise.all([fieldsOf('Products', fresh), fieldsOf('Pricing_Scenarios', fresh), fieldsOf('Vendors', fresh)]).then(function (res) {
+        var P = res[0], S = res[1], V = res[2];
         var miss = function (m, map) { return Object.keys(map).filter(function (k) { return !has(m, map[k]); }).map(function (k) { return { key: k, api: map[k] }; }); };
         var ro = function (m, map) { return Object.keys(map).filter(function (k) { return has(m, map[k]) && !writable(m, map[k]); }).map(function (k) { return { key: k, api: map[k] }; }); };
         return {
           metadata: P.ok,
           products: miss(P, CAT), productsReadOnly: ro(P, CAT),
           prices: miss(P, PRICE), pricesReadOnly: ro(P, PRICE),
-          scenarios: S.ok ? SCEN.filter(function (a) { return !S.fields[a]; }).map(function (a) { return { api: a }; }) : []
+          scenarios: S.ok ? SCEN.filter(function (a) { return !S.fields[a]; }).map(function (a) { return { api: a }; }) : [],
+          vendors: V.ok ? [VJP, VUNITS].filter(function (a) { return !V.fields[a]; }).map(function (a) { return { api: a }; }) : []
         };
       });
     };
@@ -217,7 +220,8 @@
       var viaCoql = function () {
         var out = [];
         var next = function (off) {
-          return api.coql('select id, Vendor_Name from Vendors where id is not null order by Vendor_Name asc limit ' + off + ', 200').then(function (r) {
+          var q = function (cols) { return api.coql('select ' + cols + ' from Vendors where id is not null order by Vendor_Name asc limit ' + off + ', 200'); };
+          return q('id, Vendor_Name, ' + VUNITS + ', ' + VJP).catch(function () { return q('id, Vendor_Name'); }).then(function (r) {
             out = out.concat(r); return r.length === 200 && off < 4800 ? next(off + 200) : out;
           });
         };
@@ -227,7 +231,12 @@
         .then(function (rows) {
           var seen = {};
           return rows.filter(function (v) { var id = String(v.id); if (!v.id || seen[id]) return false; seen[id] = 1; return true; })
-            .map(function (v) { return { id: String(v.id), name: v.Vendor_Name || '(unnamed vendor)' }; })
+            .map(function (v) {
+              var u = v[VUNITS], f = v[VJP];
+              return { id: String(v.id), name: v.Vendor_Name || '(unnamed vendor)',
+                units: u == null || u === '' || !isFinite(Number(u)) ? null : Number(u),
+                jp: f === undefined ? null : (f === true || f === 'true') };   /* null = field not on the record */
+            })
             .sort(function (a, b) { return a.name.localeCompare(b.name); });
         })
         .catch(function () { vendorCache = null; return []; });

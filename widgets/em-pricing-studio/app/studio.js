@@ -58,6 +58,11 @@
     'Est_Monthly_Cost', 'Est_Monthly_Margin', 'Est_Margin_Pct', 'Target_Margin_Pct', 'Term_Revenue', 'Term_Margin', 'Upfront_Cash',
     'Rev_Per_Unit_Day', 'Cost_Per_Unit_Day', 'Margin_Tier', 'Missing_Costs', 'Account', 'Scenario_JSON', 'Scenario_Status', 'Proposal_Sent'];
 
+  /* Vendors: number field = units JusticePoint currently has with that vendor (sets the cost tier) */
+  var VENDOR_UNITS_FIELD = 'EM_Units_Current';
+  /* Vendors: checkbox, ticked = a JusticePoint vendor (only these are offered in the Studio) */
+  var VENDOR_FLAG_FIELD = 'EM_JusticePoint_Vendor';
+
   var FAMILIES = ['GPS', 'CAM', 'Remote Breath', 'RF', 'Victim / DV', 'Accessory', 'Service', 'Other'];
   var MODEL_PICK = { lease: 'Daily lease', saas: 'Transparent Pricing', purchase: 'Purchase' };   /* Pricing_Model picklist values */
   /* ========================== END CONFIG ========================== */
@@ -87,12 +92,12 @@
   /* ---------- data layer ---------- */
   var api = window.PricingCRM.create({
     preview: PREVIEW, engine: E, catalogFields: CAT, priceFields: PRICE_FIELDS, scenarioFields: SCENARIO_FIELDS,
-    modelPick: MODEL_PICK, timeout: timeout, today: today, addDays: addDays, number: num
+    modelPick: MODEL_PICK, vendorUnitsField: VENDOR_UNITS_FIELD, vendorFlagField: VENDOR_FLAG_FIELD, timeout: timeout, today: today, addDays: addDays, number: num
   });
 
   /* ---------- state ---------- */
   var state = { openTiers: {}, catalog: [], vendors: [], vendorFilter: '', scenario: null, saved: [], dirty: false, tab: 'scenario', catDirty: {}, user: null,
-    setup: { products: [], prices: [], scenarios: [], productsReadOnly: [], pricesReadOnly: [] } };
+    setup: { products: [], prices: [], scenarios: [], vendors: [], productsReadOnly: [], pricesReadOnly: [] } };
   var itemById = function (id) { return state.catalog.filter(function (c) { return String(c.id) === String(id); })[0]; };
   var calc = function (opts) { return E.price(state.scenario, state.catalog, opts); };
   var priceFieldReady = function (key) { return !!PRICE_FIELDS[key] && !state.setup.prices.some(function (m) { return m.key === key; }); };
@@ -141,8 +146,96 @@
   function field(label, html, hint, wide) { return '<label class="f' + (wide ? ' wide' : '') + '"><span>' + esc(label) + (hint ? ' <span class="hint">· ' + esc(hint) + '</span>' : '') + '</span>' + html + '</label>'; }
 
   /* ---------- builder ---------- */
+  /* ---------- what vendors charge JusticePoint ---------- */
+  function scenarioVendors() {
+    var out = [];
+    state.scenario.lines.forEach(function (l) { var it = itemById(l.itemId); if (it && it.vendorId && out.indexOf(String(it.vendorId)) < 0) out.push(String(it.vendorId)); });
+    return out;
+  }
+  function vendorDevices(vid) {
+    var seen = {}, out = [];
+    state.scenario.lines.forEach(function (l) { var it = itemById(l.itemId); if (it && String(it.vendorId) === vid && !seen[it.id]) { seen[it.id] = 1; out.push(it); } });
+    return out;
+  }
+  function syncVendorVolume() {
+    var s = state.scenario; if (!s.vendorVolume) s.vendorVolume = {};
+    scenarioVendors().forEach(function (vid) {
+      var v = state.vendors.filter(function (x) { return x.id === vid; })[0];
+      var e = s.vendorVolume[vid] || (s.vendorVolume[vid] = { override: null, useNext: false, rates: {} });
+      if (!e.rates) e.rates = {};
+      e.zoho = v && v.units != null ? num(v.units) : null;
+      e.name = v ? v.name : (vendorDevices(vid)[0] || {}).vendor || '';
+    });
+  }
+  function vendorPanel(buy) {
+    var vids = scenarioVendors(), s = state.scenario;
+    if (!vids.length) return '';
+    var rl = buy ? 'Owned svc $/day' : 'Lease $/day';
+    var h = '<div class="card"><div class="head"><h2>What vendors charge ' + esc(BRAND.company) + '</h2><span class="meta">tiers use total units with the vendor · or type the vendor’s price</span></div><div class="body scroll-x">';
+    h += '<table class="tbl vv"><thead><tr><th>Vendor / device</th><th class="r">Current units<div class="sub">from Zoho</div></th><th class="r">Override<div class="sub">this scenario</div></th><th class="r">+ This scenario</th><th class="r">= Total</th><th>Catalog tier cost</th><th>Next tier</th><th>Vendor price<div class="sub">' + esc(rl) + ' · blank = catalog</div></th></tr></thead><tbody>';
+    vids.forEach(function (vid) {
+      var e = s.vendorVolume[vid] || {};
+      h += '<tr class="vhead"><td><b>' + esc(e.name || 'Vendor') + '</b></td>';
+      h += '<td class="r num">' + (e.zoho == null ? '<span class="fine" style="margin:0">not set</span>' : int(e.zoho)) + '</td>';
+      h += '<td class="w-sm">' + inp('vendorVolume.' + vid + '.override', 'vol', { step: '1', ph: e.zoho == null ? '0' : String(e.zoho), label: 'Current units override for ' + (e.name || 'vendor') }) + '</td>';
+      h += '<td class="r num" id="vv-s-' + esc(vid) + '"></td><td class="r num" id="vv-t-' + esc(vid) + '"></td>';
+      h += '<td colspan="2" id="vv-n-' + esc(vid) + '"></td>';
+      h += '<td><label class="check"><input type="checkbox" data-bind="vendorVolume.' + vid + '.useNext" data-kind="bool"' + (e.useNext ? ' checked' : '') + '> Use next tier</label></td></tr>';
+      vendorDevices(vid).forEach(function (it) {
+        var key = esc(vid + '-' + it.id);
+        h += '<tr class="vdev"><td colspan="5" style="padding-left:18px">' + esc(it.name || 'Device') + (it.family ? ' <span class="fine" style="margin:0">· ' + esc(it.family) + '</span>' : '') + '</td>';
+        h += '<td id="vd-r-' + key + '"></td><td id="vd-n-' + key + '"></td>';
+        h += '<td class="w-md">' + inp('vendorVolume.' + vid + '.rates.' + it.id, 'vol', { step: '0.01', label: 'Vendor price for ' + (it.name || 'device') }) + '<div class="zslot" id="vd-m-' + key + '"></div></td></tr>';
+      });
+    });
+    h += '</tbody></table><div id="vv-lock" style="margin-top:10px"></div>';
+    h += '<p class="fine">Current units come from <code>' + esc(VENDOR_UNITS_FIELD) + '</code> on the Zoho vendor; the override replaces it for this scenario. <b>Vendor price</b> is what the vendor quoted you for this deal; it replaces the catalog tier for this scenario only. Clear it to go back to the catalog. <b>Use next tier</b> models the next cheaper catalog tier.</p></div></div>';
+    return h;
+  }
+  function tierTxt(min) { return min ? int(min) + '+ tier' : 'base rate'; }
+  function renderVendorResults(r) {
+    (r.vendors || []).forEach(function (v) {
+      var el = function (p) { return $('vv-' + p + '-' + v.vendorId); };
+      if (!el('t')) return;
+      el('s').textContent = int(v.scenarioUnits);
+      el('t').innerHTML = '<b>' + int(v.total) + '</b>' + (v.override != null ? '<div class="fine" style="margin:0">using override</div>' : '');
+      var n = el('n');
+      if (!v.hasTiers) n.innerHTML = '<span class="fine" style="margin:0">No cost tiers in the catalog</span>';
+      else if (v.nextMin == null) n.innerHTML = v.lines.some(function (l) { return l.manual != null; }) ? '<span class="fine" style="margin:0">Vendor prices entered</span>' : '<span class="chip strong">Top tier</span>';
+      else n.innerHTML = '<b>' + int(v.unitsToNext) + '</b> more unit' + (v.unitsToNext === 1 ? '' : 's') + ' to the ' + int(v.nextMin) + '+ tier · saves <b>' + money(v.savingsMonthly) + '</b>/mo on this scenario';
+      v.lines.forEach(function (l) {
+        var key = v.vendorId + '-' + l.itemId, R = $('vd-r-' + key), N = $('vd-n-' + key), M = $('vd-m-' + key);
+        if (R) R.innerHTML = '<b>' + rate(l.rate) + '</b>/day <span class="fine" style="margin:0">(' + tierTxt(l.tierMin) + ')</span>' + (l.modelled && l.next ? '<div class="zc diff">Modelling ' + rate(l.next.rate) + ' (' + tierTxt(l.next.min) + ')</div>' : '');
+        if (N) N.innerHTML = l.next ? rate(l.next.rate) + '/day at ' + int(l.next.min) + '+' : '<span class="fine" style="margin:0">—</span>';
+        if (M) M.innerHTML = l.manual != null ? '<span class="zc kept">Using vendor price ' + rate(l.manual) + (Math.abs(l.manual - l.rate) > 0.004 ? ' · ' + (l.manual < l.rate ? rate(l.rate - l.manual) + ' under' : rate(l.manual - l.rate) + ' over') + ' catalog' : '') + '</span>' : '';
+      });
+    });
+    var lk = $('vv-lock'); if (!lk) return;
+    var pa = state.scenario.pricedAt;
+    if (!pa || !pa.vendors) { lk.innerHTML = '<span class="fine" style="margin:0">Vendor costs are locked onto the scenario when you save it.</span>'; return; }
+    var changes = [], lockedTxt = pa.vendors.map(function (sv) {
+      var cur = (r.vendors || []).filter(function (x) { return x.vendorId === sv.vendorId; })[0];
+      sv.lines.forEach(function (sl) {
+        var cl = cur && cur.lines.filter(function (x) { return String(x.itemId) === String(sl.itemId); })[0];
+        if (!cl) changes.push(esc(sl.name) + ' is no longer in the scenario');
+        else if (Math.abs(cl.effective - sl.effective) > 0.004) changes.push(esc(sl.name) + ' is now ' + rate(cl.effective) + ' (was ' + rate(sl.effective) + ')');
+      });
+      if (cur && cur.total !== sv.total) changes.push(esc(sv.name) + ' total is now ' + int(cur.total) + ' units (was ' + int(sv.total) + ')');
+      return esc(sv.name) + ' at ' + int(sv.total) + ' units: ' + sv.lines.map(function (sl) { return esc(sl.name) + ' ' + rate(sl.effective) + (sl.manual != null ? ' (vendor price)' : sl.modelled ? ' (next tier)' : ''); }).join(', ');
+    }).join(' · ');
+    lk.innerHTML = '<div class="' + (changes.length ? 'alert' : 'target') + '"><span><b>Vendor costs locked ' + esc(longDate(pa.date)) + ':</b> ' + lockedTxt + '</span>' +
+      (changes.length ? '<ul>' + changes.map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ul><span>Save the scenario to lock the new costs.</span>' : '') + '</div>';
+  }
+  function costSnapshot(r) {
+    return { date: today(), vendors: (r.vendors || []).map(function (v) {
+      return { vendorId: v.vendorId, name: v.name, current: v.current, scenarioUnits: v.scenarioUnits, total: v.total, useNext: v.useNext,
+        lines: v.lines.map(function (l) { return { itemId: l.itemId, name: l.name, tierMin: l.tierMin, rate: l.rate, manual: l.manual, modelled: !!(l.modelled && l.next), effective: l.effective }; }) };
+    }) };
+  }
+
   function renderBuilder() {
     var s = state.scenario, m = s.model, buy = m === 'purchase' || s.vendorSource === 'buy';
+    syncVendorVolume();
     var h = '';
     h += '<div class="card"><div class="head"><h2>Customer and structure</h2><span class="meta">' + (s.account ? 'Customer: ' + esc(s.account.name) : 'Not linked to an account yet') + '</span></div><div class="body"><div class="fgrid">';
     h += field('Scenario name', inp('name', 'text'), null, true);
@@ -178,6 +271,8 @@
       h += '</tbody></table>';
     }
     h += '</div></div>';
+
+    h += vendorPanel(buy);
 
     /* spares, losses, minimums */
     h += '<div class="card"><div class="head"><h2>Spares, losses and minimums</h2></div><div class="body">';
@@ -274,6 +369,14 @@
     return 'Customer buys the equipment up front and pays a monitoring service fee per active unit per day. ' + BRAND.company + ' buys the units, so Buy $/unit and Owned svc $/day must be in the Cost catalog.';
   }
   /* devices grouped by their Zoho vendor */
+  /* vendors offered in the Studio: ticked EM_JusticePoint_Vendor; fallback until any are ticked */
+  function jpVendorInfo() {
+    var ticked = state.vendors.filter(function (v) { return v.jp === true; });
+    if (ticked.length) return { list: ticked, mode: 'ticked' };
+    var used = {}; state.catalog.forEach(function (c) { if (c.vendorId) used[c.vendorId] = 1; });
+    return { list: state.vendors.filter(function (v) { return used[v.id] || num(v.units) > 0; }), mode: 'fallback' };
+  }
+  function isJp(vid) { return jpVendorInfo().list.some(function (v) { return v.id === vid; }); }
   function vendorName(c) { if (c.vendor) return c.vendor; var v = state.vendors.filter(function (x) { return x.id === c.vendorId; })[0]; return v ? v.name : ''; }
   function catalogOptions(sel) {
     var has = false, groups = {}, order = [];
@@ -289,8 +392,9 @@
   function costHint(it, buy, lr) {
     if (!it) return '';
     var eff = it;
-    if (lr && lr.costTier) { eff = Object.assign({}, it); var ct = E.pickTier(it.costTiers, lr.active); E.COST_TIER_KEYS.forEach(function (k) { if (ct && !blank(ct[k])) eff[k] = num(ct[k]); }); }
-    var vn = vendorName(it); return (vn ? vn + ' · ' : '') + costHintBody(eff, buy);
+    if (lr && lr.costTier) { eff = Object.assign({}, it); var ct = (it.costTiers || []).filter(function (t) { return num(t.min) === lr.costTier; })[0]; E.COST_TIER_KEYS.forEach(function (k) { if (ct && !blank(ct[k])) eff[k] = num(ct[k]); }); }
+    if (lr && lr.rateKey) { if (eff === it) eff = Object.assign({}, it); eff[lr.rateKey] = lr.costRate; }
+    var vn = vendorName(it); return (vn ? vn + ' · ' : '') + costHintBody(eff, buy) + (lr && lr.manual != null ? ' (vendor price)' : '');
   }
   function costHintBody(it, buy) {
     if (buy) return num(it.costPurchase) ? 'Buy ' + rate(it.costPurchase) + ' · owned svc ' + rate(it.costOwnedDaily || 0) + '/day · ' + (it.usefulLifeMonths || 36) + ' mo life' : 'No Buy $/unit in the Cost catalog';
@@ -323,6 +427,7 @@
     if (un.length) h += '<div class="sect"><div class="alert"><b>' + un.length + ' price' + (un.length === 1 ? '' : 's') + ' differ from Zoho.</b> Choose Use Zoho, Keep or Save to Zoho under each highlighted price.</div></div>';
     if (r.missing.length) h += '<div class="sect"><div class="alert"><b>Missing costs</b> — margin is overstated until these are in the Cost catalog:<ul>' + r.missing.slice(0, 6).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>';
 
+    renderVendorResults(r);
     h += breakEvenSection(r);
 
     h += '<div class="sect"><h3>Target ' + pctf(s.targetMarginPct, 0) + ' term margin</h3><div class="target">';
@@ -451,6 +556,7 @@
     var catLabel = function (k) { var c = colOf(k); return c ? { h: c.h, type: c.type } : (CAT_OTHER[k] || { h: k, type: 'Single Line' }); };
     su.products.forEach(function (m) { var l = catLabel(m.key); rows.push(['Products', l.h + ' (your cost)', m.api, l.type]); });
     su.prices.forEach(function (m) { rows.push(['Products', PRICE_LABEL[m.key] + ' (customer price)', m.api, 'Currency']); });
+    (su.vendors || []).forEach(function (m) { rows.push(['Vendors', m.api === VENDOR_FLAG_FIELD ? 'JusticePoint vendor (tick to show in the Studio)' : 'Current units with this vendor (sets the cost tier)', m.api, m.api === VENDOR_FLAG_FIELD ? 'Checkbox' : 'Number']); });
     su.scenarios.forEach(function (m) { rows.push(['Pricing_Scenarios', m.api.replace(/_/g, ' '), m.api, m.api === 'Scenario_JSON' ? 'Multi Line (large)' : m.api === 'Account' ? 'Lookup (Accounts)' : /Status|Model|Source|Tier/.test(m.api) ? 'Picklist' : /Until|Sent/.test(m.api) ? 'Date' : /Name|Options/.test(m.api) ? 'Single Line' : 'Number / Currency']); });
     var ro = (su.productsReadOnly || []).concat(su.pricesReadOnly || []);
     var el = $('cat-setup');
@@ -474,12 +580,13 @@
     var shown = 0;
     state.catalog.forEach(function (c, i) {
       if (!c.ack) c.ack = {};
-      if (vf && !c.isNew && (vf === '_none' ? !!c.vendorId : c.vendorId !== vf)) return;
+      if (vf && !c.isNew && (vf === '_none' ? !!c.vendorId : vf === '_off' ? (!c.vendorId || isJp(c.vendorId)) : c.vendorId !== vf)) return;
       shown++;
-      var vendorKnown = state.vendors.some(function (v) { return v.id === c.vendorId; });
+      var jpl = jpVendorInfo().list, vendorKnown = jpl.some(function (v) { return v.id === c.vendorId; });
+      var offList = c.vendorId && !vendorKnown;   /* linked to a vendor that is not a JusticePoint vendor */
       h += '<tr data-ci="' + i + '"' + (state.catDirty[c.id] ? ' class="changed"' : '') + '>';
       h += '<td><input type="text" data-cat="name" value="' + esc(c.name) + '" placeholder="Device name" aria-label="Device name"></td>';
-      h += '<td><select data-cat="vendorId" aria-label="Vendor"><option value="">' + (c.vendor && !vendorKnown ? esc(c.vendor) : 'Vendor…') + '</option>' + state.vendors.map(function (v) { return '<option value="' + esc(v.id) + '"' + (v.id === c.vendorId ? ' selected' : '') + '>' + esc(v.name) + '</option>'; }).join('') + '</select></td>';
+      h += '<td><select data-cat="vendorId" aria-label="Vendor"><option value="">Vendor…</option>' + (offList ? '<option value="' + esc(c.vendorId) + '" selected>' + esc(vendorName(c) || 'Linked vendor') + ' (not a JusticePoint vendor)</option>' : '') + jpl.map(function (v) { return '<option value="' + esc(v.id) + '"' + (v.id === c.vendorId ? ' selected' : '') + '>' + esc(v.name) + '</option>'; }).join('') + '</select>' + (offList ? '<div class="zc diff">Not a JusticePoint vendor</div>' : '') + '</td>';
       h += '<td><select data-cat="family" aria-label="Family"><option value="">—</option>' + FAMILIES.concat(c.family && FAMILIES.indexOf(c.family) < 0 ? [c.family] : []).map(function (f) { return '<option' + (f === c.family ? ' selected' : '') + '>' + esc(f) + '</option>'; }).join('') + '</select></td>';
       CAT_COLS.forEach(function (col) {
         h += '<td class="r pcell"><span class="' + (col.t === 'money' ? 'money' : col.t === 'pct' ? 'pctw' : '') + '"><input type="number" min="0" inputmode="decimal" step="' + (col.t === 'int' ? '1' : 'any') + '" data-cat="' + col.k + '" value="' + esc(blank(c[col.k]) ? '' : c[col.k]) + '" aria-label="' + esc((c.name || 'Device') + ' ' + col.h) + '"></span><div class="zslot" id="zc-c-' + i + '-' + col.k + '">' + catBadgeHtml(c, i, col.k, col.t) + '</div></td>';
@@ -498,15 +605,19 @@
   }
   function renderVendorBar() {
     var el = $('cat-vendors'); if (!el) return;
-    var count = {}, none = 0;
-    state.catalog.forEach(function (c) { if (c.isNew) return; if (c.vendorId) count[c.vendorId] = (count[c.vendorId] || 0) + 1; else none++; });
+    var info = jpVendorInfo(), jpl = info.list, jpIds = {}; jpl.forEach(function (v) { jpIds[v.id] = 1; });
+    var count = {}, none = 0, off = 0;
+    state.catalog.forEach(function (c) { if (c.isNew) return; if (!c.vendorId) { none++; return; } count[c.vendorId] = (count[c.vendorId] || 0) + 1; if (!jpIds[c.vendorId]) off++; });
     var vf = state.vendorFilter;
-    var sel = '<select id="cat-vendor" aria-label="Filter by vendor" style="width:auto;min-width:220px"><option value="">All vendors (' + state.vendors.length + ')</option>' +
-      state.vendors.map(function (v) { return '<option value="' + esc(v.id) + '"' + (vf === v.id ? ' selected' : '') + '>' + esc(v.name) + ' · ' + (count[v.id] || 0) + ' product' + ((count[v.id] || 0) === 1 ? '' : 's') + '</option>'; }).join('') +
+    var sel = '<select id="cat-vendor" aria-label="Filter by vendor" style="width:auto;min-width:220px"><option value="">All JusticePoint vendors (' + jpl.length + ')</option>' +
+      jpl.map(function (v) { return '<option value="' + esc(v.id) + '"' + (vf === v.id ? ' selected' : '') + '>' + esc(v.name) + ' · ' + (count[v.id] || 0) + ' product' + ((count[v.id] || 0) === 1 ? '' : 's') + '</option>'; }).join('') +
+      (off ? '<option value="_off"' + (vf === '_off' ? ' selected' : '') + '>Other vendors · ' + off + '</option>' : '') +
       (none ? '<option value="_none"' + (vf === '_none' ? ' selected' : '') + '>No vendor · ' + none + '</option>' : '') + '</select>';
-    var linked = state.vendors.filter(function (v) { return count[v.id]; }).length;
+    var note = info.mode === 'ticked'
+      ? jpl.length + ' JusticePoint vendor' + (jpl.length === 1 ? '' : 's') + ' (ticked <code>' + esc(VENDOR_FLAG_FIELD) + '</code> in Zoho)'
+      : '<b>No vendors are ticked as JusticePoint vendors yet</b>, so vendors with products or current units are shown. Tick <code>' + esc(VENDOR_FLAG_FIELD) + '</code> on each JusticePoint vendor in Zoho, then Refresh from Zoho.';
     el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:0 0 10px">' + sel +
-      '<span class="fine" style="margin:0">' + state.vendors.length + ' vendor' + (state.vendors.length === 1 ? '' : 's') + ' in Zoho · ' + linked + ' with products' + (none ? ' · <b>' + none + ' product' + (none === 1 ? '' : 's') + ' without a vendor</b>' : '') + '</span></div>';
+      '<span class="fine" style="margin:0">' + note + (off ? ' · <b>' + off + ' product' + (off === 1 ? '' : 's') + ' linked to other vendors</b>' : '') + (none ? ' · <b>' + none + ' without a vendor</b>' : '') + '</span></div>';
   }
   function onCatInput(ev) {
     var t = ev.target;
@@ -787,12 +898,13 @@
     if (firstItemId()) s.lines.push(E.blankLine(firstItemId()));
     openScenario(s); toast('New scenario. Pick devices and enter prices.');
   }
-  function duplicate() { var s = clone(state.scenario); s.id = null; s.name = (s.name || 'Scenario') + ' (copy)'; state.scenario = s; setDirty(true); renderAll(); renderPicker(); toast('Copy made. Save to keep it.'); }
+  function duplicate() { var s = clone(state.scenario); s.id = null; s.pricedAt = null; s.name = (s.name || 'Scenario') + ' (copy)'; state.scenario = s; setDirty(true); renderAll(); renderPicker(); toast('Copy made. Save to keep it.'); }
   function save() {
     var btn = $('btn-save'); btn.disabled = true; btn.textContent = 'Saving…';
     var res = calc(), un = unresolvedLines().length;
+    state.scenario.pricedAt = costSnapshot(res);   /* lock what each vendor charges at the time of this run */
     api.saveScenario(state.scenario, res).then(function (out) {
-      state.scenario.id = out.id; setDirty(false);
+      state.scenario.id = out.id; setDirty(false); renderResults();
       return refreshSaved().then(function () {
         var msg = PREVIEW ? 'Saved in this browser (preview).' : 'Saved to Pricing Scenarios in Zoho.';
         if (out.skipped.length) msg += ' Fields missing in Zoho were skipped: ' + out.skipped.join(', ') + '.';
@@ -811,7 +923,7 @@
     var kind = t.getAttribute('data-kind'), v;
     if (kind === 'bool') v = !!t.checked;
     else if (kind === 'text') v = t.value;
-    else v = t.value === '' ? (/participants$|\.priceTiers\./.test(path) ? null : 0) : Number(t.value);
+    else v = t.value === '' ? (/participants$|\.priceTiers\.|\.override$|\.rates\./.test(path) ? null : 0) : Number(t.value);
     setPath(state.scenario, path, v);
     setDirty(true);
     if (t.getAttribute('data-rerender') || /itemId$/.test(path)) { if (ev.type === 'change') { renderBuilder(); renderResults(); } return; }
@@ -898,7 +1010,7 @@
     $('cat-vendors').addEventListener('change', function (ev) { if (ev.target.id !== 'cat-vendor') return; state.vendorFilter = ev.target.value; renderCatalog(); });
     $('cat-refresh').addEventListener('click', function () { refreshFromZoho($('cat-refresh')); });
     $('cat-add').addEventListener('click', function () {
-      var vf = state.vendorFilter && state.vendorFilter !== '_none' ? state.vendorFilter : '';
+      var vf = state.vendorFilter && state.vendorFilter.charAt(0) !== '_' ? state.vendorFilter : '';
       var vv = state.vendors.filter(function (v) { return v.id === vf; })[0];
       var c = { id: 'new-' + Date.now(), isNew: true, name: '', vendor: vv ? vv.name : '', vendorId: vf, family: '', notes: '', usefulLifeMonths: 36, costTiers: [], zoho: {}, zohoPrice: {}, ack: {} };
       state.catalog.push(c); state.catDirty[c.id] = true; renderCatalog();
@@ -926,7 +1038,7 @@
         if (!sc) { sc = E.blankScenario(); sc.proposal.preparedBy = state.user || ''; if (firstItemId()) sc.lines.push(E.blankLine(firstItemId())); }
         openScenario(sc);
         var t = store.get('em-pricing-tab'); if (t && t !== 'scenario') showTab(t);
-        if (!PREVIEW && (state.setup.products.length || state.setup.prices.length || state.setup.scenarios.length)) toast('Some Zoho fields the Studio uses are missing. See the list on the Cost catalog tab.', true, 7000);
+        if (!PREVIEW && (state.setup.products.length || state.setup.prices.length || state.setup.scenarios.length || (state.setup.vendors || []).length)) toast('Some Zoho fields the Studio uses are missing. See the list on the Cost catalog tab.', true, 7000);
         if (!PREVIEW && !state.vendors.length) toast('No vendors came back from Zoho. Check that your profile can read the Vendors module.', true, 9000);
       });
     }).catch(function (e) {

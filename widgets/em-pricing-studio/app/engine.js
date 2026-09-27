@@ -9,6 +9,12 @@
    - Volume tiers (whole volume): a device's active-unit count picks ONE tier, and that
      tier's rates apply to every unit. Blank tier values fall back to the base rate.
      Cost tiers live on the catalog item (costTiers), price tiers on the scenario line.
+   - Vendor volume: a vendor bills on JusticePoint's TOTAL units with them, so cost tiers are
+     picked by (current units with that vendor + this scenario's active units for that
+     vendor's devices). Current units come from sc.vendorVolume[vendorId]: override if set,
+     otherwise the value read from the Zoho vendor (zoho). useNext = model the next cheaper tier.
+   - Manual vendor price: sc.vendorVolume[vendorId].rates[itemId] replaces the tiered rate
+     (lease $/day when leasing, owned svc $/day when JusticePoint owns the fleet).
    - Costs are whatever you enter in the Cost catalog. Free spares % and Spare $/day:
      spares up to that % of active units cost nothing; each spare above costs Spare $/day.
    - The customer model (daily lease, Transparent Pricing, purchase) is separate from how
@@ -43,6 +49,12 @@
     if (!Array.isArray(tiers)) return null;
     var best = null;
     tiers.forEach(function (t) { if (t && set(t.min) && n(t.min) > 0 && qty >= n(t.min) && (!best || n(t.min) > n(best.min))) best = t; });
+    return best;
+  }
+  function nextTier(tiers, qty) {
+    if (!Array.isArray(tiers)) return null;
+    var best = null;
+    tiers.forEach(function (t) { if (t && set(t.min) && n(t.min) > qty && (!best || n(t.min) < n(best.min))) best = t; });
     return best;
   }
   function overlay(base, tier, keys) {
@@ -80,18 +92,29 @@
   }
 
   /* ---------- one device line, one model ---------- */
-  function priceLine(line, item, sc, model, k, srcOverride) {
+  function priceLine(line, item, sc, model, k, srcOverride, ctx) {
+    ctx = ctx || {};
     item = item || {};
     k = k == null ? 1 : k;                       /* price multiplier (target solver) */
     var src = model === 'purchase' ? 'buy' : ((srcOverride || sc.vendorSource) === 'buy' ? 'buy' : 'lease');
     var A = Math.max(0, n(line.units));
     var S = A * pct(line.sparePct);
     var F = A + S;
-    var ct = pickTier(item.costTiers, A), pt = pickTier(line.priceTiers, A);
-    item = overlay(item, ct, COST_TIER_KEYS);
+    var costQty = ctx.costQty == null ? A : ctx.costQty;
+    var ct = pickTier(item.costTiers, costQty), nt = nextTier(item.costTiers, costQty), pt = pickTier(line.priceTiers, A);
+    var modelNext = !!(ctx.forceNext && nt);
+    var baseItem = item;
+    item = overlay(item, modelNext ? nt : ct, COST_TIER_KEYS);
+    var rateKey = src === 'lease' ? 'costLeaseDaily' : 'costOwnedDaily';
+    var manual = set(ctx.manual) ? n(ctx.manual) : null;
+    if (manual != null) item[rateKey] = manual;
     var p = overlay(line.price, pt, PRICE_TIER_KEYS);
     var out = { itemId: line.itemId, name: item.name || 'Device', active: A, spares: S, fleet: F, source: src,
-      costTier: ct ? n(ct.min) : null, priceTier: pt ? n(pt.min) : null, rates: p,
+      costTier: manual != null ? null : (modelNext ? n(nt.min) : (ct ? n(ct.min) : null)), priceTier: pt ? n(pt.min) : null, rates: p,
+      vendorId: ctx.vendorId || '', costQty: costQty, modelNext: modelNext && manual == null, manual: manual, rateKey: rateKey, costRate: n(item[rateKey]),
+      actualTier: ct ? n(ct.min) : null, actualRate: n(overlay(baseItem, ct, COST_TIER_KEYS)[rateKey]),
+      nextCost: nt ? { min: n(nt.min), rate: n(overlay(baseItem, nt, COST_TIER_KEYS)[rateKey]) } : null,
+      hasCostTiers: Array.isArray(baseItem.costTiers) && baseItem.costTiers.length > 0,
       rev: { device: 0, spares: 0, lost: 0 }, cost: { device: 0, spares: 0, lost: 0, amort: 0 },
       onceRev: 0, onceCost: 0, capex: 0, missing: [] };
 
@@ -171,7 +194,38 @@
     var byId = {};
     (catalog || []).forEach(function (c) { byId[String(c.id)] = c; });
 
-    var lines = (sc.lines || []).map(function (l) { return priceLine(l, byId[String(l.itemId)], sc, model, k, srcOverride); });
+    var vv = sc.vendorVolume || {};
+    var vendorOf = function (l) { var it = byId[String(l.itemId)]; return it && it.vendorId ? String(it.vendorId) : ''; };
+    var vScen = {}, vOrder = [];
+    (sc.lines || []).forEach(function (l) { var v = vendorOf(l); if (!v) return; if (vScen[v] == null) { vScen[v] = 0; vOrder.push(v); } vScen[v] += Math.max(0, n(l.units)); });
+    var vEntry = function (v) { return vv[v] || {}; };
+    var vCur = function (v) { var x = vEntry(v); return set(x.override) ? Math.max(0, n(x.override)) : Math.max(0, n(x.zoho)); };
+    var ctxOf = function (l, force) {
+      var v = vendorOf(l); if (!v) return {};
+      var e = vEntry(v), man = e.rates ? e.rates[String(l.itemId)] : null;
+      return { vendorId: v, costQty: vCur(v) + vScen[v], forceNext: force == null ? !!e.useNext : force, manual: man };
+    };
+    var lines = (sc.lines || []).map(function (l) { return priceLine(l, byId[String(l.itemId)], sc, model, k, srcOverride, ctxOf(l)); });
+    var lineCost = function (x) { return x.costMonthly; };
+    var vendors = vOrder.map(function (v) {
+      var idx = [], now = 0, next = 0;
+      (sc.lines || []).forEach(function (l, i) { if (vendorOf(l) === v) idx.push(i); });
+      idx.forEach(function (i) {
+        var l = sc.lines[i], it = byId[String(l.itemId)];
+        now += lineCost(priceLine(l, it, sc, model, k, srcOverride, ctxOf(l, false)));
+        next += lineCost(priceLine(l, it, sc, model, k, srcOverride, ctxOf(l, true)));
+      });
+      var vl = idx.map(function (i) { return lines[i]; });
+      var mins = vl.filter(function (x) { return x.nextCost && x.manual == null; }).map(function (x) { return x.nextCost.min; });
+      var total = vCur(v) + vScen[v], nextMin = mins.length ? Math.min.apply(null, mins) : null;
+      var e = vEntry(v);
+      return { vendorId: v, name: e.name || '', zoho: set(e.zoho) ? n(e.zoho) : null, override: set(e.override) ? n(e.override) : null,
+        current: vCur(v), scenarioUnits: vScen[v], total: total, useNext: !!e.useNext,
+        hasTiers: vl.some(function (x) { return x.hasCostTiers; }),
+        lines: vl.map(function (x) { return { itemId: x.itemId, name: x.name, tierMin: x.actualTier, rate: x.actualRate, next: x.nextCost, modelled: x.modelNext, manual: x.manual, rateKey: x.rateKey, effective: x.costRate }; }),
+        nextMin: nextMin, unitsToNext: nextMin == null ? null : Math.max(0, Math.ceil(nextMin - total)),
+        monthlyNow: now, monthlyAtNext: next, savingsMonthly: now - next };
+    });
     var sum = function (arr, f) { return arr.reduce(function (s, x) { return s + f(x); }, 0); };
     var active = sum(lines, function (l) { return l.active; });
     var fleet = sum(lines, function (l) { return l.fleet; });
@@ -263,7 +317,7 @@
       term: { months: T, revenue: termRev, revenueExMin: termRevExMin(recurring, once, T, pe), cost: termCost, margin: termMargin, marginPct: termRev > 0 ? termMargin / termRev * 100 : 0, residual: residual, cumulativeCash: cum, paybackMonth: payback },
       perUnitDay: unitDays > 0 ? { revenue: revM / unitDays, cost: costM / unitDays, target: target < 1 ? costM / (1 - target) / unitDays : null } : null,
       tier: tierOf(revM > 0 ? marginM / revM * 100 : 0, revM),
-      solve: solve, missing: missing, breakEven: breakEven
+      solve: solve, missing: missing, breakEven: breakEven, vendors: vendors
     };
   }
   function termRevExMin(recurring, once, T, pe) {
@@ -295,7 +349,7 @@
     return sc;
   }
 
-  var api = { DAYS: DAYS, MODELS: MODELS, TIERS: TIERS, PRICE_KEYS: PRICE_KEYS, tierOf: tierOf, pickTier: pickTier, COST_TIER_KEYS: COST_TIER_KEYS, PRICE_TIER_KEYS: PRICE_TIER_KEYS, price: price, compare: compare,
+  var api = { DAYS: DAYS, MODELS: MODELS, TIERS: TIERS, PRICE_KEYS: PRICE_KEYS, tierOf: tierOf, pickTier: pickTier, nextTier: nextTier, COST_TIER_KEYS: COST_TIER_KEYS, PRICE_TIER_KEYS: PRICE_TIER_KEYS, price: price, compare: compare,
     sensitivity: sensitivity, applyMultiplier: applyMultiplier, blankScenario: blankScenario, blankLine: blankLine };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PricingEngine = api;
 })(this);
