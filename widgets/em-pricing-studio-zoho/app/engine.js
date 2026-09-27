@@ -1,31 +1,29 @@
 /* =============================================================================
-   EM Pricing Studio — pricing engine (no DOM, no Zoho). Loaded by widget.html and
+   EM Pricing Studio - pricing engine (no DOM, no Zoho). Loaded by widget.html and
    by the Node tests. Every figure the Studio shows comes from price().
 
    Conventions
    - A month is 365/12 = 30.4167 days. Daily rates x units x DAYS = one month.
-   - "Active" units are on leg. Inactive units are assigned but not on leg.
-     Spares are units the customer holds on the shelf. Fleet = active + inactive + spares.
-   - Vendor spare allowance: the vendor lets you hold spares up to a % of ACTIVE units
-     at no charge; every spare above that is charged at the spare overage daily rate.
-   - Vendor volume tiers: a catalog item may carry costTiers [{ min, leaseDaily, buyUnit }].
-     The tier with the highest min <= that device line's active units replaces the base
-     lease $/day and/or buy $/unit (a blank tier value keeps the base rate).
-   - Vendors do not charge for inactive units; inactive units carry no vendor device cost.
-   - Break-even (owned devices): months until the device investment is recovered by the
-     cash margin those devices earn. Reported per line and for the whole deal.
-   - The customer model (daily lease, Transparent Pricing, purchase) is separate from how JusticePoint
-     sources the devices (lease them from the vendor, or buy the fleet). A customer
-     purchase always means JP buys the devices and resells them.
+   - "Active" units are on leg. Inactive units are assigned but not on leg and carry
+     no JusticePoint device cost. Spares are units the customer holds on the shelf.
+     Fleet = active + inactive + spares.
+   - Costs are whatever you enter in the Cost catalog. Free spares % and Spare $/day:
+     spares up to that % of active units cost nothing; each spare above costs Spare $/day.
+   - The customer model (daily lease, Transparent Pricing, purchase) is separate from how
+     JusticePoint gets the devices (lease them, or buy the fleet). A customer purchase
+     always means JusticePoint buys the devices and resells them.
+   - Break-even (owned devices): months until the device investment, less anything the
+     customer pays up front, is recovered by the cash margin those devices earn.
    ============================================================================= */
 (function (root) {
   'use strict';
 
   var DAYS = 365 / 12;
+  /* keys are stored on saved scenarios; change labels here, not keys */
   var MODELS = {
-    lease:    { key: 'lease',    label: 'Daily lease',       short: 'Lease' },
-    saas:     { key: 'saas',     label: 'Transparent Pricing', short: 'Transparent' },   /* key kept as 'saas' so saved scenarios still open */
-    purchase: { key: 'purchase', label: 'Purchase + service', short: 'Purchase' }
+    lease:    { key: 'lease',    label: 'Daily lease',         short: 'Lease' },
+    saas:     { key: 'saas',     label: 'Transparent Pricing', short: 'Transparent' },
+    purchase: { key: 'purchase', label: 'Purchase + service',  short: 'Purchase' }
   };
   var TIERS = [
     { max: 0,        key: 'neg',    label: 'Negative' },
@@ -33,9 +31,12 @@
     { max: 50,       key: 'normal', label: 'Normal' },
     { max: Infinity, key: 'strong', label: 'Strong' }
   ];
+  /* customer price keys each model uses (drives the builder columns and the target solver) */
+  var PRICE_KEYS = { lease: ['leaseDaily', 'inactiveDaily'], saas: ['saasMonthly'], purchase: ['purchasePrice', 'serviceDaily'] };
 
   var n = function (v) { v = Number(v); return isFinite(v) ? v : 0; };
   var pct = function (v) { return n(v) / 100; };
+
   function tierOf(marginPct, revenue) {
     if (!(revenue > 0)) return { key: 'none', label: 'No revenue' };
     for (var i = 0; i < TIERS.length; i++) if (marginPct < TIERS[i].max) return TIERS[i];
@@ -45,8 +46,8 @@
   function blankScenario() {
     return {
       id: null, name: 'New scenario', account: null, customerName: '', program: '',
-      model: 'lease', vendorSource: 'lease', termMonths: 36, targetMarginPct: 35, startDate: '',
-      priceEscalatorPct: 0, costEscalatorPct: 0, staffingEscalatorPct: null, minimumEscalates: false,
+      model: 'lease', vendorSource: 'lease', termMonths: 36, targetMarginPct: 35,
+      priceEscalatorPct: 0, costEscalatorPct: 0,
       lines: [], staffing: [], fees: [],
       spareBilling: { enabled: false, overPct: 20, dailyRate: 0 },
       lostRatePct: 0, lostRecoveryPct: 0,
@@ -55,31 +56,9 @@
     };
   }
   function blankLine(itemId) {
-    return { itemId: itemId || null, units: 10, inactivePct: 0, sparePct: 20, lostRatePct: null,
-      costOverride: { buyUnit: null, lifeMonths: null, replacementCost: null, spareAllowancePct: null, spareOverageDaily: null },
-      price: { leaseDaily: 0, inactiveDaily: 0, saasMonthly: 0, purchasePrice: 0, serviceDaily: 0, lostFee: 0 } };
-  }
-  /* an override is any finite number > 0 entered on the line; null/0/blank falls back to the catalog */
-  var ov = function (v) { return n(v) > 0 ? n(v) : null; };
-
-  /* ---------- vendor volume tiers ---------- */
-  function normTiers(tiers) {
-    if (typeof tiers === 'string') { try { tiers = JSON.parse(tiers); } catch (e) { tiers = []; } }
-    if (!Array.isArray(tiers)) return [];
-    return tiers.filter(function (t) { return t && n(t.min) > 0; })
-      .map(function (t) { return { min: Math.round(n(t.min)), leaseDaily: t.leaseDaily === '' || t.leaseDaily == null ? null : n(t.leaseDaily), buyUnit: t.buyUnit === '' || t.buyUnit == null ? null : n(t.buyUnit) }; })
-      .sort(function (a, b) { return a.min - b.min; });
-  }
-  /* effective vendor rates for a device at a given active-unit volume */
-  function vendorRates(item, units) {
-    item = item || {};
-    var tiers = normTiers(item.costTiers), hit = null;
-    tiers.forEach(function (t) { if (n(units) >= t.min) hit = t; });
-    return {
-      leaseDaily: hit && hit.leaseDaily != null ? hit.leaseDaily : n(item.costLeaseDaily),
-      buyUnit: hit && hit.buyUnit != null ? hit.buyUnit : n(item.costPurchase),
-      tier: hit, tiers: tiers
-    };
+    return { itemId: itemId || null, units: 10, inactivePct: 0, sparePct: 20,
+      price: { leaseDaily: 0, inactiveDaily: 0, saasMonthly: 0, purchasePrice: 0, serviceDaily: 0, lostFee: 0 },
+      confirmed: {} };   /* price key -> value you chose to keep when it differs from Zoho */
   }
 
   /* ---------- one device line, one model ---------- */
@@ -95,65 +74,36 @@
     var out = { itemId: line.itemId, name: item.name || 'Device', active: A, inactive: I, spares: S, fleet: F, source: src,
       rev: { device: 0, spares: 0, lost: 0 }, cost: { device: 0, spares: 0, lost: 0, amort: 0 },
       onceRev: 0, onceCost: 0, capex: 0, missing: [] };
-    var vr = vendorRates(item, A);
-    var co = line.costOverride || {};
-    var ovBuy = ov(co.buyUnit), ovLife = ov(co.lifeMonths), ovRepl = ov(co.replacementCost);
-    var ovAllow = ov(co.spareAllowancePct), ovOver = ov(co.spareOverageDaily);
-    if (ovBuy != null) { vr.buyUnit = ovBuy; out.vendorTier = null; }
-    out.costOverridden = !!(ovBuy != null || ovLife != null || ovRepl != null || ovAllow != null || ovOver != null ||
-      (line.lostRatePct != null && line.lostRatePct !== ''));
-    out.vendorBuyUnit = vr.buyUnit; out.vendorLeaseDaily = vr.leaseDaily;
 
-    /* vendor cost */
+    /* JusticePoint cost */
     if (src === 'lease') {
-      if (sc.requireContractRates) {
-        var linked = root.ContractRates.resolve(line, item, sc, item.contractRates || []);
-        vr.leaseDaily = linked.error ? 0 : linked.amount;
-        out.contractRate = linked; out.vendorLeaseDaily = vr.leaseDaily; out.vendorTier = null;
-        if (linked.error) out.missing.push(linked.error);
-      } else if (!(vr.leaseDaily > 0)) out.missing.push('vendor lease $/day');
-      out.cost.device = A * vr.leaseDaily * DAYS;          /* inactive units are not charged by the vendor */
-      if (sc.requireContractRates && linked && !linked.error) out.cost.device += I * linked.inactiveAmount * DAYS;
-      var allowPct = ovAllow != null ? ovAllow / 100 : pct(item.spareAllowancePct);
-      var allowed = A * allowPct;
-      out.sparesOverAllowance = Math.max(0, S - allowed);
-      out.cost.spares = out.sparesOverAllowance * (ovOver != null ? ovOver : n(item.spareOverageDaily)) * DAYS;
+      if (!(n(item.costLeaseDaily) > 0)) out.missing.push('lease $/day');
+      out.cost.device = A * n(item.costLeaseDaily) * DAYS;          /* inactive units cost nothing */
+      out.sparesOverAllowance = Math.max(0, S - A * pct(item.spareAllowancePct));
+      out.cost.spares = out.sparesOverAllowance * n(item.spareOverageDaily) * DAYS;
     } else {
-      if (!(vr.buyUnit > 0)) out.missing.push('vendor purchase $/unit');
+      if (!(n(item.costPurchase) > 0)) out.missing.push('buy $/unit');
       out.sparesOverAllowance = 0;
-      var ownedCost = item.costOwnedDaily;
-      if (sc.requireContractRates) {
-        var owned = root.ContractRates.resolve(line, item, sc, item.contractRates || [], 'purchased');
-        ownedCost = owned.error ? null : owned.amount; out.contractRate = owned;
-        if (owned.error) out.missing.push(owned.error);
-      }
-      out.cost.device = A * n(ownedCost) * DAYS;
-      if (sc.requireContractRates && owned && !owned.error) out.cost.device += I * owned.inactiveAmount * DAYS;
-      out.capex = F * vr.buyUnit;
+      out.cost.device = A * n(item.costOwnedDaily) * DAYS;
+      out.capex = F * n(item.costPurchase);
       if (model === 'purchase') { out.onceCost = out.capex; out.capex = 0; }
-      else { var life = ovLife != null ? ovLife : Math.max(1, n(item.usefulLifeMonths) || 36); out.cost.amort = out.capex / life; out.lifeMonths = life; }
+      else { var life = Math.max(1, n(item.usefulLifeMonths) || 36); out.cost.amort = out.capex / life; out.lifeMonths = life; }
     }
 
     /* losses: the customer owns purchased devices, so losses there are theirs */
     if (model !== 'purchase') {
-      var lineLostPct = line.lostRatePct == null || line.lostRatePct === '' ? sc.lostRatePct : line.lostRatePct;
-      out.lostRatePct = n(lineLostPct);
-      var lostPerMonth = F * pct(lineLostPct) / 12;
-      var repl = ovRepl != null ? ovRepl : (n(item.replacementCost) || (src === 'buy' ? vr.buyUnit : 0));
+      var lostPerMonth = F * pct(sc.lostRatePct) / 12;
+      var repl = n(item.replacementCost) || (src === 'buy' ? n(item.costPurchase) : 0);
       out.lostUnits = lostPerMonth;
       out.cost.lost = lostPerMonth * repl;
       out.rev.lost = lostPerMonth * pct(sc.lostRecoveryPct) * n(p.lostFee);
     }
 
     /* customer revenue */
-    if (model === 'lease') {
-      out.rev.device = k * (A * n(p.leaseDaily) * DAYS + I * n(p.inactiveDaily) * DAYS);
-    } else if (model === 'saas') {
-      out.rev.device = k * (A + I) * n(p.saasMonthly);
-    } else {
-      out.rev.device = k * A * n(p.serviceDaily) * DAYS;
-      out.onceRev = k * F * n(p.purchasePrice);
-    }
+    if (model === 'lease') out.rev.device = k * (A * n(p.leaseDaily) * DAYS + I * n(p.inactiveDaily) * DAYS);
+    else if (model === 'saas') out.rev.device = k * (A + I) * n(p.saasMonthly);
+    else { out.rev.device = k * A * n(p.serviceDaily) * DAYS; out.onceRev = k * F * n(p.purchasePrice); }
+
     if (model !== 'purchase' && sc.spareBilling && sc.spareBilling.enabled) {
       var billable = Math.max(0, S - A * pct(sc.spareBilling.overPct));
       out.sparesBillable = billable;
@@ -164,19 +114,13 @@
     out.marginMonthly = out.revMonthly - out.costMonthly;
     out.marginPct = out.revMonthly > 0 ? out.marginMonthly / out.revMonthly * 100 : 0;
 
-    /* break-even on owned devices: investment net of anything the customer pays up front,
-       recovered by this line's monthly cash margin (depreciation is not cash) */
     if (src === 'buy') {
-      var invest = out.capex + out.onceCost;
-      var upfront = out.onceRev;
-      var cashM = out.revMonthly - (out.costMonthly - out.cost.amort);
-      var net = invest - upfront;
-      out.breakEven = {
-        investment: invest, upfront: upfront, netInvestment: net, monthlyCash: cashM,
-        perUnitCost: vr.buyUnit, units: F,
+      var invest = out.capex + out.onceCost, net = invest - out.onceRev;
+      var cashM = out.revMonthly - (out.costMonthly - out.cost.amort);   /* depreciation is not cash */
+      out.breakEven = { investment: invest, upfront: out.onceRev, netInvestment: net, monthlyCash: cashM,
+        perUnitCost: n(item.costPurchase), units: F,
         months: net <= 0 ? 0 : (cashM > 0 ? net / cashM : null),
-        lifeMonths: out.lifeMonths || Math.max(1, n(item.usefulLifeMonths) || 36)
-      };
+        lifeMonths: out.lifeMonths || Math.max(1, n(item.usefulLifeMonths) || 36) };
     }
     return out;
   }
@@ -201,11 +145,12 @@
   function price(sc, catalog, opts) {
     opts = opts || {};
     var model = opts.model || sc.model || 'lease';
+    if (!MODELS[model]) model = 'lease';
     var k = opts.k == null ? 1 : opts.k;
+    var srcOverride = opts.vendorSource || null;      /* 'buy' = what-if JusticePoint owns the fleet */
     var byId = {};
     (catalog || []).forEach(function (c) { byId[String(c.id)] = c; });
 
-    var srcOverride = opts.vendorSource || null;         /* 'buy' forces a JP-owned fleet (what-if break-even) */
     var lines = (sc.lines || []).map(function (l) { return priceLine(l, byId[String(l.itemId)], sc, model, k, srcOverride); });
     var sum = function (arr, f) { return arr.reduce(function (s, x) { return s + f(x); }, 0); };
     var active = sum(lines, function (l) { return l.active; });
@@ -236,7 +181,6 @@
     if (minimum > recurring) R.minimum = minimum - recurring;
     var revM = recurring + R.minimum;
     var costM = C.device + C.spares + C.lost + C.amort + C.staffing + C.fees;
-    var cashCostM = costM - C.amort;               /* amortisation is not a cash cost */
 
     var once = {
       rev: sum(lines, function (l) { return l.onceRev; }) + sum(feesO, function (f) { return f.rev; }),
@@ -244,40 +188,31 @@
       capex: sum(lines, function (l) { return l.capex; })
     };
 
-    /* term: month-by-month so escalators and the minimum apply correctly */
+    /* term: month by month so escalators and the minimum apply correctly */
     var T = Math.max(1, Math.round(n(sc.termMonths) || 12));
     var pe = pct(sc.priceEscalatorPct), ce = pct(sc.costEscalatorPct);
-    var se = pct(sc.staffingEscalatorPct == null || sc.staffingEscalatorPct === '' ? sc.costEscalatorPct : sc.staffingEscalatorPct);
-    var minEsc = sc.minimumEscalates === true ? pe : 0;   /* old saved scenarios keep a flat minimum */
-    /* costs that inflate with the vendor escalator vs. with the staffing escalator */
-    var costVendor = C.device + C.spares + C.lost, costStaff = C.staffing + C.fees;
     var termRev = once.rev, termCost = once.cost, cash = once.rev - once.cost - once.capex;
     var cum = [cash], payback = cash >= 0 ? 0 : null, paybackExact = cash >= 0 ? 0 : null;
     for (var m = 1; m <= T; m++) {
       var yr = Math.floor((m - 1) / 12);
-      var rm = Math.max(recurring * Math.pow(1 + pe, yr), minimum * Math.pow(1 + minEsc, yr));
-      var cm = costVendor * Math.pow(1 + ce, yr) + costStaff * Math.pow(1 + se, yr);
+      var rm = Math.max(recurring * Math.pow(1 + pe, yr), minimum);
+      var cm = (costM - C.amort) * Math.pow(1 + ce, yr);
       termRev += rm; termCost += cm + C.amort;
       var before = cash;
       cash += rm - cm; cum.push(cash);
       if (payback == null && cash >= 0) { payback = m; paybackExact = (m - 1) + (rm - cm > 0 ? -before / (rm - cm) : 1); }
     }
-    /* owned fleet still has book value at the end of a term shorter than its life */
     var residual = 0;
     lines.forEach(function (l) { if (l.capex > 0 && l.lifeMonths) residual += l.capex * Math.max(0, 1 - T / l.lifeMonths); });
 
-    var marginM = revM - costM;
-    var termMargin = termRev - termCost;
-    var unitDays = active * DAYS;
+    var marginM = revM - costM, termMargin = termRev - termCost, unitDays = active * DAYS;
 
-    /* price multiplier that lands the term margin on target (device prices only; fees, staffing
-       and the minimum are held fixed). Revenue is linear in k, so this is exact apart from the
-       minimum, which is ignored here and reported. */
+    /* price multiplier that lands the term margin on target (device prices only) */
     var target = pct(sc.targetMarginPct), solve = null;
     if (!opts.noSolve && target < 1) {
-      var base = price(sc, catalog, { model: model, k: 0, noSolve: true, vendorSource: opts.vendorSource });
-      var one = price(sc, catalog, { model: model, k: 1, noSolve: true, vendorSource: opts.vendorSource });
-      var slope = one.term.revenueExMin - base.term.revenueExMin;   /* device-price revenue at k = 1 */
+      var base = price(sc, catalog, { model: model, k: 0, noSolve: true, vendorSource: srcOverride });
+      var one = price(sc, catalog, { model: model, k: 1, noSolve: true, vendorSource: srcOverride });
+      var slope = one.term.revenueExMin - base.term.revenueExMin;
       if (slope > 0) {
         var needRev = one.term.cost / (1 - target);
         var kk = (needRev - base.term.revenueExMin) / slope;
@@ -286,48 +221,39 @@
     }
 
     /* whole-deal break-even on owned devices */
-    var beLines = lines.filter(function (l) { return l.breakEven; });
-    var breakEven = null;
+    var beLines = lines.filter(function (l) { return l.breakEven; }), breakEven = null;
     if (beLines.length) {
       var inv = sum(beLines, function (l) { return l.breakEven.investment; });
       var up = sum(beLines, function (l) { return l.breakEven.upfront; });
       var dm = sum(beLines, function (l) { return l.breakEven.monthlyCash; });
-      var netInv = inv - up;
-      breakEven = {
-        investment: inv, upfront: up, netInvestment: netInv, deviceMonthlyCash: dm,
-        deviceMonths: netInv <= 0 ? 0 : (dm > 0 ? netInv / dm : null),   /* devices alone */
-        dealMonths: paybackExact,                                        /* whole deal incl. fees, staffing, minimum, escalators */
-        dealMonth: payback, termMonths: T, whatIf: !!srcOverride && sc.vendorSource !== 'buy' && model !== 'purchase'
-      };
+      breakEven = { investment: inv, upfront: up, netInvestment: inv - up, deviceMonthlyCash: dm,
+        deviceMonths: inv - up <= 0 ? 0 : (dm > 0 ? (inv - up) / dm : null),
+        dealMonths: paybackExact, termMonths: T };
     }
 
     var missing = [];
-    lines.forEach(function (l) { l.missing.forEach(function (m) { missing.push(l.name + ': ' + m); }); });
+    lines.forEach(function (l) { l.missing.forEach(function (x) { missing.push(l.name + ': ' + x); }); });
 
     return {
       model: model, modelLabel: MODELS[model].label, vendorSource: model === 'purchase' ? 'buy' : (srcOverride || sc.vendorSource),
       lines: lines, staffing: staff, fees: fees,
       units: { active: active, fleet: fleet, unitDays: unitDays },
-      monthly: { revenue: revM, cost: costM, cashCost: cashCostM, margin: marginM, marginPct: revM > 0 ? marginM / revM * 100 : 0, rev: R, costs: C, recurringBeforeMinimum: recurring },
+      monthly: { revenue: revM, cost: costM, cashCost: costM - C.amort, margin: marginM, marginPct: revM > 0 ? marginM / revM * 100 : 0, rev: R, costs: C, recurringBeforeMinimum: recurring },
       once: once,
-      term: { months: T, revenue: termRev, revenueExMin: termRevExMin(sc, recurring, once, T, pe), cost: termCost, margin: termMargin, marginPct: termRev > 0 ? termMargin / termRev * 100 : 0, residual: residual, cumulativeCash: cum, paybackMonth: payback },
-      perUnitDay: unitDays > 0 ? { revenue: revM / unitDays, cost: costM / unitDays, breakEven: costM / unitDays, target: target < 1 ? costM / (1 - target) / unitDays : null } : null,
+      term: { months: T, revenue: termRev, revenueExMin: termRevExMin(recurring, once, T, pe), cost: termCost, margin: termMargin, marginPct: termRev > 0 ? termMargin / termRev * 100 : 0, residual: residual, cumulativeCash: cum, paybackMonth: payback },
+      perUnitDay: unitDays > 0 ? { revenue: revM / unitDays, cost: costM / unitDays, target: target < 1 ? costM / (1 - target) / unitDays : null } : null,
       tier: tierOf(revM > 0 ? marginM / revM * 100 : 0, revM),
       solve: solve, missing: missing, breakEven: breakEven
     };
   }
-  function termRevExMin(sc, recurring, once, T, pe) {
+  function termRevExMin(recurring, once, T, pe) {
     var t = once.rev;
     for (var m = 1; m <= T; m++) t += recurring * Math.pow(1 + pe, Math.floor((m - 1) / 12));
     return t;
   }
 
-  /* the same scenario under every customer model */
-  function compare(sc, catalog) {
-    return Object.keys(MODELS).map(function (m) { return price(sc, catalog, { model: m }); });
-  }
+  function compare(sc, catalog) { return Object.keys(MODELS).map(function (m) { return price(sc, catalog, { model: m }); }); }
 
-  /* volume sensitivity: margin at a range of volume multipliers */
   function sensitivity(sc, catalog, steps) {
     steps = steps || [0.5, 0.75, 1, 1.25, 1.5];
     return steps.map(function (f) {
@@ -339,15 +265,13 @@
     });
   }
 
-  /* multiply this model's device prices by k (used by "Apply target price") */
   function applyMultiplier(sc, model, k) {
-    var keys = model === 'lease' ? ['leaseDaily', 'inactiveDaily'] : model === 'saas' ? ['saasMonthly'] : ['purchasePrice', 'serviceDaily'];
+    var keys = PRICE_KEYS[model] || [];
     sc.lines.forEach(function (l) { keys.forEach(function (key) { l.price[key] = Math.round(n(l.price[key]) * k * 100) / 100; }); });
     return sc;
   }
 
-  var api = { DAYS: DAYS, MODELS: MODELS, TIERS: TIERS, tierOf: tierOf, price: price, compare: compare, sensitivity: sensitivity,
-    applyMultiplier: applyMultiplier, blankScenario: blankScenario, blankLine: blankLine,
-    vendorRates: vendorRates, normTiers: normTiers };
+  var api = { DAYS: DAYS, MODELS: MODELS, TIERS: TIERS, PRICE_KEYS: PRICE_KEYS, tierOf: tierOf, price: price, compare: compare,
+    sensitivity: sensitivity, applyMultiplier: applyMultiplier, blankScenario: blankScenario, blankLine: blankLine };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PricingEngine = api;
-})(typeof window !== 'undefined' ? window : globalThis);
+})(this);

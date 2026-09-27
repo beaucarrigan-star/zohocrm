@@ -1,41 +1,35 @@
 /* =============================================================================
-   EM Pricing Studio - CRM and preview data layer.
-   Owns all Zoho SDK calls, COQL, persistence, and browser preview storage.
-   The UI consumes the same promise-based interface in preview and CRM modes.
+   EM Pricing Studio - Zoho CRM data layer (and a browser-only preview stand-in).
+   Every Zoho SDK call lives here. The UI uses the same promise interface in both modes.
 
-   Volume tiers (Products): stored as JSON in a Multi Line field. The field is found
-   from Products field metadata (API name Cost_Tiers, or a field labelled "Cost Tiers"),
-   not guessed from a failed query, and it is checked again on every save, so adding the
-   field while the Studio is open works without a reload.
+   Field safety: before reading or writing, the layer asks Zoho which fields actually exist
+   on Products and Pricing_Scenarios. Fields that do not exist are left out of queries and
+   saves (one missing field would otherwise make Zoho reject the whole record) and are
+   reported by setupReport() so the Studio can list what to create.
    ============================================================================= */
 (function (root) {
   'use strict';
 
-  function create(options) {
-    options = options || {};
-    var PREVIEW = !!options.preview;
-    var E = options.engine;
-    var CAT = options.catalogFields || {};
-    var MODEL_PICK = options.modelPick || {};
-    var timeout = options.timeout || function (p) { return Promise.resolve(p); };
-    var today = options.today;
-    var addDays = options.addDays;
-    var num = options.number || function (v) { v = Number(v); return isFinite(v) ? v : 0; };
-    var TIERS_WANTED = options.tiersField || 'Cost_Tiers';
-    var catalogFieldsMissing = false;
-    var LOCAL_KEY = 'em-pricing-scenarios-v1';
+  function create(o) {
+    o = o || {};
+    var PREVIEW = !!o.preview;
+    var E = o.engine;
+    var CAT = o.catalogFields || {};          /* cost key -> Products API name */
+    var PRICE = o.priceFields || {};          /* customer price key -> Products API name */
+    var SCEN = o.scenarioFields || [];        /* Pricing_Scenarios API names the Studio writes */
+    var MODEL_PICK = o.modelPick || {};
+    var timeout = o.timeout || function (p) { return Promise.resolve(p); };
+    var today = o.today, addDays = o.addDays;
+    var num = o.number || function (v) { v = Number(v); return isFinite(v) ? v : 0; };
 
-    /* tiers field status: state = unknown | ok | missing | readonly | wrongtype | unreadable */
-    var tiers = { state: PREVIEW ? 'ok' : 'unknown', apiName: null, reason: '', readVia: null };
-
+    var clone = function (x) { return JSON.parse(JSON.stringify(x)); };
+    var rowsOf = function (r) { if (!r) return []; if (Array.isArray(r)) return r; if (Array.isArray(r.data)) return r.data; if (r.data && Array.isArray(r.data.data)) return r.data.data; return []; };
+    var qs = function (v) { return String(v || '').replace(/'/g, "''"); };
+    var round2 = function (v) { return Math.round(num(v) * 100) / 100; };
     var store = {
       get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
       set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
     };
-    var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
-    var rowsOf = function (r) { if (!r) return []; if (Array.isArray(r)) return r; if (Array.isArray(r.data)) return r.data; if (r.data && Array.isArray(r.data.data)) return r.data.data; return []; };
-    var qs = function (value) { return String(value || '').replace(/'/g, "''"); };
-    var round2 = function (v) { return Math.round(num(v) * 100) / 100; };
     var errText = function (e) {
       if (!e) return 'unknown error';
       if (typeof e === 'string') return e;
@@ -45,292 +39,271 @@
     function writeOk(resp) {
       var row = resp && resp.data && resp.data[0];
       if (row && (row.code === 'SUCCESS' || row.status === 'success')) return row.details || {};
-      var message = (row && (row.message + (row.details && row.details.api_name ? ' (' + row.details.api_name + ')' : ''))) || 'CRM refused the change';
-      throw new Error(message);
+      throw new Error((row && (row.message + (row.details && row.details.api_name ? ' (' + row.details.api_name + ')' : ''))) || 'Zoho refused the change');
     }
 
-    function parseTiers(v) {
-      if (Array.isArray(v)) return v;
-      if (!v) return [];
-      try { var t = JSON.parse(v); return Array.isArray(t) ? t : []; } catch (e) { return []; }
-    }
-    function serializeTiers(t) {
-      t = (Array.isArray(t) ? t : []).filter(function (x) { return x && num(x.min) > 0; })
-        .map(function (x) { return { min: Math.round(num(x.min)), leaseDaily: x.leaseDaily == null || x.leaseDaily === '' ? null : num(x.leaseDaily), buyUnit: x.buyUnit == null || x.buyUnit === '' ? null : num(x.buyUnit) }; })
-        .sort(function (a, b) { return a.min - b.min; });
-      return t.length ? JSON.stringify(t) : null;
-    }
-    var hasTiers = function (c) { return !!serializeTiers(c && c.costTiers); };
-
+    /* ---------- local scenario storage (preview, and a safety copy when a CRM save fails) ---------- */
+    var LOCAL_KEY = 'em-pricing-scenarios-v1';
     var local = {
       list: function () { try { return JSON.parse(store.get(LOCAL_KEY) || '[]') || []; } catch (e) { return []; } },
-      put: function (scenario) {
-        var all = local.list().filter(function (x) { return x.id !== scenario.id; });
-        all.unshift(scenario);
-        store.set(LOCAL_KEY, JSON.stringify(all.slice(0, 40)));
-      }
+      put: function (sc) { var all = local.list().filter(function (x) { return x.id !== sc.id; }); all.unshift(sc); store.set(LOCAL_KEY, JSON.stringify(all.slice(0, 40))); }
     };
 
-    var SAMPLE_CATALOG = [
-      { id: 'p-gps520', name: '1 Piece GPS - 520', vendor: 'Allied Universal Electronic Monitoring', family: 'GPS', costLeaseDaily: 2.55, spareAllowancePct: 35, spareOverageDaily: 1.25, costPurchase: null, costOwnedDaily: null, usefulLifeMonths: 36, replacementCost: null, source: 'EXAMPLE - Allied July 2026 invoice rate and spares.csv; confirm against the addendum', example: true, costTiers: [] },
-      { id: 'p-cam520', name: 'Continuous Alcohol Monitoring (CAM) - 520', vendor: 'Allied Universal Electronic Monitoring', family: 'CAM', costLeaseDaily: 7.60, spareAllowancePct: 0, spareOverageDaily: 0, costPurchase: null, costOwnedDaily: null, usefulLifeMonths: 36, replacementCost: 1250, source: 'EXAMPLE - Addendum 23 (Sheboygan, landline base); Sheboygan-specific', example: true, costTiers: [] },
-      { id: 'p-rb520', name: 'Remote Breath Alcohol - 520', vendor: 'Allied Universal Electronic Monitoring', family: 'Remote Breath', example: true, costTiers: [] },
-      { id: 'p-rf520', name: 'Allied RF - 520', vendor: 'Allied Universal Electronic Monitoring', family: 'RF', example: true, costTiers: [] },
-      { id: 'p-alcotag', name: 'AlcoTag', vendor: 'Buddi', family: 'CAM', example: true, costTiers: [] },
-      { id: 'p-pureone', name: 'PureOne', vendor: 'SuperCom', family: 'GPS', example: true, costTiers: [] }
-    ];
-    var SAMPLE_ACCOUNTS = [{ id: 'a1', name: 'Sheboygan County Sheriffs Department' }, { id: 'a2', name: 'Columbia County Treatment Court' }, { id: 'a3', name: 'Iowa County Sheriff' }, { id: 'a4', name: 'Rock County' }];
-    var SAMPLE_VENDORS = [{ id: 'v1', name: 'Allied Universal Electronic Monitoring' }, { id: 'v2', name: 'Buddi' }, { id: 'v3', name: 'SCRAM Systems' }, { id: 'v4', name: 'SuperCom' }, { id: 'v5', name: 'Track Group' }];
+    var api = {
+      keepLocalCopy: function (sc) { var c = clone(sc); c.id = c.id || ('local-' + Date.now()); local.put(c); return c.id; }
+    };
 
+    /* =====================================================================
+       PREVIEW: a pretend "Zoho" kept in this browser, so matching can be tried
+       ===================================================================== */
+    if (PREVIEW) {
+      var ZKEY = 'em-pricing-preview-zoho-v3';
+      var SAMPLE = [
+        { id: 'p-gps', name: 'GPS device', vendor: 'Sample vendor A', family: 'GPS', costs: { costLeaseDaily: 2.50, spareAllowancePct: 25, spareOverageDaily: 1.00, costPurchase: 450, costOwnedDaily: 1.00, usefulLifeMonths: 36, replacementCost: 450 }, prices: { leaseDaily: 4.00, inactiveDaily: 0, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 } },
+        { id: 'p-cam', name: 'Continuous alcohol monitor (CAM)', vendor: 'Sample vendor A', family: 'CAM', costs: { costLeaseDaily: 7.00, usefulLifeMonths: 36, replacementCost: 1200 }, prices: { leaseDaily: 11.00, saasMonthly: 340, lostFee: 1200 } },
+        { id: 'p-rb', name: 'Remote breath device', vendor: 'Sample vendor B', family: 'Remote Breath', costs: {}, prices: {} },
+        { id: 'p-rf', name: 'RF device', vendor: 'Sample vendor B', family: 'RF', costs: {}, prices: {} }
+      ];
+      var zload = function () { try { var s = store.get(ZKEY); return s ? JSON.parse(s) : clone(SAMPLE); } catch (e) { return clone(SAMPLE); } };
+      var zsave = function (list) { store.set(ZKEY, JSON.stringify(list)); };
+      var toItem = function (z) {
+        var c = { id: z.id, name: z.name, vendor: z.vendor, vendorId: z.vendorId || '', family: z.family || '', notes: z.notes || '' };
+        Object.keys(CAT).forEach(function (k) { if (k !== 'updated' && k !== 'family' && k !== 'notes') c[k] = z.costs[k] == null ? null : z.costs[k]; });
+        c.zoho = zohoSnapshot(c); c.zohoPrice = clone(z.prices || {});
+        return c;
+      };
+      api.setupReport = function () { return Promise.resolve({ products: [], prices: [], scenarios: [], metadata: true }); };
+      api.currentUser = function () { return Promise.resolve('Beau Carrigan'); };
+      api.catalog = function () { return Promise.resolve(zload().map(toItem)); };
+      api.vendors = function () { return Promise.resolve([{ id: 'v1', name: 'Sample vendor A' }, { id: 'v2', name: 'Sample vendor B' }]); };
+      api.saveCatalog = function (rows) {
+        var list = zload();
+        rows.forEach(function (c) {
+          var z = list.filter(function (x) { return x.id === c.id; })[0];
+          if (!z) { z = { id: c.isNew ? 'p-' + Date.now() + Math.floor(Math.random() * 1000) : c.id, costs: {}, prices: {} }; list.push(z); c.id = z.id; c.isNew = false; }
+          z.name = c.name; z.vendor = c.vendor; z.vendorId = c.vendorId; z.family = c.family; z.notes = c.notes;
+          Object.keys(CAT).forEach(function (k) { if (k !== 'updated' && k !== 'family' && k !== 'notes') z.costs[k] = c[k] === '' ? null : c[k]; });
+        });
+        zsave(list);
+        return Promise.resolve({ count: rows.length, skipped: [] });
+      };
+      api.savePrice = function (itemId, key, value) {
+        var list = zload(), z = list.filter(function (x) { return x.id === itemId; })[0];
+        if (!z) return Promise.reject(new Error('Save the device in the Cost catalog first.'));
+        z.prices = z.prices || {}; z.prices[key] = value; zsave(list); return Promise.resolve(value);
+      };
+      api.accounts = function (term) {
+        var all = [{ id: 'a1', name: 'Sheboygan County Sheriffs Department' }, { id: 'a2', name: 'Columbia County Treatment Court' }, { id: 'a3', name: 'Iowa County Sheriff' }, { id: 'a4', name: 'Rock County' }];
+        term = term.toLowerCase(); return Promise.resolve(all.filter(function (a) { return a.name.toLowerCase().indexOf(term) >= 0; }));
+      };
+      api.listScenarios = function () {
+        var l = local.list();
+        if (!l.length && E) { var s = sampleScenario(); s.id = 'local-sample'; local.put(s); l = local.list(); }
+        return Promise.resolve(l.map(function (s) { return { id: s.id, name: s.name }; }));
+      };
+      api.loadScenario = function (id) { var s = local.list().filter(function (x) { return x.id === id; })[0]; return s ? Promise.resolve(clone(s)) : Promise.reject(new Error('Not found')); };
+      api.saveScenario = function (sc) { if (!sc.id) sc.id = 'local-' + Date.now(); local.put(clone(sc)); return Promise.resolve({ id: sc.id, skipped: [] }); };
+      api.markSent = function () { return Promise.resolve(); };
+      api.attach = function () { return Promise.reject(new Error('Preview: nothing is attached. In Zoho the PDF is attached to the scenario record.')); };
+      return finish(api);
+    }
+
+    /* =====================================================================
+       ZOHO CRM
+       ===================================================================== */
+    var meta = {};   /* module -> Promise<{ ok, fields: {api_name: field} }> */
+    function fieldsOf(module, fresh) {
+      if (!fresh && meta[module]) return meta[module];
+      meta[module] = timeout(ZOHO.CRM.META.getFields({ Entity: module }), 10000).then(function (r) {
+        var list = (r && (r.fields || r.data)) || [];
+        if (!list.length) throw new Error('empty');
+        var map = {}; list.forEach(function (f) { map[f.api_name] = f; });
+        return { ok: true, fields: map };
+      }).catch(function () { return { ok: false, fields: {} }; });   /* no metadata: assume fields exist */
+      return meta[module];
+    }
+    var has = function (m, apiName) { return !m.ok || !!m.fields[apiName]; };
+    var writable = function (m, apiName) { return !m.ok || (!!m.fields[apiName] && !m.fields[apiName].field_read_only && !m.fields[apiName].read_only); };
+
+    api.coql = function (q) { return timeout(ZOHO.CRM.API.coql({ select_query: q })).then(rowsOf); };
+    api.currentUser = function () {
+      return timeout(ZOHO.CRM.CONFIG.getCurrentUser(), 6000).then(function (r) { return (r && r.users && r.users[0] && r.users[0].full_name) || ''; }).catch(function () { return ''; });
+    };
+
+    /* what is missing in Zoho, for the setup panel */
+    api.setupReport = function (fresh) {
+      return Promise.all([fieldsOf('Products', fresh), fieldsOf('Pricing_Scenarios', fresh)]).then(function (res) {
+        var P = res[0], S = res[1];
+        var miss = function (m, map) { return Object.keys(map).filter(function (k) { return !has(m, map[k]); }).map(function (k) { return { key: k, api: map[k] }; }); };
+        var ro = function (m, map) { return Object.keys(map).filter(function (k) { return has(m, map[k]) && !writable(m, map[k]); }).map(function (k) { return { key: k, api: map[k] }; }); };
+        return {
+          metadata: P.ok,
+          products: miss(P, CAT), productsReadOnly: ro(P, CAT),
+          prices: miss(P, PRICE), pricesReadOnly: ro(P, PRICE),
+          scenarios: S.ok ? SCEN.filter(function (a) { return !S.fields[a]; }).map(function (a) { return { api: a }; }) : []
+        };
+      });
+    };
+
+    function readProducts(P) {
+      var base = ['id', 'Product_Name', 'Vendor_Name', 'Product_Active'];
+      var costCols = Object.keys(CAT).map(function (k) { return CAT[k]; }).filter(function (a) { return has(P, a); });
+      var priceCols = Object.keys(PRICE).map(function (k) { return PRICE[k]; }).filter(function (a) { return has(P, a); });
+      var cols = base.concat(costCols, priceCols).filter(function (a, i, arr) { return arr.indexOf(a) === i; }).slice(0, 50);
+      var q = function (c) { return api.coql('select ' + c.join(', ') + " from Products where Product_Active = true order by Product_Name asc limit 200"); };
+      return q(cols).catch(function (e) {
+        /* COQL refused (unknown column without metadata, etc.): fall back to the Records API */
+        var all = [];
+        var page = function (p) {
+          return timeout(ZOHO.CRM.API.getAllRecords({ Entity: 'Products', sort_order: 'asc', per_page: 200, page: p })).then(function (r) {
+            all = all.concat(rowsOf(r));
+            return r && r.info && r.info.more_records && p < 10 ? page(p + 1) : all;
+          });
+        };
+        return page(1).then(function (rows) { return rows.filter(function (r) { return r.Product_Active !== false; }); }, function () { throw new Error('Could not read Products: ' + errText(e)); });
+      });
+    }
+
+    api.catalog = function () {
+      return fieldsOf('Products').then(function (P) {
+        return readProducts(P).then(function (rows) {
+          return rows.map(function (r) {
+            var c = { id: String(r.id), name: r.Product_Name || '', vendorId: r.Vendor_Name ? String(r.Vendor_Name.id || r.Vendor_Name) : '', vendor: (r.Vendor_Name && r.Vendor_Name.name) || '' };
+            Object.keys(CAT).forEach(function (k) { if (k !== 'updated') c[k] = r[CAT[k]] == null ? null : r[CAT[k]]; });
+            c.zoho = zohoSnapshot(c);
+            c.zohoPrice = {};
+            Object.keys(PRICE).forEach(function (k) { if (has(P, PRICE[k]) && r[PRICE[k]] != null && r[PRICE[k]] !== '') c.zohoPrice[k] = num(r[PRICE[k]]); });
+            return c;
+          });
+        });
+      });
+    };
+
+    api.vendors = function () {
+      return api.coql('select id, Vendor_Name from Vendors where id is not null order by Vendor_Name asc limit 200')
+        .then(function (r) { return r.map(function (v) { return { id: String(v.id), name: v.Vendor_Name }; }); }).catch(function () { return []; });
+    };
+
+    /* save catalog rows; only fields that exist and are writable are sent */
+    api.saveCatalog = function (rows) {
+      return fieldsOf('Products', true).then(function (P) {
+        var skipped = {};
+        var chain = Promise.resolve(0);
+        rows.forEach(function (c) {
+          chain = chain.then(function (done) {
+            var data = { Product_Name: String(c.name || '').trim() };
+            if (c.vendorId) data.Vendor_Name = { id: c.vendorId };
+            Object.keys(CAT).forEach(function (k) {
+              var a = CAT[k]; if (k === 'updated') return;
+              if (!writable(P, a)) { if (c[k] != null && c[k] !== '') skipped[a] = true; return; }
+              data[a] = c[k] === '' ? null : c[k];
+            });
+            if (CAT.updated && writable(P, CAT.updated)) data[CAT.updated] = today();
+            if (c.isNew) {
+              data.Product_Active = true;
+              return timeout(ZOHO.CRM.API.insertRecord({ Entity: 'Products', APIData: data })).then(writeOk).then(function (d) { c.id = String(d.id); c.isNew = false; return done + 1; });
+            }
+            data.id = c.id;
+            return timeout(ZOHO.CRM.API.updateRecord({ Entity: 'Products', APIData: data })).then(writeOk).then(function () { return done + 1; });
+          });
+        });
+        return chain.then(function (n) { return { count: n, skipped: Object.keys(skipped) }; });
+      });
+    };
+
+    /* write one customer price to its Products field ("Save to Zoho" in the builder) */
+    api.savePrice = function (itemId, key, value) {
+      var a = PRICE[key];
+      if (!a) return Promise.reject(new Error('No Zoho field is mapped for this price.'));
+      if (!itemId || /^new-/.test(itemId)) return Promise.reject(new Error('Save the device in the Cost catalog first.'));
+      return fieldsOf('Products', true).then(function (P) {
+        if (!has(P, a)) throw new Error('Products has no field ' + a + '. Create it (Currency) to store this price in Zoho.');
+        if (!writable(P, a)) throw new Error('Field ' + a + ' is read-only for your profile.');
+        var data = { id: itemId }; data[a] = value;
+        return timeout(ZOHO.CRM.API.updateRecord({ Entity: 'Products', APIData: data })).then(writeOk).then(function () { return value; });
+      });
+    };
+
+    api.accounts = function (term) {
+      return api.coql("select id, Account_Name from Accounts where Account_Name like '%" + qs(term) + "%' limit 10")
+        .then(function (r) { return r.map(function (a) { return { id: String(a.id), name: a.Account_Name }; }); });
+    };
+    api.listScenarios = function () {
+      return api.coql("select id, Name, Pricing_Model, Est_Margin_Pct, Scenario_Status, Modified_Time from Pricing_Scenarios where Scenario_Status != 'Superseded' order by Modified_Time desc limit 100")
+        .catch(function () { return api.coql('select id, Name, Modified_Time from Pricing_Scenarios where id is not null order by Modified_Time desc limit 100'); })
+        .then(function (r) { return r.map(function (q) { return { id: String(q.id), name: q.Name, model: q.Pricing_Model, margin: q.Est_Margin_Pct }; }); })
+        .catch(function () { return []; });
+    };
+    api.loadScenario = function (id) {
+      return timeout(ZOHO.CRM.API.getRecord({ Entity: 'Pricing_Scenarios', RecordID: id })).then(function (r) {
+        var q = rowsOf(r)[0] || {}, w = null;
+        try { w = JSON.parse(q.Scenario_JSON || 'null'); } catch (e) {}
+        if (!w || !w.scenario) throw new Error('This record has no Pricing Studio scenario on it.');
+        var sc = w.scenario; sc.id = String(q.id); sc.name = q.Name || sc.name;
+        if (q.Account && q.Account.id) sc.account = { id: String(q.Account.id), name: q.Account.name };
+        if (q.Opportunity && q.Opportunity.id) sc.deal = { id: String(q.Opportunity.id), name: q.Opportunity.name };
+        return sc;
+      });
+    };
+    api.saveScenario = function (sc, res) {
+      return fieldsOf('Pricing_Scenarios').then(function (S) {
+        if (S.ok && !S.fields.Scenario_JSON) throw new Error('Pricing_Scenarios has no Scenario_JSON field (Multi Line, large). Create it so scenarios can be reopened.');
+        var opts = (sc.proposal.options || ['current']).map(function (m) { return m === 'current' ? res.model : m; });
+        var all = {
+          Name: String(sc.name || 'Pricing scenario').slice(0, 120),
+          Valid_Until: addDays(today(), num(sc.proposal.validDays) || 30).toISOString().slice(0, 10),
+          Pricing_Model: MODEL_PICK[res.model], Vendor_Source: res.vendorSource === 'buy' ? 'JP-owned fleet' : 'Lease',
+          Proposal_Options: opts.map(function (m) { return MODEL_PICK[m]; }).join(', ').slice(0, 120),
+          Term_Months: res.term.months, Active_Units: Math.round(res.units.active),
+          Est_Monthly_Revenue: round2(res.monthly.revenue), Est_Monthly_Cost: round2(res.monthly.cost), Est_Monthly_Margin: round2(res.monthly.margin),
+          Est_Margin_Pct: round2(res.monthly.marginPct), Target_Margin_Pct: round2(sc.targetMarginPct),
+          Term_Revenue: round2(res.term.revenue), Term_Margin: round2(res.term.margin),
+          Upfront_Cash: round2(res.once.capex + res.once.cost - res.once.rev),
+          Rev_Per_Unit_Day: res.perUnitDay ? round2(res.perUnitDay.revenue) : null, Cost_Per_Unit_Day: res.perUnitDay ? round2(res.perUnitDay.cost) : null,
+          Margin_Tier: res.tier.label, Missing_Costs: res.missing.length,
+          Account: sc.account && sc.account.id ? { id: sc.account.id } : null,
+          Scenario_JSON: JSON.stringify({ v: 3, saved: new Date().toISOString(), scenario: sc })
+        };
+        var isNew = !sc.id || /^local-/.test(sc.id);
+        if (isNew) all.Scenario_Status = 'Draft';
+        var data = {}, skipped = [];
+        Object.keys(all).forEach(function (a) { if (a === 'Name' || has(S, a)) data[a] = all[a]; else skipped.push(a); });
+        var call = isNew
+          ? function () { return ZOHO.CRM.API.insertRecord({ Entity: 'Pricing_Scenarios', APIData: data, Trigger: [] }); }
+          : function () { data.id = sc.id; return ZOHO.CRM.API.updateRecord({ Entity: 'Pricing_Scenarios', APIData: data, Trigger: [] }); };
+        return timeout(call()).then(writeOk).then(function (d) { return { id: String(d.id || sc.id), skipped: skipped }; });
+      });
+    };
+    api.markSent = function (id) {
+      return fieldsOf('Pricing_Scenarios').then(function (S) {
+        var data = { id: id };
+        if (has(S, 'Proposal_Sent')) data.Proposal_Sent = today();
+        if (has(S, 'Scenario_Status')) data.Scenario_Status = 'Proposed';
+        return timeout(ZOHO.CRM.API.updateRecord({ Entity: 'Pricing_Scenarios', APIData: data })).then(writeOk);
+      });
+    };
+    api.attach = function (id, name, blob) { return timeout(ZOHO.CRM.API.attachFile({ Entity: 'Pricing_Scenarios', RecordID: id, File: { Name: name, Content: blob } }), 30000); };
+    return finish(api);
+
+    /* ---------- shared ---------- */
+    function zohoSnapshot(c) { var s = {}; Object.keys(CAT).forEach(function (k) { if (k !== 'updated' && k !== 'family' && k !== 'notes') s[k] = c[k] == null || c[k] === '' ? null : num(c[k]); }); return s; }
+    function finish(a) { a.snapshot = zohoSnapshot; return a; }
     function sampleScenario() {
       var s = E.blankScenario();
       s.name = 'Example County - Pretrial GPS and CAM (sample)'; s.customerName = 'Example County'; s.program = 'Pretrial Services';
-      s.termMonths = 36; s.targetMarginPct = 35; s.priceEscalatorPct = 3;
-      var g = E.blankLine('p-gps520'); g.units = 150; g.inactivePct = 8; g.sparePct = 40;
-      g.price = { leaseDaily: 4.25, inactiveDaily: 1.00, saasMonthly: 135, purchasePrice: 0, serviceDaily: 0, lostFee: 450 };
-      var c = E.blankLine('p-cam520'); c.units = 20; c.inactivePct = 0; c.sparePct = 15;
-      c.price = { leaseDaily: 11.50, inactiveDaily: 0, saasMonthly: 350, purchasePrice: 0, serviceDaily: 0, lostFee: 1250 };
+      s.priceEscalatorPct = 3;
+      var g = E.blankLine('p-gps'); g.units = 150; g.inactivePct = 8; g.sparePct = 30;
+      g.price = { leaseDaily: 4.25, inactiveDaily: 0, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 };
+      var c = E.blankLine('p-cam'); c.units = 20; c.sparePct = 15;
+      c.price = { leaseDaily: 11.00, inactiveDaily: 0, saasMonthly: 350, purchasePrice: 0, serviceDaily: 0, lostFee: 1200 };
       s.lines = [g, c];
       s.staffing = [{ name: 'Monitoring center and case support', costMethod: 'hours', hoursPerParticipant: 0.5, costPerHour: 38, overheadPct: 25, participants: null, priceMethod: 'perDay', priceDaily: 0.75 }];
-      s.fees = [{ name: 'Installation', when: 'once', qtyBasis: 'perUnit', qty: 0, price: 25, cost: 8 }, { name: 'Staff training (on site)', when: 'once', qtyBasis: 'fixed', qty: 1, price: 750, cost: 400 }];
-      s.spareBilling = { enabled: true, overPct: 35, dailyRate: 1.50 };
-      s.lostRatePct = 3; s.lostRecoveryPct = 50; s.minimumMonthly = 15000;
+      s.fees = [{ name: 'Installation', when: 'once', qtyBasis: 'perUnit', qty: 0, price: 25, cost: 8 }];
+      s.spareBilling = { enabled: true, overPct: 25, dailyRate: 1.50 };
+      s.lostRatePct = 3; s.lostRecoveryPct = 50;
       s.proposal.preparedBy = 'Beau Carrigan';
       return s;
     }
-
-    var api = {
-      currentUser: function () {
-        if (PREVIEW) return Promise.resolve('Beau Carrigan');
-        return timeout(ZOHO.CRM.CONFIG.getCurrentUser(), 6000).then(function (r) { return (r && r.users && r.users[0] && r.users[0].full_name) || ''; }).catch(function () { return ''; });
-      },
-      keepLocalCopy: function (scenario) {
-        var copy = clone(scenario);
-        copy.id = copy.id || ('local-' + Date.now());
-        local.put(copy);
-        return copy.id;
-      },
-      /* diagnostics: what the Studio knows about the tiers field */
-      tiersStatus: function () { return clone(tiers); }
-    };
-
-  function loadVendorRates() {
-    if (PREVIEW) return Promise.resolve([]);
-    var rows = [];
-    function page(offset) {
-      return timeout(ZOHO.CRM.API.coql({ select_query: 'select id, Name, Agency, Device_Type, Active_Rate, Inactive_Rate, Free_Inactive_Days, Basis, Source, Confirmation, Contract from Vendor_Rates where id is not null order by id asc limit ' + offset + ', 200' })).then(function (r) {
-        rows = rows.concat(strictRows(r));
-        return r.info && r.info.more_records ? page(offset + 200) : rows;
-      });
-    }
-    return page(0);
-  }
-  function strictRows(r) {
-    if (r && Array.isArray(r.data)) return r.data;
-    if (r && r.status === 204) return [];
-    throw new Error((r && r.message) || 'Contract records could not be read');
-  }
-  function loadContracts() {
-    if (PREVIEW) return Promise.resolve([]);
-    var all = [];
-    function page(offset) {
-      return timeout(ZOHO.CRM.API.coql({ select_query: "select id from Contracts where Counterparty_Type = 'Vendor' order by id asc limit " + offset + ', 200' })).then(function (r) {
-        var rows = strictRows(r); all = all.concat(rows);
-        if (r.info && r.info.more_records) return page(offset + 200);
-      });
-    }
-    return page(0).then(function () {
-      var out = [], chain = Promise.resolve();
-      for (var i = 0; i < all.length; i += 4) (function (batch) {
-        chain = chain.then(function () { return Promise.all(batch.map(function (c) {
-          return timeout(ZOHO.CRM.API.getRecord({ Entity: 'Contracts', RecordID: c.id })).then(function (r) {
-            var c = strictRows(r)[0];
-            if (!c || c.$has_more && c.$has_more.Rate_Lines) throw new Error('A contract has incomplete rate lines; review it in CRM');
-            return c;
-          });
-        })).then(function (rows) { out = out.concat(rows); }); });
-      })(all.slice(i, i + 4));
-      return chain.then(function () { return out; });
-    });
-  }
-
-    api.contractSources = function () { return Promise.all([loadContracts(), loadVendorRates()]); };
-
-    if (PREVIEW) {
-      api.catalog = function () { var saved = store.get('em-pricing-catalog-v1'); return Promise.resolve(saved ? JSON.parse(saved) : clone(SAMPLE_CATALOG)); };
-      api.vendors = function () { return Promise.resolve(clone(SAMPLE_VENDORS)); };
-      api.saveCatalog = function (rows) {
-        var saved = store.get('em-pricing-catalog-v1');
-        var all = saved ? JSON.parse(saved) : clone(SAMPLE_CATALOG);
-        var byId = {}; rows.forEach(function (row) { byId[String(row.id)] = row; });
-        all = all.map(function (item) { return byId[String(item.id)] || item; });
-        rows.forEach(function (row) { if (!all.some(function (item) { return String(item.id) === String(row.id); })) all.push(row); });
-        store.set('em-pricing-catalog-v1', JSON.stringify(all));
-        return Promise.resolve(rows.length);
-      };
-      api.accounts = function (term) { term = term.toLowerCase(); return Promise.resolve(SAMPLE_ACCOUNTS.filter(function (a) { return a.name.toLowerCase().indexOf(term) >= 0; })); };
-      api.listScenarios = function () { var list = local.list(); if (!list.length) { var s = sampleScenario(); s.id = 'local-sample'; local.put(s); list = local.list(); } return Promise.resolve(list.map(function (s) { return { id: s.id, name: s.name }; })); };
-      api.loadScenario = function (id) { var s = local.list().filter(function (x) { return x.id === id; })[0]; return s ? Promise.resolve(clone(s)) : Promise.reject(new Error('Not found')); };
-      api.saveScenario = function (scenario) { if (!scenario.id) scenario.id = 'local-' + Date.now(); local.put(clone(scenario)); return Promise.resolve(scenario.id); };
-      api.markSent = function () { return Promise.resolve(); };
-      api.attach = function () { return Promise.reject(new Error('Preview: nothing is attached. In CRM the PDF is attached to the scenario record.')); };
-    } else {
-      api.coql = function (query) { return timeout(ZOHO.CRM.API.coql({ select_query: query })).then(rowsOf); };
-
-      /* ---- find the tiers field from Products metadata ---- */
-      var norm = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
-      function resolveTiersField() {
-        var want = norm(TIERS_WANTED);
-        return timeout(ZOHO.CRM.META.getFields({ Entity: 'Products' }), 10000).then(function (r) {
-          var fields = (r && (r.fields || r.data)) || [];
-          if (!fields.length) throw new Error('Products field list came back empty');
-          var f = fields.filter(function (x) { return norm(x.api_name) === want; })[0]
-               || fields.filter(function (x) { return norm(x.field_label) === want; })[0]
-               || fields.filter(function (x) { return norm(x.api_name).indexOf(want) === 0 || norm(x.field_label).indexOf(want) === 0; })[0];
-          if (!f) {
-            tiers = { state: 'missing', apiName: null, reason: 'No field with API name ' + TIERS_WANTED + ' (or label "Cost Tiers") is visible on Products to your profile. Check the field exists and that your profile has Read and Write permission on it.' };
-            return tiers;
-          }
-          var type = String(f.data_type || '').toLowerCase();
-          if (type && type !== 'textarea' && type !== 'text') {
-            tiers = { state: 'wrongtype', apiName: f.api_name, reason: 'Field ' + f.api_name + ' is type "' + f.data_type + '". It must be Multi Line (textarea).' };
-            return tiers;
-          }
-          if (f.field_read_only || f.read_only) {
-            tiers = { state: 'readonly', apiName: f.api_name, reason: 'Field ' + f.api_name + ' is read-only for your profile. Give your profile Read and Write on it.' };
-            return tiers;
-          }
-          tiers = { state: 'ok', apiName: f.api_name, reason: f.api_name !== TIERS_WANTED ? 'Using field ' + f.api_name + ' (label "' + f.field_label + '").' : '' };
-          return tiers;
-        }).catch(function (e) {
-          /* metadata not available: fall back to probing with COQL */
-          return api.coql('select id, ' + TIERS_WANTED + ' from Products where id is not null limit 1')
-            .then(function () { tiers = { state: 'ok', apiName: TIERS_WANTED, reason: '' }; return tiers; })
-            .catch(function (e2) { tiers = { state: 'missing', apiName: null, reason: 'Could not read ' + TIERS_WANTED + ' on Products (' + errText(e2) + '; metadata: ' + errText(e) + ').' }; return tiers; });
-        });
-      }
-
-      /* read tiers for every active product: COQL first, then the Records API */
-      function readTiers(apiName) {
-        return api.coql('select id, ' + apiName + ' from Products where Product_Active = true limit 200')
-          .then(function (rows) { tiers.readVia = 'coql'; return rows; })
-          .catch(function (e) {
-            var all = [];
-            var page = function (p) {
-              return timeout(ZOHO.CRM.API.getAllRecords({ Entity: 'Products', sort_order: 'asc', per_page: 200, page: p })).then(function (r) {
-                var rows = rowsOf(r); all = all.concat(rows);
-                return r && r.info && r.info.more_records && p < 10 ? page(p + 1) : all;
-              });
-            };
-            return page(1).then(function (rows) { tiers.readVia = 'records'; return rows; }, function (e2) {
-              tiers.state = 'unreadable'; tiers.reason = 'Field ' + apiName + ' exists but could not be read (' + errText(e) + ' / ' + errText(e2) + ').';
-              return [];
-            });
-          })
-          .then(function (rows) { var map = {}; rows.forEach(function (r) { map[String(r.id)] = parseTiers(r[apiName]); }); return map; });
-      }
-
-      api.catalog = function () {
-        var base = 'id, Product_Name, Vendor_Name, Product_Active';
-        var extra = Object.keys(CAT).map(function (key) { return CAT[key]; }).join(', ');
-        var q = function (fields) { return api.coql('select ' + fields + ' from Products where Product_Active = true order by Product_Name asc limit 200'); };
-        var rowsP = q(base + ', ' + extra).catch(function () { catalogFieldsMissing = true; return q(base); });
-        return Promise.all([rowsP, resolveTiersField()]).then(function (res) {
-          var rows = res[0], t = res[1];
-          var tiersP = t.state === 'ok' || t.state === 'readonly' ? readTiers(t.apiName) : Promise.resolve({});
-          return tiersP.then(function (tmap) {
-            return rows.map(function (r) {
-              var c = { id: String(r.id), name: r.Product_Name, vendorId: r.Vendor_Name && (r.Vendor_Name.id || r.Vendor_Name), vendor: (r.Vendor_Name && r.Vendor_Name.name) || '' };
-              Object.keys(CAT).forEach(function (key) { c[key] = r[CAT[key]] == null ? null : r[CAT[key]]; });
-              c.costTiers = tmap[c.id] || [];
-              return c;
-            });
-          });
-        });
-      };
-      api.vendors = function () { return api.coql('select id, Vendor_Name from Vendors where id is not null order by Vendor_Name asc limit 100').then(function (rows) { return rows.map(function (v) { return { id: String(v.id), name: v.Vendor_Name }; }); }).catch(function () { return []; }); };
-
-      api.saveCatalog = function (rows) {
-        /* re-check the tiers field on every save, so a field added after load is picked up */
-        var ready = tiers.state === 'ok' ? Promise.resolve(tiers) : resolveTiersField();
-        return ready.then(function (t) {
-          var canTiers = t.state === 'ok';
-          var skipped = [];
-          var chain = Promise.resolve(0);
-          rows.forEach(function (c) {
-            chain = chain.then(function (done) {
-              var data = {};
-              Object.keys(CAT).forEach(function (key) { if (key !== 'updated') data[CAT[key]] = c[key] === '' ? null : c[key]; });
-              data[CAT.updated] = today();
-              if (canTiers) data[t.apiName] = serializeTiers(c.costTiers);
-              else if (hasTiers(c)) skipped.push(c.name || 'new device');
-              if (c.isNew) {
-                data.Product_Name = c.name; data.Product_Active = true; if (c.vendorId) data.Vendor_Name = { id: c.vendorId };
-                return timeout(ZOHO.CRM.API.insertRecord({ Entity: 'Products', APIData: data })).then(writeOk).then(function (details) { c.id = String(details.id); c.isNew = false; return done + 1; });
-              }
-              data.id = c.id;
-              return timeout(ZOHO.CRM.API.updateRecord({ Entity: 'Products', APIData: data })).then(writeOk).then(function () { return done + 1; });
-            });
-          });
-          return chain.then(function (n) {
-            if (skipped.length) throw new Error('Costs saved for ' + n + ' device' + (n === 1 ? '' : 's') + ', but volume tiers were NOT saved for ' + skipped.join(', ') + '. ' + t.reason);
-            return n;
-          });
-        });
-      };
-
-      api.accounts = function (term) { return api.coql("select id, Account_Name from Accounts where Account_Name like '%" + qs(term) + "%' limit 10").then(function (rows) { return rows.map(function (a) { return { id: String(a.id), name: a.Account_Name }; }); }); };
-      api.listScenarios = function () { return api.coql("select id, Name, Pricing_Model, Est_Margin_Pct, Scenario_Status, Modified_Time from Pricing_Scenarios where Scenario_Status != 'Superseded' order by Modified_Time desc limit 100").then(function (rows) { return rows.map(function (q) { return { id: String(q.id), name: q.Name, model: q.Pricing_Model, margin: q.Est_Margin_Pct }; }); }).catch(function () { return []; }); };
-      api.loadScenario = function (id) {
-        return timeout(ZOHO.CRM.API.getRecord({ Entity: 'Pricing_Scenarios', RecordID: id })).then(function (response) {
-          var q = rowsOf(response)[0] || {}; var wrapped = null;
-          try { wrapped = JSON.parse(q.Scenario_JSON || 'null'); } catch (e) {}
-          if (!wrapped || !wrapped.scenario) throw new Error('This record has no Pricing Studio scenario on it.');
-          var scenario = wrapped.scenario; scenario.id = String(q.id); scenario.name = q.Name || scenario.name;
-          if (q.Account && q.Account.id) scenario.account = { id: String(q.Account.id), name: q.Account.name };
-          if (q.Opportunity && q.Opportunity.id) scenario.deal = { id: String(q.Opportunity.id), name: q.Opportunity.name };
-          return scenario;
-        });
-      };
-      api.saveScenario = function (scenario, result) {
-        var opts = (scenario.proposal.options || ['current']).map(function (o) { return o === 'current' ? result.model : o; });
-        var data = {
-          Name: String(scenario.name || 'Pricing scenario').slice(0, 120),
-          Valid_Until: addDays(today(), num(scenario.proposal.validDays) || 30).toISOString().slice(0, 10),
-          Pricing_Model: MODEL_PICK[result.model], Vendor_Source: result.vendorSource === 'buy' ? 'JP-owned fleet' : 'Lease',
-          Proposal_Options: opts.map(function (m) { return MODEL_PICK[m]; }).join(', ').slice(0, 120),
-          Term_Months: result.term.months, Active_Units: Math.round(result.units.active),
-          Est_Monthly_Revenue: round2(result.monthly.revenue), Est_Monthly_Cost: round2(result.monthly.cost), Est_Monthly_Margin: round2(result.monthly.margin),
-          Est_Margin_Pct: round2(result.monthly.marginPct), Target_Margin_Pct: round2(scenario.targetMarginPct),
-          Term_Revenue: round2(result.term.revenue), Term_Margin: round2(result.term.margin),
-          Upfront_Cash: round2(result.once.capex + result.once.cost - result.once.rev),
-          Rev_Per_Unit_Day: result.perUnitDay ? round2(result.perUnitDay.revenue) : null, Cost_Per_Unit_Day: result.perUnitDay ? round2(result.perUnitDay.cost) : null,
-          Margin_Tier: result.tier.label, Missing_Costs: result.missing.length,
-          Scenario_JSON: JSON.stringify({ v: 2, saved: new Date().toISOString(), scenario: scenario })
-        };
-        data.Account = scenario.account && scenario.account.id ? { id: scenario.account.id } : null;
-        if (result.missing.length) {
-        ['Est_Monthly_Cost', 'Est_Monthly_Margin', 'Est_Margin_Pct', 'Term_Margin', 'Upfront_Cash', 'Cost_Per_Unit_Day'].forEach(function (k) { data[k] = null; });
-        data.Margin_Tier = null;
-      }
-      var isNew = !scenario.id || /^local-/.test(scenario.id); if (isNew) data.Scenario_Status = 'Draft';
-        var call = isNew
-          ? function () { return ZOHO.CRM.API.insertRecord({ Entity: 'Pricing_Scenarios', APIData: data, Trigger: [] }); }
-          : function () { data.id = scenario.id; return ZOHO.CRM.API.updateRecord({ Entity: 'Pricing_Scenarios', APIData: data, Trigger: [] }); };
-        return timeout(call()).then(writeOk).then(function (details) { return String(details.id || scenario.id); });
-      };
-      api.markSent = function (id) { return timeout(ZOHO.CRM.API.updateRecord({ Entity: 'Pricing_Scenarios', APIData: { id: id, Proposal_Sent: today(), Scenario_Status: 'Proposed' } })).then(writeOk); };
-      api.attach = function (id, name, blob) { return timeout(ZOHO.CRM.API.attachFile({ Entity: 'Pricing_Scenarios', RecordID: id, File: { Name: name, Content: blob } }), 30000); };
-    }
-
-    Object.defineProperty(api, 'catalogFieldsMissing', { enumerable: true, get: function () { return catalogFieldsMissing; } });
-    /* only warn once we actually know; the reason is logged so it shows in the browser console */
-    Object.defineProperty(api, 'tiersFieldMissing', { enumerable: true, get: function () {
-      var bad = !PREVIEW && tiers.state !== 'ok' && tiers.state !== 'unknown';
-      if (bad && root.console) root.console.warn('[Pricing Studio] Volume tiers: ' + tiers.reason);
-      return bad;
-    } });
-    return api;
   }
 
   root.PricingCRM = { create: create };
