@@ -295,6 +295,8 @@
     }
 
     /* whole-deal break-even on owned devices */
+    /* break-even is shown for the Purchase + service model only */
+    if (model !== 'purchase') lines.forEach(function (l) { delete l.breakEven; });
     var beLines = lines.filter(function (l) { return l.breakEven; }), breakEven = null;
     if (beLines.length) {
       var inv = sum(beLines, function (l) { return l.breakEven.investment; });

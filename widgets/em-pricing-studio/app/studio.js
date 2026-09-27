@@ -444,7 +444,8 @@
     h += '<div class="kpi"><div class="k">Monthly revenue</div><div class="v num">' + money(M.revenue) + '</div>' + (M.rev.minimum > 0 ? '<div class="c">incl. ' + money(M.rev.minimum) + ' minimum top-up</div>' : '') + '</div>';
     h += '<div class="kpi"><div class="k">Monthly cost</div><div class="v num">' + money(M.cost) + '</div>' + (M.costs.amort > 0 ? '<div class="c">incl. ' + money(M.costs.amort) + ' device depreciation</div>' : '') + '</div>';
     h += '<div class="kpi"><div class="k">Term margin · ' + T.months + ' mo</div><div class="v num' + (T.margin < 0 ? ' neg' : '') + '">' + money(T.margin) + '</div><div class="c">' + pctf(T.marginPct) + ' of ' + money(T.revenue) + '</div></div>';
-    h += '<div class="kpi"><div class="k">Cash payback</div><div class="v num">' + (T.paybackMonth == null ? 'Never' : T.paybackMonth === 0 ? 'Day one' : 'Month ' + T.paybackMonth) + '</div><div class="c">' + (O.capex + O.cost > 0 ? money(O.capex + O.cost) + ' out up front' : 'nothing out up front') + '</div></div>';
+    if (r.breakEven) h += '<div class="kpi"><div class="k">Cash payback</div><div class="v num">' + (T.paybackMonth == null ? 'Never' : T.paybackMonth === 0 ? 'Day one' : 'Month ' + T.paybackMonth) + '</div><div class="c">' + (O.capex + O.cost > 0 ? money(O.capex + O.cost) + ' out up front' : 'nothing out up front') + '</div></div>';
+    else h += '<div class="kpi"><div class="k">Margin per active unit-day</div><div class="v num' + (r.perUnitDay && r.perUnitDay.revenue - r.perUnitDay.cost < 0 ? ' neg' : '') + '">' + (r.perUnitDay ? rate(r.perUnitDay.revenue - r.perUnitDay.cost) : '—') + '</div><div class="c">' + (r.perUnitDay ? rate(r.perUnitDay.revenue) + ' revenue · ' + rate(r.perUnitDay.cost) + ' cost' : 'add a device') + '</div></div>';
     h += '</div>';
 
     var un = unresolvedLines();
@@ -464,7 +465,7 @@
     } else h += '<span>' + esc((r.solve && r.solve.reason) || 'Add a device with a price to calculate.') + '</span>';
     h += '</div></div>';
 
-    if (r.perUnitDay) h += '<div class="sect"><h3>Per active unit per day</h3><dl class="facts"><dt>Revenue</dt><dd>' + rate(r.perUnitDay.revenue) + '</dd><dt>Cost (break-even)</dt><dd>' + rate(r.perUnitDay.cost) + '</dd>' + (r.perUnitDay.target != null ? '<dt>Needed for ' + pctf(s.targetMarginPct, 0) + ' margin</dt><dd>' + rate(r.perUnitDay.target) + '</dd>' : '') + '</dl></div>';
+    if (r.perUnitDay) h += '<div class="sect"><h3>Per active unit per day</h3><dl class="facts"><dt>Revenue</dt><dd>' + rate(r.perUnitDay.revenue) + '</dd><dt>Cost</dt><dd>' + rate(r.perUnitDay.cost) + '</dd><dt>Margin</dt><dd>' + rate(r.perUnitDay.revenue - r.perUnitDay.cost) + '</dd>' + (r.perUnitDay.target != null ? '<dt>Needed for ' + pctf(s.targetMarginPct, 0) + ' margin</dt><dd>' + rate(r.perUnitDay.target) + '</dd>' : '') + '</dl></div>';
 
     var revParts = [['Devices', M.rev.device], ['Spare charges', M.rev.spares], ['Loss fees', M.rev.lost], ['Staffing', M.rev.staffing], ['Monthly fees', M.rev.fees], ['Minimum top-up', M.rev.minimum]];
     var costParts = [['Devices', M.costs.device], ['Spares', M.costs.spares], ['Lost units', M.costs.lost], ['Device depreciation', M.costs.amort], ['Staffing', M.costs.staffing], ['Monthly fees', M.costs.fees]];
@@ -486,11 +487,11 @@
   var monthsTxt = function (m) { if (m == null) return 'Never'; if (m <= 0) return 'Day one'; return (m < 10 ? one(m) : int(m)) + ' mo'; };
   function breakEvenSection(r) {
     var be = r.breakEven, whatIf = false, lines = r.lines;
-    if (!be && r.model !== 'purchase') { var w = calc({ model: r.model, vendorSource: 'buy', noSolve: true }); be = w.breakEven; lines = w.lines; whatIf = true; }
+    /* break-even applies to purchased units only; leased devices show margin, not break-even */
     if (!be) return '';
     var noBuy = lines.some(function (l) { return l.breakEven && !(l.breakEven.perUnitCost > 0); });
     var dm = be.deviceMonths, late = dm == null || dm > be.termMonths;
-    var h = '<div class="sect"><h3>Device break-even' + (whatIf ? ' · if ' + esc(BRAND.company) + ' bought the devices' : '') + '</h3>';
+    var h = '<div class="sect"><h3>Device break-even</h3>';
     if (noBuy) h += '<div class="alert" style="margin-bottom:8px">Enter a Buy $/unit in the Cost catalog for every device to see a reliable break-even.</div>';
     h += '<dl class="facts"><dt>Device investment</dt><dd>' + money(be.investment) + '</dd>';
     if (be.upfront > 0) h += '<dt>Customer pays up front</dt><dd>' + money(be.upfront) + '</dd>';
@@ -503,7 +504,7 @@
       rows.forEach(function (l) { var b = l.breakEven, bad = b.months == null || b.months > b.lifeMonths; h += '<tr><td>' + esc(l.name) + '</td><td class="r">' + one(b.units) + '</td><td class="r">' + money(b.investment) + '</td><td class="r"' + (bad ? ' style="color:var(--bad);font-weight:700"' : '') + '>' + monthsTxt(b.months) + '</td><td class="r">' + int(b.lifeMonths) + ' mo</td></tr>'; });
       h += '</tbody></table>';
     }
-    h += '<p class="fine">' + (whatIf ? 'Sourcing is set to Lease, so this is a what-if using Buy $/unit and Owned svc $/day from the Cost catalog. ' : '') + '“Devices” recovers the device purchase cost from device, spare and loss-fee margin only; “whole deal” adds fees, staffing, the minimum and escalators. Red = no payback within the term or the device’s life.</p></div>';
+    h += '<p class="fine">' +  '“Devices” recovers the device purchase cost from device, spare and loss-fee margin only; “whole deal” adds fees, staffing, the minimum and escalators. Red = no payback within the term or the device’s life.</p></div>';
     return h;
   }
 
@@ -523,8 +524,9 @@
       ['Term margin %', function (r) { return r.term.revenue > 0 ? pctf(r.term.marginPct) : '—'; }, function (r) { return r.term.marginPct; }],
       ['Cash out up front', function (r) { return money(r.once.capex + r.once.cost); }, function (r) { return -(r.once.capex + r.once.cost); }],
       ['Customer pays up front', function (r) { return money(r.once.rev); }, null],
-      ['Cash payback', function (r) { return r.term.paybackMonth == null ? 'Never' : r.term.paybackMonth === 0 ? 'Day one' : 'Month ' + r.term.paybackMonth; }, function (r) { return r.term.paybackMonth == null ? -1e9 : -r.term.paybackMonth; }],
-      ['Device break-even', function (r) { return r.breakEven ? monthsTxt(r.breakEven.deviceMonths) : '<span class="fine" style="margin:0">leased devices</span>'; }, function (r) { return r.breakEven ? (r.breakEven.deviceMonths == null ? -1e9 : -r.breakEven.deviceMonths) : -Infinity; }],
+      ['Payback · Purchase + service', function (r) { return !r.breakEven ? '—' : r.term.paybackMonth == null ? 'Never' : r.term.paybackMonth === 0 ? 'Day one' : 'Month ' + r.term.paybackMonth; }, function (r) { return !r.breakEven ? -Infinity : r.term.paybackMonth == null ? -1e9 : -r.term.paybackMonth; }],
+      ['Break-even · Purchase + service', function (r) { return r.breakEven ? monthsTxt(r.breakEven.deviceMonths) : '—'; }, function (r) { return r.breakEven ? (r.breakEven.deviceMonths == null ? -1e9 : -r.breakEven.deviceMonths) : -Infinity; }],
+      ['Margin per active unit-day', function (r) { return r.perUnitDay ? rate(r.perUnitDay.revenue - r.perUnitDay.cost) : '—'; }, function (r) { return r.perUnitDay ? r.perUnitDay.revenue - r.perUnitDay.cost : -Infinity; }],
       ['Revenue per active unit-day', function (r) { return r.perUnitDay ? rate(r.perUnitDay.revenue) : '—'; }, null],
       ['Cost per active unit-day', function (r) { return r.perUnitDay ? rate(r.perUnitDay.cost) : '—'; }, null],
       ['Missing costs', function (r) { return r.missing.length ? '<span class="chip thin">' + r.missing.length + '</span>' : 'none'; }, null]
