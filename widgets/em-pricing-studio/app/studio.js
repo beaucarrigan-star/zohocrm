@@ -71,8 +71,9 @@
   /* Vendors: checkbox, ticked = a JusticePoint vendor (only these are offered in the Studio) */
   var VENDOR_FLAG_FIELD = 'EM_JusticePoint_Vendor';
 
-  var FAMILIES = ['GPS', 'CAM', 'Remote Breath', 'RF', 'Victim / DV', 'Accessory', 'Service', 'Other'];
+  var FAMILIES = ['GPS', 'GPS + Transdermal', 'CAM', 'Remote Breath', 'RF', 'Victim / DV', 'Accessory', 'Service', 'Other'];
   var MODEL_PICK = { lease: 'Daily lease', transparent: 'Transparent pricing', purchase: 'Purchase', costplus: 'Cost plus admin', mixed: 'Mixed' };   /* Pricing_Model picklist values, exactly as in Zoho (case matters) */
+  var SOURCE_PICK = { lease: 'Lease from vendor', buy: 'JP-owned fleet' };   /* Vendor_Source picklist values, exactly as in Zoho (the Studio shows SOURCE_LABEL instead) */
   /* ========================== END CONFIG ========================== */
 
   /* ---------- helpers ---------- */
@@ -98,7 +99,7 @@
   /* ---------- data layer ---------- */
   var api = window.PricingCRM.create({
     preview: PREVIEW, engine: E, catalogFields: CAT, priceFields: PRICE_FIELDS, scenarioFields: SCENARIO_FIELDS,
-    modelPick: MODEL_PICK, vendorUnitsField: VENDOR_UNITS_FIELD, vendorFlagField: VENDOR_FLAG_FIELD, timeout: timeout, today: today, addDays: addDays, number: num
+    modelPick: MODEL_PICK, sourcePick: SOURCE_PICK, vendorUnitsField: VENDOR_UNITS_FIELD, vendorFlagField: VENDOR_FLAG_FIELD, timeout: timeout, today: today, addDays: addDays, number: num
   });
 
   /* ---------- state ---------- */
@@ -881,7 +882,7 @@
     $('prop-controls').innerHTML = h;
   }
   /* customer-facing device descriptions: hide manufacturer and model names */
-  var GENERIC = { 'GPS': 'GPS location monitoring', 'CAM': 'Continuous alcohol monitoring', 'Remote Breath': 'Remote breath alcohol testing', 'RF': 'Radio-frequency home monitoring', 'Victim / DV': 'Victim notification monitoring', 'Accessory': 'Monitoring accessory', 'Service': 'Monitoring service', 'Other': 'Monitoring equipment' };
+  var GENERIC = { 'GPS': 'GPS location monitoring', 'GPS + Transdermal': 'GPS location and continuous alcohol monitoring', 'CAM': 'Continuous alcohol monitoring', 'Remote Breath': 'Remote breath alcohol testing', 'RF': 'Radio-frequency home monitoring', 'Victim / DV': 'Victim notification monitoring', 'Accessory': 'Monitoring accessory', 'Service': 'Monitoring service', 'Other': 'Monitoring equipment' };
   function propDeviceNames() {
     var s = state.scenario, generic = s.proposal.genericNames !== false, base = [], cnt = {}, seen = {};
     s.lines.forEach(function (l) { var it = itemById(l.itemId) || {}; var nm = generic ? (GENERIC[it.family] || 'Monitoring equipment') : (it.name || 'Monitoring equipment'); base.push(nm); cnt[nm] = (cnt[nm] || 0) + 1; });

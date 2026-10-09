@@ -25,6 +25,7 @@
     var VUNITS = o.vendorUnitsField || 'EM_Units_Current';   /* Vendors: current units JusticePoint has with the vendor */
     var VJP = o.vendorFlagField || 'EM_JusticePoint_Vendor'; /* Vendors: checkbox, ticked = a JusticePoint vendor */
     var MODEL_PICK = o.modelPick || {};
+    var SOURCE_PICK = o.sourcePick || { lease: 'Lease from vendor', buy: 'JP-owned fleet' };   /* Vendor_Source picklist values, exactly as in Zoho */
     var timeout = o.timeout || function (p) { return Promise.resolve(p); };
     var today = o.today, addDays = o.addDays;
     var num = o.number || function (v) { v = Number(v); return isFinite(v) ? v : 0; };
@@ -313,7 +314,7 @@
         var all = {
           Name: String(sc.name || 'Pricing scenario').slice(0, 120),
           Valid_Until: addDays(today(), num(sc.proposal.validDays) || 30).toISOString().slice(0, 10),
-          Pricing_Model: MODEL_PICK[res.model], Vendor_Source: res.vendorSource === 'buy' ? 'JP-owned devices' : 'Lease',
+          Pricing_Model: MODEL_PICK[res.model], Vendor_Source: SOURCE_PICK[res.vendorSource === 'buy' ? 'buy' : 'lease'],
           Proposal_Options: opts.map(function (m) { return MODEL_PICK[m]; }).join(', ').slice(0, 120),
           Term_Months: res.term.months, Active_Units: Math.round(res.units.active),
           Est_Monthly_Revenue: round2(res.monthly.revenue), Est_Monthly_Cost: round2(res.monthly.cost), Est_Monthly_Margin: round2(res.monthly.margin),
@@ -335,8 +336,8 @@
         /* a picklist value Zoho does not have yet (e.g. "Cost plus admin" before it is added) must not block the save:
            retry once without the picklist fields and report them as skipped */
         return timeout(call()).then(writeOk).catch(function (e) {
-          if (!/Pricing_Model|Proposal_Options|INVALID_DATA/i.test(String(e && e.message))) throw e;
-          ['Pricing_Model', 'Proposal_Options'].forEach(function (a) { if (a in data) { delete data[a]; skipped.push(a + ' (picklist value not in Zoho)'); } });
+          if (!/Pricing_Model|Proposal_Options|Vendor_Source|INVALID_DATA/i.test(String(e && e.message))) throw e;
+          ['Pricing_Model', 'Proposal_Options', 'Vendor_Source'].forEach(function (a) { if (a in data) { delete data[a]; skipped.push(a + ' (picklist value not in Zoho)'); } });
           return timeout(call()).then(writeOk);
         }).then(function (d) { return { id: String(d.id || sc.id), skipped: skipped }; });
       });
