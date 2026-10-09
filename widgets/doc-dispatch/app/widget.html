@@ -1,22 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- home-kit: src=doc-dispatch.src.html kit=4c548ef6 out=34f2ba58 -->
+<!-- home-kit: src=doc-dispatch.src.html kit=ed1c181b out=5219f335 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DOC Dispatch</title>
-<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
-  DOC Dispatch — the third home widget (Wisconsin Department of Corrections installer dispatch).
-  v3 (Sep 30 2026, Session 8): map interactions — time scrubber, county roster, pins, 60 s poll, "I'm in … until" note. v2 (Session 7): county map + presence engine (doc-dispatch-map/). v1 (Session 5): live board, installer strip, drag-assign, peek Dispatch panel with CRM writes,
-  and coverage Upload (SheetJS diff → apply) / Download current. v0 skeleton was Session 4. Built from this
-  source by home-kit/build.py; every block marked #kit below is shared with EM Home / Network Home and must
-  not be edited in the built file. ?preview=1 runs on sample data.
-  Decisions: claude/doc-dispatch-widget-design-2026-09-30.md.
+  DOC Dispatch v5 (Oct 9 2026, round 1 UX draft; not deployed). Same kit shell as EM Home v34: frame-fit, zones (Jobs, Numbers, Reference), sticky toolbar with Go to,
+  Jobs as tabs by stage (kit queue-tabs), Push to… (kit peek-push), job columns (kit col-toggles), Numbers grid (kit numgrid), edge-to-edge (kit edge).
+  Today strip above the tabs. The map, Installers strip, coverage upload and quick links moved to a Reference zone, collapsed by default.
+  Stage mapping: see claude/drafts/doc-dispatch-round1-2026-10-09.md. Built from this source by home-kit/build.py; every kit block must not be edited in the built file.
+  v4 (Oct 2026): display menu (Contrast, Brightness, theme button). v3 (Sep 30 2026): map interactions, 60 s poll, "I'm in … until" note. v2: county map + presence engine. v1: live board, installer strip, drag-assign, peek Dispatch panel, coverage upload/download.
+  ?preview=1 runs on sample data.
 -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script id="frame-fit">// kit-owned: frame-fit.js — size the widget's iframe to its content, one scrollbar (BD UX step 4a, Sep 30 2026).
+(function () {
+  /* Asks Zoho to resize this widget's iframe to the page's content height with ZOHO.CRM.UI.Resize, so the Zoho
+     home page is the only thing that scrolls. Self-contained: include it in <head> (before the page script, so resize() finds it) with <!--#kit js/frame-fit.js--> and
+     route the page's own resize() to window.hlFrameFit.request() (core.js does this when the script is present).
+       - Measures document.body.scrollHeight: in standards mode that is the content's own height, which does not
+         depend on the iframe's height (no vh / 100% heights in flow; the peek, modals, #hl-layer and toasts are
+         position:fixed and never count). So a honoured Resize changes nothing it measures: no feedback loop.
+       - Debounced: ResizeObserver on <body> and #page plus a MutationObserver on hidden/open toggles, one
+         request per animation frame with a 150 ms trailing re-measure; nothing is sent when the height is within
+         2 px of the last one sent. Floor MIN (default 480), ceiling MAX. A loop breaker stops after 12 requests
+         in 3 s and pauses 5 s (logged once).
+       - Off in preview (?preview=1), when ZOHO / ZOHO.CRM.UI.Resize is missing, and before start() or the first
+         request(). Resize errors and rejections are swallowed; if the host ignores or caps the request the frame
+         stays as it is and the page behaves exactly as before (it scrolls inside the frame, sticky toolbar).
+       - One console.info line per request: "[frame-fit] Resize -> <h>px (frame was <innerHeight>px)".
+     Options (optional, set before the script runs): window.HL_FRAME_FIT = { min: 480, max: 20000, root: 'page' }.
+     API: window.hlFrameFit.start() · .request() · .state() -> { on, sent, last, frame, honoured, paused }. */
+  var cfg = window.HL_FRAME_FIT || {};
+  var MIN = cfg.min || 480, MAX = cfg.max || 20000, SETTLE = 150, BURST = 12, BURST_MS = 3000, PAUSE_MS = 5000;
+  var on = false, raf = 0, timer = 0, last = -1, sent = 0, hist = [], pausedUntil = 0, warned = false;
+  function preview() { return /[?&]preview=1/.test(location.search); }
+  function sdk() { try { return !!(window.ZOHO && ZOHO.CRM && ZOHO.CRM.UI && typeof ZOHO.CRM.UI.Resize === 'function'); } catch (e) { return false; } }
+  function eligible() { return !preview() && sdk(); }
+  function measure() {
+    var b = document.body; if (!b) return 0;
+    return Math.min(MAX, Math.max(MIN, Math.ceil(b.scrollHeight)));
+  }
+  function send() {
+    raf = 0; if (!on) return;
+    var now = Date.now(); if (now < pausedUntil) { clearTimeout(timer); timer = setTimeout(send, pausedUntil - now + 20); return; }
+    var h = measure(); if (!h || Math.abs(h - last) < 2) return;
+    hist = hist.filter(function (t) { return now - t < BURST_MS; });
+    if (hist.length >= BURST) {
+      pausedUntil = now + PAUSE_MS;
+      if (!warned) { warned = true; try { console.warn('[frame-fit] ' + BURST + ' resize requests in ' + (BURST_MS / 1000) + ' s; pausing ' + (PAUSE_MS / 1000) + ' s (content height may depend on the frame height)'); } catch (e) {} }
+      return;
+    }
+    hist.push(now); last = h; sent++;
+    try { console.info('[frame-fit] Resize -> ' + h + 'px (frame was ' + window.innerHeight + 'px)'); } catch (e) {}
+    try { var p = ZOHO.CRM.UI.Resize({ height: h + 'px', width: '100%' }); if (p && typeof p.catch === 'function') p.catch(function () {}); } catch (e) { /* host refused: behave as before */ }
+  }
+  function schedule() {
+    if (!on) return;
+    if (!raf) raf = requestAnimationFrame(send);
+    clearTimeout(timer); timer = setTimeout(send, SETTLE);
+  }
+  function start() {
+    if (on) { schedule(); return true; }
+    if (!eligible() || !document.body) return false;
+    on = true;
+    try { var ro = new ResizeObserver(schedule); ro.observe(document.body); var pg = document.getElementById(cfg.root || 'page'); if (pg) ro.observe(pg); } catch (e) {}
+    try { new MutationObserver(schedule).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden', 'open', 'aria-expanded', 'data-collapsed'] }); } catch (e) {}
+    window.addEventListener('load', schedule);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule, function () {});
+    schedule(); return true;
+  }
+  window.hlFrameFit = {
+    start: start,
+    request: function () { if (on) schedule(); else start(); },
+    state: function () { return { on: on, sent: sent, last: last, frame: window.innerHeight, honoured: last > 0 && Math.abs(window.innerHeight - last) < 2, paused: Date.now() < pausedUntil }; }
+  };
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
 <style id="tokens">
   /* ==========================================================================
      Design tokens (UI/UX Phase 3, Sep 30 2026). Shared block: byte-identical in
@@ -998,12 +1061,28 @@
 :is(#mycases, #tasks, #meetings, #unanswered):has(> .row.sk) { min-height: calc(var(--row-h) * 3); } /* floor only while loading */
 .rows > .row.sk { min-height: var(--row-h); }
 </style>
+<style id="col-pop">  .colwrap { position: relative; }
+  .colwrap .btn { min-height: 30px; font-size: var(--fs-sm); }
+  .colpop { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-pop, 30); min-width: 220px; }
+  .colpop .gp-row { display: flex; gap: 8px; align-items: center; padding: 3px 0; font-size: var(--fs-sm); cursor: pointer; }</style>
+<style id="queue-tabs">  #queue-card .qtabs { display: flex; gap: var(--sp-1); padding: 0 var(--sp-4); border-bottom: 1px solid var(--line); overflow-x: auto; }
+  #queue-card .qtabs button { font: inherit; font-weight: 600; background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 12px 8px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  #queue-card .qtabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--jp, #e8772e); }
+  #queue-card .qtabs .n { margin-left: 6px; font-weight: 700; color: var(--muted); }
+  #queue-card .qtabs button.hot .n { color: var(--bad); }
+  #queue-card .qtabs + .qbody { border-top: 0; }
+  #queue-card.qt #queue-badges { display: none; }
+  #queue-card.qt .qside { display: block; border: 0; }
+  #queue-card.qt .qside > section { border: 0 !important; }
+  #queue-card[data-qtab="cases"] .qside, #queue-card[data-qtab="tasks"] .qcases, #queue-card[data-qtab="emails"] .qcases,
+  #queue-card[data-qtab="tasks"] .qside > section:nth-child(2), #queue-card[data-qtab="emails"] .qside > section:nth-child(1) { display: none; }</style>
+<style id="peek-push">  #mycases .in-today-tag { font-size: var(--fs-xs); font-weight: 600; color: var(--jp-ink, var(--ink)); background: var(--jp-tint, #fdeee3); border-radius: 4px; padding: 1px 6px; margin-left: 6px; white-space: nowrap; }
+  #pk-actions .pk-push { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  #pk-actions .pk-push input[type="date"] { font: inherit; }</style>
 <style id="doc-page">
+
   /* ---------- DOC Dispatch page layer (page-only; everything above is kit) ---------- */
   .mast .unit { color: var(--muted); }
-  .dz { margin-top: var(--sp-5); }
-  .dz > .band { display: flex; align-items: baseline; gap: var(--sp-3); margin: 0 0 var(--sp-2); }
-  .dz > .band .meta { color: var(--muted); font-size: var(--fs-sm); }
 
   /* exceptions strip: only drawn when something disagrees */
   .excs { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-2) var(--sp-3);
@@ -1013,42 +1092,10 @@
          border-radius: var(--radius-sm); padding: 3px 8px; font: inherit; font-size: var(--fs-sm); color: var(--ink); cursor: pointer; }
   .exc b { color: var(--bad); }
 
-  /* the board: one card, three lanes */
-  .board .head { display: flex; align-items: center; gap: var(--sp-3); }
-  .board .head .sp { flex: 1; }
-  .lanes { display: grid; gap: var(--sp-3); grid-template-columns: minmax(0, 9fr) minmax(0, 9fr) minmax(0, 6fr); align-items: start; }
-  .lane { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-  .lane > h3 { display: flex; align-items: center; gap: var(--sp-2); margin: 0; padding: var(--sp-2) var(--sp-3);
-               border-bottom: 1px solid var(--line); }
-  .lane > h3 .n { font-variant-numeric: tabular-nums; color: var(--ink); text-decoration: none; }
-  .lane > h3 .n:hover { text-decoration: underline; }
-  .lane > h3 .sp { flex: 1; }
-  .lane-tabs { display: none; margin: 0 var(--sp-3) var(--sp-2); }
-  .lane .rows { list-style: none; margin: 0; padding: 0; }
-  .lane .empty { padding: var(--sp-3); color: var(--muted); font-size: var(--fs-sm); }
-  .dayh { padding: 6px var(--sp-3) 2px; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-
-  /* a job row: same grammar as a Queue row, two lines */
-  .job { display: grid; grid-template-columns: 22px 92px minmax(0, 1fr) auto; column-gap: var(--sp-2); row-gap: 2px;
-         align-items: center; padding: 7px var(--sp-3); border-top: 1px solid var(--line); cursor: pointer; }
-  .rows > .job:first-child, .dayh + .job { border-top: 0; }
-  .job:hover, .job.cur { background: var(--surface-2); }
-  .job.selected { background: var(--jp-tint); }
-  .job .sel { grid-row: 1 / 3; }
-  .job .when { font-size: var(--fs-sm); font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
-  .job .when.late { color: var(--bad); } .job .when.soon { color: var(--warn); }
-  .job .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .job .what .id { font-weight: 600; margin-right: 6px; color: var(--ink); text-decoration: none; }
-  .job .who { font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; text-align: right; }
-  .job .sub { grid-column: 2 / 5; font-size: var(--fs-sm); color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .job .sub .sug b { color: var(--ink-2); font-weight: 600; }
   .chip { display: inline-block; padding: 0 6px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: var(--fs-xs);
           font-weight: 600; letter-spacing: .02em; color: var(--ink-2); margin-right: 6px; vertical-align: 1px; }
   .chip.triage { background: var(--warn-tint); color: var(--warn); }
   .chip.live { background: var(--good-tint); color: var(--good); }
-  .job .acts { display: none; }
-  .job:hover .acts, .job:focus-within .acts, .job.cur .acts { display: inline-flex; gap: 4px; }
-  .job:hover .who, .job:focus-within .who, .job.cur .who { display: none; }
 
   /* installers today */
   .crew-wrap { display: grid; gap: var(--sp-3); grid-template-columns: minmax(0, 1fr); grid-template-areas: "strip"; }
@@ -1178,7 +1225,6 @@
   .map-notes .w { color: var(--warn); } .map-notes .fine { color: var(--muted); }
   @media (prefers-reduced-motion: reduce) { .map-svg .cty { transition: none; } }
 
-  .lane.l-report .job .what .chip { display: none; }
   #links { columns: 2; column-gap: var(--sp-4); } #links li { break-inside: avoid; }
   .cov > :not(.head) { margin-left: var(--sp-4); margin-right: var(--sp-4); } .cov > .fine { margin-bottom: var(--sp-3); }
   #cov-body { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
@@ -1186,23 +1232,36 @@
 
   /* breakpoints: the kit's four (1500 / 1100 / 860 / 560) */
   @media (max-width: 1100px) {
-    .lanes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .lane.l-report { grid-column: 1 / -1; }
     .crew-wrap.has-map { grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "strip"; }
     .ref { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 860px) {
-    .lanes { grid-template-columns: minmax(0, 1fr); }
     .scale, .inst { grid-template-columns: 140px minmax(0, 1fr); } .inst .nx, .scale > :last-child { display: none; }
     .cv-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 560px) {
-    .lane-tabs { display: flex; }
-    .lanes > .lane:not(.on) { display: none; }
-    .job { grid-template-columns: 22px 78px minmax(0, 1fr); } .job .who { grid-column: 2 / 4; text-align: left; }
     .scale { display: none; } .inst { grid-template-columns: minmax(0, 1fr); row-gap: 4px; }
     .dform { grid-template-columns: minmax(0, 1fr); }
   }
+  /* ===== display controls (v4, Oct 2026): contrast, brightness, theme flip =====
+     High contrast is a token override on the page layer, so the shared kit is untouched. Every text pair is >= 7:1
+     (AAA) and the borders that mark controls are >= 3:1 in light and dark; the colours are checked by contrast.py. */
+  :root[data-contrast="high"] {
+    --ink: light-dark(#0A1416, #FFFFFF); --ink-2: light-dark(#243438, #E6EEF0); --muted: light-dark(#36464A, #C9D5D8);
+    --line: light-dark(#8C9EA2, #56686D); --line-strong: light-dark(#56696D, #8FA2A7);
+    --focus: light-dark(#0B4F59, #A9E6EF); --accent-ink: light-dark(#0B5560, #B4E6EE);
+    --jp: light-dark(#A9440A, #FF934F); --jp-ink: light-dark(#7A3508, #FFC08F);
+    --good: light-dark(#0E5A32, #8AF0BB); --warn: light-dark(#634200, #FFD36E); --bad: light-dark(#8C1A14, #FFB4AD);
+    --zoom: light-dark(#0B3FB8, #B5D3FF);
+  }
+  :root[data-contrast="high"] :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  :root[data-contrast="high"] .links a, :root[data-contrast="high"] .roster a, :root[data-contrast="high"] .map-notes a,
+  :root[data-contrast="high"] .inst .nm a { text-decoration: underline; text-underline-offset: 2px; }
+  :root[data-contrast="high"] .job .id { text-decoration: underline; text-underline-offset: 2px; }
+  :root[data-contrast="high"] .card { border-color: var(--line-strong); }
+  :root[data-contrast="high"] .map-svg .outline { stroke: var(--ink-2); }
+  .pop .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--focus); text-decoration: underline; cursor: pointer; margin-left: 4px; }
+  #theme-btn svg { width: 15px; height: 15px; }
   /* ===== map interactions (v3, Session 8): scrubber, pins, roster, note dialog ===== */
   .btn.sm { padding: 3px 10px; font-size: var(--fs-sm); min-height: 28px; }
   .crew-map .head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
@@ -1285,11 +1344,159 @@
   .pr-list li { display: flex; align-items: center; gap: var(--sp-2); justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line); font-size: var(--fs-sm); }
   #pr-active h4 { margin: var(--sp-3) 0 0; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
   @media (max-width: 560px) { .scrub-mark, .scrub-days { margin-left: calc(28px + 36px + var(--sp-2) * 2); } .cty-pick select { max-width: 120px; } .crew-map .head .meta { flex-basis: 100%; order: 5; } }
+
+</style>
+<style id="kit-numgrid">/* kit-owned: numgrid.css — one even grid for a "Numbers" strip of KPI tiles (BD + CS Home v4.3; lifted from the page layer, no visible change).
+   Opt in: give the tile wrapper the class `numgrid` (e.g. <div class="numgrid kpis" id="numgrid"> holding .nums / .kpis children that hold .kpi tiles).
+   Layout: 4 columns; 2 columns at 860px or narrower; 1 column at 420px or narrower. A `.kpi.hbar` tile (e.g. a health bar) spans 2 columns (1 when single-column).
+   Tile affordance: a tile label may end with <span class="go">show ↓ | open › | view ↗</span>; it is pushed to the right of the label row.
+   Used by: BD + CS Home (bd-cs-home.src.html). Page-specific and NOT here: the markup that writes the .go text and the section-summary text strip (page JS).
+   The container rules use a doubled class (.numgrid.numgrid, specificity 0,2,0) so they beat zone rules such as `.hl-zone-numbers > .kpis`; include this file AFTER the page styles so ties go to it.
+   Modifier .cols-6 (Network Home v41, Oct 9 2026; opt-in, nothing changes without it): 6 columns, 3 at 1250px or narrower, 2 at 860px, 1 at 420px.
+   Needs tokens: --line --surface --radius --muted --fs-xs (css/tokens.css). Edge-to-edge handling is css/edge.css (.hk-edge). */
+.numgrid.numgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.numgrid > .nums, .numgrid > .kpis { display: contents; }
+.numgrid .kpi { background: var(--surface); min-height: 96px; border: 0; border-radius: 0; margin: 0; }
+.numgrid .kpi.hbar { grid-column: span 2; }
+.numgrid .kpi .label { display: flex; align-items: baseline; gap: 4px; }
+.numgrid .kpi .go { font-size: var(--fs-xs); color: var(--muted); margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+@media (max-width: 860px) { .numgrid.numgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .numgrid.numgrid { grid-template-columns: minmax(0, 1fr); } .numgrid .kpi.hbar { grid-column: auto; } }
+.numgrid.numgrid.cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1250px) { .numgrid.numgrid.cols-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .numgrid.numgrid.cols-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .numgrid.numgrid.cols-6 { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<style id="kit-edge">/* kit-owned: edge.css — edge-to-edge layout: cards and boxes run to the frame's left and right edges (BD + CS Home v4.2, lifted in v4.3; no visible change).
+   Opt in: add the class `hk-edge` to the page root (the element whose children are the .mast, .card and .bz boxes). Nothing applies without it.
+   What it does: removes side margins on the root's direct children (except .mast, .quick-actions, .foot-note); squares the boxes and drops their side borders;
+   keeps text off the frame edge with `padding-inline: var(--gutter)` on heads, bands, link lists, filter rows, board table end cells and numgrid tiles.
+   Side-by-side pairs: add `hk-pair-1200` (columns from 1200px up) or `hk-pair-1101` (from 1101px up) to a two-column zone to zero its gap and draw one hairline between the columns.
+   A media query cannot read a CSS variable, so each breakpoint is its own class; copy a pair block for another breakpoint. The column widths themselves stay with the page.
+   Include this file after css/numgrid.css (the numgrid box rule here ties with .numgrid.numgrid and must come later).
+   Selectors use :where(.hk-edge) where the old page rules had lower specificity, so the cascade matches what the page had before the lift.
+   Used by: BD + CS Home. Page-specific rules (queue/agenda ids, #bnums, #z-boards tab row) stay in the page layer. Needs tokens --gutter --line (css/tokens.css). Pairs with css/numgrid.css. */
+.hk-edge > :not(.mast):not(.quick-actions):not(.foot-note) { margin-inline: 0; }
+/* boxes that meet the frame edge: no side borders, square corners */
+.hk-edge > .card, :where(.hk-edge) .hl-zone > .card, :where(.hk-edge) .bz > .card, :where(.hk-edge) .hl-zone-numbers > .nums, :where(.hk-edge) .hl-zone-numbers > .kpis,  .hk-edge .numgrid { border-radius: 0; border-left-width: 0; border-right-width: 0; }
+/* plain-text bands keep the gutter so text never touches the edge */
+:where(.hk-edge) .bz > .band { padding-inline: var(--gutter); }
+/* side-by-side zones: no gap, one hairline between the two columns */
+@media (min-width: 1200px) { .hk-edge .hk-pair-1200 { column-gap: 0; } .hk-edge .hk-pair-1200 > * + * { border-left: 1px solid var(--line); } }
+@media (min-width: 1101px) { .hk-edge .hk-pair-1101 { column-gap: 0; } .hk-edge .hk-pair-1101 > * + * { border-left: 1px solid var(--line); } }
+/* text that sits inside an edge-to-edge box keeps at least the gutter from the frame edge */
+.hk-edge > .card > .head, :where(.hk-edge) .hl-zone > .card > .head, :where(.hk-edge) .bz > .card > .head, :where(.hk-edge) .card > .card-foot, :where(.hk-edge) .links, :where(.hk-edge) .bfilt, :where(.hk-edge) .fulist { padding-inline: var(--gutter); }
+:where(.hk-edge) .numgrid .kpi { padding-inline: var(--gutter); }
+:where(.hk-edge) .bt tr > :first-child { padding-left: var(--gutter); } :where(.hk-edge) .bt tr > :nth-last-child(2) { padding-right: var(--gutter); }   /* the last cell is the zero-width hover-actions cell */
+:where(.hk-edge) .bt th.ra, :where(.hk-edge) .bt td.ra { padding: 0; } :where(.hk-edge) .bt td.ra .ra-in { right: max(8px, calc(var(--gutter) - 11px)); }
+</style>
+<style id="doc-v5">
+  /* ---------- DOC Dispatch v5 page layer (round 1, Oct 9 2026) ---------- */
+  .bz { margin-top: var(--sp-5); }
+  .bz > .band { display: flex; align-items: baseline; gap: var(--sp-3); margin: 0 0 var(--sp-2); }
+  .bz > .band .meta { color: var(--muted); font-size: var(--fs-sm); }
+  .bz > .band .hl-tg { margin-left: auto; }
+  .bz[data-collapsed="true"] > .band { margin-bottom: 0; }
+  #z-num > .band.hl-collapsed .meta, #z-ref > .band.hl-collapsed .meta { display: none; }
+  .hl-zone-numbers > .kpis { margin: 0; }
+  .hl-zone-numbers > .kpis .kpi { min-height: 96px; }
+  .numgrid .kpi { text-decoration: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .numgrid button.kpi { border: 0; }
+  .numgrid .kpi .go { white-space: nowrap; } .numgrid .kpi .label { min-height: 2.6em; align-items: flex-start; }
+  .numgrid .kpi .value small, .numgrid .kpi .value .x { display: block; font-size: var(--fs-xs); font-weight: 500; color: var(--muted); }
+  .numgrid .kpi.watch .value { color: var(--warn); } .numgrid .kpi.bad .value { color: var(--bad); }
+  .numgrid .kpi .ctx { font-size: var(--fs-sm); color: var(--muted); }
+  .kpi:has(.value.sk) .ctx { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Today strip */
+  .tstrip .tdays { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tday { padding: var(--sp-3) var(--gutter); min-width: 0; }
+  .tday + .tday { border-left: 1px solid var(--line); }
+  .tday h3 { margin: 0 0 var(--sp-2); display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
+  .tday h3 .n { font-size: var(--fs-lg); color: var(--ink); letter-spacing: 0; }
+  .tday h3 .meta { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: var(--fs-sm); }
+  .tday .empty { margin: 0; }
+  .tinst { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .tinst li { display: flex; gap: var(--sp-3); align-items: flex-start; }
+  .tinst li > b { flex: none; width: 104px; padding-top: 3px; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tchips { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+  .tchip { font: inherit; font-size: var(--fs-sm); display: inline-flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 3px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink); cursor: pointer; max-width: 100%; }
+  .tchip small { font-size: var(--fs-xs); color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tchip.live { background: var(--good-tint); border-color: var(--good); }
+  .tchip.done { opacity: .7; }
+  .tcity { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--ink-2); }
+  .tcity span { color: var(--muted); text-transform: uppercase; font-size: var(--fs-xs); letter-spacing: .07em; margin-right: 6px; }
+  .tcity b { font-weight: 600; }
+  @media (max-width: 860px) { .tstrip .tdays { grid-template-columns: minmax(0, 1fr); } .tday + .tday { border-left: 0; border-top: 1px solid var(--line); } }
+
+  /* Jobs card: tabs, column header, rows */
+  #queue-card .qbody { grid-template-columns: minmax(0, 1fr); }
+  #queue-card > .head, #queue-card .qtabs { padding-inline: var(--gutter); }
+  #queue-card[data-collapsed="true"] > .qtabs { display: none; }
+  .qjobs { padding: 0 var(--gutter) var(--sp-3); min-width: 0; }
+  .qjobs > .bulkbar { margin-top: var(--sp-2); }
+  .qhead { display: flex; align-items: center; gap: 10px; padding: 4px 0 4px 10px; margin-left: -10px; border-left: 3px solid transparent; border-bottom: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: var(--sp-2); }
+  .qhead .qc { flex: none; font-weight: 700; } .qhead .id { width: 70px; flex: none; } .qhead .qh-sel { flex: none; width: 20px; }
+  .qhead .age { flex: none; width: 46px; text-align: right; }
+  .qhead .qh-act { flex: none; width: 96px; text-align: right; position: relative; text-transform: none; letter-spacing: 0; margin-left: auto; }
+  .qhead .qh-act .btn { min-height: 26px; padding: 0 8px; font-size: var(--fs-xs); }
+  .qhead .colpop { text-transform: none; letter-spacing: 0; font-weight: 400; text-align: left; color: var(--ink); }
+  .qonly { display: flex; gap: var(--sp-2); align-items: center; padding: 6px 0; font-size: var(--fs-sm); color: var(--ink-2); }
+  .qonly[hidden] { display: none; }
+  #jobs { list-style: none; margin: 0; padding: 0; }
+  #jobs > .empty { padding: var(--sp-3) 0; }
+  #jobs .job.row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding: 8px 0 8px 10px; margin-left: -10px; border-top: 1px dashed var(--line); border-left: 3px solid transparent; cursor: pointer; }
+  #jobs .job.row:first-child { border-top: 0; }
+  #jobs .job.row:hover, #jobs .job.row.cur { background: var(--surface-2); }
+  #jobs .job.row.selected { background: var(--jp-tint); }
+  #queue-card[data-qtab="overdue"] #jobs .job.row { border-left-color: var(--bad); }
+  .job .sel { flex: none; width: 20px; display: inline-flex; }
+  .job .id { flex: none; width: 70px; font-weight: 600; color: var(--ink); text-decoration: none; }
+  .job .qc { flex: none; font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qc-win { width: 128px; } .qc-type { width: 84px; } .qc-dev { width: 64px; } .qc-inst { width: 110px; } .qc-agent { width: 128px; } .qc-pid { width: 78px; }
+  .qhead .qc-city, .job .qc.qc-city { flex: 1 1 140px; min-width: 0; }
+  .qc-city .mini { display: none; color: var(--muted); font-size: var(--fs-xs); }
+  .job .age { flex: none; width: 46px; text-align: right; font-size: var(--fs-sm); color: var(--ink-2); }
+  .job .when { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .job .when.late { color: var(--bad); } .job .when.soon { color: var(--warn); }
+  .job .acts { flex: none; width: 96px; display: flex; justify-content: flex-end; gap: 4px; visibility: hidden; margin-left: auto; }
+  .job:hover .acts, .job:focus-within .acts, .job.cur .acts { visibility: visible; }
+  @media (hover: none) { .job .acts { visibility: visible; } }
+  .job .sub { flex: 1 1 calc(100% - 30px); max-width: calc(100% - 30px); margin-left: 30px; font-size: var(--fs-sm); color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .job .sub .sug b { color: var(--ink-2); font-weight: 600; }
+  .mute { color: var(--muted); }
+  .chip { display: inline-block; padding: 0 6px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .02em; color: var(--ink-2); margin-right: 6px; vertical-align: 1px; }
+  .chip.triage { background: var(--warn-tint); color: var(--warn); }
+  .chip.live { background: var(--good-tint); color: var(--good); }
+  #pk-actions .pk-push label { font-size: var(--fs-sm); color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; }
+  .excs { padding-inline: var(--gutter); }
+
+  /* Reference zone */
+  .rbody { display: grid; gap: var(--sp-4); padding-inline: var(--gutter); min-width: 0; }
+  .rbody > * { min-width: 0; }
+
+  @media (max-width: 1100px) { .crew-wrap.has-map { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 860px) {
+    .qc-type, .qc-dev, .qc-inst, .qc-agent, .qc-pid { display: none; }
+    .qc-city .mini { display: block; }
+    .qc-win { width: 104px; }
+  }
+  @media (max-width: 560px) {
+    .qhead .age, .job .age { display: none; }
+    .qhead .id, .job .id { width: 60px; }
+    .qc-win { flex: 1 1 auto; width: auto; }
+    .job .qc.qc-city { flex: 1 1 calc(100% - 30px); order: 8; margin-left: 30px; }
+    .qhead .qc-city { display: none; }
+    .job .acts { width: auto; }
+    .qhead .qh-act { width: auto; }
+    .tinst li { flex-direction: column; gap: 2px; } .tinst li > b { width: auto; padding-top: 0; }
+  }
+
 </style>
 </head>
 <body>
 
-<div class="page" id="page">
+<div class="page hk-edge" id="page">
 
   <header class="mast">
     <div class="brands" aria-label="Team">
@@ -1300,24 +1507,31 @@
       <h1 id="greeting">Good morning, <em>there</em>.</h1>
       <p class="date"><span id="today">—</span> · <span id="refreshed">not loaded</span></p>
       <div class="mast-tools" id="mast-tools">
-        <button class="icon-btn refresh" id="refresh" type="button" title="Reload the board" aria-label="Reload the board">↻</button>
+        <button class="icon-btn refresh" id="refresh" type="button" title="Reload the jobs" aria-label="Reload the jobs">↻</button>
         <button class="icon-btn" id="keys-btn" type="button" aria-expanded="false" aria-controls="keys-pop" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+        <button class="icon-btn" id="theme-btn" type="button" aria-pressed="false" title="Switch between light and dark" aria-label="Switch to dark theme"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
         <button class="icon-btn" id="gear-btn" type="button" aria-expanded="false" aria-controls="gear-pop" title="Display settings" aria-label="Display settings">⚙</button>
         <div class="pop" id="gear-pop" role="dialog" aria-label="Display settings" hidden>
           <h3>Display</h3>
           <div class="gp-row"><span class="gp-k">Theme</span>
             <span class="seg" role="group" aria-label="Color theme">
-              <button type="button" data-theme-choice="auto" aria-pressed="true">Auto</button>
-              <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
-              <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+              <button type="button" id="theme-auto" data-theme-choice="auto" aria-pressed="true" title="Follow your system setting">Auto</button>
+              <button type="button" id="theme-light" data-theme-choice="light" aria-pressed="false">Light</button>
+              <button type="button" id="theme-dark" data-theme-choice="dark" aria-pressed="false">Dark</button>
             </span></div>
-          <p class="fine">Density and brightness arrive with the kit's shared display code (EM/Network migration).</p>
+          <div class="gp-row"><span class="gp-k">Contrast</span>
+            <span class="seg" role="group" aria-label="Contrast">
+              <button type="button" id="contrast-standard" data-contrast-choice="standard" aria-pressed="true">Standard</button>
+              <button type="button" id="contrast-high" data-contrast-choice="high" aria-pressed="false" title="Darker text, stronger borders, underlined links">High</button>
+            </span></div>
+          <label class="gp-row bright"><span class="gp-k">Brightness</span><span class="gp-v"><input type="range" id="brightness" min="90" max="110" step="5" value="100" aria-label="Brightness"><span id="brightness-v" class="num">100%</span></span></label>
+          <p class="fine">Saved in this browser only. Double-click the slider to reset it. <button type="button" class="linkish" id="display-reset">Reset all</button></p>
         </div>
         <div class="pop keys-pop" id="keys-pop" role="dialog" aria-label="Keyboard shortcuts" hidden>
           <h3>Keyboard shortcuts</h3>
           <dl class="keys">
-            <dt><kbd class="k">J</kbd> <kbd class="k">K</kbd></dt><dd>Next / previous job in the lane</dd>
-            <dt><kbd class="k">H</kbd> <kbd class="k">L</kbd></dt><dd>Previous / next lane</dd>
+            <dt><kbd class="k">J</kbd> <kbd class="k">K</kbd></dt><dd>Next / previous job on the tab</dd>
+            <dt><kbd class="k">H</kbd> <kbd class="k">L</kbd></dt><dd>Previous / next tab</dd>
             <dt><kbd class="k">Space</kbd></dt><dd>Preview the job</dd>
             <dt><kbd class="k">Enter</kbd></dt><dd>Open the case in CRM</dd>
             <dt><kbd class="k">X</kbd></dt><dd>Select the job</dd>
@@ -1349,57 +1563,85 @@
     </div>
   </section>
 
-  <!-- ===================== Zone 1: Dispatch ===================== -->
-  <div class="dz hl-zone hl-zone-work" data-zone="work" id="z-dispatch">
-    <div class="band"><h2>Dispatch</h2><span class="meta" id="board-meta"></span></div>
-
+  <!-- ===================== Zone 1: Jobs (Today strip, then the stage tabs) ===================== -->
+  <div class="hl-zone hl-zone-work" data-zone="work" id="z-work">
     <section class="card excs" id="excs" aria-label="Dispatch exceptions" hidden>
       <h3>Exceptions</h3><span id="exc-list"></span>
     </section>
 
-    <section class="card board" id="board" aria-label="Dispatch board">
+    <section class="card tstrip" id="tstrip" aria-label="Today and tomorrow">
+      <div class="head"><h2>Today and tomorrow</h2><span class="meta" id="tstrip-meta"></span></div>
+      <div class="tdays" id="tdays"><section class="tday sk"><h3>Today</h3><p class="empty">Loading…</p></section><section class="tday sk"><h3>Tomorrow</h3><p class="empty">Loading…</p></section></div>
+    </section>
+
+    <section class="card queue" id="queue-card" aria-label="Jobs">
       <div class="head">
-        <h2>Board <span class="badges" id="board-badges"></span></h2><span class="sr" id="board-live" aria-live="polite"></span>
-        <span class="sp"></span>
+        <h2>Jobs <span class="badges" id="queue-badges"></span></h2><span class="meta" id="board-meta"></span><span class="sr" id="board-live" aria-live="polite"></span>
         <span class="seg scope" role="group" aria-label="Whose jobs" id="scope-seg">
           <button type="button" data-scope="all" aria-pressed="true">All</button>
           <button type="button" data-scope="mine" aria-pressed="false">Mine</button>
         </span>
       </div>
-      <div class="bulkbar" id="bulkbar" role="region" aria-label="Change the selected jobs" hidden>
-        <b id="bulk-n">0 selected</b>
-        <label>Installer <select id="bulk-inst" aria-label="Assign selected jobs"></select></label>
-        <label>Status <select id="bulk-status" aria-label="Set case status on selected jobs"></select></label>
-        <label>Owner <select id="bulk-owner" aria-label="Set owner on selected jobs"></select></label>
-        <span class="sp"></span>
-        <button type="button" class="btn primary" data-bulk="apply">Apply</button>
-        <button type="button" class="btn" data-bulk="clear">Clear</button>
-      </div>
-      <div class="seg lane-tabs" role="tablist" aria-label="Lane" id="lane-tabs">
-        <button type="button" role="tab" data-lane="needs" aria-selected="true" aria-pressed="true">Needs dispatch <b class="num" data-n="needs"></b></button>
-        <button type="button" role="tab" data-lane="sched" aria-selected="false" aria-pressed="false">Scheduled <b class="num" data-n="sched"></b></button>
-        <button type="button" role="tab" data-lane="report" aria-selected="false" aria-pressed="false">Report <b class="num" data-n="report"></b></button>
-      </div>
-      <div class="lanes" id="lanes">
-        <section class="lane l-needs on" data-lane="needs" aria-label="Needs dispatch">
-          <h3>Needs dispatch <a class="n" target="_top" data-view="docNeeds" data-n="needs" title="Open the DOC - Needs dispatch view"></a><span class="sp"></span><span class="badges" id="needs-badges"></span></h3>
-          <ul class="rows" id="lane-needs"><li class="job sk"><span class="what">Loading…</span></li><li class="job sk"><span class="what">Loading…</span></li><li class="job sk"><span class="what">Loading…</span></li></ul>
-        </section>
-        <section class="lane l-sched" data-lane="sched" aria-label="Scheduled">
-          <h3>Scheduled <a class="n" target="_top" data-view="docScheduled" data-n="sched" title="Open the DOC - Scheduled view"></a><span class="sp"></span><span class="badges" id="sched-badges"></span></h3>
-          <ul class="rows" id="lane-sched"><li class="job sk"><span class="what">Loading…</span></li><li class="job sk"><span class="what">Loading…</span></li><li class="job sk"><span class="what">Loading…</span></li></ul>
-        </section>
-        <section class="lane l-report" data-lane="report" aria-label="Awaiting report">
-          <h3>Awaiting report <a class="n" target="_top" data-view="docAwaiting" data-n="report" title="Open the DOC - Awaiting report view"></a></h3>
-          <ul class="rows" id="lane-report"><li class="job sk"><span class="what">Loading…</span></li></ul>
+      <div class="qbody" id="qbody" role="tabpanel">
+        <section class="qjobs" aria-label="Jobs on this tab">
+          <div class="bulkbar" id="bulkbar" role="region" aria-label="Change the selected jobs" hidden>
+            <b id="bulk-n">0 selected</b>
+            <label>Installer <select id="bulk-inst" aria-label="Assign selected jobs"></select></label>
+            <label>Status <select id="bulk-status" aria-label="Set case status on selected jobs"></select></label>
+            <label>Owner <select id="bulk-owner" aria-label="Set owner on selected jobs"></select></label>
+            <span class="sp"></span>
+            <button type="button" class="btn primary" data-bulk="apply">Apply</button>
+            <button type="button" class="btn" data-bulk="clear">Clear</button>
+          </div>
+          <div class="qonly" id="qonly" hidden></div>
+          <div class="qhead" id="jcols" aria-label="Job columns"></div>
+          <ul class="rows" id="jobs"><li class="job row sk"><span class="what">Loading…</span></li><li class="job row sk"><span class="what">Loading…</span></li><li class="job row sk"><span class="what">Loading…</span></li></ul>
         </section>
       </div>
     </section>
   </div>
 
-  <!-- ===================== Zone 2: Installers (map + strip) ===================== -->
-  <div class="dz hl-zone hl-zone-crew" data-zone="crew" id="z-crew">
-    <div class="band"><h2>Installers</h2><span class="meta">Planned from jobs, notes and coverage — not GPS.</span></div>
+  <!-- ===================== Zone 2: Numbers ===================== -->
+  <div class="bz hl-zone hl-zone-numbers" data-zone="numbers" id="z-num">
+    <div class="band"><h2>Numbers</h2><span class="meta">jobs · overdue · this week</span></div>
+    <div class="numgrid cols-6 kpis" id="numgrid" role="group" aria-label="Key numbers">
+      <a class="kpi" id="k-open" target="_top" data-view="docBoard" title="Opens the DOC - Dispatch board view">
+        <span class="label">Open jobs<span class="go" aria-hidden="true">open ›</span></span>
+        <span class="value num sk" id="k-open-v">—</span>
+        <span class="ctx" id="k-open-c">received to completed, not yet reported</span>
+      </a>
+      <button type="button" class="kpi" id="k-unassigned" data-show="unassigned" title="Show the jobs waiting for an installer">
+        <span class="label">Unassigned<span class="go" aria-hidden="true">show ↓</span></span>
+        <span class="value num sk" id="k-unassigned-v">—</span>
+        <span class="ctx" id="k-unassigned-c">waiting for an installer</span>
+      </button>
+      <button type="button" class="kpi" id="k-today" data-show="today" title="Show the jobs due or booked today">
+        <span class="label">Due today<span class="go" aria-hidden="true">show ↓</span></span>
+        <span class="value num sk" id="k-today-v">—</span>
+        <span class="ctx" id="k-today-c">appointments and due times today</span>
+      </button>
+      <button type="button" class="kpi" id="k-overdue" data-show="overdue" title="Show the Overdue / no completion proof tab">
+        <span class="label">Overdue<span class="go" aria-hidden="true">show ↓</span></span>
+        <span class="value num sk" id="k-overdue-v">—</span>
+        <span class="ctx" id="k-overdue-c">past due, window over or no proof</span>
+      </button>
+      <button type="button" class="kpi" id="k-done" data-show="done" title="Show the jobs done this week">
+        <span class="label">Completed this week<span class="go" aria-hidden="true">show ↓</span></span>
+        <span class="value num sk" id="k-done-v">—</span>
+        <span class="ctx" id="k-done-c">finished since Monday</span>
+      </button>
+      <button type="button" class="kpi" id="k-median" data-show="sched" title="Show the scheduled jobs this is measured from">
+        <span class="label">Median hours, request to accepted<span class="go" aria-hidden="true">show ↓</span></span>
+        <span class="value num sk" id="k-median-v">—</span>
+        <span class="ctx" id="k-median-c">from scheduled jobs</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== Zone 3: Reference (collapsed until opened) ===================== -->
+  <div class="bz hl-zone hl-zone-reference" data-zone="reference" id="z-ref">
+    <div class="band"><h2>Reference</h2><span class="meta">map · installers · coverage · links</span></div>
+    <div class="rbody" id="rbody">
     <div class="crew-wrap has-map" id="crew-wrap">
       <section class="card crew-map" id="crew-map" aria-label="Installer map">
         <div class="head">
@@ -1438,16 +1680,12 @@
         <div id="crew-rows"></div>
       </section>
     </div>
-  </div>
 
-  <!-- ===================== Zone 3: Reference ===================== -->
-  <div class="dz hl-zone hl-zone-reference" data-zone="reference" id="z-ref">
-    <div class="band"><h2>Reference</h2></div>
-    <div class="ref">
-      <div class="card" aria-label="Quick links">
-        <div class="head"><h2>Quick links</h2></div>
-        <div class="links"><div class="lgroup"><ul id="links"></ul></div></div>
-      </div>
+      <div class="ref">
+        <div class="card" aria-label="DOC links">
+          <div class="head"><h2>Quick links</h2></div>
+          <div class="links"><div class="lgroup"><ul id="links"></ul></div></div>
+        </div>
       <section class="card cov" aria-label="Coverage">
         <div class="head"><h2>Coverage</h2></div>
         <div class="stats" id="cov-stats"></div>
@@ -1458,10 +1696,11 @@
         </div>
         <p class="fine" id="cov-last"></p>
       </section>
+      </div>
     </div>
   </div>
 
-  <footer class="foot-note"><span id="source">DOC Dispatch v3</span></footer>
+  <footer class="foot-note"><span id="source">DOC Dispatch v5</span></footer>
 </div>
 
 <div class="peek" id="peek" hidden role="dialog" aria-modal="true" aria-label="Preview" tabindex="-1"></div>
@@ -1485,13 +1724,10 @@
 <div id="hl-toasts" role="status" aria-live="polite"><div class="qtoast" id="qtoast" hidden></div></div>
 
 <script>window.HL_DIALOGS = [{ id: 'cov-overlay', panel: '.modal' }, { id: 'pr-overlay', panel: '.modal' }];</script>
-<script id="doc-counties">
-/* generated by doc-dispatch-map/build-counties.js — do not edit by hand */
+<script id="doc-counties">/* generated by doc-dispatch-map/build-counties.js — do not edit by hand */
 window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 3 counties-10m (US Census 1:10m)","viewBox":[0,0,600,646],"counties":[{"key":"adams","name":"Adams","fips":"55001","state":"WI","d":"M295.1,397.4L312.8,397.6L325.3,397.7L325.5,434.2L325.7,481.2L307,481.5L303.4,474.4L299.1,461.8L289.4,450.6L287.2,443.5L290.1,442.3L288,432.4L284.7,430.6L283,419.5L287.6,414.8L288.3,408.8L292.9,410.8L295.1,405.3L292.9,402.4Z","x":306,"y":425.1},{"key":"ashland","name":"Ashland","fips":"55003","state":"WI","d":"M241.4,16.3L244.2,6.5L248.3,6L246.5,14.9ZM235.9,33.7L243,29.9L238.3,35.4ZM223.7,26.9L225.4,24.4L235.6,21L237.3,22.6L233.6,28.3L225.4,29.5ZM213.4,38.7L214.5,35.5L221.3,30.7L221.6,32.9ZM215.6,21.5L220.3,27.9L215.9,28.2L213.2,23.8ZM212.3,13.1L224.2,8.9L227.9,15.5L232.7,11.5L233.3,16.7L227.9,17.8L222.1,23.5L218.4,18.5L213,16.1ZM210.3,46.1L216.1,44L227.1,33.9L231.8,37.8L221.6,41.6L223.2,45.8L217.4,46.2L210.6,50.5ZM197.4,73.7L210.1,68.4L213.9,65.4L215.6,59L219.3,63L233.2,74.1L232.6,121.7L244.6,121.7L244.5,133.8L256.6,133.7L256.5,157.7L220.2,157.4L196.4,157.2L196.7,133.2Z","x":217.6,"y":136.5},{"key":"barron","name":"Barron","fips":"55005","state":"WI","d":"M77.1,202.1L88.9,202.4L136.5,203.9L135.6,251.6L135,263.5L123.1,263L75.2,261.7Z","x":106,"y":232.8},{"key":"bayfield","name":"Bayfield","fips":"55007","state":"WI","d":"M192.6,18.1L197.7,16.2L197.3,21.4ZM138.5,49.1L142.2,48.9L158.7,40.9L167.2,37.8L169.3,34.8L175.1,37.5L177.5,33.6L186,32.5L193.6,24.3L198.3,25.8L203.1,21.7L206.5,22.2L214.5,31.9L209.7,40.9L201.4,50.1L204.4,58.8L198.9,62.9L195,72L197.4,73.7L196.7,133.2L166.8,132.3L136.9,131.9Z","x":167.5,"y":86.9},{"key":"brown","name":"Brown","fips":"55009","state":"WI","d":"M458.5,335.9L459.6,336.9L483.2,335.6L482.7,345.1L478.3,351.2L485.5,356L489.7,355.1L492,348.7L501,340.9L505.6,339.7L506.4,383.5L494.7,383.8L494.6,395.9L479.3,396.2L464.8,396.3L463.7,348.7L458.4,349Z","x":481.5,"y":372.9},{"key":"buffalo","name":"Buffalo","fips":"55011","state":"WI","d":"M122.8,347.7L134.8,347.9L133.9,396.3L126.7,401L125.5,406.5L130.1,409.8L133.2,417.1L129.1,425.1L130.5,426.9L126.9,426L115.7,415.7L114.7,412.2L105.2,407.1L101,403L97.9,397.7L97.7,391.6L94.9,389.8L95.1,383.5L90.2,378.6L79.3,372.9L83.6,358.7L86,347.7L88.5,346.9Z","x":112.3,"y":369.5},{"key":"burnett","name":"Burnett","fips":"55013","state":"WI","d":"M10.9,187.6L16.6,183L24.2,165.7L31.2,160.3L40,157.9L42.9,153.4L47.7,155.1L51.3,148.6L59.6,149.7L61.8,142.7L65.3,141.6L65.6,130.2L89,130.9L88.4,154.9L89.8,154.9L88.9,202.4L77.1,202.1L77.5,190.3L41.4,188.8L40.7,200.8L6.3,199.3L8.8,188.6Z","x":68.1,"y":168.9},{"key":"calumet","name":"Calumet","fips":"55015","state":"WI","d":"M443.8,396.5L464.8,396.3L479.3,396.2L480.2,432.4L480.8,444.5L468.7,444.8L468.5,438.5L444.6,438.8Z","x":462,"y":418},{"key":"chippewa","name":"Chippewa","fips":"55017","state":"WI","d":"M123.1,263L135,263.5L135.6,251.6L195.3,252.6L195.3,288.7L195,312.7L123.5,311.8L124.3,275.1L122.9,275.1Z","x":159.1,"y":282.2},{"key":"clark","name":"Clark","fips":"55019","state":"WI","d":"M195.3,288.7L243,289.1L254.6,288.8L254.4,337L254.2,373.1L230.1,373.3L206.4,373L206.5,361L194.4,360.8L194.6,348.8L195,312.7Z","x":224.5,"y":331},{"key":"columbia","name":"Columbia","fips":"55021","state":"WI","d":"M307,481.5L325.7,481.2L360.9,480.9L372.8,480.7L372.8,482.4L385,482L385.4,518.2L385.2,530.2L349.4,531.1L349.4,529.3L313.6,529.6L313.6,525.9L317.9,520.2L325.5,517.4L325.8,492.9L312.4,491.1L313.9,487.5L308.1,485.4Z","x":358.4,"y":506.1},{"key":"crawford","name":"Crawford","fips":"55023","state":"WI","d":"M164.3,510.8L218.4,511.4L218.1,546.1L215.9,546L210.4,552.7L205,554.7L199.8,559L190.4,561.1L188.9,563.6L177.9,570.6L170.3,569.5L168.5,571L166.5,558.3L166.6,551.2L169.9,548.4L172.1,542.2L178.7,535.2L174.2,526.1L164.5,521.1Z","x":198.3,"y":531.3},{"key":"dane","name":"Dane","fips":"55025","state":"WI","d":"M301.7,541.6L305,537.1L312.6,535.3L313.6,529.6L349.4,529.3L349.4,531.1L385.2,530.2L385.4,542.3L385.6,590.7L349.5,591.5L349.5,589.8L301.8,589.9Z","x":332.1,"y":559.6},{"key":"dickinsonmi","name":"Dickinson (MI)","fips":"26043","state":"MI","d":"M466.8,163.8L465.7,118.9L513.5,117.6L514.6,153.6L514.9,165.7L507.3,166L508,190.2L493.5,190.7L490.2,186.3L481.9,186L478.6,181L472.8,183.2L468.3,181.9L465.1,178.1L470.8,171.8Z","x":490.4,"y":146.8},{"key":"dodge","name":"Dodge","fips":"55027","state":"WI","d":"M385,482L396.9,481.8L445.4,481.4L446,493.4L446.1,517.4L444.6,517.4L445.1,541.8L433.2,541.8L385.4,542.3L385.2,530.2L385.4,518.2Z","x":415.4,"y":511.7},{"key":"door","name":"Door","fips":"55029","state":"WI","d":"M581.4,239.2L583.1,229.6L594,231.2L586.6,246.7ZM541.2,261.8L545.4,260L546.3,267.4L541.3,264.8ZM543.9,334.2L508.3,335.1L509.5,328.5L520,312.4L529,307.8L532.9,308.5L536.6,304.4L542,308L539.8,302.6L543.6,290.9L552.6,277.7L554.7,265.7L558.9,266.2L566.1,262.1L566.2,255.1L571.9,247.7L579.6,247.8L579.3,258.2L573.7,259L573.6,275.9L569.6,280.8L566.8,280.4L565.3,286.8L560.5,293.1L562.5,298.2L558.1,303L559.6,306L553.4,310.1L549.1,317.7Z","x":530.8,"y":321.6},{"key":"douglas","name":"Douglas","fips":"55031","state":"WI","d":"M66.7,94.2L67.7,60.2L75.1,62.3L79,57.3L76,55L81.5,53.5L82.6,50L87.4,48.9L94.4,55L101.1,58.7L112.7,57.7L138.5,49.1L136.9,131.9L89,130.9L65.6,130.2Z","x":102.3,"y":94.1},{"key":"dunn","name":"Dunn","fips":"55033","state":"WI","d":"M75.2,261.7L123.1,263L122.9,275.1L124.3,275.1L123.5,311.8L123,335.6L75.4,334.4L76,310.5L77,274L74.9,273.8Z","x":100,"y":303},{"key":"eauclaire","name":"Eau Claire","fips":"55035","state":"WI","d":"M123.5,311.8L195,312.7L194.6,348.8L170.5,348.4L134.8,347.9L122.8,347.7L123,335.6Z","x":141.6,"y":330},{"key":"florence","name":"Florence","fips":"55037","state":"WI","d":"M412,152.1L413.8,155L418.6,155.5L419.6,151.7L428.9,151.3L429.7,154.3L436.9,156.6L441.1,154.7L449.5,160.2L454.2,158.4L466.8,163.8L470.8,171.8L465.1,178.1L468.3,181.9L472.8,183.2L473,192.6L437.6,192L413.4,192.5L412.8,156.6Z","x":431,"y":174.2},{"key":"fonddulac","name":"Fond du Lac","fips":"55039","state":"WI","d":"M396.4,445.6L444.7,445.1L444.6,438.8L468.5,438.5L468.7,444.8L469.8,493L446,493.4L445.4,481.4L396.9,481.8Z","x":450.2,"y":463.1},{"key":"forest","name":"Forest","fips":"55041","state":"WI","d":"M387.8,144.2L399.6,151.3L406.5,150.4L412,152.1L412.8,156.6L413.4,192.5L437.6,192L438.2,239.8L413.8,240L389.7,240.4L389.9,228.5L378.1,228.6L377,169.1L376.9,157.1L387.9,156.9Z","x":410.4,"y":216.1},{"key":"grant","name":"Grant","fips":"55043","state":"WI","d":"M168.5,571L170.3,569.5L177.9,570.6L188.9,563.6L190.4,561.1L199.8,559L205,554.7L210.4,552.7L215.9,546L218.1,546.1L230.4,540.8L242,542.3L242.1,596L241.9,638.3L219.9,637.9L220,633.5L213.5,620.5L194.2,614.6L185.8,611.3L177.1,604L173.7,585.6L169.4,582.6Z","x":211.3,"y":587.6},{"key":"green","name":"Green","fips":"55045","state":"WI","d":"M301.8,589.9L349.5,589.8L349.5,591.5L350.3,639.1L346.6,639.1L301.9,638.6L301.8,596Z","x":325.9,"y":614.4},{"key":"greenlake","name":"Green Lake","fips":"55047","state":"WI","d":"M368.3,433.8L396.2,433.5L396.4,445.6L396.9,481.8L385,482L372.8,482.4L372.8,480.7L360.9,480.9L360.8,464.8L368.7,463.9L368.6,457.7L365.4,457.5L365.3,448.6L368.5,448.5Z","x":382.2,"y":452.6},{"key":"iowa","name":"Iowa","fips":"55049","state":"WI","d":"M242,542.3L250,541.1L259,542.8L265.9,547.5L277.1,547.9L285.8,543.2L295.2,544.1L301.7,541.6L301.8,589.9L301.8,596L242.1,596Z","x":266.7,"y":571.8},{"key":"iron","name":"Iron","fips":"55051","state":"WI","d":"M233.2,74.1L237.3,73.4L245.8,76.7L247.9,81.4L252,80.7L252,80.7L255.4,83.5L264.6,85.5L274.1,105.3L273.8,108.5L292.3,113.7L292.4,157.6L281.3,157.6L256.5,157.7L256.6,133.7L244.5,133.8L244.6,121.7L232.6,121.7Z","x":251.9,"y":104},{"key":"jackson","name":"Jackson","fips":"55053","state":"WI","d":"M170.5,348.4L194.6,348.8L194.4,360.8L206.5,361L206.4,373L230.1,373.3L254.2,373.1L253.8,396.6L254.5,397.4L254.5,410.3L242.3,409.5L196.7,409.5L188.5,413.3L188.8,421.5L170.9,421.2L170.9,420L171.3,396.8L169.8,396.8Z","x":191.5,"y":388.4},{"key":"jefferson","name":"Jefferson","fips":"55055","state":"WI","d":"M385.4,542.3L433.2,541.8L432.9,566.3L433.3,590.6L409.6,591L385.6,590.7Z","x":409.3,"y":566.4},{"key":"juneau","name":"Juneau","fips":"55057","state":"WI","d":"M254.5,410.3L254.5,397.4L295.1,397.4L292.9,402.4L295.1,405.3L292.9,410.8L288.3,408.8L287.6,414.8L283,419.5L284.7,430.6L288,432.4L290.1,442.3L287.2,443.5L289.4,450.6L299.1,461.8L303.4,474.4L307,481.5L254.2,481.5L254.2,469Z","x":273.6,"y":462.2},{"key":"kenosha","name":"Kenosha","fips":"55059","state":"WI","d":"M458,622.3L470,621.9L469.8,614L508.6,613.3L507.3,620.4L509.9,637.6L469.3,638L458.3,638.3Z","x":483.9,"y":625.8},{"key":"kewaunee","name":"Kewaunee","fips":"55061","state":"WI","d":"M505.6,339.7L508.3,335.1L543.9,334.2L537.9,344.2L534.9,351.7L528.8,382.9L506.4,383.5Z","x":520.3,"y":349.5},{"key":"lacrosse","name":"La Crosse","fips":"55063","state":"WI","d":"M143.6,432.7L154,432.9L152.3,425.5L159.5,420.9L164.1,423.6L166.3,418.8L170.9,420L170.9,421.2L188.8,421.5L194.8,421.5L194.3,469.4L159.8,468.8L161,462.3L157.2,452L147.5,437Z","x":174.4,"y":441.7},{"key":"lafayette","name":"Lafayette","fips":"55065","state":"WI","d":"M242.1,596L301.8,596L301.9,638.6L292.8,638.5L241.9,638.3Z","x":272,"y":617.2},{"key":"langlade","name":"Langlade","fips":"55067","state":"WI","d":"M341.2,228.6L347.1,228.2L378.1,228.6L389.9,228.5L389.7,240.4L413.8,240L414.2,264L418.1,264.1L418.3,276.1L385,276.6L385.1,288.8L361.3,289.1L361.1,276.7L341.5,276.8Z","x":368.5,"y":253.2},{"key":"lincoln","name":"Lincoln","fips":"55069","state":"WI","d":"M281.3,240.7L281.3,216.7L340.7,216.5L341.2,228.6L341.5,276.8L281.2,276.8L280.9,246.4Z","x":311.2,"y":246.7},{"key":"manitowoc","name":"Manitowoc","fips":"55071","state":"WI","d":"M479.3,396.2L494.6,395.9L494.7,383.8L506.4,383.5L528.8,382.9L528.9,387.7L532,394.8L531.5,403.3L527.4,408.3L519.4,414L518.5,421.4L515.8,425.9L511.6,443.7L480.8,444.5L480.2,432.4Z","x":499.3,"y":415.2},{"key":"marathon","name":"Marathon","fips":"55073","state":"WI","d":"M254.6,288.8L266.1,288.8L266.2,276.8L281.2,276.8L341.5,276.8L361.1,276.7L361.3,289.1L361.7,337.2L335.6,336.8L300.6,337.1L254.4,337Z","x":308,"y":307},{"key":"marinette","name":"Marinette","fips":"55075","state":"WI","d":"M437.6,192L473,192.6L472.8,183.2L478.6,181L481.9,186L490.2,186.3L493.5,190.7L497,192.2L499.9,197.3L495.8,199L500.9,207.8L498.3,216L499.5,221.6L497.6,226.4L493.1,230.6L494.3,235.1L491.9,238L494.5,243.5L494.5,243.5L503.9,242.1L509.3,236.3L513.3,239.2L514.1,243.2L510.4,249L505.6,263.2L506.4,266.6L511,269.8L514,275.3L520.7,276.8L517.4,283.8L517.3,293.3L504.3,295.2L504.6,291.8L486.7,291.9L486.6,288.1L469,288.1L469.1,276.1L462.1,276.1L462.2,264.2L450.3,263.8L450.1,239.9L438.2,239.8Z","x":468.5,"y":219.6},{"key":"marquette","name":"Marquette","fips":"55077","state":"WI","d":"M325.5,434.2L368.3,433.8L368.5,448.5L365.3,448.6L365.4,457.5L368.6,457.7L368.7,463.9L360.8,464.8L360.9,480.9L325.7,481.2Z","x":345,"y":453.4},{"key":"menominee","name":"Menominee","fips":"55078","state":"WI","d":"M418.3,276.1L433.3,275.9L433.7,312.1L409.4,312.4L409.2,300.4L385.3,300.8L385.1,288.8L385,276.6Z","x":419.4,"y":290.5},{"key":"milwaukee","name":"Milwaukee","fips":"55079","state":"WI","d":"M481,541.4L498,541L497.4,548.5L500.6,558.5L498.2,565.4L503.5,572.6L503.8,582.7L505.7,589.2L481.3,589.7L480.8,565.7Z","x":492.5,"y":577.6},{"key":"monroe","name":"Monroe","fips":"55081","state":"WI","d":"M254.5,410.3L254.2,469L242,469.6L194.3,469.4L194.8,421.5L188.8,421.5L188.5,413.3L196.7,409.5L242.3,409.5Z","x":224.4,"y":439.3},{"key":"oconto","name":"Oconto","fips":"55083","state":"WI","d":"M413.8,240L438.2,239.8L450.1,239.9L450.3,263.8L462.2,264.2L462.1,276.1L469.1,276.1L469,288.1L486.6,288.1L486.7,291.9L504.6,291.8L504.3,295.2L497.1,300.2L498.3,305.7L494.6,312.8L491.5,314.7L487.9,324.7L483.8,329.8L483.2,335.6L459.6,336.9L458.5,335.9L457.2,324L457.2,312L433.7,312.1L433.3,275.9L418.3,276.1L418.1,264.1L414.2,264Z","x":474.8,"y":306.5},{"key":"oneida","name":"Oneida","fips":"55085","state":"WI","d":"M281.3,169.4L340.7,169L352.8,168.5L352.9,174.1L365,174.6L364.6,168.6L377,169.1L378.1,228.6L347.1,228.2L341.2,228.6L340.7,216.5L281.3,216.7Z","x":305.7,"y":192.9},{"key":"outagamie","name":"Outagamie","fips":"55087","state":"WI","d":"M422.7,349L458.4,349L463.7,348.7L464.8,396.3L443.8,396.5L410.3,397.2L409.9,349.2Z","x":434.2,"y":373},{"key":"ozaukee","name":"Ozaukee","fips":"55089","state":"WI","d":"M482,492.9L506.8,492.1L505.7,503.5L498.8,516.4L496,533L498,541L481,541.4L480.4,517.2L482.6,517.1Z","x":493.4,"y":503.5},{"key":"pepin","name":"Pepin","fips":"55091","state":"WI","d":"M57.2,353.7L74.8,354.4L75.4,334.4L123,335.6L122.8,347.7L88.5,346.9L86,347.7L83.6,358.7L79.3,372.9L66.7,368.3L63.9,365.9L58.1,359Z","x":73.7,"y":362.3},{"key":"pierce","name":"Pierce","fips":"55093","state":"WI","d":"M14.1,308L52.4,309.1L76,310.5L75.4,334.4L74.8,354.4L57.2,353.7L55.1,351.9L45.6,350L35,349.5L31.9,344.2L27.1,342.1L27.5,339.3L16.9,328.6L10,323.9L9.7,320.8L14.3,311.5Z","x":52.9,"y":330.1},{"key":"polk","name":"Polk","fips":"55095","state":"WI","d":"M6.3,199.3L40.7,200.8L41.4,188.8L77.5,190.3L77.1,202.1L75.2,261.7L16.8,259.9L16.8,248.6L18.2,248L22.9,243L22.7,239.5L28.1,234.1L28.7,228.2L21,217.8L21.5,214.1L16.7,210.2L13.2,211.1L6,208.3Z","x":52.3,"y":222.9},{"key":"portage","name":"Portage","fips":"55097","state":"WI","d":"M300.6,337.1L335.6,336.8L361.7,337.2L362.3,397.8L325.3,397.7L312.8,397.6L312.4,361.1L300.7,361.1Z","x":337.3,"y":372.6},{"key":"price","name":"Price","fips":"55099","state":"WI","d":"M219.8,204.9L220.2,157.4L256.5,157.7L281.3,157.6L281.3,169.4L281.3,216.7L281.3,240.7L240.8,241.2L219.5,240.9Z","x":250.5,"y":199.4},{"key":"racine","name":"Racine","fips":"55101","state":"WI","d":"M457.3,590.3L481.3,589.7L505.7,589.2L512.1,597L511,607.6L508.6,613.3L469.8,614L470,621.9L458,622.3Z","x":486.3,"y":601.6},{"key":"richland","name":"Richland","fips":"55103","state":"WI","d":"M254.1,493.5L266.4,493.4L265.9,547.5L259,542.8L250,541.1L242,542.3L230.4,540.8L218.1,546.1L218.4,511.4L218.1,493.5Z","x":242.2,"y":517.5},{"key":"rock","name":"Rock","fips":"55105","state":"WI","d":"M349.5,591.5L385.6,590.7L409.6,591L409.4,603.3L410.3,639.5L393.5,639.4L350.3,639.1Z","x":379.9,"y":615.1},{"key":"rusk","name":"Rusk","fips":"55107","state":"WI","d":"M136.5,203.9L219.8,204.9L219.5,240.9L195.5,240.4L195.3,252.6L135.6,251.6Z","x":159.9,"y":228.2},{"key":"sauk","name":"Sauk","fips":"55111","state":"WI","d":"M254.2,481.5L307,481.5L308.1,485.4L313.9,487.5L312.4,491.1L325.8,492.9L325.5,517.4L317.9,520.2L313.6,525.9L313.6,529.6L312.6,535.3L305,537.1L301.7,541.6L295.2,544.1L285.8,543.2L277.1,547.9L265.9,547.5L266.4,493.4L254.1,493.5Z","x":292.8,"y":509.2},{"key":"sawyer","name":"Sawyer","fips":"55113","state":"WI","d":"M136.9,131.9L166.8,132.3L196.7,133.2L196.4,157.2L220.2,157.4L219.8,204.9L136.5,203.9L137.1,156.1L136.4,155.9Z","x":168.6,"y":172.7},{"key":"shawano","name":"Shawano","fips":"55115","state":"WI","d":"M361.3,289.1L385.1,288.8L385.3,300.8L409.2,300.4L409.4,312.4L433.7,312.1L457.2,312L457.2,324L458.5,335.9L458.4,349L422.7,349L422.8,336.8L361.7,337.2Z","x":380.3,"y":318.7},{"key":"sheboygan","name":"Sheboygan","fips":"55117","state":"WI","d":"M468.7,444.8L480.8,444.5L511.6,443.7L512.3,455L515.3,460.8L514.9,473L507.8,487.2L506.8,492.1L482,492.9L469.8,493Z","x":492,"y":467},{"key":"stcroix","name":"St. Croix","fips":"55109","state":"WI","d":"M16.8,259.9L75.2,261.7L74.9,273.8L77,274L76,310.5L52.4,309.1L14.1,308L13.5,302.5L16.2,297.6L14.2,292.7L15.2,284.9L11.5,280.8L17.3,274.1L15.6,263.2Z","x":43.5,"y":284.8},{"key":"taylor","name":"Taylor","fips":"55119","state":"WI","d":"M195.3,252.6L195.5,240.4L219.5,240.9L240.8,241.2L281.3,240.7L280.9,246.4L281.2,276.8L266.2,276.8L266.1,288.8L254.6,288.8L243,289.1L195.3,288.7Z","x":242.8,"y":265.1},{"key":"trempealeau","name":"Trempealeau","fips":"55121","state":"WI","d":"M134.8,347.9L170.5,348.4L169.8,396.8L171.3,396.8L170.9,420L166.3,418.8L164.1,423.6L159.5,420.9L152.3,425.5L154,432.9L143.6,432.7L142.2,430.3L130.5,426.9L129.1,425.1L133.2,417.1L130.1,409.8L125.5,406.5L126.7,401L133.9,396.3Z","x":151.8,"y":403.1},{"key":"vernon","name":"Vernon","fips":"55123","state":"WI","d":"M159.8,468.8L194.3,469.4L242,469.6L254.2,469L254.2,481.5L254.1,493.5L218.1,493.5L218.4,511.4L164.3,510.8L161.4,506.3L163.3,500.1L160.5,493.8L162.1,488.6L158.5,484.1L157.9,475.7Z","x":197.6,"y":490.4},{"key":"vilas","name":"Vilas","fips":"55125","state":"WI","d":"M281.3,157.6L292.4,157.6L292.3,113.7L372.5,135.5L382.2,141.1L387.8,144.2L387.9,156.9L376.9,157.1L377,169.1L364.6,168.6L365,174.6L352.9,174.1L352.8,168.5L340.7,169L281.3,169.4Z","x":316.5,"y":145.1},{"key":"walworth","name":"Walworth","fips":"55127","state":"WI","d":"M409.6,591L433.3,590.6L457.3,590.3L458,622.3L458.3,638.3L417.3,639.3L410.3,639.5L409.4,603.3Z","x":433.8,"y":614.8},{"key":"washburn","name":"Washburn","fips":"55129","state":"WI","d":"M89,130.9L136.9,131.9L136.4,155.9L137.1,156.1L136.5,203.9L88.9,202.4L89.8,154.9L88.4,154.9Z","x":113.1,"y":176.1},{"key":"washington","name":"Washington","fips":"55131","state":"WI","d":"M446,493.4L469.8,493L482,492.9L482.6,517.1L480.4,517.2L481,541.4L445.1,541.8L444.6,517.4L446.1,517.4Z","x":462.7,"y":523.4},{"key":"waukesha","name":"Waukesha","fips":"55133","state":"WI","d":"M433.2,541.8L445.1,541.8L481,541.4L480.8,565.7L481.3,589.7L457.3,590.3L433.3,590.6L432.9,566.3Z","x":456.9,"y":566.2},{"key":"waupaca","name":"Waupaca","fips":"55135","state":"WI","d":"M361.7,337.2L422.8,336.8L422.7,349L409.9,349.2L410.3,397.2L395.7,397.6L362.3,397.8Z","x":386.1,"y":368.7},{"key":"waushara","name":"Waushara","fips":"55137","state":"WI","d":"M325.3,397.7L362.3,397.8L395.7,397.6L396.2,433.5L368.3,433.8L325.5,434.2Z","x":343.6,"y":415.9},{"key":"winnebago","name":"Winnebago","fips":"55139","state":"WI","d":"M395.7,397.6L410.3,397.2L443.8,396.5L444.6,438.8L444.7,445.1L396.4,445.6L396.2,433.5Z","x":420.2,"y":421.2},{"key":"wood","name":"Wood","fips":"55141","state":"WI","d":"M254.2,373.1L254.4,337L300.6,337.1L300.7,361.1L312.4,361.1L312.8,397.6L295.1,397.4L254.5,397.4L253.8,396.6Z","x":278.9,"y":372.8}],"inner":"M504.3,295.2L504.6,291.8L486.7,291.9L486.6,288.1L469,288.1L469.1,276.1L462.1,276.1L462.2,264.2L450.3,263.8L450.1,239.9L438.2,239.8L437.6,192L473,192.6L472.8,183.2L478.6,181L481.9,186L490.2,186.3L493.5,190.7M362.3,397.8L361.7,337.2L422.8,336.8L422.7,349L409.9,349.2L410.3,397.2L395.7,397.6M511.6,443.7L480.8,444.5L480.2,432.4L479.3,396.2L494.6,395.9L494.7,383.8L506.4,383.5L528.8,382.9M281.2,276.8L266.2,276.8L266.1,288.8L254.6,288.8L243,289.1L195.3,288.7L195.3,252.6L195.5,240.4L219.5,240.9L240.8,241.2L281.3,240.7L281.3,216.7L340.7,216.5L341.2,228.6L341.5,276.8L281.2,276.8L280.9,246.4L281.3,240.7M341.5,276.8L361.1,276.7L361.3,289.1L361.7,337.2L335.6,336.8L300.6,337.1L254.4,337L254.6,288.8M254.4,337L254.2,373.1L230.1,373.3L206.4,373L206.5,361L194.4,360.8L194.6,348.8L195,312.7L195.3,288.7M325.3,397.7L362.3,397.8L395.7,397.6L396.2,433.5L368.3,433.8L325.5,434.2L325.3,397.7L312.8,397.6L312.4,361.1L300.7,361.1L300.6,337.1M312.8,397.6L295.1,397.4L254.5,397.4L253.8,396.6L254.2,373.1M341.2,228.6L347.1,228.2L378.1,228.6L389.9,228.5L389.7,240.4L413.8,240L414.2,264L418.1,264.1L418.3,276.1L433.3,275.9L433.7,312.1L409.4,312.4L409.2,300.4L385.3,300.8L385.1,288.8L385,276.6L418.3,276.1M396.2,433.5L396.4,445.6L396.9,481.8L385,482L372.8,482.4L372.8,480.7L360.9,480.9L360.8,464.8L368.7,463.9L368.6,457.7L365.4,457.5L365.3,448.6L368.5,448.5L368.3,433.8M159.8,468.8L194.3,469.4L242,469.6L254.2,469L254.2,481.5L254.1,493.5L266.4,493.4L265.9,547.5L259,542.8L250,541.1L242,542.3L230.4,540.8L218.1,546.1L218.4,511.4L218.1,493.5L254.1,493.5M350.3,639.1L349.5,591.5L385.6,590.7L409.6,591L409.4,603.3L410.3,639.5M472.8,183.2L468.3,181.9L465.1,178.1L470.8,171.8L466.8,163.8M458.3,638.3L458,622.3L470,621.9L469.8,614L508.6,613.3M360.9,480.9L325.7,481.2L325.5,434.2M220.2,157.4L256.5,157.7L281.3,157.6L281.3,169.4L281.3,216.7M219.5,240.9L219.8,204.9M385.1,288.8L361.3,289.1M195,312.7L123.5,311.8L124.3,275.1L122.9,275.1L123.1,263L135,263.5L135.6,251.6L195.3,252.6M197.4,73.7L196.7,133.2M136.5,203.9L88.9,202.4L89.8,154.9L88.4,154.9L89,130.9L136.9,131.9L166.8,132.3L196.7,133.2L196.4,157.2L220.2,157.4L219.8,204.9L136.5,203.9L137.1,156.1L136.4,155.9L136.9,131.9L138.5,49.1M218.4,511.4L164.3,510.8M437.6,192L413.4,192.5L412.8,156.6L412,152.1M498,541L481,541.4L480.4,517.2L482.6,517.1L482,492.9L506.8,492.1M396.9,481.8L445.4,481.4L446,493.4L446.1,517.4L444.6,517.4L445.1,541.8M433.2,541.8L445.1,541.8L481,541.4L480.8,565.7L481.3,589.7L457.3,590.3L433.3,590.6L432.9,566.3L433.2,541.8L385.4,542.3L385.2,530.2L385.4,518.2L385,482M14.1,308L52.4,309.1L76,310.5L75.4,334.4L74.8,354.4L57.2,353.7M6.3,199.3L40.7,200.8L41.4,188.8L77.5,190.3L77.1,202.1L75.2,261.7L16.8,259.9M123.1,263L75.2,261.7L74.9,273.8L77,274L76,310.5M385.2,530.2L349.4,531.1L349.4,529.3L313.6,529.6L313.6,525.9L317.9,520.2L325.5,517.4L325.8,492.9L312.4,491.1L313.9,487.5L308.1,485.4L307,481.5L325.7,481.2M75.4,334.4L123,335.6L122.8,347.7L88.5,346.9L86,347.7L83.6,358.7L79.3,372.9M480.8,444.5L468.7,444.8L468.5,438.5L444.6,438.8L443.8,396.5L464.8,396.3L479.3,396.2M422.7,349L458.4,349L463.7,348.7L464.8,396.3M443.8,396.5L410.3,397.2M122.8,347.7L134.8,347.9L133.9,396.3L126.7,401L125.5,406.5L130.1,409.8L133.2,417.1L129.1,425.1L130.5,426.9M77.1,202.1L88.9,202.4M136.5,203.9L135.6,251.6M508.3,335.1L543.9,334.2M506.4,383.5L505.6,339.7M292.3,113.7L292.4,157.6L281.3,157.6M256.5,157.7L256.6,133.7L244.5,133.8L244.6,121.7L232.6,121.7L233.2,74.1M218.1,546.1L215.9,546L210.4,552.7L205,554.7L199.8,559L190.4,561.1L188.9,563.6L177.9,570.6L170.3,569.5L168.5,571M65.6,130.2L89,130.9M349.5,591.5L349.5,589.8L301.8,589.9L301.7,541.6L305,537.1L312.6,535.3L313.6,529.6M385.4,542.3L385.6,590.7M242,542.3L242.1,596L241.9,638.3M481.3,589.7L505.7,589.2M458,622.3L457.3,590.3M143.6,432.7L154,432.9L152.3,425.5L159.5,420.9L164.1,423.6L166.3,418.8L170.9,420L170.9,421.2L188.8,421.5L194.8,421.5L194.3,469.4M194.6,348.8L170.5,348.4L134.8,347.9M123,335.6L123.5,311.8M254.5,397.4L254.5,410.3L242.3,409.5L196.7,409.5L188.5,413.3L188.8,421.5M170.9,420L171.3,396.8L169.8,396.8L170.5,348.4M413.8,240L438.2,239.8M483.2,335.6L459.6,336.9L458.5,335.9L457.2,324L457.2,312L433.7,312.1M242.1,596L301.8,596L301.9,638.6M301.8,596L301.8,589.9M387.8,144.2L387.9,156.9L376.9,157.1L377,169.1L364.6,168.6L365,174.6L352.9,174.1L352.8,168.5L340.7,169L281.3,169.4M458.5,335.9L458.4,349M396.4,445.6L444.7,445.1L444.6,438.8M468.7,444.8L469.8,493L446,493.4M469.8,493L482,492.9M409.6,591L433.3,590.6M254.2,481.5L307,481.5L303.4,474.4L299.1,461.8L289.4,450.6L287.2,443.5L290.1,442.3L288,432.4L284.7,430.6L283,419.5L287.6,414.8L288.3,408.8L292.9,410.8L295.1,405.3L292.9,402.4L295.1,397.4M301.7,541.6L295.2,544.1L285.8,543.2L277.1,547.9L265.9,547.5M377,169.1L378.1,228.6M254.5,410.3L254.2,469","outline":"M192.6,18.1L197.7,16.2L197.3,21.4L192.6,18.1M581.4,239.2L583.1,229.6L594,231.2L586.6,246.7L581.4,239.2M541.2,261.8L545.4,260L546.3,267.4L541.3,264.8L541.2,261.8M241.4,16.3L244.2,6.5L248.3,6L246.5,14.9L241.4,16.3M235.9,33.7L243,29.9L238.3,35.4L235.9,33.7M223.7,26.9L225.4,24.4L235.6,21L237.3,22.6L233.6,28.3L225.4,29.5L223.7,26.9M213.4,38.7L214.5,35.5L221.3,30.7L221.6,32.9L213.4,38.7M215.6,21.5L220.3,27.9L215.9,28.2L213.2,23.8L215.6,21.5M212.3,13.1L224.2,8.9L227.9,15.5L232.7,11.5L233.3,16.7L227.9,17.8L222.1,23.5L218.4,18.5L213,16.1L212.3,13.1M210.3,46.1L216.1,44L227.1,33.9L231.8,37.8L221.6,41.6L223.2,45.8L217.4,46.2L210.6,50.5L210.3,46.1M506.8,492.1L505.7,503.5L498.8,516.4L496,533L498,541L497.4,548.5L500.6,558.5L498.2,565.4L503.5,572.6L503.8,582.7L505.7,589.2L512.1,597L511,607.6L508.6,613.3L507.3,620.4L509.9,637.6L469.3,638L458.3,638.3L417.3,639.3L410.3,639.5L393.5,639.4L350.3,639.1L346.6,639.1L301.9,638.6L292.8,638.5L241.9,638.3L219.9,637.9L220,633.5L213.5,620.5L194.2,614.6L185.8,611.3L177.1,604L173.7,585.6L169.4,582.6L168.5,571L166.5,558.3L166.6,551.2L169.9,548.4L172.1,542.2L178.7,535.2L174.2,526.1L164.5,521.1L164.3,510.8L161.4,506.3L163.3,500.1L160.5,493.8L162.1,488.6L158.5,484.1L157.9,475.7L159.8,468.8L161,462.3L157.2,452L147.5,437L143.6,432.7L142.2,430.3L130.5,426.9L126.9,426L115.7,415.7L114.7,412.2L105.2,407.1L101,403L97.9,397.7L97.7,391.6L94.9,389.8L95.1,383.5L90.2,378.6L79.3,372.9L66.7,368.3L63.9,365.9L58.1,359L57.2,353.7L55.1,351.9L45.6,350L35,349.5L31.9,344.2L27.1,342.1L27.5,339.3L16.9,328.6L10,323.9L9.7,320.8L14.3,311.5L14.1,308L13.5,302.5L16.2,297.6L14.2,292.7L15.2,284.9L11.5,280.8L17.3,274.1L15.6,263.2L16.8,259.9L16.8,248.6L18.2,248L22.9,243L22.7,239.5L28.1,234.1L28.7,228.2L21,217.8L21.5,214.1L16.7,210.2L13.2,211.1L6,208.3L6.3,199.3L8.8,188.6L10.9,187.6L16.6,183L24.2,165.7L31.2,160.3L40,157.9L42.9,153.4L47.7,155.1L51.3,148.6L59.6,149.7L61.8,142.7L65.3,141.6L65.6,130.2L66.7,94.2L67.7,60.2L75.1,62.3L79,57.3L76,55L81.5,53.5L82.6,50L87.4,48.9L94.4,55L101.1,58.7L112.7,57.7L138.5,49.1L142.2,48.9L158.7,40.9L167.2,37.8L169.3,34.8L175.1,37.5L177.5,33.6L186,32.5L193.6,24.3L198.3,25.8L203.1,21.7L206.5,22.2L214.5,31.9L209.7,40.9L201.4,50.1L204.4,58.8L198.9,62.9L195,72L197.4,73.7L210.1,68.4L213.9,65.4L215.6,59L219.3,63L233.2,74.1L237.3,73.4L245.8,76.7L247.9,81.4L252,80.7L252,80.7L255.4,83.5L264.6,85.5L274.1,105.3L273.8,108.5L292.3,113.7L372.5,135.5L382.2,141.1L387.8,144.2L399.6,151.3L406.5,150.4L412,152.1L413.8,155L418.6,155.5L419.6,151.7L428.9,151.3L429.7,154.3L436.9,156.6L441.1,154.7L449.5,160.2L454.2,158.4L466.8,163.8L470.8,171.8L465.1,178.1L468.3,181.9L472.8,183.2L478.6,181L481.9,186L490.2,186.3L493.5,190.7L497,192.2L499.9,197.3L495.8,199L500.9,207.8L498.3,216L499.5,221.6L497.6,226.4L493.1,230.6L494.3,235.1L491.9,238L494.5,243.5L494.5,243.5L503.9,242.1L509.3,236.3L513.3,239.2L514.1,243.2L510.4,249L505.6,263.2L506.4,266.6L511,269.8L514,275.3L520.7,276.8L517.4,283.8L517.3,293.3L504.3,295.2L497.1,300.2L498.3,305.7L494.6,312.8L491.5,314.7L487.9,324.7L483.8,329.8L483.2,335.6L482.7,345.1L478.3,351.2L485.5,356L489.7,355.1L492,348.7L501,340.9L505.6,339.7L508.3,335.1L509.5,328.5L520,312.4L529,307.8L532.9,308.5L536.6,304.4L542,308L539.8,302.6L543.6,290.9L552.6,277.7L554.7,265.7L558.9,266.2L566.1,262.1L566.2,255.1L571.9,247.7L579.6,247.8L579.3,258.2L573.7,259L573.6,275.9L569.6,280.8L566.8,280.4L565.3,286.8L560.5,293.1L562.5,298.2L558.1,303L559.6,306L553.4,310.1L549.1,317.7L543.9,334.2L537.9,344.2L534.9,351.7L528.8,382.9L528.9,387.7L532,394.8L531.5,403.3L527.4,408.3L519.4,414L518.5,421.4L515.8,425.9L511.6,443.7L512.3,455L515.3,460.8L514.9,473L507.8,487.2L506.8,492.1"};
-
 </script>
-<script id="doc-presence">
-/* DOC Dispatch — presence engine (Session 7, Sep 30 2026). Pure: no DOM, no CRM calls. Loaded by the widget
+<script id="doc-presence">/* DOC Dispatch — presence engine (Session 7, Sep 30 2026). Pure: no DOM, no CRM calls. Loaded by the widget
    (window.DocPresence) and by node tests (module.exports).
 
    Where is installer I at instant T? Planned presence, not GPS. Priority, highest first:
@@ -1794,13 +2030,192 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
   }
   return { create: create, countyKey: countyKey, LIVE_MS: LIVE_MS };
 });
-
 </script>
-<script id="doc-page-js">
+<script id="home-layout-js">
 (function () {
   'use strict';
+  /* home-layout.js v2: round 4 shared layer (Network Home v27 / EM Home v23, Sep 28 2026).
+     Same block in both widgets. Runs before the page script boots (both sit at the end of <body> and the
+     page script waits for PageLoad), so every id the page script looks up is where it expects.
+     It only moves whole sections into three zones (My work · Numbers · Reference), adds a collapse toggle
+     to their headers and puts the Go to buttons in the toolbar; it talks to the page script through
+     nothing but a window 'resize' event, which the page already uses to size the iframe. */
+  var page = document.getElementById('page') || document.querySelector('.page');
+  if (!page) return;
+  var PREF = (document.title || 'home').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-layout';
+  var store = { get: function () { try { return JSON.parse(localStorage.getItem(PREF) || '{}') || {}; } catch (e) { return {}; } }, set: function (v) { try { localStorage.setItem(PREF, JSON.stringify(v)); } catch (e) {} } };
+  var state = store.get();
+  var q = function (root, sel) { try { return root.querySelector(sel.indexOf('>') === 0 ? ':scope ' + sel : sel); } catch (e) { return null; } };
+  var qa = function (root, sel) { try { return Array.prototype.slice.call(root.querySelectorAll(sel.indexOf('>') === 0 ? ':scope ' + sel : sel)); } catch (e) { return []; } };
+  var tx = function (el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+  var kick = function () { requestAnimationFrame(function () { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }); };
+  var CHEV = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6"/></svg>';
+
+  /* ---------- summaries shown on a collapsed header ---------- */
+  var firstText = function (el) { if (!el) return ''; for (var i = 0; i < el.childNodes.length; i++) { var n = el.childNodes[i]; if (n.nodeType === 3 && n.textContent.trim()) return n.textContent.trim(); } return tx(el); };
+  var join = function (parts) { return parts.filter(Boolean).join(' · '); };
+  var SUM = {
+    queue: function (s) {
+      var b = s.querySelector('#queue-badges'), parts = b ? Array.prototype.map.call(b.children, tx) : [];
+      if (parts.length) return join(parts);
+      var m = tx(s.querySelector('#scope-mine-n')), t = tx(s.querySelector('#scope-team-n'));
+      return join([m ? '<b>' + esc(m) + '</b> mine' : '', t ? '<b>' + esc(t) + '</b> on the team' : '']);
+    },
+    tiles: function (s) {
+      return join(qa(s, '.kpi').map(function (k) { var v = firstText(k.querySelector('.value')).split(' ')[0]; var l = firstText(k.querySelector('.label')); return v && v !== '—' ? '<b>' + esc(v) + '</b> ' + esc(l.toLowerCase()) : ''; }));
+    },
+    brands: function (s) {
+      return join(qa(s, '.panel').map(function (p) { var n = tx(p.querySelector('.head h2')), v = tx(p.querySelector('.stat .v')); return v && v !== '—' ? esc(n) + ' <b>' + esc(v) + '</b>' : ''; }));
+    },
+    links: function (s) { var n = qa(s, '#links li').length; return n ? '<b>' + n + '</b> link' + (n === 1 ? '' : 's') : ''; },
+    vendors: function (s) { return esc(tx(s.querySelector('#vendors-meta'))); }
+  };
+
+  /* ---------- the sections, in page order; a spec whose selector finds nothing is skipped ---------- */
+  var SPECS = [
+    { key: 'queue',   label: 'Queue',           sel: '#queue-card',                        head: '> .head', body: ['> .qbody'],            sum: SUM.queue },
+    { key: 'attn',    label: 'Needs attention', sel: '.attn',                              head: '> .band', body: ['> .kpis'],             sum: SUM.tiles },
+    { key: 'numbers', label: 'Numbers',         sel: '.hl-zone-numbers > .kpis',           navOnly: true },
+    { key: 'fleet',   label: 'EM devices',       sel: '#fleet',                             head: '> .fig',  body: ['> .fchart', '> .foot'], watchHidden: true },
+    { key: 'brands',  label: 'By brand',        sel: '.panels',                            headPrev: '.band', self: true,                 sum: SUM.brands },
+    { key: 'links',   label: 'Quick links',     sel: '.card[aria-label="Quick links"]',    head: '> .head', body: ['> .links'],            sum: SUM.links },
+    { key: 'vendors', label: 'Vendor contacts', sel: '.card.vendors',                      head: '> .head', body: ['> .vgrid', '> .card-foot'], sum: SUM.vendors }
+  ];
+
+  /* ---------- three zones: My work · Numbers · Reference ---------- */
+  function unwrap(el) { if (!el || !el.parentNode) return; while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el); el.parentNode.removeChild(el); }
+  function buildZones() {
+    var queue = document.getElementById('queue-card'); if (!queue) return;
+    unwrap(queue.closest('.today'));
+    if (queue.parentNode !== page) return;
+    var mk = function (key) { var z = document.createElement('div'); z.className = 'hl-zone hl-zone-' + key; z.setAttribute('data-zone', key); return z; };
+    var work = mk('work'), numbers = mk('numbers'), reference = mk('reference');
+    page.insertBefore(work, queue);
+    var put = function (zone, el) { if (el && el.nodeType === 1) zone.appendChild(el); };
+
+    /* My work: the Queue, and Needs attention beside it when the page has it */
+    put(work, queue);
+    var attn = page.querySelector(':scope > .attn');
+    if (attn) { put(work, attn); work.classList.add('hl-two'); }
+
+    /* Numbers: EM tiles (they sat in .lower .side), the fleet, then By brand with its band */
+    var sideKpis = page.querySelector('.lower .side > .kpis');
+    put(numbers, sideKpis);
+    put(numbers, document.getElementById('fleet'));
+    var panels = page.querySelector(':scope > .panels');
+    if (panels) {
+      var band = panels.previousElementSibling && panels.previousElementSibling.classList.contains('band') ? panels.previousElementSibling : null;
+      put(numbers, band); put(numbers, panels);
+    }
+
+    /* Reference: quick links, then vendor contacts beside them on EM Home */
+    var links = page.querySelector('.card[aria-label="Quick links"]');
+    var vendors = page.querySelector('.card.vendors');
+    put(reference, links);
+    if (vendors) { put(reference, vendors); if (links) reference.classList.add('hl-two'); }
+    /* drop the old wrappers the moves above emptied */
+    qa(page, '.lower').forEach(function (l) { if (!tx(l) && !l.querySelector('a,button,svg')) l.parentNode.removeChild(l); });
+
+    var after = work;
+    [numbers, reference].forEach(function (z) { if (z.children.length) { page.insertBefore(z, after.nextSibling); after = z; } });
+    /* anything left between the zones and the footer (a section this layer does not know) goes to Reference */
+    var n = after.nextSibling;
+    while (n) { var next = n.nextSibling; if (n.nodeType === 1 && !n.classList.contains('foot-note') && !n.classList.contains('modal-overlay') && !n.classList.contains('hl-zone')) { reference.appendChild(n); if (!reference.parentNode) page.insertBefore(reference, after.nextSibling); } n = next; }
+  }
+
+  /* ---------- collapsible sections ---------- */
+  var specs = [];
+  function setCollapsed(spec, on, save) {
+    if (spec.navOnly) return;
+    spec.el.setAttribute('data-collapsed', on ? 'true' : 'false');
+    spec.headEl.classList.toggle('hl-collapsed', on);
+    spec.tg.setAttribute('aria-expanded', String(!on));
+    spec.tg.title = (on ? 'Show ' : 'Hide ') + spec.label;
+    spec.tg.setAttribute('aria-label', spec.tg.title);
+    if (spec.nav) spec.nav.classList.toggle('off', on);
+    updateSum(spec);
+    if (save) { state[spec.key] = on; store.set(state); }
+    paintAll();
+    kick();
+  }
+  function updateSum(spec) {
+    if (!spec.sumEl || !spec.sum) return;
+    if (spec.el.getAttribute('data-collapsed') !== 'true') return;
+    var h = ''; try { h = spec.sum(spec.el) || ''; } catch (e) { h = ''; }
+    if (spec.sumEl.innerHTML !== h) spec.sumEl.innerHTML = h;
+  }
+  function mountSpec(spec) {
+    var el = document.querySelector(spec.sel); if (!el) return null;
+    spec.el = el;
+    if (spec.navOnly) { specs.push(spec); return spec; }
+    var head = spec.headPrev ? (el.previousElementSibling && el.previousElementSibling.matches(spec.headPrev) ? el.previousElementSibling : null) : q(el, spec.head);
+    if (!head) return null;
+    spec.headEl = head;
+    if (spec.self) el.classList.add('hl-self'); else (spec.body || []).forEach(function (b) { qa(el, b).forEach(function (x) { x.classList.add('hl-body'); }); });
+    var sum = document.createElement('span'); sum.className = 'hl-sum'; sum.setAttribute('aria-live', 'off'); spec.sumEl = sum;
+    var tg = document.createElement('button'); tg.type = 'button'; tg.className = 'hl-tg'; tg.innerHTML = CHEV; spec.tg = tg;
+    tg.addEventListener('click', function () { setCollapsed(spec, el.getAttribute('data-collapsed') !== 'true', true); });
+    head.appendChild(sum); head.appendChild(tg);
+    if (spec.sum) {
+      var t = null;
+      try { new MutationObserver(function () { clearTimeout(t); t = setTimeout(function () { updateSum(spec); }, 250); }).observe(el, { childList: true, characterData: true, subtree: true }); } catch (e) {}
+    }
+    specs.push(spec);
+    return spec;
+  }
+
+  /* ---------- Go to buttons, inside the toolbar ---------- */
+  var allBtn = null;
+  function buildNav() {
+    var bar = page.querySelector(':scope > .quick-actions');
+    if (!bar) { bar = document.createElement('section'); bar.className = 'quick-actions'; var m = page.querySelector(':scope > .mast'); page.insertBefore(bar, m ? m.nextSibling : page.firstChild); }
+    var nav = document.createElement('nav'); nav.className = 'hl-nav'; nav.setAttribute('aria-label', 'Sections of this page');
+    var k = document.createElement('span'); k.className = 'hl-k'; k.textContent = 'Go to'; nav.appendChild(k);
+    specs.forEach(function (spec) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = spec.label; spec.nav = b;
+      b.addEventListener('click', function () {
+        if (!spec.navOnly && spec.el.getAttribute('data-collapsed') === 'true') setCollapsed(spec, false, true);
+        var target = spec.headEl || spec.el;
+        target.classList.add('hl-anchor');
+        try { target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); } catch (e) { target.scrollIntoView(); }
+        var f = spec.tg || target; if (f && f.focus) { try { f.focus({ preventScroll: true }); } catch (e) {} }
+      });
+      nav.appendChild(b);
+      if (spec.watchHidden) {
+        var sync = function () { b.hidden = !!spec.el.hidden; };
+        sync();
+        try { new MutationObserver(sync).observe(spec.el, { attributes: true, attributeFilter: ['hidden'] }); } catch (e) {}
+      }
+    });
+    allBtn = document.createElement('button'); allBtn.type = 'button'; allBtn.className = 'hl-all';
+    allBtn.addEventListener('click', function () {
+      var anyOpen = specs.some(function (s) { return !s.navOnly && s.el.getAttribute('data-collapsed') !== 'true'; });
+      specs.forEach(function (s) { if (!s.navOnly) setCollapsed(s, anyOpen, false); });
+      specs.forEach(function (s) { if (!s.navOnly) state[s.key] = anyOpen; }); store.set(state);
+    });
+    bar.appendChild(nav); bar.appendChild(allBtn);
+    paintAll();
+  }
+  function paintAll() {
+    if (!allBtn) return;
+    var anyOpen = specs.some(function (s) { return !s.navOnly && s.el.getAttribute('data-collapsed') !== 'true'; });
+    allBtn.textContent = anyOpen ? 'Collapse all' : 'Expand all';
+    allBtn.title = anyOpen ? 'Fold every section down to its header' : 'Open every section';
+  }
+
+  /* ---------- boot ---------- */
+  buildZones();
+  SPECS.forEach(mountSpec);
+  if (!specs.length) return;
+  buildNav();
+  specs.forEach(function (s) { if (!s.navOnly) setCollapsed(s, state[s.key] === true, false); });
+})();
+</script>
+<script id="doc-page-js">(function () {
+  'use strict';
   /* =========================================================================
-     DOC Dispatch — page script (v3, Sep 30 2026: Session 8 adds the map interactions — time scrubber, county roster,
+     DOC Dispatch — page script (v5, Oct 9 2026, round 1 UX: jobs as tabs by stage, Today strip, Push to…, job columns, Numbers grid, Reference zone; v4 adds the display controls (initDisplay: theme, contrast, brightness); v3, Sep 30 2026: Session 8 adds the map interactions — time scrubber, county roster,
      pins, the 60 s poll's failure handling and the "I'm in … until …" note; v2 was Session 7's county map and
      presence engine; v1 was Session 5).
      Live against CRM inside Zoho; preview data with ?preview=1 or outside Zoho. The block marked KIT-PENDING
@@ -1834,9 +2249,50 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     if (opts.undo) el.querySelector('button').onclick = function () { el.hidden = true; clearTimeout(toastT); opts.undo(); };
     clearTimeout(toastT); toastT = setTimeout(function () { el.hidden = true; }, opts.ms || 5000);
   }
-  var resize = function () { try { if (window.ZOHO && ZOHO.CRM && ZOHO.CRM.UI) ZOHO.CRM.UI.Resize({ height: String(document.documentElement.scrollHeight) }); } catch (e) {} };
-  function applyTheme(c) { var r = document.documentElement; if (c === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', c); store.set('doc-dispatch-theme', c);
-    document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === c)); }); }
+  var resize = function () { try { if (window.hlFrameFit) window.hlFrameFit.request(); } catch (e) {} };      /* frame-fit (kit) sizes the iframe; off in preview */
+  /* ---------- display: theme, contrast, brightness (per browser; the same ranges as EM Home) ---------- */
+  var PREF0 = 'doc-dispatch-';
+  var systemDark = function () { try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; } };
+  var effectiveDark = function () { var t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : systemDark(); };
+  function syncThemeBtn() {
+    var b = $('theme-btn'); if (!b) return; var dark = effectiveDark();
+    b.setAttribute('aria-pressed', String(dark)); b.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme'); b.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
+  }
+  function applyTheme(c) {
+    var r = document.documentElement; if (c !== 'light' && c !== 'dark') c = 'auto';
+    if (c === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', c);
+    store.set(PREF0 + 'theme', c);
+    ['auto', 'light', 'dark'].forEach(function (k) { var b = $('theme-' + k); if (b) b.setAttribute('aria-pressed', String(k === c)); });
+    document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === c)); });
+    syncThemeBtn();
+  }
+  function applyContrast(c, remember) {
+    c = c === 'high' ? 'high' : 'standard'; var r = document.documentElement;
+    if (c === 'high') r.setAttribute('data-contrast', 'high'); else r.removeAttribute('data-contrast');
+    if (remember !== false) store.set(PREF0 + 'contrast', c);
+    document.querySelectorAll('[data-contrast-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-contrast-choice') === c)); });
+  }
+  function applyBrightness(pct) {
+    /* 90-110 %: keeps muted text at 4.5:1 or better at both ends. The filter sits on .page, not body, so the case
+       preview, dialogs and toasts (outside .page) stay undimmed and viewport-anchored. */
+    pct = Math.min(110, Math.max(90, Math.round((Number(pct) || 100) / 5) * 5));
+    var pg = $('page'); if (pg) pg.style.filter = pct === 100 ? '' : 'brightness(' + (pct / 100) + ')';
+    var r = $('brightness'); if (r && Number(r.value) !== pct) r.value = pct;
+    var v = $('brightness-v'); if (v) v.textContent = pct + '%';
+    store.set(PREF0 + 'brightness', String(pct));
+  }
+  function initDisplay() {
+    applyTheme(store.get(PREF0 + 'theme') || 'auto');
+    var sc = store.get(PREF0 + 'contrast'), more = false; try { more = window.matchMedia('(prefers-contrast: more)').matches; } catch (e) {}
+    applyContrast(sc || (more ? 'high' : 'standard'), !!sc);        /* no saved choice: follow the system's "more contrast" */
+    applyBrightness(store.get(PREF0 + 'brightness') || 100);
+    document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.onclick = function () { applyTheme(b.getAttribute('data-theme-choice')); }; });
+    document.querySelectorAll('[data-contrast-choice]').forEach(function (b) { b.onclick = function () { applyContrast(b.getAttribute('data-contrast-choice')); }; });
+    $('theme-btn').onclick = function () { applyTheme(effectiveDark() ? 'light' : 'dark'); };
+    var r = $('brightness'); if (r) { r.addEventListener('input', function () { applyBrightness(r.value); }); r.addEventListener('dblclick', function () { applyBrightness(100); }); }
+    $('display-reset').onclick = function () { applyTheme('auto'); applyContrast('standard'); applyBrightness(100); };
+    try { var mq = window.matchMedia('(prefers-color-scheme: dark)'); (mq.addEventListener || mq.addListener).call(mq, 'change', syncThemeBtn); } catch (e) {}
+  }
 
   var ORG = 'org882980956';
   var TAB = 'https://crm.zoho.com/crm/' + ORG + '/tab/';
@@ -1974,7 +2430,6 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
   /* ---------- dispatch model (the spec's allowed moves, enforced here and in the functions) ---------- */
   var STEPS = ['Received', 'Triaged', 'Assigned', 'Scheduled', 'En route', 'On site', 'Completed', 'Reported'];
   var OPTIONAL = { 'En route': 1, 'On site': 1 };
-  var LANE_OF = { Received: 'needs', Triaged: 'needs', Assigned: 'sched', Scheduled: 'sched', 'En route': 'sched', 'On site': 'sched', Completed: 'report' };
   var CASE_DONE = { Resolved: 1, Closed: 1 };
   var MOVES = {                                        /* from → allowed targets */
     Received: ['Triaged', 'Assigned', 'Cancelled'],
@@ -2048,6 +2503,9 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     { id: 'c9', Case_ID: 'EM-1055', Subject: 'Install — RB', Status: 'In Progress', Dispatch_Status: 'Completed', Job_Type: 'Install', Device: 'Allied RB', City: 'Racine', County: 'Racine', DOC_Region: 'Southeastern', Installer: 'Chad', Scheduled_Start: at(-1, 13), Scheduled_End: at(-1, 14), Completed_At: at(-1, 14, 10), Serial_Numbers: 'RB-448120', Participant_ID: '640077', Requesting_Agent: 'Agent T. Vang', Created_Time: at(-3, 9), Owner: ME },
     { id: 'c10', Case_ID: 'EM-1052', Subject: 'Swap — battery', Status: 'Resolved', Dispatch_Status: 'Scheduled', Dispatch_Exception: true, Dispatch_Exception_Note: 'Resolved with a live installer job (Isaac, Thu 9–10am)', Job_Type: 'Swap', Device: 'Allied GPS', City: 'Janesville', County: 'Rock', DOC_Region: 'Southern', Installer: 'Isaac', Scheduled_Start: at(1, 9), Scheduled_End: at(1, 10), Participant_ID: '633901', Requesting_Agent: 'Agent R. Olsen', Created_Time: at(-4, 9), Owner: { id: 'u2', name: 'Brittany Mueller' } }
   ];
+  CASES.push({ id: 'c11', Case_ID: 'EM-1050', Subject: 'Install — GPS', Status: 'In Progress', Dispatch_Status: 'Completed', Job_Type: 'Install', Device: 'Allied GPS', City: 'Wausau', County: 'Marathon', DOC_Region: 'Northern', Installer: 'Ed Cary', Scheduled_Start: at(-1, 14), Scheduled_End: at(-1, 15), Completed_At: at(-1, 15, 20), Serial_Numbers: '', Participant_ID: '650913', Requesting_Agent: 'Agent D. Heil', Created_Time: at(-3, 10), Owner: null },
+    { id: 'c12', Case_ID: 'EM-1049', Subject: 'Removal', Status: 'Resolved', Dispatch_Status: 'Reported', Job_Type: 'Removal', Device: 'Allied RF', City: 'Janesville', County: 'Rock', DOC_Region: 'Southern', Installer: 'Isaac', Scheduled_Start: at(-2, 10), Scheduled_End: at(-2, 11), Completed_At: at(-2, 11, 5), Report_Sent_At: at(-2, 12), Serial_Numbers: 'RF-220914', Participant_ID: '640118', Requesting_Agent: 'Agent R. Olsen', Created_Time: at(-4, 9), Owner: null });
+  CASES.forEach(function (c) { if (c.id === 'c3') c.Pushed_To = at(3, 0).slice(0, 10); if (c.Dispatch_Status === 'Scheduled' && !c.Modified_Time) c.Modified_Time = new Date(new Date(c.Created_Time).getTime() + 5 * HOUR).toISOString(); });
   CASES.forEach(function (c) { if (!c.Due_By && c.Job_Type) c.Due_By = new Date(new Date(c.Created_Time).getTime() + SETTINGS.sla_h[c.Job_Type] * HOUR).toISOString(); });
   var PRESENCE = [{ Installer: 'Ed Cary', County: 'Marathon', From: at(0, 12), To: at(0, 15), Note: 'Wausau area until 3 pm', Source: 'Manual' }];
   var TEAM = [{ id: '6715134000001952001', name: 'Stacey Loosen' }, { id: '6715134000001952003', name: 'Brittany Mueller' }, { id: '6715134000000503001', name: 'Beau Carrigan' }];
@@ -2060,13 +2518,13 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
   if (!PREVIEW) { fill(SHIFTS, []); fill(CITIES, []); fill(INSTALLERS, []); fill(COVERAGE, []); fill(CASES, []); fill(PRESENCE, []); ME = { id: null, name: '' }; reindex(); }
 
   /* ---------- live load: rows → the shapes above ---------- */
-  var api = PREVIEW ? null : live;
+  var api = PREVIEW ? { update: function (m, rec) { return Promise.resolve({ id: rec && rec.id }); } } : live;      /* preview: writes succeed on screen only */
   var LOADED = { cases: PREVIEW, coverage: PREVIEW, at: PREVIEW ? Date.now() : 0 };
   var OPEN_STATES = ['Received', 'Triaged', 'Assigned', 'Scheduled', 'En route', 'On site', 'Completed'];
   var CASE_COLS = 'Case_ID, Subject, Status, Dispatch_Status, Job_Type, Device, Service_County, DOC_Region, Service_Address, Requested_Date, Due_By, '
     + 'Requesting_Agent, Requesting_Agent.Full_Name, Requesting_Agent.Email, Participant_Name, Participant_ID, Assigned_Installer, Assigned_Installer.Full_Name, '
     + 'Scheduled_Start, Scheduled_End, Dispatch_Exception, Dispatch_Exception_Note, Completed_At, Serial_Numbers, Completion_Notes, Report_Sent_At, '
-    + 'Owner, Owner.first_name, Owner.last_name, Created_Time, Modified_Time';
+    + 'Owner, Owner.first_name, Owner.last_name, Pushed_To, Created_Time, Modified_Time';
   var days = function (v) { var s = expandDays(Array.isArray(v) ? v.join(', ') : v); return s ? s.split(', ').filter(function (d) { return DOW.indexOf(d) >= 0; }) : []; };
   var hhmm = function (s) { s = String(s == null ? '' : s).trim(); var m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?$/i); if (!m) return s; var h = +m[1] % (m[3] ? 12 : 24); if (m[3] && /p/i.test(m[3])) h += 12; return (h < 10 ? '0' : '') + h + ':' + (m[2] || '00'); };
   var noCounty = function (s) { return String(s || '').replace(/\s+county$/i, '').trim(); };
@@ -2096,7 +2554,7 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
       Scheduled_Start: r.Scheduled_Start || null, Scheduled_End: r.Scheduled_End || null,
       Dispatch_Exception: !!r.Dispatch_Exception, Dispatch_Exception_Note: r.Dispatch_Exception_Note || '',
       Completed_At: r.Completed_At || null, Serial_Numbers: r.Serial_Numbers || '', Completion_Notes: r.Completion_Notes || '', Report_Sent_At: r.Report_Sent_At || null,
-      Owner: ownerOf(r), Created_Time: r.Created_Time, Modified_Time: r.Modified_Time
+      Owner: ownerOf(r), Pushed_To: dateOnly(r.Pushed_To), Created_Time: r.Created_Time, Modified_Time: r.Modified_Time
     };
     if (c.InstallerId && !c.Installer) { var i = INSTALLERS.filter(function (x) { return x.id === c.InstallerId; })[0]; if (i) c.Installer = i.Name; }
     c.City = cityOf(c);
@@ -2117,7 +2575,7 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
   var mapPresence = function (r) { return { id: String(r.id), Installer: r['Installer.Full_Name'] || (r.Installer && r.Installer.name) || '', InstallerId: idOf(r.Installer), County: noCounty(r.County), From: r.From || r.Present_From, To: r.To || r.Present_To, Note: r.Details || r.Name || '', Source: r.Source || 'Manual', Created_Time: r.Created_Time }; };
 
   var Q = {
-    cases: function () { return api.all('select ' + CASE_COLS + " from Cases where Dispatch_Status in ('" + OPEN_STATES.join("','") + "') or Dispatch_Exception = true order by Created_Time asc", 5); },
+    cases: function () { return api.all('select ' + CASE_COLS + " from Cases where ((Dispatch_Status in ('" + OPEN_STATES.join("','") + "') or Dispatch_Exception = true) or (Dispatch_Status = 'Reported' and Completed_At >= '" + zdt(new Date(weekStart()).toISOString()) + "')) order by Created_Time asc", 5); },
     installers: function (all) { return api.all('select Full_Name, First_Name, Last_Name, Office_Phone, Mobile, Email, Home_Base_City, Installer_Days, Installer_Earliest, Installer_Latest, Ask_Before_Scheduling, Installer_Contact_Pref, Installer_Notes, Installer, Modified_Time from Contacts where ' + (all ? all : 'Installer = true'), 3); },
     shifts: function () { return api.all('select Name, Days, Start, End, Shift_Comments, Active, Modified_Time from Dispatch_Shifts where id is not null', 2); },
     cities: function () { return api.all('select Name, County, JP_Region, DOC_Region, City_Notes, Active, Modified_Time from Dispatch_Cities where id is not null', 3); },
@@ -2156,7 +2614,7 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
       LOADED.coverage = true;
     });
   }
-  function loadCases() { return Q.cases().then(function (rows) { fill(CASES, rows.map(mapCase)); LOADED.cases = true; LOADED.at = Date.now(); }); }
+  function loadCases() { return Q.cases().then(function (rows) { fill(CASES, rows.map(mapCase)); LOADED.cases = true; LOADED.err = null; LOADED.at = Date.now(); }, function (e) { if (!LOADED.cases) LOADED.err = String((e && e.message) || 'CRM did not answer'); throw e; }); }
   function loadPresence(strict) { return Q.presence().then(function (rows) { fill(PRESENCE, rows.map(mapPresence).map(function (p) { if (!p.Installer && p.InstallerId) { var i = INSTALLERS.filter(function (x) { return x.id === p.InstallerId; })[0]; if (i) p.Installer = i.Name; } return p; })); }).catch(function (e) { if (strict) throw e; console.warn('presence', e); }); }
   var VIEWS = {};                                       /* name → { id, module } for links and lane counts */
   function loadViews() {
@@ -2244,65 +2702,356 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
       + (s.inherited ? ' · via ' + esc(s.city) : '');
   }
 
-  /* ---------- board ---------- */
-  var B = { scope: store.get(PREF + 'scope') === 'mine' ? 'mine' : 'all', sel: {}, cur: null, lane: 'needs' };
-  var laneOf = function (c) {
-    if (c.Dispatch_Status === 'Completed') return c.Report_Sent_At ? null : 'report';
-    var l = LANE_OF[c.Dispatch_Status]; if (l === 'needs' && CASE_DONE[c.Status]) return null; return l || null;
-  };
-  var inScope = function (c) { return B.scope === 'all' || (c.Owner && c.Owner.id === ME.id); };
-  var byTime = function (k) { return function (a, b) { return (a[k] ? new Date(a[k]) : Infinity) - (b[k] ? new Date(b[k]) : Infinity); }; };
-  function jobRow(c, lane) {
-    var due = dueLabel(c.Due_By), when, who, sub, acts;
-    var chip = '<span class="chip">' + esc([c.Job_Type, (c.Device || '').replace('Allied ', '')].filter(Boolean).join(' · ') || 'Job') + '</span>';
-    if (lane === 'needs') {
-      when = '<span class="when ' + due.c + '">' + esc(due.t) + '</span>';
-      var miss = missingOf(c);
-      who = c.Status === 'New' && !c.Owner ? 'unowned' : esc(c.Owner ? c.Owner.name.split(' ')[0] : '');
-      sub = (c.Dispatch_Status === 'Received' ? '<span class="chip triage">Triage</span><span class="missing">Missing ' + esc(miss.map(function (k) { return FIELD_LABEL[k]; }).join(', ')) + '</span> · ' : '')
-          + '<span class="sug">' + hint(c) + '</span>';
-      acts = '<button type="button" class="act primary" data-act="assign">Assign</button>';
-    } else if (lane === 'sched') {
-      when = '<span class="when">' + (c.Scheduled_Start ? esc(hm(c.Scheduled_Start) + '–' + hm(c.Scheduled_End)) : 'No time') + '</span>';
-      who = esc(c.Installer || '—');
-      sub = (OPTIONAL[c.Dispatch_Status] ? '<span class="chip live">' + esc(c.Dispatch_Status) + '</span>' : c.Dispatch_Status === 'Assigned' ? '<span class="chip triage">Needs a time</span>' : '')
-          + esc('Participant ' + (c.Participant_ID || '—') + ' · ' + (c.Requesting_Agent || ''));
-      acts = c.Dispatch_Status === 'Assigned' ? '<button type="button" class="act primary" data-act="schedule">Schedule</button>' : '<button type="button" class="act" data-act="complete">Complete</button>';
-    } else {
-      when = '<span class="when ' + ((now() - new Date(c.Completed_At)) > DAY ? 'late' : '') + '">Done ' + esc(dayKey(c.Completed_At) === 0 ? hm(c.Completed_At) : dayKey(c.Completed_At) === -1 ? 'yest.' : DOW[new Date(c.Completed_At).getDay()]) + '</span>';
-      who = esc(c.Installer || '');
-      sub = c.Serial_Numbers ? esc('Serial ' + c.Serial_Numbers) : '<span class="missing">No serial yet</span>';
-      acts = '<button type="button" class="act primary" data-act="report">Send report</button>';
+  /* ---------- kit fragments (lifted Oct 9 2026): Queue tabs, Push to…, Column toggles ----------
+     Inlined here, inside the page script, so $, store, resize, esc, ymd, toast, api and findCase are in scope. The kit files are unchanged. */
+  /* ---------- Queue tabs (kit queue-tabs.js) ---------- */
+  var QTABS = [['cases', 'Cases', 'mycases', 0], ['tasks', 'Tasks due', 'tasks', 1], ['emails', 'Emails waiting', 'unanswered', 2]];
+  var qtab = 'cases';
+  /* page config (initQueueTabs(cfg)): key = the per-browser storage key; sync() runs before the counts are painted (BD + CS tags Today rows there);
+     hot() = array of booleans (one per tab) that turns a count red, default reads #queue-badges .badge; count(tabId, domCount) = the number to show, default the rows listed */
+  var QT = { key: 'qtab', sync: null, hot: null, count: null };
+  function qTabsRender() {
+    var card = $('queue-card'); if (!card) return;
+    card.setAttribute('data-qtab', qtab);
+    var hot = QT.hot ? QT.hot() : Array.prototype.map.call(document.querySelectorAll('#queue-badges .badge'), function (b) { return b.classList.contains('hot'); });
+    QTABS.forEach(function (t) {
+      var b = $('qtab-' + t[0]); if (!b) return;
+      var n = document.querySelectorAll('#' + t[2] + ' li.row[data-id]').length; if (QT.count) n = QT.count(t[0], n);
+      b.setAttribute('aria-selected', String(qtab === t[0])); b.tabIndex = qtab === t[0] ? 0 : -1;
+      b.querySelector('.n').textContent = n; b.classList.toggle('hot', !!hot[t[3]] && n > 0);
+    });
+  }
+  function qSetTab(t, focus) { qtab = t; store.set(QT.key, t); qTabsRender(); resize(); if (focus) { var b = $('qtab-' + t); if (b) b.focus(); } }
+  function initQueueTabs(cfg) {
+    for (var ck in (cfg || {})) QT[ck] = cfg[ck];
+    qtab = (function () { var v = store.get(QT.key); return v === 'tasks' || v === 'emails' ? v : 'cases'; })();
+    var card = $('queue-card'), head = card && card.querySelector('.head'); if (!head || $('qtab-cases')) return;
+    card.classList.add('qt');
+    head.insertAdjacentHTML('afterend', '<div class="qtabs" role="tablist" aria-label="Queue lists">' + QTABS.map(function (t) {
+      return '<button type="button" role="tab" id="qtab-' + t[0] + '" data-qtab="' + t[0] + '" aria-selected="false" tabindex="-1">' + t[1] + '<span class="n"></span></button>'; }).join('') + '</div>');
+    card.querySelector('.qtabs').addEventListener('click', function (e) { var b = e.target.closest('[data-qtab]'); if (b) qSetTab(b.getAttribute('data-qtab')); });
+    card.querySelector('.qtabs').addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      var ids = QTABS.map(function (t) { return t[0]; }), i = ids.indexOf(qtab) + (e.key === 'ArrowRight' ? 1 : -1);
+      e.preventDefault(); e.stopPropagation(); qSetTab(ids[(i + ids.length) % ids.length], true);
+    });
+    var sync = function () { if (QT.sync) QT.sync(); qTabsRender(); };
+    try { var mo = new MutationObserver(sync); ['mycases', 'tasks', 'unanswered', 'queue-badges'].forEach(function (id) { if ($(id)) mo.observe($(id), { childList: true }); }); } catch (x) {}
+    sync();
+  }
+  /* ---------- Push to… in the case peek, and the Today tag on Queue rows (kit peek-push.js) ---------- */
+  var PP = { rows: function () { return []; }, todayIds: function () { return {}; }, current: function () { return ''; }, applied: function () { qTagToday(); }, list: '#mycases',
+    tagTitle: 'Also on Today & Upcoming', saved: function (v) { return v <= ymd(new Date()) ? 'On Today' : 'Pushed to ' + v + ' — it shows on Today then'; } };
+  function qTagToday() {
+    var ids = PP.todayIds() || {};
+    Array.prototype.forEach.call(document.querySelectorAll(PP.list + ' li.row[data-id]'), function (li) {
+      var on = !!ids[li.getAttribute('data-id')], tag = li.querySelector('.in-today-tag');
+      if (on && !tag) { var t = li.querySelector('.t') || li; t.insertAdjacentHTML('beforeend', '<span class="in-today-tag" title="'+ esc(PP.tagTitle) + '">Today</span>'); }
+      else if (!on && tag) tag.remove();
+    });
+  }
+  function pkCaseRow() {
+    var ref = document.querySelector('#pk-head .pk-id'); ref = ref && ref.textContent.trim(); if (!ref) return null;
+    return (PP.rows() || []).filter(function (r) { return String(r.Case_ID || '') === ref; })[0] || null;
+  }
+  function pkAddPush() {
+    var acts = $('pk-actions'); if (!acts || acts.querySelector('[data-pkpush]')) return;
+    if (!acts.querySelector('select[data-pk="status"]')) return;            /* case peeks only */
+    var r = pkCaseRow(); if (!r) return;
+    var cur = PP.current(r.id);
+    acts.insertAdjacentHTML('beforeend', '<span class="pk-push" data-pkpush="' + esc(r.id) + '"><label>Push to <input type="date" data-pkpushdate min="' + esc(ymd(new Date())) + '" value="' + esc(cur) + '" aria-label="Push this case to a date"></label>'
+      + '<button type="button" class="btn" data-pkpushsave>Save date</button></span>');
+  }
+  function pkPushSave(btn) {
+    var wrap = btn.closest('[data-pkpush]'), id = wrap.getAttribute('data-pkpush'), v = wrap.querySelector('[data-pkpushdate]').value, r = findCase(id);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v || '')) { toast('Pick a date first', { ms: 2500 }); return; }
+    if (v < ymd(new Date())) { toast('Pick today or a later date', { ms: 2500 }); return; }
+    btn.disabled = true;
+    api.update('Cases', { id: String(id), Pushed_To: v }).then(function () {
+      btn.disabled = false; if (r) PP.applied(r, v);
+      toast(PP.saved(v), { ms: 3000 });
+    }).catch(function (e) { btn.disabled = false; toast((e && e.message) || 'Could not save the date', { ms: 4000 }); });
+  }
+  function initPeekPush(cfg) {
+    for (var ck in (cfg || {})) PP[ck] = cfg[ck];
+    var pk = $('peek'); if (!pk) return;
+    try { new MutationObserver(function () { if (!pk.hidden) pkAddPush(); }).observe(pk, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] }); } catch (e) {}
+    pk.addEventListener('click', function (e) { var b = e.target.closest('[data-pkpushsave]'); if (b) pkPushSave(b); });
+    pk.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.matches && e.target.matches('[data-pkpushdate]')) { e.preventDefault(); e.stopPropagation(); pkPushSave(e.target.closest('[data-pkpush]').querySelector('[data-pkpushsave]')); } }, true);
+    var ag = $('ag-list'); if (ag) ag.addEventListener('click', function (e) { if (e.target.closest('[data-agundated]')) { e.stopPropagation(); agToQueue(); } });
+  }
+  /* ---------- Column toggles (kit col-toggles.js) ---------- */
+  var CT = { cols: function () { return []; }, map: function () { return {}; }, save: function () {}, minRows: function () { return 5; }, fixed: 'name' };
+  function colConfig(cfg) { for (var ck in (cfg || {})) CT[ck] = cfg[ck]; return CT; }
+  var autoHidden = function (c, rows, board) { return !!c.empty && rows.length >= CT.minRows(board) && rows.filter(c.empty).length / rows.length >= 0.9; };   /* a brand tab can be just two rows, so it hides at 1 */
+  function colOn(board, c, rows) { var m = CT.map()[board] || {}; if (c.k === CT.fixed) return true; return m.hasOwnProperty(c.k) ? !!m[c.k] : !c.off && !autoHidden(c, rows, board); }   /* Oct 9: c.off = off until chosen in Columns */
+  function visCols(board, rows) { return CT.cols(board).filter(function (c) { return colOn(board, c, rows); }); }
+  function colPop(board, rows) {
+    return '<div class="pop colpop" id="col-pop" role="dialog" aria-label="Columns"><h3>Columns</h3>' + CT.cols(board).filter(function (c) { return c.k !== CT.fixed; }).map(function (c) {
+      return '<label class="gp-row"><input type="checkbox" data-col="' + c.k + '"' + (colOn(board, c, rows) ? ' checked' : '') + '> ' + esc(c.t) + (autoHidden(c, rows, board) ? ' <span class="fine">(mostly empty)</span>' : '') + '</label>'; }).join('')
+      + '<p class="fine">Saved in this browser. <button type="button" class="linkish" data-colreset>Reset</button></p></div>';
+  }
+  /* a box ticked / the Reset link: write the choice (kept per browser through cfg.save) and let the page repaint */
+  function colSet(board, key, on) { var all = CT.map(), m = all[board] = all[board] || {}; m[key] = !!on; CT.save(); }
+  function colReset(board) { delete CT.map()[board]; CT.save(); }
+
+  /* ---------- board (v5, Oct 9 2026): jobs as tabs by stage ----------
+     One tab per job, first match wins. Cancelled jobs, and Reported jobs from before this week, are on no tab.
+       needs    Dispatch_Status Received or Triaged, not past due
+       sent     Assigned: an installer is chosen and has been sent the job, but has not accepted and been scheduled yet
+       sched    Scheduled, En route or On site, window not over (Accepted = Assigned → Scheduled)
+       overdue  an open job past its due time (SLA, or the date it was pushed to) · a Scheduled / En route / On site job whose window ended
+                · a Completed job with no Serial_Numbers (no completion proof) · a Completed job from before this week with no report sent
+       done     Completed with proof, or Reported, finished since Monday 00:00
+     Push to… writes Cases.Pushed_To; a later date than Due_By becomes the due time, so a job the DOC agent or participant moved is not late until then. */
+  var B = { scope: store.get(PREF + 'scope') === 'mine' ? 'mine' : 'all', sel: {}, cur: null, only: null, keepOnly: false, rows: [], buckets: { needs: [], sent: [], sched: [], overdue: [], done: [] } };
+  var STAGES = ['needs', 'sent', 'sched', 'overdue', 'done'];
+  var STAGE_NAME = { needs: 'Needs dispatch', sent: 'Sent, awaiting accept', sched: 'Scheduled', overdue: 'Overdue / no completion proof', done: 'Done this week' };
+  var STAGE_EMPTY = { needs: 'Nothing waiting for an installer.', sent: 'No job is waiting for an installer to accept.', sched: 'No jobs on the calendar.', overdue: 'Nothing is overdue.', done: 'Nothing finished yet this week.' };
+  var UNASSIGNED = { Received: 1, Triaged: 1 }, ONSITE = { Scheduled: 1, 'En route': 1, 'On site': 1 };
+  var weekStart = function () { var d = new Date(t0.getTime()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  var hasProof = function (c) { return !!String(c.Serial_Numbers || '').trim(); };          /* the completion proof field: Cases.Serial_Numbers */
+  function effDue(c) {
+    if (c.Pushed_To) { var p = new Date(c.Pushed_To + 'T23:59:00').getTime(); if (!isNaN(p) && (!c.Due_By || p > new Date(c.Due_By).getTime())) return new Date(p).toISOString(); }
+    return c.Due_By || null;
+  }
+  var finishedAt = function (c) { var v = c.Completed_At || c.Report_Sent_At || c.Modified_Time; return v ? new Date(v).getTime() : NaN; };
+  var doneThisWeek = function (c) { var t = finishedAt(c); return !isNaN(t) && t >= weekStart(); };
+  var CASE_OPEN_DONE = function (c) { return !!CASE_DONE[c.Status]; };
+  function stageOf(c) {
+    var st = c.Dispatch_Status, n = now(), due;
+    if (!st || st === 'Cancelled') return null;
+    if (UNASSIGNED[st] || st === 'Assigned') {
+      if (UNASSIGNED[st] && CASE_OPEN_DONE(c)) return null;                              /* a resolved case still marked Received: shown under Exceptions, not as work */
+      due = effDue(c); if (due && new Date(due).getTime() < n) return 'overdue';
+      return st === 'Assigned' ? 'sent' : 'needs';
     }
-    return '<li class="job' + (B.sel[c.id] ? ' selected' : '') + (B.cur === c.id ? ' cur' : '') + '" tabindex="-1" data-id="' + esc(c.id) + '" data-lane="' + lane + '"'
-      + (lane === 'needs' ? ' draggable="true"' : '') + '>'
+    if (ONSITE[st]) { var end = c.Scheduled_End || c.Scheduled_Start; return end && new Date(end).getTime() < n ? 'overdue' : 'sched'; }
+    if (st === 'Completed') return !hasProof(c) ? 'overdue' : doneThisWeek(c) ? 'done' : (c.Report_Sent_At ? null : 'overdue');
+    if (st === 'Reported') return doneThisWeek(c) ? 'done' : null;
+    return null;
+  }
+  var isWaiting = function (c) { return !!UNASSIGNED[c.Dispatch_Status] && !CASE_OPEN_DONE(c); };      /* needs an installer, whatever tab it is on (map pins, roster) */
+  var inScope = function (c) { return B.scope === 'all' || (c.Owner && c.Owner.id === ME.id); };
+  var ts = function (v) { return v ? new Date(v).getTime() : Infinity; };
+  var cmp = function (a, b) { return a === b ? 0 : a < b ? -1 : 1; };
+  var byTime = function (k) { return function (a, b) { return cmp(ts(a[k]), ts(b[k])); }; };
+  var byDue = function (a, b) { return cmp(ts(effDue(a)), ts(effDue(b))); };
+  var sinceOf = function (c) { return c.Dispatch_Status === 'Completed' ? finishedAt(c) : ONSITE[c.Dispatch_Status] ? ts(c.Scheduled_End || c.Scheduled_Start) : ts(effDue(c)); };
+  function groupStages(pred) {
+    var g = { needs: [], sent: [], sched: [], overdue: [], done: [] };
+    CASES.forEach(function (c) { var s = stageOf(c); if (s && (!pred || pred(c))) g[s].push(c); });
+    g.needs.sort(byDue); g.sent.sort(byDue); g.sched.sort(byTime('Scheduled_Start')); g.overdue.sort(function (a, b) { return cmp(sinceOf(a), sinceOf(b)); });
+    g.done.sort(function (a, b) { return cmp(finishedAt(b) || 0, finishedAt(a) || 0); });
+    return g;
+  }
+  function dueToday(c) { var s = stageOf(c); if (s !== 'needs' && s !== 'sent' && s !== 'sched') return false; var t = c.Scheduled_Start || effDue(c); return !!t && dayKey(t) === 0; }
+  function medianAccept() {                                                            /* request → accepted, estimated: the last edit of a job that is now Scheduled stands in for the accept time until Cases has an Accepted At field */
+    var xs = CASES.filter(function (c) { return c.Dispatch_Status === 'Scheduled' && c.Created_Time && c.Modified_Time; })
+      .map(function (c) { return (new Date(c.Modified_Time) - new Date(c.Created_Time)) / HOUR; }).filter(function (h) { return h >= 0; }).sort(function (a, b) { return a - b; });
+    if (!xs.length) return null; var m = xs.length >> 1; return { h: xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2, n: xs.length };
+  }
+  var ageLabel = function (c) { if (!c.Created_Time) return ''; var h = (now() - new Date(c.Created_Time).getTime()) / HOUR; return h < 1 ? Math.max(1, Math.round(h * 60)) + 'm' : h < 48 ? Math.round(h) + 'h' : Math.round(h / 24) + 'd'; };
+  var agoShort = function (ms) { var h = ms / HOUR; return h < 1 ? Math.max(1, Math.round(h * 60)) + 'm' : h < 24 ? Math.round(h) + 'h' : Math.round(h / 24) + 'd'; };
+  var dayShort = function (iso) { var k = dayKey(iso); return k === 0 ? '' : k === 1 ? 'Tmrw ' : DOW[new Date(iso).getDay()] + ' '; };
+  function whyOverdue(c) {
+    var st = c.Dispatch_Status;
+    if (st === 'Completed') return hasProof(c) ? 'Report not sent' : 'No proof';
+    if (ONSITE[st]) { var end = c.Scheduled_End || c.Scheduled_Start; return 'Window over ' + agoShort(now() - new Date(end).getTime()); }
+    return dueLabel(effDue(c)).t;                                                      /* "Late 3h" */
+  }
+  function winCell(c, tab) {
+    if (tab === 'overdue') return '<span class="when late">' + esc(whyOverdue(c)) + '</span>';
+    if (tab === 'done') { var f = finishedAt(c); return '<span class="when">' + esc('Done ' + (isNaN(f) ? '' : (dayShort(new Date(f).toISOString()) + hm(new Date(f).toISOString())))) + '</span>'; }
+    if (c.Scheduled_Start) return '<span class="when">' + esc(dayShort(c.Scheduled_Start) + hm(c.Scheduled_Start) + (c.Scheduled_End ? '–' + hm(c.Scheduled_End) : '')) + '</span>';
+    var d = dueLabel(effDue(c)); return '<span class="when ' + d.c + '">' + esc(d.t) + '</span>';
+  }
+  function subLine(c) {
+    var st = c.Dispatch_Status, bits = [];
+    if (c.Pushed_To) bits.push('<span class="chip">Pushed to ' + esc(shortDate(c.Pushed_To)) + '</span>');
+    if (UNASSIGNED[st]) {
+      if (st === 'Received') bits.push('<span class="chip triage">Triage</span><span class="missing">Missing ' + esc(missingOf(c).map(function (k) { return FIELD_LABEL[k]; }).join(', ')) + '</span>');
+      bits.push('<span class="sug">' + hint(c) + '</span>');
+    } else if (st === 'Assigned') bits.push('<span class="chip triage">Needs a time</span>Waiting for ' + esc(c.Installer || 'the installer') + ' to accept');
+    else if (ONSITE[st]) bits.push((st === 'Scheduled' ? '' : '<span class="chip live">' + esc(st) + '</span>') + esc('Participant ' + (c.Participant_ID || '—') + ' · ' + (c.Requesting_Agent || '')));
+    else if (st === 'Completed') bits.push(hasProof(c) ? esc('Serial ' + c.Serial_Numbers) : '<span class="missing">No serial number yet: add the completion proof</span>');
+    else if (st === 'Reported') bits.push('<span class="chip live">Reported</span>' + esc(c.Serial_Numbers ? 'Serial ' + c.Serial_Numbers : ''));
+    return bits.join(' · ').replace(/<\/span> · <span class="missing"/, '</span><span class="missing"');
+  }
+  function actFor(c) {
+    var st = c.Dispatch_Status;
+    if (UNASSIGNED[st]) return '<button type="button" class="act primary" data-act="assign">Assign</button>';
+    if (st === 'Assigned') return '<button type="button" class="act primary" data-act="schedule">Accepted</button>';
+    if (ONSITE[st]) return '<button type="button" class="act" data-act="complete">Completed…</button>';
+    if (st === 'Completed') return hasProof(c) ? '<button type="button" class="act primary" data-act="report">Send report</button>' : '<button type="button" class="act primary" data-act="complete">Add proof</button>';
+    return '';
+  }
+
+  /* ---- job columns (kit col-toggles): Window, Job type, Device, City / county, Installer, Age on; agent and participant behind Columns; a column ~90% empty hides itself ---- */
+  var JCOLS = [
+    { k: 'name', t: 'Job' },
+    { k: 'win', t: 'Window', empty: function (c) { return !c.Scheduled_Start && !effDue(c) && !c.Completed_At; } },
+    { k: 'type', t: 'Job type', empty: function (c) { return !c.Job_Type; } },
+    { k: 'dev', t: 'Device', empty: function (c) { return !c.Device; } },
+    { k: 'city', t: 'City / county', empty: function (c) { return !c.City && !c.County; } },
+    { k: 'inst', t: 'Installer', empty: function (c) { return !c.Installer; } },
+    { k: 'age', t: 'Age' },
+    { k: 'agent', t: 'Requesting agent', off: true, empty: function (c) { return !c.Requesting_Agent; } },
+    { k: 'pid', t: 'Participant ref', off: true, empty: function (c) { return !c.Participant_ID; } }
+  ];
+  var JC = { open: false, saved: (function () { try { return JSON.parse(store.get(PREF + 'jcols') || '{}') || {}; } catch (e) { return {}; } })() };
+  colConfig({ cols: function () { return JCOLS; }, map: function () { return JC.saved; }, save: function () { store.set(PREF + 'jcols', JSON.stringify(JC.saved)); }, minRows: function () { return 5; } });
+  var JCV = {};
+  function paintJobCols(rows) {
+    JCV = {}; JCOLS.forEach(function (c) { JCV[c.k] = colOn('jobs', c, rows); });
+    var h = $('jcols'); if (!h) return;
+    var th = function (k, t) { return JCV[k] ? '<span class="qc qc-' + k + '">' + t + '</span>' : ''; };
+    h.innerHTML = '<span class="qh-sel"></span><span class="id">Job</span>' + th('win', 'Window') + th('type', 'Job type') + th('dev', 'Device') + th('city', 'City / county') + th('inst', 'Installer') + th('agent', 'Agent') + th('pid', 'Participant') + (JCV.age ? '<span class="age">Age</span>' : '')
+      + '<span class="qh-act"><span class="colwrap"><button type="button" class="btn" data-jcolbtn aria-expanded="' + JC.open + '" aria-controls="col-pop">Columns</button>' + (JC.open ? colPop('jobs', rows) : '') + '</span></span>';
+  }
+  function initJobCols() {
+    var h = $('jcols'); if (!h) return;
+    h.addEventListener('click', function (e) {
+      if (e.target.closest('[data-jcolbtn]')) { JC.open = !JC.open; paintJobCols(B.rows); var c0 = h.querySelector('#col-pop input'); if (c0) c0.focus(); return; }
+      if (e.target.closest('[data-colreset]')) { colReset('jobs'); renderBoard(); }
+    });
+    h.addEventListener('change', function (e) {
+      var k = e.target.getAttribute && e.target.getAttribute('data-col'); if (!k) return;
+      e.stopPropagation(); colSet('jobs', k, e.target.checked); renderBoard();
+      var again = h.querySelector('#col-pop input[data-col="' + k + '"]'); if (again) again.focus();
+    });
+    document.addEventListener('click', function (e) { if (JC.open && !(e.target.closest && e.target.closest('.colwrap'))) { JC.open = false; paintJobCols(B.rows); } });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && JC.open) { JC.open = false; paintJobCols(B.rows); var b = h.querySelector('[data-jcolbtn]'); if (b) b.focus(); } });
+    var ov = $('qonly'); if (ov) ov.addEventListener('click', function (e) { if (e.target.closest('[data-qonlyclear]')) { B.only = null; renderBoard(); } });
+  }
+
+  /* ---- tabs (kit queue-tabs): five stages instead of the kit's three lists ---- */
+  QTABS = STAGES.map(function (s, i) { return [s, STAGE_NAME[s], 'jobs', i]; });
+  var QT_CFG = {
+    key: PREF + 'qtab',
+    hot: function () { return [false, false, false, B.buckets.overdue.length > 0, false]; },        /* the Overdue tab's count is red when it has anything */
+    count: function (id, n) { return !PREVIEW && !LOADED.cases ? '–' : B.buckets[id].length; }
+  };
+  var qSetTabKit = qSetTab;
+  qSetTab = function (t, focus) { if (!B.keepOnly) B.only = null; qSetTabKit(t, focus); renderBoard(); };
+  /* the Overdue tab's red is also what a collapsed Jobs card reads as its summary (kit home-layout reads #queue-badges) */
+
+  /* ---- Push to… (kit peek-push): Cases.Pushed_To. Our rows are .job, and the Today strip already shows today's appointments, so no Today tag. ---- */
+  var PUSH_CFG = {
+    rows: function () { return CASES; },
+    todayIds: function () { return {}; },
+    current: function (id) { var r = findCase(id); return (r && r.Pushed_To) || ''; },
+    applied: function (r, v) { r.Pushed_To = v; redraw(r.id); },
+    saved: function (v) { return 'Pushed to ' + shortDate(v) + '. The job is on time until then.'; }
+  };
+
+  function jobRow(c, tab) {
+    var st = c.Dispatch_Status, k = JCV, dash = '<span class="mute">—</span>';
+    var city = [c.City, c.County && c.County !== c.City ? c.County + ' Co.' : ''].filter(Boolean).join(', ');
+    var mini = [c.Job_Type, (c.Device || '').replace('Allied ', ''), c.Installer].filter(Boolean).join(' · ');
+    return '<li class="job row' + (B.sel[c.id] ? ' selected' : '') + (B.cur === c.id ? ' cur' : '') + '" tabindex="-1" data-id="' + esc(c.id) + '" data-key="job:' + esc(c.id) + '" data-lane="' + tab + '"' + (UNASSIGNED[st] ? ' draggable="true"' : '') + '>'
       + '<label class="sel"><input type="checkbox" data-sel="' + esc(c.id) + '"' + (B.sel[c.id] ? ' checked' : '') + ' aria-label="Select ' + esc(c.Case_ID) + '"></label>'
-      + when
-      + '<span class="what"><a class="id" target="_top" href="#" data-peek>' + esc(c.Case_ID) + '</a>' + chip + esc([c.City, c.County && c.County !== c.City ? c.County + ' Co.' : ''].filter(Boolean).join(', ')) + '</span>'
-      + '<span class="who">' + who + '</span><span class="acts">' + acts + '</span>'
-      + '<span class="sub">' + sub + '</span></li>';
+      + '<a class="id" target="_top" href="#" data-peek>' + esc(c.Case_ID) + '</a>'
+      + (k.win ? '<span class="qc qc-win">' + winCell(c, tab) + '</span>' : '')
+      + (k.type ? '<span class="qc qc-type">' + (c.Job_Type ? esc(c.Job_Type) : dash) + '</span>' : '')
+      + (k.dev ? '<span class="qc qc-dev">' + (c.Device ? esc(c.Device.replace('Allied ', '')) : dash) + '</span>' : '')
+      + (k.city ? '<span class="qc qc-city" title="' + esc(city) + '">' + (city ? esc(city) : dash) + '<span class="mini">' + esc(mini) + '</span></span>' : '')
+      + (k.inst ? '<span class="qc qc-inst">' + (c.Installer ? esc(c.Installer) : dash) + '</span>' : '')
+      + (k.agent ? '<span class="qc qc-agent" title="' + esc(c.Requesting_Agent) + '">' + (c.Requesting_Agent ? esc(c.Requesting_Agent) : dash) + '</span>' : '')
+      + (k.pid ? '<span class="qc qc-pid">' + (c.Participant_ID ? esc(c.Participant_ID) : dash) + '</span>' : '')
+      + (k.age ? '<span class="age num">' + esc(ageLabel(c)) + '</span>' : '')
+      + '<span class="acts">' + actFor(c) + '</span><span class="sub">' + subLine(c) + '</span></li>';
   }
   function renderBoard() {
-    var lanes = { needs: [], sched: [], report: [] }, exc = [];
-    CASES.forEach(function (c) { if (c.Dispatch_Exception) exc.push(c); var l = laneOf(c); if (l && inScope(c)) lanes[l].push(c); });
-    lanes.needs.sort(byTime('Due_By')); lanes.sched.sort(byTime('Scheduled_Start')); lanes.report.sort(byTime('Completed_At'));
-    $('lane-needs').innerHTML = lanes.needs.map(function (c) { return jobRow(c, 'needs'); }).join('') || '<li class="empty">Nothing waiting for an installer.</li>';
-    var last = null, h = '';
-    lanes.sched.forEach(function (c) { var k = c.Scheduled_Start ? Math.max(-1, dayKey(c.Scheduled_Start)) : 'u'; if (k !== last) { h += '<li class="dayh">' + (k === 'u' ? 'Assigned, no time yet' : esc(dayLabel(k))) + '</li>'; last = k; } h += jobRow(c, 'sched'); });
-    $('lane-sched').innerHTML = h || '<li class="empty">No jobs on the calendar.</li>';
-    $('lane-report').innerHTML = lanes.report.map(function (c) { return jobRow(c, 'report'); }).join('') || '<li class="empty">Every finished job has been reported.</li>';
-    Object.keys(lanes).forEach(function (k) { document.querySelectorAll('[data-n="' + k + '"]').forEach(function (n) { n.textContent = lanes[k].length; }); });
-    var late = lanes.needs.filter(function (c) { return dueLabel(c.Due_By).c === 'late'; }).length, soon = lanes.needs.filter(function (c) { return dueLabel(c.Due_By).c === 'soon'; }).length;
-    var tri = lanes.needs.filter(function (c) { return c.Dispatch_Status === 'Received'; }).length;
-    $('needs-badges').innerHTML = (late ? '<span class="badge hot"><b>' + late + '</b> late</span>' : '') + (soon ? '<span class="badge"><b>' + soon + '</b> due &lt;4h</span>' : '') + (tri ? '<span class="badge"><b>' + tri + '</b> to triage</span>' : '');
-    var today = lanes.sched.filter(function (c) { return c.Scheduled_Start && dayKey(c.Scheduled_Start) === 0; }).length;
-    $('sched-badges').innerHTML = today ? '<span class="badge"><b>' + today + '</b> today</span>' : '';
-    $('board-badges').innerHTML = (late ? '<span class="badge hot"><b>' + late + '</b> late</span>' : '') + '<span class="badge"><b>' + (lanes.needs.length + lanes.sched.length + lanes.report.length) + '</b> open jobs</span>';
+    var g = groupStages(inScope), exc = CASES.filter(function (c) { return c.Dispatch_Exception; });
+    if (STAGES.indexOf(qtab) < 0) qtab = 'needs';
+    B.buckets = g;
+    var rows = B.only === 'today' ? g[qtab].filter(dueToday) : g[qtab];
+    B.rows = rows; paintJobCols(rows);
+    var broke = !PREVIEW && !LOADED.cases;
+    $('jobs').innerHTML = rows.map(function (c) { return jobRow(c, qtab); }).join('')
+      || '<li class="empty">' + esc(broke ? (LOADED.err ? 'Could not load the jobs: ' + LOADED.err + '. Use ↻ to retry.' : 'Loading…') : STAGE_EMPTY[qtab]) + '</li>';
+    $('qbody').setAttribute('aria-labelledby', 'qtab-' + qtab);
+    var n = function (k) { return g[k].length; };
+    $('queue-badges').innerHTML = '<span class="badge' + (n('overdue') ? ' hot' : '') + '"><b>' + n('overdue') + '</b> overdue</span><span class="badge"><b>' + n('needs') + '</b> need dispatch</span><span class="badge"><b>' + n('sched') + '</b> scheduled</span>';
+    qTabsRender(); paintOnly();
     $('excs').hidden = !exc.length;
     $('exc-list').innerHTML = exc.map(function (c) { return '<button type="button" class="exc" data-id="' + esc(c.id) + '"><b>' + esc(c.Case_ID) + '</b>' + esc(c.Dispatch_Exception_Note || 'Status and dispatch disagree') + '</button>'; }).join('');
     $('board-meta').textContent = B.scope === 'mine' ? 'Showing cases you own' : 'All DOC cases';
     document.querySelectorAll('#scope-seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-scope') === B.scope)); });
-    syncBulk(); resize();
+    paintNums(); renderToday(); syncBulk(); resize();
+  }
+  function paintOnly() {
+    var b = $('qonly'); if (!b) return;
+    if (!B.only) { b.hidden = true; b.innerHTML = ''; return; }
+    var all = groupStages(inScope), cnt = all.needs.concat(all.sent, all.sched).filter(dueToday).length;
+    b.hidden = false;
+    b.innerHTML = 'Showing the <b>' + B.rows.length + '</b> job' + (B.rows.length === 1 ? '' : 's') + ' due today on this tab (' + cnt + ' in all). <button type="button" class="linkish" data-qonlyclear>Show all</button>';
+  }
+  /* the tab that holds what a tile counts */
+  function showTab(tab, only) {
+    var card = $('queue-card');
+    if (card && card.getAttribute('data-collapsed') === 'true') { var tg = card.querySelector('.hl-tg'); if (tg) tg.click(); }
+    B.only = only || null; B.keepOnly = true; qSetTab(tab); B.keepOnly = false;
+    if (card) { try { card.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (x) { card.scrollIntoView(); } }
+  }
+
+  /* ---------- Numbers (kit numgrid): six tiles, every one says show ↓ / open › / view ↗ ---------- */
+  function setTile(id, v, ctx, cls) {
+    var e = $(id + '-v'); if (!e) return;
+    e.classList.remove('sk'); e.textContent = v; var c = $(id + '-c'); if (c) c.textContent = ctx;
+    var k = $(id); if (k) { k.classList.toggle('bad', cls === 'bad'); k.classList.toggle('watch', cls === 'watch'); k.classList.toggle('zero', v === '0'); }
+  }
+  function paintNums() {
+    if (!PREVIEW && !LOADED.cases) {
+      ['k-open', 'k-unassigned', 'k-today', 'k-overdue', 'k-done', 'k-median'].forEach(function (id) {
+        var e = $(id + '-v'); if (!e) return;
+        if (LOADED.err) { e.classList.remove('sk'); e.textContent = '!'; var cx = $(id + '-c'); if (cx) cx.textContent = 'Could not load. ↻ to retry.'; var k = $(id); if (k) k.classList.add('bad'); }
+      });
+      return;
+    }
+    var g = groupStages(null), open = g.needs.length + g.sent.length + g.sched.length + g.overdue.length;
+    var un = CASES.filter(function (c) { return isWaiting(c) && stageOf(c); }), unLate = un.filter(function (c) { return stageOf(c) === 'overdue'; }).length;
+    var td = CASES.filter(dueToday).length;
+    var why = { sla: 0, win: 0, proof: 0 }; g.overdue.forEach(function (c) { var s = c.Dispatch_Status; if (s === 'Completed') why.proof++; else if (ONSITE[s]) why.win++; else why.sla++; });
+    var med = medianAccept();
+    setTile('k-open', String(open), open ? g.needs.length + ' need dispatch · ' + g.sent.length + ' sent · ' + g.sched.length + ' scheduled' : 'Nothing open');
+    setTile('k-unassigned', String(un.length), un.length ? (unLate ? unLate + ' late, listed under Overdue' : 'waiting for an installer') : 'Every job has an installer', unLate ? 'watch' : '');
+    setTile('k-today', String(td), td ? 'appointments and due times today' : 'Nothing due today', td ? 'watch' : '');
+    setTile('k-overdue', String(g.overdue.length), g.overdue.length ? why.sla + ' past due · ' + why.win + ' window over · ' + why.proof + ' no proof' : 'Nothing overdue', g.overdue.length ? 'bad' : '');
+    setTile('k-done', String(g.done.length), 'finished since Monday');
+    setTile('k-median', med ? (med.h < 10 ? med.h.toFixed(1) : String(Math.round(med.h))) + ' h' : '—', med ? 'estimated from ' + med.n + ' scheduled job' + (med.n === 1 ? '' : 's') + '; last edit stands in for accepted' : 'No scheduled jobs to measure yet');
+  }
+  function initNumbers() {
+    var ng = $('numgrid'); if (!ng) return;
+    ng.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-show]'); if (!b) return;
+      var k = b.getAttribute('data-show'), g = groupStages(inScope);
+      if (k === 'unassigned') showTab(g.needs.length || !g.overdue.some(isWaiting) ? 'needs' : 'overdue');
+      else if (k === 'today') showTab(['needs', 'sent', 'sched'].filter(function (s) { return g[s].some(dueToday); })[0] || 'sched', 'today');
+      else showTab(k);
+    });
+  }
+
+  /* ---------- Today strip: appointments today and tomorrow, by installer and city ---------- */
+  function renderToday() {
+    var box = $('tdays'); if (!box) return;
+    var jobs = CASES.filter(function (c) { return c.Installer && c.Scheduled_Start && ['Scheduled', 'En route', 'On site', 'Completed'].indexOf(c.Dispatch_Status) >= 0; });
+    var total = 0;
+    box.innerHTML = [0, 1].map(function (day) {
+      var js = jobs.filter(function (j) { return dayKey(j.Scheduled_Start) === day; }).sort(byTime('Scheduled_Start')), by = {}, order = [], cities = {};
+      js.forEach(function (j) { if (!by[j.Installer]) { by[j.Installer] = []; order.push(j.Installer); } by[j.Installer].push(j); var k = j.City || j.County || 'No city'; cities[k] = (cities[k] || 0) + 1; });
+      total += js.length;
+      var date = new Date(t0.getTime() + day * DAY).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return '<section class="tday" aria-label="' + (day ? 'Tomorrow' : 'Today') + '"><h3>' + (day ? 'Tomorrow' : 'Today') + ' <span class="n num">' + js.length + '</span><span class="meta">' + esc(date) + '</span></h3>'
+        + (js.length ? '<ul class="tinst">' + order.map(function (name) {
+          return '<li><b>' + esc(name) + '</b><span class="tchips">' + by[name].map(function (j) {
+            return '<button type="button" class="tchip' + (OPTIONAL[j.Dispatch_Status] ? ' live' : '') + (j.Dispatch_Status === 'Completed' ? ' done' : '') + '" data-id="' + esc(j.id) + '" title="' + esc(j.Case_ID + ' ' + (j.Job_Type || '') + ' · ' + (j.City || '') + ' · ' + hm(j.Scheduled_Start) + '–' + hm(j.Scheduled_End)) + '">'
+              + esc(hm(j.Scheduled_Start)) + ' ' + esc(j.City || j.County || '') + '<small>' + esc([j.Job_Type, j.Case_ID].filter(Boolean).join(' · ')) + '</small></button>'; }).join('') + '</span></li>'; }).join('') + '</ul>'
+          + '<p class="tcity"><span>By city</span>' + Object.keys(cities).sort().map(function (k) { return esc(k) + ' <b>' + cities[k] + '</b>'; }).join(' · ') + '</p>'
+          : '<p class="empty">No appointments.</p>') + '</section>';
+    }).join('');
+    $('tstrip-meta').textContent = total + ' appointment' + (total === 1 ? '' : 's');
   }
 
   /* ---------- installers strip ---------- */
@@ -2380,7 +3129,7 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
   var PIN_PATH = 'M0 0C-2-5-8-9-8-14A8 8 0 1 1 8-14C8-9 2-5 0 0Z';
   function waitingJobs(eng) {
     var by = {}, lost = [];
-    CASES.forEach(function (c) { if (laneOf(c) !== 'needs') return; var k = eng.placeCase(c); if (k) (by[k] = by[k] || []).push(c); else lost.push(c); });
+    CASES.forEach(function (c) { if (!isWaiting(c)) return; var k = eng.placeCase(c); if (k) (by[k] = by[k] || []).push(c); else lost.push(c); });
     Object.keys(by).forEach(function (k) { by[k].sort(byTime('Due_By')); });
     return { by: by, lost: lost, n: Object.keys(by).reduce(function (s, k) { return s + by[k].length; }, 0) + lost.length };
   }
@@ -2751,6 +3500,10 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     var c = findCase(id); if (!c) return false;
     opts = opts || {}; data = data || {};
     if (!canMove(c, to)) { toast(c.Case_ID + ': can’t go from ' + c.Dispatch_Status + ' to ' + to + '.', { bad: true }); return false; }
+    if (to === 'Completed' || to === 'Reported') {                                /* a job is not done until there is proof of it */
+      var proofText = String((to === 'Completed' ? (data.serials || c.Serial_Numbers) : c.Serial_Numbers) || '').trim();
+      if (!proofText) { toast(c.Case_ID + ' can’t be marked ' + (to === 'Completed' ? 'done' : 'reported') + ': no completion proof yet. Add the serial number(s) first.', { bad: true, ms: 8000 }); return false; }
+    }
     var prev = JSON.parse(JSON.stringify(c)), note = '';
     if (to === 'Assigned') { c.Installer = data.installer; c.InstallerId = instId(data.installer); if (c.Status === 'New') { c.Status = 'In Progress'; note = ' · Start Working'; } if (!c.Owner && ME.id) c.Owner = ME; }
     if (to === 'Triaged' && (prev.Dispatch_Status === 'Assigned')) { c.Installer = null; c.InstallerId = null; }
@@ -2886,17 +3639,22 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
   function renderPeek() {
     var c = findCase(P.id), el = $('peek'); if (!c) return;
     var facts = [['Job', [c.Job_Type, c.Device].filter(Boolean).join(' · ')], ['Where', [c.City, c.County ? c.County + ' County' : '', c.DOC_Region ? c.DOC_Region + ' region' : ''].filter(Boolean).join(' · ')],
-      ['Requested', c.Requested_Date || ''], ['Due', c.Due_By ? dayLabel(dayKey(c.Due_By)) + ' ' + hm(c.Due_By) : ''], ['Agent', c.Requesting_Agent || ''], ['Participant', c.Participant_ID || ''],
+      ['Requested', c.Requested_Date || ''], ['Due', c.Due_By ? dayLabel(dayKey(c.Due_By)) + ' ' + hm(c.Due_By) : ''], ['Pushed to', c.Pushed_To ? shortDate(c.Pushed_To) : '-'], ['Agent', c.Requesting_Agent || ''], ['Participant', c.Participant_ID || ''],
       ['Case owner', c.Owner ? c.Owner.name : 'nobody yet']];
     el.innerHTML = '<div class="peek-panel"><div class="pk-head" id="pk-head"><span class="pk-id pk-title">' + esc(c.Case_ID) + '</span>'
       + '<span class="pill ' + (c.Status === 'New' ? 'new' : /Waiting|Hold/.test(c.Status) ? 'wait' : c.Status === 'Escalated' ? 'esc' : 'prog') + '">' + esc(c.Status) + '</span>'
       + '<span>' + esc(c.Subject) + '</span><button type="button" class="pk-x" data-pk="close" aria-label="Close preview" title="Close (Esc)">✕</button></div>'
-      + '<div class="pk-body">' + dispatchPanel(c)
+      + '<div class="pk-body">' + dispatchPanel(c) + pushBox(c)
       + '<div class="pk-sec"><h4>Request</h4><dl class="facts2">' + facts.map(function (f) { return '<dt>' + esc(f[0]) + '</dt><dd>' + (f[1] ? esc(f[1]) : '<span class="missing">missing</span>') + '</dd>'; }).join('') + '</dl></div>'
       + '<div class="pk-sec"><h4>On the case</h4><p class="meta">' + esc([c.Service_Address, c.Participant_Name, c.AgentEmail].filter(Boolean).join(' · ') || 'No address or participant name yet.') + '</p>'
       + (PREVIEW ? '' : '<p class="meta"><a target="_top" href="' + esc(url.rec('Cases', c.id)) + '">Open ' + esc(c.Case_ID) + ' in CRM</a> for replies, notes and calls (the kit peek sections arrive with the EM/Network migration).</p>') + '</div>'
       + '</div><div class="pk-foot"><span class="fine">A assign · S schedule · T take · Esc close</span></div></div>';
     el.hidden = false; resize();
+  }
+  /* Push to… (kit peek-push) needs #pk-actions with a status select; DOC has no status select in the peek, so a hidden one stands in. Only for jobs not yet done. */
+  function pushBox(c) {
+    if (!({ Received: 1, Triaged: 1, Assigned: 1, Scheduled: 1, 'En route': 1, 'On site': 1 })[c.Dispatch_Status]) return '';
+    return '<div class="pk-sec" id="pk-actions"><h4>Moved by the agent or participant?</h4><select data-pk="status" hidden aria-hidden="true" tabindex="-1"><option>' + esc(c.Status) + '</option></select></div>';
   }
   function openPeek(id, mode) { P.id = id; P.mode = mode || null; B.cur = id; renderPeek(); }
   function closePeek() { $('peek').hidden = true; P.id = null; P.mode = null; renderBoard(); renderCrew(); renderMap(); }
@@ -2945,7 +3703,7 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
                 function (e) { d.disabled = false; toast('Not sent · ' + e.message, { bad: true, ms: 9000 }); });
       },
       'complete-open': function () { P.mode = 'complete'; renderPeek(); },
-      'complete': function () { var p = proof(); P.mode = null; act(c.id, 'Completed', p); },
+      'complete': function () { var p = proof(); if (!p.serials && !c.Serial_Numbers) { toast(c.Case_ID + ' can’t be marked done: no completion proof yet. Add the serial number(s) first.', { bad: true, ms: 8000 }); return; } P.mode = null; act(c.id, 'Completed', p); },
       'complete-report': function () { var p = proof(); if (!p.serials) { toast('Add a serial number before the report goes out.', { bad: true }); return; } if (needAgent()) return;
         P.mode = null; if (act(c.id, 'Completed', p, { quiet: true })) act(c.id, 'Reported'); },
       'save-proof': function () { var p = proof(); saveFields(c.id, { Serial_Numbers: p.serials, Completion_Notes: p.notes }, ['Serial_Numbers', 'Completion_Notes'], c.Case_ID + ' completion details saved');
@@ -3003,13 +3761,12 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     if (window.ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record && typeof ZOHO.CRM.UI.Record.create === 'function') ZOHO.CRM.UI.Record.create({ Entity: module }).catch(function () { window.top.location.href = href; });
     else window.top.location.href = href;
   }
-  var visibleJobs = function (lane) { return Array.prototype.slice.call(document.querySelectorAll('#lane-' + lane + ' .job[data-id]')); };
+  var visibleJobs = function () { return Array.prototype.slice.call(document.querySelectorAll('#jobs .job[data-id]')); };
   function moveCur(dl, dr) {
-    var order = ['needs', 'sched', 'report'], cur = B.cur && document.querySelector('.job[data-id="' + B.cur + '"]');
-    var lane = cur ? cur.getAttribute('data-lane') : B.lane, li = order.indexOf(lane);
-    if (dl) { li = Math.max(0, Math.min(2, li + dl)); lane = order[li]; var l0 = visibleJobs(lane)[0]; B.cur = l0 ? l0.getAttribute('data-id') : B.cur; }
-    else { var rows = visibleJobs(lane), i = cur ? rows.indexOf(cur) : -1, n = rows[Math.max(0, Math.min(rows.length - 1, i + dr))]; if (n) B.cur = n.getAttribute('data-id'); }
-    B.lane = lane; renderBoard(); var el = document.querySelector('.job[data-id="' + B.cur + '"]'); if (el) el.focus({ preventScroll: false });
+    if (dl) { var i0 = STAGES.indexOf(qtab) + dl; if (i0 < 0 || i0 >= STAGES.length) return; B.cur = null; qSetTab(STAGES[i0]); var f = visibleJobs()[0]; if (f) { B.cur = f.getAttribute('data-id'); renderBoard(); } return; }
+    var rows = visibleJobs(), cur = B.cur && document.querySelector('#jobs .job[data-id="' + B.cur + '"]'), i = cur ? rows.indexOf(cur) : -1, n = rows[Math.max(0, Math.min(rows.length - 1, i + dr))];
+    if (n) B.cur = n.getAttribute('data-id');
+    renderBoard(); var el = document.querySelector('#jobs .job[data-id="' + B.cur + '"]'); if (el) el.focus({ preventScroll: false });
   }
   function initKeys() {
     document.addEventListener('keydown', function (e) {
@@ -3040,16 +3797,16 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     var clear = function () { document.querySelectorAll('.drop').forEach(function (x) { x.classList.remove('drop'); }); };
     var end = function () { dragId = null; clear(); tray.hidden = true; };
     var drop = function (name) { var id = dragId; end(); if (id && name && act(id, 'Assigned', { installer: name })) openPeek(id, 'schedule'); };
-    $('lanes').addEventListener('dragstart', function (e) {
+    $('jobs').addEventListener('dragstart', function (e) {
       var li = e.target.closest && e.target.closest('.job[draggable]'); if (!li) return;
       dragId = li.getAttribute('data-id'); e.dataTransfer.setData('text/plain', dragId); e.dataTransfer.effectAllowed = 'move';
       var c = findCase(dragId), s = suggest(c);
       tray.innerHTML = '<span class="dt-h">Drop <b>' + esc(c.Case_ID) + '</b> on an installer</span>' + s.list.slice(0, 8).map(function (x) {
         return '<span class="dchip' + (x.out.length ? ' out' : '') + '" data-inst="' + esc(x.inst.Name) + '"><b>' + esc(x.inst.Name) + '</b><small>' + esc(x.inst.Ask ? 'Ask first' : x.why || (x.group === 'other' ? 'other region' : '')) + '</small></span>'; }).join('')
-        + '<span class="dt-more">or any row in Installers below</span>';
+        + '<span class="dt-more">or a row in Reference › Installers</span>';
       setTimeout(function () { if (dragId) tray.hidden = false; }, 0);          /* after the drag image is taken */
     });
-    $('lanes').addEventListener('dragend', end);
+    $('jobs').addEventListener('dragend', end);
     [[tray, '.dchip'], [$('crew-rows'), '.inst']].forEach(function (z) {
       z[0].addEventListener('dragover', function (e) { var r = e.target.closest(z[1]); if (!r || !dragId) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (!r.classList.contains('drop')) { clear(); r.classList.add('drop'); } });
       z[0].addEventListener('dragleave', function (e) { var r = e.target.closest(z[1]); if (r && !r.contains(e.relatedTarget)) r.classList.remove('drop'); });
@@ -3441,7 +4198,7 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     ['Installer notes', 'Installer Presence module', { m: 'Installer_Presence' }], ['Installers', 'Contacts view', { view: 'Installers', m: 'Contacts' }],
     ['DOC agents', 'Contacts view', { view: 'DOC agents', m: 'Contacts' }], ['Allied WI service requests', 'inventory.ptm.com', { href: 'https://inventory.ptm.com' }]
   ];
-  var LANE_VIEW = { docNeeds: 'DOC - Needs dispatch', docScheduled: 'DOC - Scheduled', docAwaiting: 'DOC - Awaiting report' };
+  var LANE_VIEW = { docBoard: 'DOC - Dispatch board' };                  /* the Open jobs tile opens this view */
   var linkHref = function (x) { if (x.href) return x.href; var v = x.view && VIEWS[x.view]; return v ? url.view(v.module, v.id) : url.tab(x.m); };
   function applyLinks() {
     $('links').innerHTML = LINKS.map(function (l) { return '<li><a target="_top" href="' + esc(PREVIEW ? '#' : linkHref(l[2])) + '" title="' + esc(l[1] + (l[2].view && !VIEWS[l[2].view] && !PREVIEW ? ' (view not created yet; opens the module)' : '')) + '"' + (l[2].href ? ' rel="noopener"' : '') + '>' + esc(l[0]) + '</a></li>'; }).join('');
@@ -3471,17 +4228,17 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
   function renderAll() { renderBoard(); renderCrew(); renderMap(); renderCovStats(); stamp(); }
   function greet() { $('greeting').innerHTML = 'Good ' + (new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening') + ', <em>' + esc((ME.name || 'there').split(' ')[0]) + '</em>.'; }
   function init() {
-    try { applyTheme(store.get(PREF + 'theme') || 'auto'); } catch (e) {}
+    try { initDisplay(); } catch (e) {}
     $('today').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     greet(); stamp(); applyLinks();
-    $('source').textContent = PREVIEW ? 'DOC Dispatch v3 · preview data' : 'DOC Dispatch v3 · live · Cases, Dispatch Coverage/Shifts/Cities, Installers (Contacts), Installer Presence';
-    $('lanes').addEventListener('click', function (e) {
+    $('source').textContent = PREVIEW ? 'DOC Dispatch v5 · preview data' : 'DOC Dispatch v5 · live · Cases, Dispatch Coverage/Shifts/Cities, Installers (Contacts), Installer Presence';
+    $('jobs').addEventListener('click', function (e) {
       var t = e.target, li = t.closest('.job[data-id]'); if (!li) return;
       var id = li.getAttribute('data-id'), a = t.closest('[data-act]'), s = t.closest('[data-sel]');
       if (s) { if (s.checked) B.sel[id] = 1; else delete B.sel[id]; li.classList.toggle('selected', s.checked); syncBulk(); return; }
       if (t.closest('label.sel')) return;
       e.preventDefault(); B.cur = id;
-      if (a) { var k = a.getAttribute('data-act'), c = findCase(id);
+      if (a) { var k = a.getAttribute('data-act');
         if (k === 'report') { openPeek(id, 'complete'); return; }
         openPeek(id, k); return; }
       openPeek(id);
@@ -3498,16 +4255,16 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     });
     $('scope-seg').addEventListener('click', function (e) { var b = e.target.closest('[data-scope]'); if (!b) return; B.scope = b.getAttribute('data-scope'); store.set(PREF + 'scope', B.scope); renderBoard(); });
     $('crew-day').addEventListener('click', function (e) { var b = e.target.closest('[data-day]'); if (!b) return; CREW.day = +b.getAttribute('data-day'); renderCrew(); });
-    $('lane-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-lane]'); if (!b) return; var l = b.getAttribute('data-lane');
-      document.querySelectorAll('#lane-tabs [data-lane]').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); x.setAttribute('aria-pressed', String(x === b)); });
-      document.querySelectorAll('#lanes > .lane').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-lane') === l); }); });
     $('bulkbar').addEventListener('click', function (e) { var b = e.target.closest('[data-bulk]'); if (!b) return; if (b.getAttribute('data-bulk') === 'clear') { B.sel = {}; renderBoard(); } else bulkApply(); });
-    document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.onclick = function () { applyTheme(b.getAttribute('data-theme-choice')); }; });
-    [['gear-btn', 'gear-pop'], ['keys-btn', 'keys-pop'], ['new-btn', 'new-list']].forEach(function (p) { $(p[0]).onclick = function (e) { e.stopPropagation(); var o = $(p[1]).hidden; document.querySelectorAll('.pop, .new-list').forEach(function (x) { x.hidden = true; }); $(p[1]).hidden = !o; this.setAttribute('aria-expanded', String(o)); }; });
-    document.addEventListener('click', function (e) { if (!e.target.closest('.pop, .new-list, #gear-btn, #keys-btn, #new-btn')) document.querySelectorAll('.pop, .new-list').forEach(function (x) { x.hidden = true; }); });
+    [['gear-btn', 'gear-pop'], ['keys-btn', 'keys-pop'], ['new-btn', 'new-list']].forEach(function (p) { $(p[0]).onclick = function (e) { e.stopPropagation(); var o = $(p[1]).hidden; document.querySelectorAll('.pop:not(.colpop), .new-list').forEach(function (x) { x.hidden = true; }); $(p[1]).hidden = !o; this.setAttribute('aria-expanded', String(o)); }; });
+    document.addEventListener('click', function (e) { if (!e.target.closest('.pop, .new-list, #gear-btn, #keys-btn, #new-btn')) document.querySelectorAll('.pop:not(.colpop), .new-list').forEach(function (x) { x.hidden = true; }); });
     $('qa-docreq').addEventListener('click', function (e) { e.preventDefault(); $('new-list').hidden = true; createIn('Cases'); });
     $('qa-presence').addEventListener('click', function () { $('new-list').hidden = true; openPresence(); });
     $('refresh').onclick = function () { if (PREVIEW) { renderAll(); toast('Board reloaded (preview).'); return; } $('refreshed').textContent = 'loading…'; loadAll().then(function () { toast('Board reloaded.'); }); };
+    $('tdays').addEventListener('click', function (e) { var b = e.target.closest('.tchip'); if (b) openPeek(b.getAttribute('data-id')); });
+    initQueueTabs(QT_CFG);
+    qtab = (function () { var v = store.get(PREF + 'qtab'); return STAGES.indexOf(v) >= 0 ? v : 'needs'; })();      /* the kit only knows its own three tab names */
+    initJobCols(); initNumbers(); initPeekPush(PUSH_CFG);
     initKeys(); initDrag(); initCov(); initJump(); initMap();
     renderAll();
     if (!PREVIEW) {
@@ -3515,12 +4272,11 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
       loadAll(true).then(function () { schedulePoll(); });
       document.addEventListener('visibilitychange', function () { if (!document.hidden && LOADED.at && Date.now() - LOADED.at > (SETTINGS.poll_s || 60) * 1000) schedulePoll(0); else if (!document.hidden) renderMap(); });
     }
-    window.__doc = { suggest: suggest, validate: validate, diff: diff, sampleBook: sampleBook, sampleCRM: sampleCRM, act: act, CASES: CASES, canMove: canMove, mapCase: mapCase, cityOf: cityOf, crmBook: crmBook, planApply: planApply, bookToSheets: bookToSheets, fill: fill, reindex: reindex, INSTALLERS: INSTALLERS, CITIES: CITIES, COVERAGE: COVERAGE, SHIFTS: SHIFTS, PRESENCE: PRESENCE, SETTINGS: SETTINGS, presenceAt: presenceAt, renderMap: renderMap, MAP: MAP, selectCounty: selectCounty, onScrub: onScrub, openPresence: openPresence, pollOnce: pollOnce, POLL: POLL, anchorNow: anchorNow, engine: presenceEngine };   /* test hook */
+    window.__doc = { renderBoard: renderBoard, openPeek: openPeek, stageOf: stageOf, groupStages: groupStages, hasProof: hasProof, effDue: effDue, medianAccept: medianAccept, STAGES: STAGES, B: B, LOADED: LOADED, suggest: suggest, validate: validate, diff: diff, sampleBook: sampleBook, sampleCRM: sampleCRM, act: act, CASES: CASES, canMove: canMove, mapCase: mapCase, cityOf: cityOf, crmBook: crmBook, planApply: planApply, bookToSheets: bookToSheets, fill: fill, reindex: reindex, INSTALLERS: INSTALLERS, CITIES: CITIES, COVERAGE: COVERAGE, SHIFTS: SHIFTS, PRESENCE: PRESENCE, SETTINGS: SETTINGS, presenceAt: presenceAt, renderMap: renderMap, MAP: MAP, selectCounty: selectCounty, onScrub: onScrub, openPresence: openPresence, pollOnce: pollOnce, POLL: POLL, anchorNow: anchorNow, engine: presenceEngine };   /* test hook */
   }
   if (PREVIEW) init();
   else { ZOHO.embeddedApp.on('PageLoad', function () { init(); }); ZOHO.embeddedApp.init(); }
 })();
-
 </script>
 <script id="a11y-js">
   /* Announcements (UI/UX Phase 3, 3.5, Sep 30 2026). Shared block: byte-identical in both widgets.
@@ -3768,6 +4524,88 @@ window.DOC_WI_COUNTIES = {"version":"wi-counties-2026-09-30","source":"us-atlas 
     sync();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+<script id="doc-layout">
+(function () {
+  'use strict';
+  /* DOC Dispatch v5 layout layer (the em-layout pattern, Oct 9 2026). The kit's home-layout script (above, unmodified) collapses and lists the Jobs card.
+     This adds the two sections it does not know, Numbers and Reference, to the SAME system: its toggle, summary and header classes, its Go to row,
+     its per-browser entry (<title>-layout = doc-dispatch-layout), and makes Collapse all cover them. Reference starts collapsed until someone opens it. */
+  var nav = document.querySelector('.hl-nav'), allBtn = document.querySelector('.hl-all'); if (!nav || !allBtn) return;
+  var KEY = (document.title || 'home').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-layout';
+  var read = function () { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } };
+  var mine = {};
+  var write = function () { var s = read(); Object.keys(mine).forEach(function (k) { s[k] = mine[k]; }); try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  var kick = function () { requestAnimationFrame(function () { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }); };
+  var CHEV = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6"/></svg>';
+  var tx = function (el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+  var navBtn = function (label) { return Array.prototype.filter.call(nav.querySelectorAll('button'), function (b) { return b.textContent === label; })[0] || null; };
+  var numSum = function () {
+    return Array.prototype.map.call(document.querySelectorAll('#z-num .kpis > .kpi'), function (k) {
+      var v = tx(k.querySelector('.value')), l = tx(k.querySelector('.label')).replace(/\s*(open ›|view ↗|show ↓)$/, '');
+      return v && v !== '—' && v !== '!' ? '<b>' + esc(v) + '</b> ' + esc(l.toLowerCase()) : '';
+    }).filter(Boolean).slice(0, 4).join(' · ');
+  };
+  var SPECS = [
+    { key: 'doc-numbers', label: 'Numbers', el: 'z-num', body: ['.kpis'], replace: 'Numbers', sum: numSum },
+    { key: 'doc-reference', label: 'Reference', el: 'z-ref', body: ['.rbody'], after: 'Numbers', collapsedByDefault: true, sum: function () { return 'Map · Installers today · Coverage · Quick links'; } }
+  ];
+  var specs = [];
+  function set(spec, on, save) {
+    spec.box.setAttribute('data-collapsed', on ? 'true' : 'false');
+    spec.head.classList.toggle('hl-collapsed', on);
+    spec.tg.setAttribute('aria-expanded', String(!on));
+    spec.tg.title = (on ? 'Show ' : 'Hide ') + spec.label; spec.tg.setAttribute('aria-label', spec.tg.title);
+    spec.nav.classList.toggle('off', on);
+    if (spec.sum) spec.sumEl.innerHTML = on ? spec.sum() : '';
+    mine[spec.key] = on; if (save) write();
+    paint(); kick();
+  }
+  var kitToggles = function () { return Array.prototype.filter.call(document.querySelectorAll('.hl-tg'), function (b) { return !b.hasAttribute('data-doclayout'); }); };
+  function paint() {
+    var anyOpen = kitToggles().concat(specs.map(function (s) { return s.tg; })).some(function (b) { return b.getAttribute('aria-expanded') === 'true'; });
+    allBtn.textContent = anyOpen ? 'Collapse all' : 'Expand all';
+    allBtn.title = anyOpen ? 'Fold every section down to its header' : 'Open every section';
+  }
+  var saved = read();
+  SPECS.forEach(function (spec) {
+    var box = document.getElementById(spec.el), head = box && box.querySelector(':scope > .band'); if (!head) return;
+    spec.box = box; spec.head = head;
+    spec.body.forEach(function (sel) { Array.prototype.forEach.call(box.querySelectorAll(':scope > ' + sel), function (x) { x.classList.add('hl-body'); }); });
+    spec.sumEl = document.createElement('span'); spec.sumEl.className = 'hl-sum'; spec.sumEl.setAttribute('aria-live', 'off'); head.appendChild(spec.sumEl);
+    var tg = document.createElement('button'); tg.type = 'button'; tg.className = 'hl-tg'; tg.setAttribute('data-doclayout', spec.key); tg.innerHTML = CHEV; spec.tg = tg; head.appendChild(tg);
+    tg.addEventListener('click', function () { set(spec, box.getAttribute('data-collapsed') !== 'true', true); });
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = spec.label; spec.nav = b;
+    b.addEventListener('click', function () {
+      if (box.getAttribute('data-collapsed') === 'true') set(spec, false, true);
+      head.classList.add('hl-anchor');
+      try { head.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); } catch (e) { head.scrollIntoView(); }
+      try { tg.focus({ preventScroll: true }); } catch (e) {}
+    });
+    var ref = spec.replace ? navBtn(spec.replace) : null;
+    if (ref) nav.replaceChild(b, ref);
+    else { var a = navBtn(spec.after); if (a && a.nextSibling) nav.insertBefore(b, a.nextSibling); else nav.appendChild(b); }
+    if (spec.sum && !spec.collapsedByDefault) { var t = null; try { new MutationObserver(function () { clearTimeout(t); t = setTimeout(function () { if (box.getAttribute('data-collapsed') === 'true') spec.sumEl.innerHTML = spec.sum(); }, 250); }).observe(box, { childList: true, characterData: true, subtree: true }); } catch (e) {} }
+    specs.push(spec);
+    set(spec, spec.collapsedByDefault ? saved[spec.key] !== false : saved[spec.key] === true, false);
+  });
+  /* the kit calls the Jobs card "Queue"; this page calls it Jobs */
+  var qnav = navBtn('Queue'); if (qnav) qnav.textContent = 'Jobs';
+  var qtg = document.querySelector('#queue-card > .head .hl-tg');
+  if (qtg) { var rename = function () { ['title', 'aria-label'].forEach(function (a) { var v = qtg.getAttribute(a) || ''; if (/Queue/.test(v)) qtg.setAttribute(a, v.replace('Queue', 'Jobs')); }); }; rename(); try { new MutationObserver(rename).observe(qtg, { attributes: true, attributeFilter: ['title', 'aria-label'] }); } catch (e) {} }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.hl-tg'); if (b && !b.hasAttribute('data-doclayout')) { write(); paint(); } });
+  allBtn.parentNode.addEventListener('click', function (e) {
+    if (!(e.target.closest && e.target.closest('.hl-all'))) return;
+    e.stopPropagation();
+    var fold = kitToggles().concat(specs.map(function (s) { return s.tg; })).some(function (b) { return b.getAttribute('aria-expanded') === 'true'; });
+    kitToggles().forEach(function (b) { if ((b.getAttribute('aria-expanded') === 'true') === fold) b.click(); });
+    specs.forEach(function (s) { set(s, fold, false); });
+    write(); paint();
+  }, true);
+  paint();
+  window.__docLayout = { key: KEY, specs: specs.map(function (s) { return s.key; }) };   /* test hook */
 })();
 </script>
 </body>
