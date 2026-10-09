@@ -361,6 +361,27 @@
   .ppage .pf { position: absolute; left: 0.75in; right: 0.75in; bottom: 0.35in; display: flex; justify-content: space-between; font-size: 7.5pt; color: #8A9A9E; border-top: 1px solid #E4E9EA; padding-top: 6px; }
   .ppage .note { font-size: 8.5pt; color: #5B6C70; }
   .ppage tr.adm td { border-top: 1px solid #C4CFD1; font-weight: 600; }
+  /* Mixed model: per-device price inputs */
+  .mixp { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: flex-end; min-width: 370px; }
+  .devtbl select[data-bind$=".model"] { min-width: 168px; }
+  .tbl.mg { font-size: 12.5px; } .tbl.mg th, .tbl.mg td { padding: 8px 8px; }
+  .mixp .mini { display: grid; gap: 3px; font-size: 11px; color: var(--muted); font-weight: 600; width: 112px; }
+  .mixp .mini.tot { width: auto; min-width: 120px; align-self: center; color: var(--ink); font-size: 12.5px; }
+  /* Pricing and margins (internal) */
+  .mg td, .mg th { white-space: nowrap; }
+  .tbl.mg tr.oth td { background: var(--surface-2); }
+  .tbl.mg tr.tot td { font-weight: 700; border-top: 1px solid var(--line-strong); }
+  .mg td.neg { color: var(--bad); }
+  /* internal margin sheet: landscape pages, built off-screen for the PDF */
+  .mwrap { position: absolute; left: -20000px; top: 0; width: 11in; }
+  .mwrap.show { left: 0; z-index: 200; padding: 18px; background: #D9DEDF; width: auto; }   /* shown on top only while the PDF is captured */
+  .ppage.land { width: 11in; height: 8.5in; padding: 0.55in 0.6in 0.55in; }
+  .ppage.land.exp { height: 8.4in; }
+  .ppage.land table.mg { font-size: 7.5pt; table-layout: auto; }
+  .ppage.land table.mg td, .ppage.land table.mg th { padding: 4px 5px; white-space: normal; }
+  .ppage.land table.mg th { font-size: 6.5pt; letter-spacing: .04em; }
+  .ppage.land table.mg td.r { white-space: nowrap; }
+  .ppage.land .pf { left: 0.6in; right: 0.6in; }
   .acct-res { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: 0 12px 30px -12px rgba(0,0,0,.35); max-height: 240px; overflow: auto; display: flex; flex-direction: column; }
   .acct-res button { text-align: left; background: none; border: 0; padding: 8px 10px; cursor: pointer; font-size: 13px; color: var(--ink); }
   .acct-res button + button { border-top: 1px solid var(--line); }
@@ -382,7 +403,7 @@
   }
   @media print {
     body { background: #fff; }
-    .mast, .tabs, .scen-strip, footer.foot, .prop > .controls, #tab-scenario, #tab-compare, #tab-catalog, .toast, .pop { display: none !important; }
+    .mwrap, .mast, .tabs, .scen-strip, footer.foot, .prop > .controls, #tab-scenario, #tab-compare, #tab-catalog, .toast, .pop { display: none !important; }
     main { padding: 0; } .prop { display: block; } .paperwrap { padding: 0; background: none; }
     .ppage { box-shadow: none; margin: 0; page-break-after: always; }
     @page { size: letter; margin: 0; }
@@ -446,7 +467,7 @@
   <section id="tab-compare" role="tabpanel" hidden>
     <div class="stack">
       <div class="card"><div id="cmp-verdict"></div></div>
-      <div class="card"><div class="head"><h2 id="cmp-title">Same scenario, four pricing models</h2><span class="meta" id="cmp-meta"></span></div><div class="scroll-x" id="cmp-table"></div></div>
+      <div class="card"><div class="head"><h2 id="cmp-title">Same scenario, every pricing model</h2><span class="meta" id="cmp-meta"></span></div><div class="scroll-x" id="cmp-table"></div></div>
       <div class="card"><div class="head"><h2>Cumulative cash margin over the term<small>month 0 carries one-time fees and any device purchase</small></h2></div><div class="chartbox" id="cmp-chart"></div><div class="legend" id="cmp-legend"></div></div>
       <div class="card"><div class="head"><h2>Volume sensitivity</h2><span class="meta" id="sens-meta"></span></div><div class="scroll-x" id="sens"></div></div>
     </div>
@@ -471,6 +492,7 @@
   </section>
 </main>
 <footer class="foot"><span id="source">Live from Zoho CRM</span><span><span class="int">Costs from the catalog · </span>prices from the scenario · a month is 365 ÷ 12 days</span></footer>
+<div class="mwrap" aria-hidden="true"><div id="mdoc"></div></div>
 <div class="tip" id="tip" hidden></div>
 <div class="toast" id="toast" hidden role="status"></div>
 <script src="engine.js"></script>

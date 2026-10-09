@@ -39,6 +39,8 @@
      devices + spares + staffing + recurring fees (R.admin), and to one-time fees. Loss-recovery fees are outside it.
      Device pass-through (and its admin) escalates with the cost escalator; the target solver returns the admin rate
      that lands the term margin (solve.adminPct).
+   - Mixed (v90): each device line carries line.model (lease | transparent | purchase) and is priced under it;
+     staffing, fees and the target solver work across the whole scenario. Cost + admin is not mixable.
    - Staffing priceMethod 'budget' (v86): a fixed monthly line = the service's cost x (1 + markupPct), blank markup =
      the scenario admin rate. It sits in the budget as its own line instead of being recouped through unit rates.
    - Break-even (owned devices): months until the device investment, less anything the
@@ -53,8 +55,12 @@
     lease:       { key: 'lease',       label: 'Daily lease',         short: 'Lease' },
     transparent: { key: 'transparent', label: 'Transparent pricing', short: 'Transparent' },
     purchase:    { key: 'purchase',    label: 'Purchase + service',  short: 'Purchase' },
-    costplus:    { key: 'costplus',    label: 'Cost + admin',        short: 'Cost-plus' }
+    costplus:    { key: 'costplus',    label: 'Cost + admin',        short: 'Cost-plus' },
+    mixed:       { key: 'mixed',       label: 'Mixed',               short: 'Mixed' }   /* v90: each device line picks its own model */
   };
+  /* models a device line can use inside a Mixed scenario (Cost + admin stays whole-budget) */
+  var LINE_MODELS = ['lease', 'transparent', 'purchase'];
+  function lineModel(l, model) { return model === 'mixed' ? (l && LINE_MODELS.indexOf(l.model) >= 0 ? l.model : 'lease') : model; }
   var TIERS = [
     { max: 0,        key: 'neg',    label: 'Negative' },
     { max: 20,       key: 'thin',   label: 'Thin' },
@@ -62,7 +68,7 @@
     { max: Infinity, key: 'strong', label: 'Strong' }
   ];
   /* customer price keys each model uses (drives the builder columns and the target solver) */
-  var PRICE_KEYS = { lease: ['leaseDaily', 'spareDaily'], transparent: ['transparentAddOn'], purchase: ['purchasePrice', 'serviceDaily'], costplus: [] };   /* cost-plus rates come from the cost; transparent = vendor rate + add-on */
+  var PRICE_KEYS = { lease: ['leaseDaily', 'spareDaily'], transparent: ['transparentAddOn'], purchase: ['purchasePrice', 'serviceDaily'], costplus: [], mixed: [] };   /* cost-plus rates come from the cost; transparent = vendor rate + add-on */
 
   var n = function (v) { v = Number(v); return isFinite(v) ? v : 0; };
   var set = function (v) { return v != null && v !== '' && isFinite(Number(v)); };
@@ -110,7 +116,7 @@
     };
   }
   function blankLine(itemId) {
-    return { itemId: itemId || null, units: 10, sparePct: 20,
+    return { itemId: itemId || null, model: 'lease', units: 10, sparePct: 20,   /* model: used only when the scenario model is Mixed */
       commitUnits: null,   /* Transparent: units the customer commits to from month 1 (blank = the active count) */
       commitSteps: [],     /* Transparent: [{ month, units }] the commitment becomes `units` from that month */
       price: { leaseDaily: 0, spareDaily: 0, transparentAddOn: 0, purchasePrice: 0, serviceDaily: 0, lostFee: 0 },
@@ -149,9 +155,9 @@
     return Math.max(0, u);
   }
   /* the months (within T) at which any line's commitment changes, in order */
-  function stepMonths(sc, T) {
+  function stepMonths(sc, T, only) {
     var out = {};
-    (sc.lines || []).forEach(function (l) { (l.commitSteps || []).forEach(function (s) { var m = Math.round(n(s.month)); if (s && set(s.units) && m >= 2 && m <= T) out[m] = 1; }); });
+    (sc.lines || []).forEach(function (l) { if (only && !only(l)) return; (l.commitSteps || []).forEach(function (s) { var m = Math.round(n(s.month)); if (s && set(s.units) && m >= 2 && m <= T) out[m] = 1; }); });
     return Object.keys(out).map(Number).sort(function (a, b) { return a - b; });
   }
 
@@ -173,7 +179,7 @@
     var manual = set(ctx.manual) ? n(ctx.manual) : null;
     if (manual != null) item[rateKey] = manual;
     var p = overlay(line.price, pt, PRICE_TIER_KEYS);
-    var out = { itemId: line.itemId, name: item.name || 'Device', active: A, spares: S, fleet: F, source: src,
+    var out = { itemId: line.itemId, model: model, name: item.name || 'Device', active: A, spares: S, fleet: F, source: src,
       costTier: manual != null ? null : (modelNext ? n(nt.min) : (ct ? n(ct.min) : null)), priceTier: pt ? n(pt.min) : null, rates: p,
       vendorId: ctx.vendorId || '', costQty: costQty, modelNext: modelNext && manual == null, manual: manual, rateKey: rateKey, costRate: n(item[rateKey]),
       actualTier: ct ? n(ct.min) : null, actualRate: n(overlay(baseItem, ct, COST_TIER_KEYS)[rateKey]),
@@ -277,6 +283,9 @@
     var k = opts.k == null ? 1 : opts.k;
     var srcOverride = opts.vendorSource || null;      /* 'buy' = what-if JusticePoint purchases from the manufacturer */
     var transparent = model === 'transparent';
+    var lm = function (l) { return lineModel(l, model); };          /* the model each line is priced under (Mixed: the line's own) */
+    var isTp = function (l) { return lm(l) === 'transparent'; };
+    var anyTp = (sc.lines || []).some(isTp);
     var byId = {};
     (catalog || []).forEach(function (c) { byId[String(c.id)] = c; });
     var T = Math.max(1, Math.round(n(sc.termMonths) || 12));
@@ -287,7 +296,7 @@
     var vendorOf = function (l) { var it = byId[String(l.itemId)]; return it && it.vendorId ? String(it.vendorId) : ''; };
     var vEntry = function (v) { return vv[v] || {}; };
     var vCur = function (v) { var x = vEntry(v); return set(x.override) ? Math.max(0, n(x.override)) : Math.max(0, n(x.zoho)); };
-    var unitsAt = function (l, m) { return transparent ? committedAt(l, m) : Math.max(0, n(l.units)); };
+    var unitsAt = function (l, m) { return isTp(l) ? committedAt(l, m) : Math.max(0, n(l.units)); };
     var tpBase = null;   /* Transparent: each line's vendor daily rate at month 1; the customer rate holds it for the term */
 
     /* everything that depends on the month's volumes: lines, vendors, staffing, monthly fees and the monthly totals */
@@ -301,14 +310,14 @@
         if (tpBase && i != null) c.tpBase = tpBase[i];
         return c;
       };
-      var lines = L.map(function (l, i) { return priceLine(l, byId[String(l.itemId)], sc, model, k, srcOverride, ctxOf(l, null, i), U[i]); });
+      var lines = L.map(function (l, i) { return priceLine(l, byId[String(l.itemId)], sc, lm(l), k, srcOverride, ctxOf(l, null, i), U[i]); });
       var vendors = vOrder.map(function (v) {
         var idx = [], now = 0, next = 0;
         L.forEach(function (l, i) { if (vendorOf(l) === v) idx.push(i); });
         idx.forEach(function (i) {
           var l = L[i], it = byId[String(l.itemId)];
-          now += priceLine(l, it, sc, model, k, srcOverride, ctxOf(l, false, i), U[i]).costMonthly;
-          next += priceLine(l, it, sc, model, k, srcOverride, ctxOf(l, true, i), U[i]).costMonthly;
+          now += priceLine(l, it, sc, lm(l), k, srcOverride, ctxOf(l, false, i), U[i]).costMonthly;
+          next += priceLine(l, it, sc, lm(l), k, srcOverride, ctxOf(l, true, i), U[i]).costMonthly;
         });
         var vl = idx.map(function (i) { return lines[i]; });
         var mins = vl.filter(function (x) { return x.nextCost && x.manual == null; }).map(function (x) { return x.nextCost.min; });
@@ -356,9 +365,9 @@
     }
 
     /* Transparent: fix each line's vendor daily rate at month 1, so a step that moves the cost tier changes cost, not the customer rate */
-    if (transparent) tpBase = snapshot(1).lines.map(function (l) { return l.costRate; });
+    if (anyTp) tpBase = snapshot(1).lines.map(function (l) { return l.costRate; });
     /* month 1 is the headline; later snapshots only when a commitment step changes the volumes */
-    var first = snapshot(1), steps = transparent ? stepMonths(sc, T) : [], snaps = { 1: first };
+    var first = snapshot(1), steps = anyTp ? stepMonths(sc, T, isTp) : [], snaps = { 1: first };
     steps.forEach(function (m) { snaps[m] = snapshot(m); });
     var snapAt = function (m) { var at = 1; steps.forEach(function (s) { if (s <= m) at = s; }); return snaps[at]; };
 
@@ -432,11 +441,11 @@
         var needRev = one.term.cost / (1 - target);
         var kk = (needRev - base.term.revenueExMin) / slope;
         solve = { k: kk, feasible: kk > 0, neededTermRevenue: needRev };
-      } else solve = { k: null, feasible: false, reason: transparent ? 'Enter an add-on $/day for each device first.' : 'Enter prices for this model first.' };
+      } else solve = { k: null, feasible: false, reason: transparent ? 'Enter an add-on $/day for each device first.' : model === 'mixed' ? 'Enter prices for the devices first.' : 'Enter prices for this model first.' };
     }
 
-    /* whole-deal break-even on owned devices: shown for the Purchase + service model only */
-    if (model !== 'purchase') lines.forEach(function (l) { delete l.breakEven; });
+    /* whole-deal break-even on owned devices: shown for Purchase + service lines only */
+    lines.forEach(function (l) { if (l.model !== 'purchase') delete l.breakEven; });
     var beLines = lines.filter(function (l) { return l.breakEven; }), breakEven = null;
     if (beLines.length) {
       var inv = sum(beLines, function (l) { return l.breakEven.investment; });
@@ -481,7 +490,8 @@
     return idx.length;
   }
 
-  function compare(sc, catalog) { return Object.keys(MODELS).map(function (m) { return price(sc, catalog, { model: m }); }); }
+  /* every model on the same scenario; Mixed only when the scenario is set up as Mixed */
+  function compare(sc, catalog) { return Object.keys(MODELS).filter(function (m) { return m !== 'mixed' || sc.model === 'mixed'; }).map(function (m) { return price(sc, catalog, { model: m }); }); }
 
   /* volume sensitivity: commitments and steps scale with the active units */
   function sensitivity(sc, catalog, steps) {
@@ -502,9 +512,9 @@
   function applyMultiplier(sc, model, k) {
     /* cost-plus: the solver's multiplier scales cost x (1 + admin), so it lands as a new admin rate */
     if (model === 'costplus') { sc.adminRatePct = Math.round(((1 + pct(sc.adminRatePct)) * k - 1) * 10000) / 100; return sc; }   /* k from the admin-rate solve */
-    var keys = (PRICE_KEYS[model] || []).filter(function (x) { return x !== 'spareDaily'; });   /* solver scales device prices only (Transparent: add-ons) */
     var mul = function (v) { return Math.round(n(v) * k * 100) / 100; };
     sc.lines.forEach(function (l) {
+      var keys = (PRICE_KEYS[lineModel(l, model)] || []).filter(function (x) { return x !== 'spareDaily'; });   /* solver scales device prices only (Transparent: add-ons) */
       keys.forEach(function (key) { if (set(l.price[key])) l.price[key] = mul(l.price[key]); });
       (l.priceTiers || []).forEach(function (t) { keys.forEach(function (key) { if (set(t[key])) t[key] = mul(t[key]); }); });
     });
@@ -512,6 +522,6 @@
   }
 
   var api = { DAYS: DAYS, MODELS: MODELS, TIERS: TIERS, PRICE_KEYS: PRICE_KEYS, tierOf: tierOf, pickTier: pickTier, nextTier: nextTier, COST_TIER_KEYS: COST_TIER_KEYS, PRICE_TIER_KEYS: PRICE_TIER_KEYS, price: price, compare: compare,
-    sensitivity: sensitivity, applyMultiplier: applyMultiplier, blankScenario: blankScenario, blankLine: blankLine, migrate: migrate, committedAt: committedAt, tpConvert: tpConvert };
+    sensitivity: sensitivity, applyMultiplier: applyMultiplier, blankScenario: blankScenario, blankLine: blankLine, migrate: migrate, committedAt: committedAt, tpConvert: tpConvert, LINE_MODELS: LINE_MODELS, lineModel: lineModel };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PricingEngine = api;
 })(this);
