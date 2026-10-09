@@ -9,6 +9,8 @@
    numbered steps (customer and structure, devices, spares, staffing, fees); the internal
    pro-forma P&L follows them, and a footer points to the next step.
 
+   v90 (9 Oct 2026): Mixed model (each device picks Daily lease, Transparent or Purchase + service), an internal
+   Pricing and margins table on the Build tab, and an internal margin PDF (landscape, never the customer proposal).
    v89 (9 Oct 2026): device sourcing reads "Lease from manufacturer" / "Purchased from manufacturer".
    Transparent pricing is built from cost: vendor daily rate + one add-on $/day per device; the
    total $/committed unit/day sits beside the add-on and is the only rate the proposal shows.
@@ -70,7 +72,7 @@
   var VENDOR_FLAG_FIELD = 'EM_JusticePoint_Vendor';
 
   var FAMILIES = ['GPS', 'CAM', 'Remote Breath', 'RF', 'Victim / DV', 'Accessory', 'Service', 'Other'];
-  var MODEL_PICK = { lease: 'Daily lease', transparent: 'Transparent pricing', purchase: 'Purchase', costplus: 'Cost plus admin' };   /* Pricing_Model picklist values, exactly as in Zoho (case matters) */
+  var MODEL_PICK = { lease: 'Daily lease', transparent: 'Transparent pricing', purchase: 'Purchase', costplus: 'Cost plus admin', mixed: 'Mixed' };   /* Pricing_Model picklist values, exactly as in Zoho (case matters) */
   /* ========================== END CONFIG ========================== */
 
   /* ---------- helpers ---------- */
@@ -121,7 +123,7 @@
     var bits = [custName() === 'Customer' ? 'No customer yet' : custName()];
     if (s.program) bits.push(s.program);
     bits.push(E.MODELS[s.model].label, int(s.termMonths) + '-month term');
-    if (r && r.units) bits.push(int(r.units.active) + (s.model === 'transparent' ? ' committed' : ' active') + ' units');
+    if (r && r.units) bits.push(int(r.units.active) + (s.model === 'transparent' ? ' committed' : s.model === 'mixed' ? '' : ' active') + ' units');
     sub.innerHTML = bits.map(esc).join('<span class="dot-sep">·</span>') + (r && r.monthly.revenue > 0 && state.internal ? '<span class="chip ' + r.tier.key + ' int">' + pctf(r.monthly.marginPct) + ' margin · ' + esc(r.tier.label) + '</span>' : '');
   }
 
@@ -279,18 +281,34 @@
 
     /* 2 devices */
     var keys = scenarioKeys(m), tp = m === 'transparent';
-    var cp = m === 'costplus';
-    h += cardHead(2, 'Devices and prices', tp ? 'committed units · vendor daily rate + your add-on = the all-in daily rate' : cp ? 'billed at what the vendor charges · ' + one(s.adminRatePct) + '% admin on the whole budget' : 'average daily units and the customer rates', '<button class="btn sm" type="button" data-act="add-line">+ Add device</button>') + '<div class="body scroll-x">';
+    var cp = m === 'costplus', mx = m === 'mixed';
+    h += cardHead(2, 'Devices and prices', mx ? 'each device has its own pricing model · Transparent = vendor daily rate + your add-on' : tp ? 'committed units · vendor daily rate + your add-on = the all-in daily rate' : cp ? 'billed at what the vendor charges · ' + one(s.adminRatePct) + '% admin on the whole budget' : 'average daily units and the customer rates', '<button class="btn sm" type="button" data-act="add-line">+ Add device</button>') + '<div class="body scroll-x">';
     if (!s.lines.length) h += '<div class="empty-state"><p>No devices yet. Add the equipment this customer will use, then enter a price for each.</p><button class="btn primary sm" type="button" data-act="add-line">+ Add the first device</button></div>';
     else {
       var thKey = function (k) {
         if (k === 'transparentAddOn') return '<th class="r int" title="What you add to the vendor daily rate, per committed unit per day. Not shown to the customer.">' + esc(PRICE_LABEL[k]) + '</th><th class="r" title="Vendor daily rate + add-on. This is the rate the customer sees on the proposal.">' + esc(PRICE_LABEL.transparentDaily) + '</th>';
         return '<th class="r">' + esc(PRICE_LABEL[k]) + '</th>';
       };
-      h += '<table class="tbl devtbl"><thead><tr><th>Device</th>' + (tp ? '<th class="r" title="Units the customer commits to and pays for every day, from month 1">Committed units</th>' : '<th class="r">Active units</th>') + '<th class="r" title="' + (tp ? 'Spares JusticePoint holds for this customer: not priced into the rate, but the manufacturer’s spare charges stay in your cost' : 'Spares on the shelf, as a % of active') + '">Spares %</th>' + (cp ? '<th class="r" title="What the vendor charges JusticePoint per active unit per day (current tier). The admin rate is added once, on the whole budget.">Rate · at cost</th>' : '') + keys.map(thKey).join('') + '<th class="r int">Margin</th><th></th></tr></thead><tbody>';
+      if (mx) h += '<table class="tbl devtbl"><thead><tr><th>Device</th><th>Model</th><th class="r" title="Active units (Daily lease, Purchase) or committed units (Transparent)">Units</th><th class="r" title="Spares on the shelf, as a % of units. Transparent: not priced into the rate, but the manufacturer’s spare charges stay in your cost">Spares %</th><th>Prices</th><th class="r int">Margin</th><th></th></tr></thead><tbody>';
+      else h += '<table class="tbl devtbl"><thead><tr><th>Device</th>' + (tp ? '<th class="r" title="Units the customer commits to and pays for every day, from month 1">Committed units</th>' : '<th class="r">Active units</th>') + '<th class="r" title="' + (tp ? 'Spares JusticePoint holds for this customer: not priced into the rate, but the manufacturer’s spare charges stay in your cost' : 'Spares on the shelf, as a % of active') + '">Spares %</th>' + (cp ? '<th class="r" title="What the vendor charges JusticePoint per active unit per day (current tier). The admin rate is added once, on the whole budget.">Rate · at cost</th>' : '') + keys.map(thKey).join('') + '<th class="r int">Margin</th><th></th></tr></thead><tbody>';
       s.lines.forEach(function (l, i) {
         var it = itemById(l.itemId);
-        h += '<tr data-line="' + i + '"><td style="min-width:210px"><select data-bind="lines.' + i + '.itemId" data-kind="text" aria-label="Device">' + catalogOptions(l.itemId) + '</select><div class="fine int" id="line-hint-' + i + '">' + esc(costHint(it, buy)) + '</div></td>';
+        var lm = E.lineModel(l, m), rk = scenarioKeys(lm), ltp = lm === 'transparent';
+        h += '<tr data-line="' + i + '"><td style="min-width:210px"><select data-bind="lines.' + i + '.itemId" data-kind="text" aria-label="Device">' + catalogOptions(l.itemId) + '</select><div class="fine int" id="line-hint-' + i + '">' + esc(costHint(it, buy || lm === 'purchase')) + '</div></td>';
+        if (mx) {
+          h += '<td><select data-bind="lines.' + i + '.model" data-kind="text" data-rerender="1" aria-label="Pricing model for this device">' + E.LINE_MODELS.map(function (k) { return '<option value="' + k + '"' + (lm === k ? ' selected' : '') + '>' + esc(E.MODELS[k].label) + '</option>'; }).join('') + '</select></td>';
+          h += '<td class="w-sm">' + (ltp ? inp('lines.' + i + '.commitUnits', 'num', { label: 'Committed units (blank = the active count)', step: '1', ph: String(Math.round(num(l.units))) }) : inp('lines.' + i + '.units', 'num', { label: 'Active units', step: '1' })) + '<div class="fine inl">' + (ltp ? 'committed' : 'active') + '</div></td>';
+          h += '<td class="w-sm">' + inp('lines.' + i + '.sparePct', 'pct', { label: 'Spares %' }) + '</td>';
+          h += '<td><div class="mixp">' + rk.map(function (k) {
+            if (k === 'transparentAddOn') return '<label class="mini int"><span>Add-on $/day</span>' + inp('lines.' + i + '.price.' + k, 'money', { label: 'Add-on per committed unit per day' }) + '</label><div class="mini tot" id="line-tp-' + i + '"></div>';
+            return '<label class="mini"><span>' + esc(PRICE_LABEL[k]) + '</span>' + inp('lines.' + i + '.price.' + k, 'money', { label: PRICE_LABEL[k] }) + '</label>';
+          }).join('') + '</div></td>';
+          var ntm = (l.priceTiers || []).length, openm = !!state.openTiers['l' + i];
+          h += '<td class="r int" id="line-m-' + i + '"></td><td class="acts"><button class="btn sm" type="button" data-act="tog-ptier" data-i="' + i + '" aria-expanded="' + openm + '" title="Volume price tiers">Tiers' + (ntm ? ' (' + ntm + ')' : '') + '</button> <button class="btn ghost sm" type="button" data-act="del-line" data-i="' + i + '" aria-label="Remove device" title="Remove device">✕</button></td></tr>';
+          if (openm) h += '<tr class="tier-row"><td colspan="30">' + priceTierEditor(l, i, rk) + '</td></tr>';
+          if (ltp) h += '<tr class="step-row"><td colspan="30">' + stepEditor(l, i) + '</td></tr>';
+          return;
+        }
         if (tp) h += '<td class="w-sm">' + inp('lines.' + i + '.commitUnits', 'num', { label: 'Committed units (blank = the active count)', step: '1', ph: String(Math.round(num(l.units))) }) + '</td>';
         else h += '<td class="w-sm">' + inp('lines.' + i + '.units', 'num', { label: 'Active units', step: '1' }) + '</td>';
         h += '<td class="w-sm">' + inp('lines.' + i + '.sparePct', 'pct', { label: 'Spares %' }) + '</td>';
@@ -309,12 +327,13 @@
     h += '</div></div>';
 
     /* 3 spares and losses (the monthly minimum was removed from the Studio; old saves that carry one still price with it) */
-    h += cardHead(3, 'Spares and losses', m === 'lease' ? 'what spares are free, and what equipment loss costs' : 'equipment loss') + '<div class="body">';
+    var anyLease = m === 'lease' || (mx && s.lines.some(function (l) { return E.lineModel(l, m) === 'lease'; }));
+    h += cardHead(3, 'Spares and losses', anyLease ? 'what spares are free, and what equipment loss costs' : 'equipment loss') + '<div class="body">';
     h += '<div class="fgrid">';
-    if (m === 'lease') h += field('Spares included at no charge', inp('spareBilling.overPct', 'pct'), '% of active');
+    if (anyLease) h += field('Spares included at no charge', inp('spareBilling.overPct', 'pct'), '% of active');
     h += field('Annual loss rate', inp('lostRatePct', 'pct'), '% of devices per year', false, 'int');
     h += field('Loss fees recovered', inp('lostRecoveryPct', 'pct'), '% actually collected', false, 'int');
-    h += '</div><p class="fine">' + (m === 'costplus' ? 'Cost + admin bills spares above each device’s free % in the Cost catalog at their cost; the admin rate covers them with the rest of the budget. ' : m === 'lease' ? 'Spares above the included % are billed at each device’s <b>$/spare day</b> (leave it at 0 to not charge). ' : m === 'transparent' ? 'Transparent pricing is all-in: the customer is never charged for spares, and the rate is built on the vendor’s per-unit daily rate only. <span class="int">The manufacturer still bills ' + esc(BRAND.company) + ' for spares above its free %, so that stays in your cost.</span> ' : 'Purchased equipment belongs to the customer, so there are no spare or loss charges. ') + '<span class="int">Your spare cost comes from the Cost catalog.</span></p>';
+    h += '</div><p class="fine">' + (mx ? 'Daily lease devices bill spares above the included % at their <b>$/spare day</b>; Transparent devices never charge for spares (the manufacturer’s spare charges stay in your cost); purchased devices belong to the customer. ' : m === 'costplus' ? 'Cost + admin bills spares above each device’s free % in the Cost catalog at their cost; the admin rate covers them with the rest of the budget. ' : m === 'lease' ? 'Spares above the included % are billed at each device’s <b>$/spare day</b> (leave it at 0 to not charge). ' : m === 'transparent' ? 'Transparent pricing is all-in: the customer is never charged for spares, and the rate is built on the vendor’s per-unit daily rate only. <span class="int">The manufacturer still bills ' + esc(BRAND.company) + ' for spares above its free %, so that stays in your cost.</span> ' : 'Purchased equipment belongs to the customer, so there are no spare or loss charges. ') + '<span class="int">Your spare cost comes from the Cost catalog.</span></p>';
     if (num(s.minimumMonthly) > 0) h += '<p class="fine">This scenario was saved with a <b>' + money(s.minimumMonthly) + ' monthly minimum</b>, which the Studio no longer offers. <button class="btn sm" type="button" data-act="drop-minimum">Remove the minimum</button></p>';
     h += '</div></div>';
 
@@ -358,6 +377,7 @@
     h += '</div></div>';
 
     /* results of the inputs above: internal P&L, then the way forward */
+    h += marginCard();
     h += vendorPanel(buy);
     h += '<div class="nextbar"><div><b>Next step</b><span class="fine inl">' + (state.internal ? 'Compare the three pricing models on this scenario, or go straight to the customer proposal.' : 'Build the customer proposal from these prices.') + '</span></div><div class="nb-btns">' + (state.internal ? '<button class="btn" type="button" data-act="goto" data-v="compare">Compare models →</button>' : '') + '<button class="btn primary" type="button" data-act="goto" data-v="proposal">Build the proposal →</button></div></div>';
     $('builder').innerHTML = h;
@@ -428,6 +448,7 @@
   }
 
   function modelNote(m, buy) {
+    if (m === 'mixed') return 'Each device is priced under its own model: Daily lease (per active unit per day, spares above the free %), Transparent (vendor daily rate + your add-on, per committed unit per day, no spare charges) or Purchase + service (one-time unit price plus a daily service rate). Staffing and fees apply to the whole scenario. ' + (buy ? BRAND.company + ' purchases leased and Transparent devices from the manufacturer.' : BRAND.company + ' leases devices from the manufacturer; purchased devices are bought and resold.');
     if (m === 'lease') return 'Customer pays per active unit per day, plus a spare rate for spares above the free %. ' + (buy ? BRAND.company + ' purchases the devices from the manufacturer: purchase cost is spread over each device’s life, plus owned monitoring cost.' : 'Lease cost, spare cost and losses come from the Cost catalog.');
     if (m === 'transparent') return 'Customer commits to a number of units and pays one all-in daily rate for every committed unit, every day, used or not. The rate is the vendor daily rate (' + (buy ? 'owned svc $/day' : 'lease $/day') + ' at the current tier) plus the add-on you enter for each device; the total is what the proposal shows. No spare charges, and spares are not priced into the rate. Scheduled increases step the commitment up at the months you set. ' + (buy ? BRAND.company + ' purchases the devices from the manufacturer; units added at a step are bought that month.' : BRAND.company + ' leases the devices from the manufacturer.');
     if (m === 'costplus') return 'Devices are billed at what the vendor charges ' + BRAND.company + ' per active unit per day (the current tier from the Cost catalog), spares above each device’s free % and staffing budget lines at cost. The admin rate is then added once, on the whole budget (devices, spares, staffing and fees). Rates move with vendor pricing.' + (buy ? ' ' + BRAND.company + ' purchases the devices from the manufacturer: the rate includes owned monitoring cost and depreciation.' : '');
@@ -473,10 +494,10 @@
     r.lines.forEach(function (l, i) {
       var el = $('line-m-' + i); if (el) el.innerHTML = l.revMonthly > 0 || l.costMonthly > 0 ? '<span class="chip ' + E.tierOf(l.marginPct, l.revMonthly).key + '" title="' + esc(money(l.marginMonthly) + ' a month on ' + money(l.revMonthly) + ' revenue') + '">' + (l.revMonthly > 0 ? pctf(l.marginPct, 0) : 'no price') + '</span>' : '';
       var hint = $('line-hint-' + i), tn = tierNote(l);
-      if (hint) hint.textContent = costHint(itemById(s.lines[i].itemId), r.vendorSource === 'buy', l) + (tn ? ' · ' + tn : '');
+      if (hint) hint.textContent = costHint(itemById(s.lines[i].itemId), r.vendorSource === 'buy' || l.source === 'buy', l) + (tn ? ' · ' + tn : '');
       var cpc = $('line-cp-' + i); if (cpc) cpc.innerHTML = l.cpRate > 0 ? '<b>' + rate(l.cpRate) + '</b><div class="fine inl">/active day' + (l.cpSpareRate > 0 ? ' · spares ' + rate(l.cpSpareRate) : '') + '</div>' : '<span class="fine inl">no cost</span>';
       var tpc = $('line-tp-' + i); if (tpc) tpc.innerHTML = l.tpRate > 0 ? '<b>' + rate(l.tpRate) + '</b><div class="fine inl int">vendor ' + rate(l.tpBase) + ' + ' + rate(l.tpAddOn) + (l.tpLegacy ? ' · saved full rate' : '') + '</div>' : '<span class="fine inl">no vendor rate</span>';
-      var now = $('ptier-now-' + i); if (now) now.textContent = int(l.active) + (s.model === 'transparent' ? ' committed' : ' active') + ' units → ' + (l.priceTier ? 'tier ' + int(l.priceTier) + '+ applies' : 'base price applies');
+      var now = $('ptier-now-' + i); if (now) now.textContent = int(l.active) + (l.model === 'transparent' ? ' committed' : ' active') + ' units → ' + (l.priceTier ? 'tier ' + int(l.priceTier) + '+ applies' : 'base price applies');
     });
     r.staffing.forEach(function (st, i) { var sp = $('staff-p-' + i); if (sp) sp.textContent = money(st.revMonthly) + '/mo · ' + (s.model === 'costplus' ? 'at cost' : '+' + one(st.markupPct) + '%'); var el = $('staff-m-' + i); if (el) el.innerHTML = '<span class="num">' + money(st.marginMonthly) + '</span><div class="fine inl">' + int(st.participants) + ' participants</div>'; });
     r.fees.forEach(function (f, i) { var el = $('fee-t-' + i); if (el) el.innerHTML = '<span class="num">' + money(f.rev) + '</span><div class="fine inl">' + (f.when === 'monthly' ? 'a month' : 'once') + ' · qty ' + one(f.qty) + '</div>'; });
@@ -500,7 +521,7 @@
       if (Math.abs(na - ca) < 0.05) h += '<span class="ok">✓ The ' + one(ca) + '% admin rate lands on target.</span>';
       else h += '<span>An admin rate of <b>' + pctf(na, 2) + '</b> ' + (na > ca ? 'is needed to reach' : 'would still reach') + ' the target (now ' + one(ca) + '%).' + ' It applies to the whole budget.</span><span><button class="btn sm primary" type="button" data-act="apply-target">Set admin rate to ' + pctf(na, 2) + '</button></span>';
     } else if (r.solve && r.solve.k != null) {
-      var d = (r.solve.k - 1) * 100, what = s.model === 'transparent' ? 'add-ons' : 'device prices';
+      var d = (r.solve.k - 1) * 100, what = s.model === 'transparent' ? 'add-ons' : s.model === 'mixed' ? 'device prices and add-ons' : 'device prices';
       if (!r.solve.feasible) h += '<span>' + (s.model === 'transparent' ? 'The vendor daily rate, fees and staffing already exceed the target on their own; the add-ons could be zero.' : 'Fees, staffing and spare charges already exceed the target on their own; device prices could be zero.') + '</span>';
       else if (Math.abs(d) < 0.5) h += '<span class="ok">✓ Current ' + what + ' land on target.</span>';
       else h += '<span>' + (d > 0 ? 'Raise' : 'You could lower') + ' this model’s ' + what + ' by <b>' + pctf(Math.abs(d)) + '</b> ' + (d > 0 ? 'to reach' : 'and still reach') + ' the target.</span><span><button class="btn sm primary" type="button" data-act="apply-target">Apply ' + (d > 0 ? '+' : '−') + pctf(Math.abs(d)) + ' to ' + what + '</button></span>';
@@ -528,10 +549,77 @@
     if (T.residual > 0) h += '<dt>Device book value at end</dt><dd>' + money(T.residual) + '</dd>';
     h += '</dl></div>';
     $('results').innerHTML = h;
+    renderMargins(r);
     renderVendorResults(r);
     if (state.tab === 'compare') renderCompare();
     if (state.tab === 'proposal') renderDoc();
     resize();
+  }
+
+  /* ---------- pricing and margins (internal): per device, then staffing, fees and totals ---------- */
+  function lineRateText(l) {
+    var p = l.rates || {};
+    if (l.model === 'transparent') return rate(l.tpRate) + ' /committed day';
+    if (l.model === 'costplus') return rate(l.cpRate) + ' /day at cost';
+    if (l.model === 'purchase') return money(p.purchasePrice, 2) + ' each + ' + rate(p.serviceDaily) + ' /day';
+    return rate(p.leaseDaily) + ' /active day' + (num(p.spareDaily) > 0 ? ' · spares ' + rate(p.spareDaily) : '');
+  }
+  function marginRows(r) {
+    var D = E.DAYS, rows = [], names = state.scenario.lines.map(function (l) { var it = itemById(l.itemId); return (it && it.name) || 'Device'; });
+    r.lines.forEach(function (l, i) {
+      var ud = l.active * D, m = l.revMonthly - l.costMonthly;
+      rows.push({ kind: 'line', name: names[i], model: (E.MODELS[l.model] || {}).short || '', units: int(l.active) + (l.model === 'transparent' ? ' committed' : ' active'),
+        rate: lineRateText(l), vendor: rate(l.costRate) + (l.source === 'buy' ? ' svc' : ''), cud: ud > 0 ? rate(l.costMonthly / ud) : '—', mud: ud > 0 ? rate(m / ud) : '—',
+        pct: l.revMonthly > 0 ? pctf(m / l.revMonthly * 100) : '—', tier: E.tierOf(l.revMonthly > 0 ? m / l.revMonthly * 100 : 0, l.revMonthly).key,
+        rev: l.revMonthly, cost: l.costMonthly, margin: m, once: l.onceRev > 0 ? money(l.onceRev) + ' one-time' : '' });
+    });
+    r.staffing.forEach(function (st) { rows.push({ kind: 'other', name: st.name, model: 'Staffing', units: int(st.participants) + ' participants', rate: st.budget ? 'monthly budget' : '', rev: st.revMonthly, cost: st.costMonthly, margin: st.marginMonthly }); });
+    var fm = r.fees.filter(function (f) { return f.when === 'monthly'; });
+    if (fm.length) rows.push({ kind: 'other', name: 'Recurring fees', model: 'Fees', rev: fm.reduce(function (a, f) { return a + f.rev; }, 0), cost: fm.reduce(function (a, f) { return a + f.cost; }, 0) });
+    if (r.monthly.rev.admin > 0) rows.push({ kind: 'other', name: 'Administrative fee · ' + one(state.scenario.adminRatePct) + '%', model: 'Admin', rev: r.monthly.rev.admin, cost: 0 });
+    if (r.monthly.rev.minimum > 0) rows.push({ kind: 'other', name: 'Minimum billing adjustment', model: '', rev: r.monthly.rev.minimum, cost: 0 });
+    rows.forEach(function (x) { if (x.margin == null) x.margin = x.rev - x.cost; if (x.pct == null) { x.pct = x.rev > 0 ? pctf(x.margin / x.rev * 100) : '—'; x.tier = E.tierOf(x.rev > 0 ? x.margin / x.rev * 100 : 0, x.rev).key; } });
+    return rows;
+  }
+  function marginTable(r, forPdf) {
+    var M = r.monthly, ud = r.units.active * E.DAYS;
+    var h = '<table class="' + (forPdf ? 'mg' : 'tbl mg') + '"><thead><tr><th>Device / item</th><th>Model</th><th class="r">Units</th><th class="r">Customer rate</th><th class="r">Vendor $/day</th><th class="r">Cost /<br>unit-day</th><th class="r">Margin /<br>unit-day</th><th class="r">Margin %</th><th class="r">Revenue / mo</th><th class="r">Cost / mo</th><th class="r">Margin / mo</th></tr></thead><tbody>';
+    marginRows(r).forEach(function (x) {
+      var chip = forPdf ? x.pct : '<span class="chip ' + x.tier + '">' + x.pct + '</span>';
+      h += '<tr' + (x.kind === 'other' ? ' class="oth"' : '') + '><td>' + esc(x.name) + (x.once ? '<div class="fine inl">' + esc(x.once) + '</div>' : '') + '</td><td>' + esc(x.model) + '</td><td class="r">' + esc(x.units || '') + '</td><td class="r">' + esc(x.rate || '') + '</td><td class="r">' + esc(x.vendor || '') + '</td><td class="r">' + esc(x.cud || '') + '</td><td class="r">' + esc(x.mud || '') + '</td><td class="r">' + chip + '</td><td class="r num">' + money(x.rev) + '</td><td class="r num">' + money(x.cost) + '</td><td class="r num' + (x.margin < 0 ? ' neg' : '') + '">' + money(x.margin) + '</td></tr>';
+    });
+    h += '<tr class="tot"><td>Total · month 1</td><td></td><td class="r">' + int(r.units.active) + '</td><td class="r">' + (ud > 0 ? rate(M.revenue / ud) + ' /unit-day' : '') + '</td><td></td><td class="r">' + (ud > 0 ? rate(M.cost / ud) : '—') + '</td><td class="r">' + (ud > 0 ? rate(M.margin / ud) : '—') + '</td><td class="r">' + (M.revenue > 0 ? pctf(M.marginPct) : '—') + '</td><td class="r num">' + money(M.revenue) + '</td><td class="r num">' + money(M.cost) + '</td><td class="r num' + (M.margin < 0 ? ' neg' : '') + '">' + money(M.margin) + '</td></tr>';
+    return h + '</tbody></table>';
+  }
+  function marginFoot(r) {
+    var O = r.once, T = r.term, s = state.scenario;
+    return '<div class="pf-foot"><div><span>One-time</span><b>' + money(O.rev) + '</b> revenue · <b>' + money(O.cost + O.capex) + '</b> cost' + (O.capex > 0 ? ' incl. device purchase' : '') + '</div>' +
+      '<div><span>Term · ' + T.months + ' mo</span><b>' + money(T.revenue) + '</b> revenue · <b>' + money(T.cost) + '</b> cost · <b>' + money(T.margin) + '</b> margin · <b>' + pctf(T.marginPct) + '</b> (target ' + pctf(s.targetMarginPct, 0) + ')</div></div>';
+  }
+  function marginCard() {
+    return '<div class="card int"><div class="head"><h2>Pricing and margins<small>internal · customer rate, your cost and margin for each device</small></h2><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" data-act="mpdf">Download margin PDF</button><button class="btn sm" type="button" data-act="mattach">' + (PREVIEW ? 'Attach margin PDF' : 'Attach margin PDF in Zoho') + '</button></span></div><div class="scroll-x" id="mg-body"></div><div id="mg-foot"></div></div>';
+  }
+  function renderMargins(r) {
+    var b = $('mg-body'); if (!b) return;
+    b.innerHTML = r.lines.length ? marginTable(r, false) : '<p class="empty" style="padding:12px 16px">Add a device to see pricing and margins.</p>';
+    $('mg-foot').innerHTML = r.lines.length ? marginFoot(r) : '';
+  }
+  /* internal margin sheet: landscape pages built off-screen in #mdoc, never part of the customer proposal */
+  function renderMarginDoc() {
+    var s = state.scenario, r = calc(), issued = today();
+    var lh = '<div class="lh"><div class="wm"><span class="mk"></span><div><b>' + esc(BRAND.company) + '</b><small>' + esc(BRAND.docLine) + '</small></div></div><div class="ref"><b style="color:#B3261E">INTERNAL · NOT FOR THE CUSTOMER</b><br>Prepared ' + esc(longDate(issued)) + (state.user ? ' · ' + esc(state.user) : '') + '</div></div>';
+    var foot = function (n) { return '<div class="pf"><span>' + esc(BRAND.company + ' · internal pricing and margins · contains costs and margins') + '</span><span>' + esc(s.name || 'Scenario') + ' · page ' + n + '</span></div>'; };
+    var blocks = [];
+    blocks.push('<h1 style="font-size:22pt">Pricing and margins</h1><p class="sub">' + esc(s.name || 'Scenario') + ' · ' + esc(custName()) + (s.program ? ' · ' + esc(s.program) : '') + '</p>' +
+      '<div class="meta" style="grid-template-columns:repeat(4,1fr)"><div><span>Pricing model</span><b>' + esc(E.MODELS[s.model].label) + '</b></div><div><span>Devices from</span><b>' + esc(SOURCE_LABEL[r.vendorSource === 'buy' ? 'buy' : 'lease']) + '</b></div><div><span>Term</span><b>' + esc(s.termMonths) + ' months</b></div><div><span>Monthly margin</span><b>' + money(r.monthly.margin) + ' · ' + pctf(r.monthly.marginPct) + '</b></div></div>');
+    blocks.push(marginTable(r, true));
+    blocks.push('<table class="mg"><tbody><tr><td>One-time revenue</td><td class="r">' + money(r.once.rev) + '</td><td>One-time cost' + (r.once.capex > 0 ? ' incl. device purchase' : '') + '</td><td class="r">' + money(r.once.cost + r.once.capex) + '</td></tr>' +
+      '<tr><td>Term revenue · ' + r.term.months + ' mo</td><td class="r">' + money(r.term.revenue) + '</td><td>Term cost</td><td class="r">' + money(r.term.cost) + '</td></tr>' +
+      '<tr class="tot"><td>Term margin</td><td class="r">' + money(r.term.margin) + ' · ' + pctf(r.term.marginPct) + '</td><td>Target</td><td class="r">' + pctf(s.targetMarginPct, 0) + '</td></tr></tbody></table>');
+    if (r.units.steps) blocks.push('<p class="note">Commitment steps (Transparent devices):</p><table class="mg"><thead><tr><th>From</th><th class="r">Units</th><th class="r">Revenue / mo</th><th class="r">Margin / mo</th></tr></thead><tbody>' + r.units.schedule.map(function (st) { var mo = r.months[st.month - 1]; return '<tr><td>' + (st.month === 1 ? 'Start' : 'Month ' + st.month) + '</td><td class="r">' + int(st.active) + '</td><td class="r">' + money(mo.recurringRev) + '</td><td class="r">' + money(mo.recurringMargin) + '</td></tr>'; }).join('') + '</tbody></table>');
+    if ((r.vendors || []).length) blocks.push('<p class="note">Vendor costs used:</p><table class="mg"><thead><tr><th>Vendor</th><th class="r">Units with vendor</th><th>Device rates</th></tr></thead><tbody>' + r.vendors.map(function (v) { return '<tr><td>' + esc(v.name || 'Vendor') + '</td><td class="r">' + int(v.total) + '</td><td>' + v.lines.map(function (l) { return esc(l.name) + ' ' + rate(l.effective) + '/day' + (l.manual != null ? ' (quote)' : l.tierMin ? ' (tier ' + int(l.tierMin) + '+)' : ''); }).join(' · ') + '</td></tr>'; }).join('') + '</tbody></table>');
+    blocks.push('<p class="note">Month-1 figures; a month is 365 ÷ 12 days. Cost / unit-day includes spare charges above the free %, losses and depreciation. This sheet contains JusticePoint costs and margins: do not send it to the customer.</p>');
+    paginate(blocks, lh, foot, $('mdoc'), 'land');
   }
 
   /* ---------- break-even on purchased devices ---------- */
@@ -813,10 +901,11 @@
   function defaultIntro() { var s = state.scenario; return BRAND.company + ' is pleased to present pricing for electronic monitoring services' + (s.program ? ' for the ' + s.program + ' program' : '') + ' at ' + custName() + '. This proposal covers equipment, 24/7 monitoring and support' + (s.staffing.length ? ', and the ' + BRAND.company + ' staff services described below' : '') + '.'; }
   function propNumber() { var s = state.scenario, tail = (String(s.id || '').replace(/\D/g, '') || '0000').slice(-4); while (tail.length < 4) tail = '0' + tail; return BRAND.proposalPrefix + '-' + today().replace(/-/g, '') + '-' + tail; }
   var UNIT_TEXT = { leaseDaily: 'per active unit per day', spareDaily: 'per spare unit per day, above the included spares', transparentDaily: 'all-in, per committed unit per day', purchasePrice: 'per unit, one-time purchase', serviceDaily: 'monitoring service per active unit per day', costplus: 'per active unit per day, at cost', spareCost: 'per spare unit per day above the included spares, at cost' };
-  function rateRows(model, r) {
+  function rateRows(model0, r) {
     var s = state.scenario, rows = [], names = propDeviceNames(), full = !!s.proposal.showSchedule;
     s.lines.forEach(function (l, i) {
       var nm = names[i], any = false, lr = r && r.lines[i];
+      var model = lr && lr.model ? lr.model : E.lineModel(l, model0);   /* Mixed: each device under its own model */
       var tiers = tierSort(l.priceTiers).filter(function (t) { return num(t.min) > 1; }), bands = bandLabels(tiers);
       if (model === 'costplus') {
         if (lr && lr.cpRate > 0) { any = true; rows.push([nm, UNIT_TEXT.costplus, rate(lr.cpRate)]); }
@@ -850,10 +939,13 @@
     });
     return rows;
   }
-  function optionBlurb(m) { return { lease: 'A daily rate for each unit in active use, billed monthly in arrears. Units not in use are not billed.', transparent: 'One all-inclusive daily rate for each committed unit, every day, covering equipment, 24/7 monitoring and support. No usage or spare charges.', purchase: 'A one-time equipment purchase, with monitoring service billed at a daily rate per active unit.', costplus: 'Equipment, monitoring and staff services at cost, with one administrative rate applied to the total budget. Billed monthly in arrears for units in active use.' }[m]; }
+  function optionBlurb(m) { return { mixed: 'Pricing structured by device: each device is billed under the arrangement shown beside it, on one monthly invoice.', lease: 'A daily rate for each unit in active use, billed monthly in arrears. Units not in use are not billed.', transparent: 'One all-inclusive daily rate for each committed unit, every day, covering equipment, 24/7 monitoring and support. No usage or spare charges.', purchase: 'A one-time equipment purchase, with monitoring service billed at a daily rate per active unit.', costplus: 'Equipment, monitoring and staff services at cost, with one administrative rate applied to the total budget. Billed monthly in arrears for units in active use.' }[m]; }
   var multiOpt = function (opts) { return opts.length > 1; };
-  function terms(opts) {
+  function terms(opts0) {
     var s = state.scenario, p = s.proposal, t = [];
+    /* Mixed: the terms of every model its devices use */
+    var opts = [];
+    opts0.forEach(function (m) { (m === 'mixed' ? s.lines.map(function (l) { return E.lineModel(l, 'mixed'); }) : [m]).forEach(function (x) { if (opts.indexOf(x) < 0) opts.push(x); }); });
     t.push('Term of ' + s.termMonths + ' months from the start of service.');
     if (opts.indexOf('lease') >= 0) t.push('Daily lease: billed monthly for each day a unit is active; units not in use are not billed.');
     if (opts.indexOf('transparent') >= 0) t.push('Transparent pricing: billed monthly at one all-in daily rate for each committed unit, whether or not the unit is in use.');
@@ -889,7 +981,7 @@
     var sec = 0, H2 = function (t) { sec++; return '<h2><span class="n">' + sec + '</span>' + esc(t) + '</h2>'; };
     var blocks = [], h = '', cut = function () { if (h) blocks.push(h); h = ''; };
     h += '<h1>' + esc(BRAND.docLine) + '<br>Pricing Proposal</h1><p class="sub">Prepared for ' + esc(custName()) + (s.program ? ' · ' + esc(s.program) : '') + '</p>';
-    h += '<div class="meta"><div><span>Estimated program volume</span><b>' + int(res[0] ? res[0].units.active : 0) + (res[0] && res[0].model === 'transparent' ? ' committed' : ' active') + ' units</b></div><div><span>Proposed term</span><b>' + esc(s.termMonths) + ' months</b></div><div><span>' + (multi ? 'Options' : 'Pricing model') + '</span><b>' + (multi ? opts.length + ' to choose from' : esc(E.MODELS[opts[0]].label)) + '</b></div></div>';
+    h += '<div class="meta"><div><span>Estimated program volume</span><b>' + int(res[0] ? res[0].units.active : 0) + (res[0] && res[0].model === 'transparent' ? ' committed' : res[0] && res[0].model === 'mixed' ? '' : ' active') + ' units</b></div><div><span>Proposed term</span><b>' + esc(s.termMonths) + ' months</b></div><div><span>' + (multi ? 'Options' : 'Pricing model') + '</span><b>' + (multi ? opts.length + ' to choose from' : esc(E.MODELS[opts[0]].label)) + '</b></div></div>';
     cut();
     h += H2('Executive summary') + '<p>' + esc(p.intro || defaultIntro()) + '</p>';
     if (multi) {
@@ -904,13 +996,13 @@
       s.fees.filter(function (f) { return f.when === 'monthly'; }).forEach(function (f) { h += '<tr><td>' + esc(f.name) + '</td><td>per month' + (f.qtyBasis === 'perUnit' ? ', per unit' : '') + '</td><td class="r">' + money(f.price, 2) + '</td></tr>'; });
       if (r.model === 'costplus') h += '<tr class="adm"><td>Administrative fee</td><td>on the total of the charges above' + (p.showMonthlyEstimate !== false ? ' (est. ' + money(r.monthly.rev.admin) + '/mo)' : '') + '</td><td class="r">' + one(s.adminRatePct) + '%</td></tr>';
       h += '</tbody></table>';
-      if (r.model === 'transparent' && r.units.steps) {
+      if ((r.model === 'transparent' || r.model === 'mixed') && r.units.steps) {
         h += '<p class="note">Committed units by month:</p><table><thead><tr><th>From</th><th class="r">Committed units</th>' + (p.showMonthlyEstimate !== false ? '<th class="r">Estimated monthly investment</th>' : '') + '</tr></thead><tbody>' + r.units.schedule.map(function (st) { var mo = r.months[st.month - 1]; return '<tr><td>' + (st.month === 1 ? 'Start of service' : 'Month ' + st.month) + '</td><td class="r">' + int(st.active) + '</td>' + (p.showMonthlyEstimate !== false ? '<td class="r">' + money(mo.recurringRev) + '</td>' : '') + '</tr>'; }).join('') + '</tbody></table>';
       }
       if (p.showMonthlyEstimate !== false) {
         cut();
-        h += '<table><tbody><tr><td>Estimated monthly investment at ' + int(r.units.active) + (r.model === 'transparent' ? ' committed' : ' active') + ' units' + (r.units.steps ? ' (start of service)' : '') + '</td><td class="r">' + money(r.monthly.revenue) + '</td></tr>';
-        if (r.once.rev > 0) h += '<tr><td>One-time charges' + (r.model === 'purchase' ? ', including equipment purchase' : '') + '</td><td class="r">' + money(r.once.rev) + '</td></tr>';
+        h += '<table><tbody><tr><td>Estimated monthly investment at ' + int(r.units.active) + (r.model === 'transparent' ? ' committed' : r.model === 'mixed' ? '' : ' active') + ' units' + (r.units.steps ? ' (start of service)' : '') + '</td><td class="r">' + money(r.monthly.revenue) + '</td></tr>';
+        if (r.once.rev > 0) h += '<tr><td>One-time charges' + (r.model === 'purchase' || (r.model === 'mixed' && r.lines.some(function (l) { return l.model === 'purchase'; })) ? ', including equipment purchase' : '') + '</td><td class="r">' + money(r.once.rev) + '</td></tr>';
         h += '<tr class="tot"><td>Estimated total over ' + esc(s.termMonths) + ' months' + (num(s.priceEscalatorPct) > 0 ? ', including annual adjustments' : '') + '</td><td class="r">' + money(r.term.revenue) + '</td></tr></tbody></table>';
       }
     });
@@ -923,14 +1015,14 @@
     if (multi) h += '<p>' + opts.map(function (m, i) { return '☐ Option ' + letters[i] + ': ' + esc(E.MODELS[m].label); }).join(' &nbsp;&nbsp; ') + '</p>';
     h += '<div class="sign"><div>Authorized signature, ' + esc(custName()) + '</div><div>Date</div><div>Printed name and title</div><div>' + esc(BRAND.company) + (p.preparedBy ? ' · ' + esc(p.preparedBy) : '') + '</div></div>';
     cut();
-    paginate(blocks, lh, foot);
+    paginate(blocks, lh, foot, $('doc'));
     var lk = $('leak');
     if (lk) { var hits = leakCheck(); lk.innerHTML = hits.length ? '<div class="alert"><b>Review before sending.</b> The proposal mentions: ' + hits.map(esc).join(', ') + '. Rename that item, or turn on generic device descriptions.</div>' : '<div class="target"><span class="ok">✓ No costs, margins, vendor or model names in the proposal.</span></div>'; }
   }
-  function paginate(blocks, lh, foot) {
-    var doc = $('doc'), prevZoom = doc.style.zoom; doc.style.zoom = '1'; doc.innerHTML = '';
+  function paginate(blocks, lh, foot, doc, cls) {
+    var prevZoom = doc.style.zoom; doc.style.zoom = '1'; doc.innerHTML = '';
     var pages = [], cur = null;
-    var newPage = function () { var pg = document.createElement('div'); pg.className = 'page ppage'; pg.innerHTML = '<div class="band"></div>' + lh + '<div class="pb"></div>'; doc.appendChild(pg); cur = pg.querySelector('.pb'); pages.push(pg); };
+    var newPage = function () { var pg = document.createElement('div'); pg.className = 'page ppage' + (cls ? ' ' + cls : ''); pg.innerHTML = '<div class="band"></div>' + lh + '<div class="pb"></div>'; doc.appendChild(pg); cur = pg.querySelector('.pb'); pages.push(pg); };
     newPage();
     blocks.forEach(function (b) {
       var w = document.createElement('div'); w.className = 'blk'; w.innerHTML = b; cur.appendChild(w);
@@ -948,33 +1040,38 @@
     pdfLib.catch(function () { pdfLib = null; });
     return pdfLib;
   }
-  var pdfFilter = null;
-  function unexp() { Array.prototype.forEach.call(document.querySelectorAll('.ppage.exp'), function (x) { x.classList.remove('exp'); }); if (pdfFilter != null) { document.body.style.filter = pdfFilter; pdfFilter = null; } }
-  function pdfName() { return (BRAND.company + ' pricing proposal - ' + custName() + ' - ' + today()).replace(/[\\/:*?"<>|]+/g, '-') + '.pdf'; }
-  function makePdf() {
-    renderDoc();
-    var doc = $('doc'), prevZoom = doc.style.zoom; doc.style.zoom = '1'; Array.prototype.forEach.call(doc.querySelectorAll('.ppage'), function (x) { x.classList.add('exp'); });
+  var pdfFilter = null, pdfScroll = null;
+  function unexp() { if (pdfScroll) { window.scrollTo(pdfScroll[0], pdfScroll[1]); pdfScroll = null; } Array.prototype.forEach.call(document.querySelectorAll('.ppage.exp'), function (x) { x.classList.remove('exp'); }); var mw = document.querySelector('.mwrap.show'); if (mw) mw.classList.remove('show'); if (pdfFilter != null) { document.body.style.filter = pdfFilter; pdfFilter = null; } }
+  function pdfName(kind) { return (BRAND.company + ' ' + (kind || 'pricing proposal') + ' - ' + custName() + ' - ' + today()).replace(/[\\/:*?"<>|]+/g, '-') + '.pdf'; }
+  /* o: { render, doc, name, landscape } ; defaults = the customer proposal */
+  var PROPOSAL_PDF = { render: function () { renderDoc(); }, doc: function () { return $('doc'); }, name: function () { return pdfName(); }, landscape: false };
+  var MARGIN_PDF = { render: function () { renderMarginDoc(); $('mdoc').parentNode.classList.add('show'); },   /* html2canvas cannot capture off-screen pages: show them over the Studio while the PDF is built */ doc: function () { return $('mdoc'); }, name: function () { return pdfName('INTERNAL pricing and margins'); }, landscape: true };
+  function makePdf(o) {
+    o = o || PROPOSAL_PDF;
+    pdfScroll = [window.scrollX, window.scrollY]; window.scrollTo(0, 0);   /* html2pdf captures blank pages when the window is scrolled; unexp() puts the scroll back */
+    o.render();
+    var doc = o.doc(), prevZoom = doc.style.zoom; doc.style.zoom = '1'; Array.prototype.forEach.call(doc.querySelectorAll('.ppage'), function (x) { x.classList.add('exp'); });
     pdfFilter = document.body.style.filter; document.body.style.filter = '';   /* brightness setting must not tint the PDF; unexp() restores it once the capture is done */
     return loadPdfLib().then(function (h2p) {
       var pages = Array.prototype.slice.call(doc.querySelectorAll('.page'));
-      var opt = { margin: 0, filename: pdfName(), image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }, pagebreak: { mode: [] } };
+      var opt = { margin: 0, filename: o.name(), image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'in', format: 'letter', orientation: o.landscape ? 'landscape' : 'portrait' }, pagebreak: { mode: [] } };
       var worker = h2p().set(opt).from(pages[0]).toPdf();
       pages.slice(1).forEach(function (pg) { worker = worker.get('pdf').then(function (pdf) { pdf.addPage(); }).from(pg).toContainer().toCanvas().toPdf(); });
       return { w: worker };   /* the worker is thenable, so it must not be returned bare */
     }).then(function (o) { doc.style.zoom = prevZoom; return o; }, function (e) { doc.style.zoom = prevZoom; unexp(); throw e; });
   }
-  function downloadPdf(btn) {
+  function downloadPdf(btn, kind) {
     btn.disabled = true; var t = btn.textContent; btn.textContent = 'Building PDF…';
-    makePdf().then(function (o) { return o.w.save(); }).then(function (x) { unexp(); return x; }, function (e) { unexp(); throw e; }).then(function () { toast('Proposal downloaded.'); })
+    makePdf(kind).then(function (o) { return o.w.save(); }).then(function (x) { unexp(); return x; }, function (e) { unexp(); throw e; }).then(function () { toast(kind === MARGIN_PDF ? 'Internal margin sheet downloaded. Do not send it to the customer.' : 'Proposal downloaded.'); })
       .catch(function (e) { toast(e.message + ' · use Print and choose Save as PDF instead.', true, 8000); }).then(function () { btn.disabled = false; btn.textContent = t; });
   }
-  function attachPdf(btn) {
-    var s = state.scenario;
+  function attachPdf(btn, kind) {
+    var s = state.scenario, internal = kind === MARGIN_PDF;
     if (!PREVIEW && (!s.id || /^local-/.test(s.id))) { toast('Save the scenario first.', true); return; }
     btn.disabled = true; var t = btn.textContent; btn.textContent = 'Attaching…';
-    makePdf().then(function (o) { return o.w.outputPdf('blob'); }).then(function (x) { unexp(); return x; }, function (e) { unexp(); throw e; })
-      .then(function (blob) { return api.attach(s.id, pdfName(), blob); })
-      .then(function () { return api.markSent(s.id).catch(function () {}); }).then(function () { toast('PDF attached to the scenario in Zoho and marked Proposed.'); })
+    makePdf(kind).then(function (o) { return o.w.outputPdf('blob'); }).then(function (x) { unexp(); return x; }, function (e) { unexp(); throw e; })
+      .then(function (blob) { return api.attach(s.id, (kind || PROPOSAL_PDF).name(), blob); })
+      .then(function () { if (!internal) return api.markSent(s.id).catch(function () {}); }).then(function () { toast(internal ? 'Internal margin sheet attached to the scenario in Zoho.' : 'PDF attached to the scenario in Zoho and marked Proposed.'); })
       .catch(function (e) { toast(e.message, true, 8000); }).then(function () { btn.disabled = false; btn.textContent = t; });
   }
 
@@ -1055,7 +1152,7 @@
     if (a === 'model') s.model = b.getAttribute('data-v');
     else if (a === 'use-model') { s.model = b.getAttribute('data-v'); toast('Pricing model set to ' + E.MODELS[s.model].label + '.'); }
     else if (a === 'source') s.vendorSource = b.getAttribute('data-v');
-    else if (a === 'add-line') { var used = {}; s.lines.forEach(function (l) { used[l.itemId] = 1; }); var saved = state.catalog.filter(function (c) { return !c.isNew; }); var next = saved.filter(function (c) { return !used[c.id]; })[0] || saved[0]; s.lines.push(E.blankLine(next ? next.id : null)); }
+    else if (a === 'add-line') { var used = {}; s.lines.forEach(function (l) { used[l.itemId] = 1; }); var saved = state.catalog.filter(function (c) { return !c.isNew; }); var next = saved.filter(function (c) { return !used[c.id]; })[0] || saved[0]; var nl = E.blankLine(next ? next.id : null); if (s.lines.length) nl.model = s.lines[s.lines.length - 1].model || 'lease'; s.lines.push(nl); }
     else if (a === 'del-line') {
       s.lines.splice(i, 1);
       /* keep open tier editors with their lines (only line keys shift; vendor and catalog panels stay as they are) */
@@ -1080,11 +1177,13 @@
     else if (a === 'del-staff') s.staffing.splice(i, 1);
     else if (a === 'add-fee') s.fees.push({ name: 'Installation', when: 'once', qtyBasis: 'perUnit', qty: 1, price: 0, cost: 0 });
     else if (a === 'del-fee') s.fees.splice(i, 1);
-    else if (a === 'apply-target') { var r = calc(); if (r.solve && r.solve.k > 0) { E.applyMultiplier(s, s.model, r.solve.k); toast(s.model === 'costplus' ? 'Admin rate set to ' + one(s.adminRatePct) + '%.' : s.model === 'transparent' ? 'Add-ons adjusted to the target margin. Review the totals.' : 'Device prices adjusted to the target margin. Review the adjusted prices.'); } }
+    else if (a === 'apply-target') { var r = calc(); if (r.solve && r.solve.k > 0) { E.applyMultiplier(s, s.model, r.solve.k); toast(s.model === 'costplus' ? 'Admin rate set to ' + one(s.adminRatePct) + '%.' : s.model === 'transparent' || s.model === 'mixed' ? 'Prices and add-ons adjusted to the target margin. Review the totals.' : 'Device prices adjusted to the target margin. Review the adjusted prices.'); } }
     else if (a === 'goto') { showTab(b.getAttribute('data-v')); window.scrollTo(0, 0); return; }
     else if (a === 'pdf') { downloadPdf(b); return; }
     else if (a === 'print') { renderDoc(); window.print(); return; }
     else if (a === 'attach') { attachPdf(b); return; }
+    else if (a === 'mpdf') { downloadPdf(b, MARGIN_PDF); return; }
+    else if (a === 'mattach') { attachPdf(b, MARGIN_PDF); return; }
     else return;
     setDirty(true); renderBuilder(); renderResults();
     if (state.tab === 'proposal') renderPropControls();

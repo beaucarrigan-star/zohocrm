@@ -237,7 +237,8 @@
     var tiers = tiersOf(candsOf(prod)); if (!tiers.length || prod.tierVol == null) return null;
     var model = pressed('model'), source = pressed('source');
     if (model === 'purchase' || source === 'buy') return null; /* JP-owned units are not leased, so they do not count toward the lease tier */
-    var inp = $('builder').querySelector('input[data-bind="lines.' + i + '.' + (model === 'transparent' ? 'commitUnits' : 'units') + '"]');
+    var bq = function (f) { return $('builder').querySelector('input[data-bind="lines.' + i + '.' + f + '"]'); };
+    var inp = bq('commitUnits') || bq('units');   /* Transparent rows (including Transparent devices in a Mixed scenario) use committed units */
     var add = inp ? Number(inp.value || (inp.placeholder || 0)) : 0; if (!(add > 0)) return null;
     var now = prod.tierVol, after = now + Math.round(add), cur = tierFor(tiers, now), nxt = tierFor(tiers, after);
     if (!cur || !nxt) return null;
