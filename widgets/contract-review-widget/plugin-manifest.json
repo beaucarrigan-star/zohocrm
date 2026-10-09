@@ -1,0 +1,19 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": ["fonts.googleapis.com"],
+    "font-src": ["fonts.gstatic.com"]
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Contract Review", "location": "crm.button", "url": "/app/review.html" },
+      { "name": "Contract Terms", "location": "crm.related.list", "url": "/app/terms.html" }
+    ]
+  }
+}
