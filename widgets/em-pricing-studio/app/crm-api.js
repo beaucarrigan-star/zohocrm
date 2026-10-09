@@ -6,6 +6,11 @@
    on Products and Pricing_Scenarios. Fields that do not exist are left out of queries and
    saves (one missing field would otherwise make Zoho reject the whole record) and are
    reported by setupReport() so the Studio can list what to create.
+
+   Vendor volume (v85): a vendor's "current units" (which picks its catalog cost tier) is
+   Vendors.EM_Units_Current when filled in. When it is blank, the Tier_Volume the CRM writes
+   each morning on that vendor's tiered products (Daily Unit Counts, Allied leased 1-Piece GPS
+   on leg excl. Sheboygan) is used instead, so scenarios price at the real tier.
    ============================================================================= */
 (function (root) {
   'use strict';
@@ -16,9 +21,9 @@
     var E = o.engine;
     var CAT = o.catalogFields || {};          /* cost key -> Products API name */
     var PRICE = o.priceFields || {};          /* customer price key -> Products API name */
-    var SCEN = o.scenarioFields || [];
+    var SCEN = o.scenarioFields || [];        /* Pricing_Scenarios API names the Studio writes */
     var VUNITS = o.vendorUnitsField || 'EM_Units_Current';   /* Vendors: current units JusticePoint has with the vendor */
-    var VJP = o.vendorFlagField || 'EM_JusticePoint_Vendor'; /* Vendors: checkbox, ticked = a JusticePoint vendor */        /* Pricing_Scenarios API names the Studio writes */
+    var VJP = o.vendorFlagField || 'EM_JusticePoint_Vendor'; /* Vendors: checkbox, ticked = a JusticePoint vendor */
     var MODEL_PICK = o.modelPick || {};
     var timeout = o.timeout || function (p) { return Promise.resolve(p); };
     var today = o.today, addDays = o.addDays;
@@ -107,11 +112,6 @@
         });
         zsave(list);
         return Promise.resolve({ count: rows.length, skipped: [] });
-      };
-      api.savePrice = function (itemId, key, value) {
-        var list = zload(), z = list.filter(function (x) { return x.id === itemId; })[0];
-        if (!z) return Promise.reject(new Error('Save the device in the Cost catalog first.'));
-        z.prices = z.prices || {}; z.prices[key] = value; zsave(list); return Promise.resolve(value);
       };
       api.accounts = function (term) {
         var all = [{ id: 'a1', name: 'Sheboygan County Sheriffs Department' }, { id: 'a2', name: 'Columbia County Treatment Court' }, { id: 'a3', name: 'Iowa County Sheriff' }, { id: 'a4', name: 'Rock County' }];
@@ -206,6 +206,19 @@
       });
     };
 
+    /* Tier_Volume the CRM writes daily on each vendor's tiered products (products with Cost_Tiers) */
+    function tierVolumes() {
+      return api.coql('select id, Vendor_Name, Tier_Volume, Cost_Tiers from Products where Product_Active = true limit 200').then(function (rows) {
+        var out = {};
+        rows.forEach(function (r) {
+          var vid = r.Vendor_Name ? String(r.Vendor_Name.id || r.Vendor_Name) : '';
+          if (!vid || r.Tier_Volume == null || r.Tier_Volume === '' || !parseTiers(r.Cost_Tiers).length) return;
+          out[vid] = Math.max(out[vid] || 0, Number(r.Tier_Volume));
+        });
+        return out;
+      }).catch(function () { return {}; });
+    }
+
     /* every vendor in the Zoho Vendors module (paged, cached for the session) */
     var vendorCache = null;
     api.vendors = function (fresh) {
@@ -227,14 +240,15 @@
         };
         return next(0);
       };
-      vendorCache = page(1).catch(viaCoql)
-        .then(function (rows) {
-          var seen = {};
+      vendorCache = Promise.all([page(1).catch(viaCoql), tierVolumes()])
+        .then(function (res) {
+          var rows = res[0], tv = res[1], seen = {};
           return rows.filter(function (v) { var id = String(v.id); if (!v.id || seen[id]) return false; seen[id] = 1; return true; })
             .map(function (v) {
-              var u = v[VUNITS], f = v[VJP];
-              return { id: String(v.id), name: v.Vendor_Name || '(unnamed vendor)',
-                units: u == null || u === '' || !isFinite(Number(u)) ? null : Number(u),
+              var id = String(v.id), u = v[VUNITS], f = v[VJP];
+              var units = u == null || u === '' || !isFinite(Number(u)) ? null : Number(u), src = units == null ? '' : 'vendor record';
+              if (units == null && tv[id] != null) { units = tv[id]; src = 'Daily Unit Counts'; }
+              return { id: id, name: v.Vendor_Name || '(unnamed vendor)', units: units, unitsSource: src,
                 jp: f === undefined ? null : (f === true || f === 'true') };   /* null = field not on the record */
             })
             .sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -268,19 +282,6 @@
           });
         });
         return chain.then(function (n) { return { count: n, skipped: Object.keys(skipped) }; });
-      });
-    };
-
-    /* write one customer price to its Products field ("Save to Zoho" in the builder) */
-    api.savePrice = function (itemId, key, value) {
-      var a = PRICE[key];
-      if (!a) return Promise.reject(new Error('No Zoho field is mapped for this price.'));
-      if (!itemId || /^new-/.test(itemId)) return Promise.reject(new Error('Save the device in the Cost catalog first.'));
-      return fieldsOf('Products', true).then(function (P) {
-        if (!has(P, a)) throw new Error('Products has no field ' + a + '. Create it (Currency) to store this price in Zoho.');
-        if (!writable(P, a)) throw new Error('Field ' + a + ' is read-only for your profile.');
-        var data = { id: itemId }; data[a] = value;
-        return timeout(ZOHO.CRM.API.updateRecord({ Entity: 'Products', APIData: data })).then(writeOk).then(function () { return value; });
       });
     };
 
@@ -331,7 +332,13 @@
         var call = isNew
           ? function () { return ZOHO.CRM.API.insertRecord({ Entity: 'Pricing_Scenarios', APIData: data, Trigger: [] }); }
           : function () { data.id = sc.id; return ZOHO.CRM.API.updateRecord({ Entity: 'Pricing_Scenarios', APIData: data, Trigger: [] }); };
-        return timeout(call()).then(writeOk).then(function (d) { return { id: String(d.id || sc.id), skipped: skipped }; });
+        /* a picklist value Zoho does not have yet (e.g. "Cost plus admin" before it is added) must not block the save:
+           retry once without the picklist fields and report them as skipped */
+        return timeout(call()).then(writeOk).catch(function (e) {
+          if (!/Pricing_Model|Proposal_Options|INVALID_DATA/i.test(String(e && e.message))) throw e;
+          ['Pricing_Model', 'Proposal_Options'].forEach(function (a) { if (a in data) { delete data[a]; skipped.push(a + ' (picklist value not in Zoho)'); } });
+          return timeout(call()).then(writeOk);
+        }).then(function (d) { return { id: String(d.id || sc.id), skipped: skipped }; });
       });
     };
     api.markSent = function (id) {
@@ -354,9 +361,9 @@
       s.priceEscalatorPct = 3;
       var g = E.blankLine('p-gps'); g.units = 150; g.sparePct = 30;
       g.priceTiers = [{ min: 101, leaseDaily: 4.00 }, { min: 251, leaseDaily: 3.75 }];
-      g.price = { leaseDaily: 4.25, spareDaily: 1.50, saasMonthly: 130, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 };
+      g.price = { leaseDaily: 4.25, spareDaily: 1.50, transparentAddOn: 0.70, purchasePrice: 650, serviceDaily: 2.00, lostFee: 450 };
       var c = E.blankLine('p-cam'); c.units = 20; c.sparePct = 15;
-      c.price = { leaseDaily: 11.00, spareDaily: 0, saasMonthly: 350, purchasePrice: 0, serviceDaily: 0, lostFee: 1200 };
+      c.price = { leaseDaily: 11.00, spareDaily: 0, transparentAddOn: 3.50, purchasePrice: 0, serviceDaily: 0, lostFee: 1200 };
       s.lines = [g, c];
       s.staffing = [{ name: 'Monitoring center and case support', costMethod: 'hours', hoursPerParticipant: 0.5, costPerHour: 38, overheadPct: 25, participants: null, priceMethod: 'perDay', priceDaily: 0.75 }];
       s.fees = [{ name: 'Installation', when: 'once', qtyBasis: 'perUnit', qty: 0, price: 25, cost: 8 }];
