@@ -179,3 +179,33 @@ ul.obl li small { color: var(--muted); display: block; }
 .others { margin-top: 8px; font-size: 13px; }
 .others summary { cursor: pointer; color: var(--focus); font-weight: 600; }
 @media (max-width: 860px) { .ccard .bd { grid-template-columns: 1fr; } .ccard .bd > div { border-right: 0; border-bottom: 1px solid var(--line); } }
+
+/* ---------- Contract Review Band (Contracts related list, 10 Oct 2026) ---------- */
+.band { display: grid; grid-template-columns: auto 1fr auto; gap: 14px 18px; align-items: center; padding: 14px 16px;
+  background: var(--surface); border-bottom: 1px solid var(--line); border-top: 3px solid var(--focus); }
+.band-id { display: grid; gap: 6px; justify-items: start; min-width: 120px; }
+.band-id .k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.band-id .chip { font-size: 13px; padding: 2px 10px; }
+.band-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; min-width: 0; }
+.tile .tl { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.tile .tv { font: 400 28px/1.1 var(--font-display); margin: 2px 0 4px; }
+.tile .tv small { font: 600 14px var(--font-ui); color: var(--muted); margin-left: 1px; }
+.tile .tv.date { font: 600 16px/1.7 var(--font-ui); }
+.tile.done .tv { color: var(--good); }
+.tile .tbar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.tile .tbar > i { display: block; height: 100%; background: var(--focus); }
+.tile.done .tbar > i { background: var(--good); }
+.tile .th { margin-top: 5px; font-size: 12px; color: var(--muted); min-height: 18px; }
+.tile .th .chip { font-size: 11px; padding: 0 7px; }
+.tile .tv.muted { font: 400 13px/1.3 var(--font-ui); color: var(--muted); margin: 6px 0 4px; min-height: 36px; }
+.band-act { display: grid; gap: 6px; justify-items: end; }
+.band-act .btn { padding: 8px 18px; font-size: 14px; white-space: nowrap; }
+.bandpage #rv { border-top: 1px solid var(--line-strong); }
+.bandpage #rv .strip { top: 0; }
+@media (max-width: 860px) {
+  .band { grid-template-columns: 1fr auto; }
+  .band-tiles { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) { .band { grid-template-columns: 1fr; } .band-act { justify-items: stretch; } }
+.tile .tbar:empty { visibility: hidden; }

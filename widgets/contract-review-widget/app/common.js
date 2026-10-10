@@ -159,14 +159,16 @@
     api.contract = function () { return delay(c); };
     api.clauses = function () { return delay(DB.clauses || []); };
     api.documents = function () { return delay(DB.docs || []); };
+    /* band: the same rows plus Parse_Status (preview data omits it to show the "not recorded yet" state) */
+    api.bandDocuments = function () { return delay(DB.docs || []); };
     api.picklists = function () {
-      return Promise.resolve({
+      return Promise.resolve(Object.assign({
         Auto_Renews: ['Yes', 'No', 'Not stated'], Invoice_Cadence: ['Monthly', 'Quarterly', 'Annual', 'Other'],
         Rate_Basis: ['Fixed', 'Cost-plus', 'Tiered', 'Per-unit', 'Other'],
         Spare_Device_Clause: ['20% threshold', '30% threshold', 'Not applicable', 'No spare allowance', 'Unknown'],
         Governing_State: ['WI', 'IA', 'ID', 'MI', 'MN', 'MO', 'OH', 'VA', 'WV', 'WY', 'N/A'],
         Clause_Type: ['Special work', 'Reporting', 'Staffing', 'Training', 'Install', 'Service level', 'Insurance', 'Data & privacy', 'Termination', 'Other']
-      });
+      }, DB.picks || {}));
     };
     api.users = function () { return Promise.resolve([{ id: 'u1', name: 'Beau Carrigan' }, { id: 'u2', name: 'Stacey M.' }]); };
     api.me = function () { return Promise.resolve({ id: 'u1', name: 'Beau Carrigan' }); };
@@ -193,6 +195,7 @@
     api.openRecord = function (m, id) { H.toast('Preview: would open ' + m + ' ' + id); };
     api.resize = function () {};
     api.popupSize = function () {};
+    api.resizeBand = function (h) { root.CI_LAST_RESIZE = h; };
   } else {
     var boot = new Promise(function (resolve) {
       ZOHO.embeddedApp.on('PageLoad', function (data) {
@@ -210,6 +213,12 @@
     };
     api.documents = function () {
       return coql("select id, File_Name, Doc_Type, Sequence, Effective_Date, Pages, Text_Layer, Applies_To_Contracts from Contract_Documents where Contract = '" + recId + "' order by Sequence asc limit 200");
+    };
+    /* band: asks for Parse_Status; while that field does not exist yet COQL refuses the query, so fall back to plain rows */
+    api.bandDocuments = function () {
+      return coql("select id, File_Name, Parse_Status from Contract_Documents where Contract = '" + recId + "' limit 200").catch(function () {
+        return coql("select id, File_Name from Contract_Documents where Contract = '" + recId + "' limit 200");
+      });
     };
     var picks = null;
     api.picklists = function () {
@@ -244,6 +253,8 @@
     api.close = function () { ZOHO.CRM.UI.Popup.closeReload().catch(function () { ZOHO.CRM.UI.Popup.close(); }); };
     api.openRecord = function (m, id) { ZOHO.CRM.UI.Record.open({ Entity: m, RecordID: id }); };
     api.resize = function (h) { try { ZOHO.CRM.UI.Resize({ height: String(Math.min(Math.max(h, 180), 1400)) }); } catch (e) {} };
+    /* the band is shorter than api.resize's 180px floor */
+    api.resizeBand = function (h) { try { ZOHO.CRM.UI.Resize({ height: String(Math.min(Math.max(h, 90), 1400)) }); } catch (e) {} };
     /* button popups open small; ask for a large one (Zoho clamps it to the window) */
     api.popupSize = function () { try { ZOHO.CRM.UI.Resize({ height: '860', width: '1180' }); } catch (e) {} };
   }

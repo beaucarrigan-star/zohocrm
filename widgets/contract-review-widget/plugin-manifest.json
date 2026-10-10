@@ -13,7 +13,8 @@
   "modules": {
     "widgets": [
       { "name": "Contract Review", "location": "crm.button", "url": "/app/review.html" },
-      { "name": "Contract Terms", "location": "crm.related.list", "url": "/app/terms.html" }
+      { "name": "Contract Terms", "location": "crm.related.list", "url": "/app/terms.html" },
+      { "name": "Contract Review Band", "location": "crm.related.list", "url": "/app/band.html" }
     ]
   }
 }

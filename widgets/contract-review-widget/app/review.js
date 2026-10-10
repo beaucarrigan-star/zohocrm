@@ -4,27 +4,39 @@
      Rates   -> Rate_Lines subform: Confirm/Edit set Line_Verified; Reject sets Superseded_By = "Rejected in review"
                 (never deleted, and the worker's key match keeps it from being re-inserted)
      Clauses -> Contract_Clauses.Status Proposed -> Confirmed / Rejected
-     Verify  -> Ingest_Status = Ingested, Last_Verified = today (fires the Contracts workflow) */
+     Verify  -> Ingest_Status = Ingested, Last_Verified = today (fires the Contracts workflow)
+   Band mode (10 Oct 2026): band.js sets CI.BAND before loading this file and calls CI.Review.start() each time the
+   review is opened inline on the Contracts page. In band mode there is no popup: no popupSize, and Close / the
+   button after Verify call CI.BAND.close() instead of Popup.closeReload. Every band change is guarded by BAND. */
 (function () {
   'use strict';
   var api = CI.api, H = CI.H, esc = H.esc;
+  var BAND = CI.BAND || null;
   var S = { tab: 'terms', edit: null, busy: false, open: {} };
   var app = document.getElementById('app'), bar = document.getElementById('bar');
 
   /* ---------------- load ---------------- */
-  api.init().then(function (b) {
-    api.popupSize();
-    if (b.entity && b.entity !== 'Contracts') throw new Error('This widget belongs on a Contract record.');
-    return Promise.all([api.contract(b.id), api.clauses(), api.documents(), api.picklists(), api.users(), api.me()]);
-  }).then(function (r) {
-    S.c = r[0]; S.clauses = r[1]; S.docs = r[2]; S.picks = r[3]; S.users = r[4]; S.me = r[5];
-    S.review = H.parseReview(S.c.Ingest_Review);
-    S.tab = firstTabWithWork();
-    render();
-  }).catch(function (e) {
-    bar.querySelector('h1').textContent = 'Contract review';
-    app.innerHTML = '<main><div class="empty">Could not load this contract: ' + esc(H.errText(e)) + '</div></main>';
-  });
+  function start() {
+    S = { tab: 'terms', edit: null, busy: false, open: {} };
+    if (BAND) {
+      bar.innerHTML = '<div class="kicker">Contract review</div><h1>Loading…</h1>';
+      app.innerHTML = '<div class="loading">Reading the contract, its rate lines and proposed clauses…</div>';
+    }
+    api.init().then(function (b) {
+      if (!BAND) api.popupSize();
+      if (b.entity && b.entity !== 'Contracts') throw new Error('This widget belongs on a Contract record.');
+      return Promise.all([api.contract(b.id), api.clauses(), api.documents(), api.picklists(), api.users(), api.me()]);
+    }).then(function (r) {
+      S.c = r[0]; S.clauses = r[1]; S.docs = r[2]; S.picks = r[3]; S.users = r[4]; S.me = r[5];
+      S.review = H.parseReview(S.c.Ingest_Review);
+      S.tab = firstTabWithWork();
+      render();
+    }).catch(function (e) {
+      bar.querySelector('h1').textContent = 'Contract review';
+      app.innerHTML = '<main><div class="empty">Could not load this contract: ' + esc(H.errText(e)) + '</div></main>';
+    });
+  }
+  if (BAND) CI.Review = { start: start }; else start();
 
   function reloadContract() { return api.contract().then(function (c) { S.c = c; S.review = H.parseReview(c.Ingest_Review); }); }
   function reloadClauses() { return api.clauses().then(function (x) { S.clauses = x; }); }
@@ -295,7 +307,7 @@
   /* ---------------- actions ---------------- */
   function run(label, p) {
     S.busy = true; render();
-    return p.then(function () { S.busy = false; S.edit = null; render(); if (label) H.toast(label); })
+    return p.then(function () { S.busy = false; S.edit = null; render(); if (BAND && BAND.onChange) BAND.onChange(S); if (label) H.toast(label); })
       .catch(function (e) { S.busy = false; render(); H.toast('Not saved: ' + H.errText(e), true); });
   }
   function saveDecision(fld, dec, fieldValue, setField) {
@@ -360,7 +372,7 @@
         H.confirmDialog('Verify this contract?', 'Sets Ingest status to <b>Ingested</b> and Last verified to today. From now on a re-ingest only fills fields that are still empty and lists any differences in the note. The Contracts workflow recomputes margin.', 'Verify').then(function (ok) {
           if (!ok) return;
           run('Contract verified', api.updateContract({ Ingest_Status: 'Ingested', Last_Verified: H.today() }).then(reloadContract)).then(function () {
-            app.querySelector('.strip').insertAdjacentHTML('beforeend', '<button class="btn" data-act="close">Close and reload record</button>');
+            app.querySelector('.strip').insertAdjacentHTML('beforeend', '<button class="btn" data-act="close">' + (BAND ? 'Close review' : 'Close and reload record') + '</button>');
           });
         });
         break;
@@ -369,7 +381,7 @@
           if (ok) run('Review reopened', api.updateContract({ Ingest_Status: 'Needs Review' }).then(reloadContract));
         });
         break;
-      case 'close': api.close(); break;
+      case 'close': if (BAND) BAND.close(); else api.close(); break;
     }
   });
   function obj(k, v) { var o = {}; o[k] = v; return o; }
