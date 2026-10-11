@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Widget kit check</title>
+<link rel="stylesheet" href="jpk.css">
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js" onerror="window.__noZoho=true"></script>
+</head>
+<body>
+<div class="jpk-wrap">
+  <div class="rec">
+    <div>
+      <div class="eyebrow">Widget kit check</div>
+      <h1>Every shared part, with example data</h1>
+      <div class="facts">
+        <div class="fact"><small>Kit version</small><span id="ver"></span></div>
+        <div class="fact"><small>Running in</small><span id="env">Checking</span></div>
+        <div class="fact"><small>Theme</small><span id="theme"></span></div>
+      </div>
+    </div>
+    <div class="actions"><div id="more"></div><span id="about"></span></div>
+  </div>
+
+  <div id="nx"></div>
+  <div id="tabs"></div>
+
+  <section id="p-packet">
+    <div class="card" style="max-width:760px">
+      <div id="steps" style="margin-bottom:16px"></div>
+      <div class="row" style="gap:12px 20px;margin-bottom:12px">
+        <div><div class="sm muted" style="margin-bottom:4px">Counterparty</div>
+          <div class="seg" id="cp"><button data-k="Vendor" aria-pressed="true">Vendor</button><button data-k="Customer" aria-pressed="false">Customer</button></div></div>
+        <div style="flex:1;min-width:200px"><label class="sm muted" for="contract" style="display:block;margin-bottom:4px">Contract</label>
+          <select id="contract" style="width:100%"></select></div>
+      </div>
+      <div id="drop"></div>
+      <ul id="files"></ul>
+      <div id="found" style="margin-top:16px" hidden></div>
+    </div>
+  </section>
+
+  <section id="p-backlog">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px"><b>Contracts to read</b>
+        <span class="row" id="bf" style="gap:6px"><button class="pill" data-f="Vendor" aria-pressed="true">Vendor</button><button class="pill" data-f="Customer" aria-pressed="false">Customer</button><button class="pill" data-f="all" aria-pressed="false">All</button></span></div>
+      <div id="bl"></div>
+    </div>
+  </section>
+
+  <section id="p-parts">
+    <div class="grid">
+      <div class="card c6"><h2>Chips</h2><div class="row" id="chips"></div></div>
+      <div class="card c6"><h2>Toast</h2><button class="btn" id="t1">Show a toast</button></div>
+      <div class="card c12"><h2>Hover chart <em>drag across it, or focus it and use the arrow keys</em></h2><div id="ch"></div></div>
+    </div>
+  </section>
+</div>
+<script src="jpk.js"></script>
+<script src="gallery.js"></script>
+</body>
+</html>
