@@ -1,0 +1,17 @@
+/* Onboarding canvas: task rows and phase header */
+#opick{max-width:260px}
+.ph-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.ph-top .bar{flex:1 1 160px;max-width:320px}
+.tasks{list-style:none;margin:0;padding:0}
+.tasks li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.tasks li:last-child{border-bottom:0}
+.tasks input[type=checkbox]{width:20px;height:20px;accent-color:var(--teal);margin:0;cursor:pointer}
+.tasks input[type=checkbox]:disabled{cursor:not-allowed}
+.tasks .t{min-width:0;background:none;border:0;padding:0;text-align:left;font:inherit;color:inherit}
+.tasks .t b{display:block;font-weight:600;overflow-wrap:anywhere}
+.tasks .t span{font-size:12px;color:var(--muted)}
+.tasks li.done .t b{text-decoration:line-through;color:var(--muted)}
+.tasks .chips{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:480px){.tasks li{grid-template-columns:auto 1fr}.tasks .chips{grid-column:2;justify-content:flex-start}}
+
+@media (max-width:640px){#steps{display:none}}

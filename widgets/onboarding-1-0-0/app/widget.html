@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customer onboarding</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="onboarding.css">
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+</head>
+<body>
+<div class="jpk-wrap">
+  <div class="rec">
+    <div style="min-width:0">
+      <div class="eyebrow">Customer onboarding</div>
+      <h1 id="title">Loading onboarding</h1>
+      <div class="facts" id="facts"></div>
+    </div>
+    <div class="actions">
+      <label class="sr" for="opick">Switch onboarding</label>
+      <select id="opick" hidden></select>
+      <span id="risk"></span><div id="more"></div><span id="about"></span>
+    </div>
+  </div>
+  <div id="nx"></div>
+  <div id="steps" style="margin-top:12px"></div>
+  <div id="tabs"></div>
+  <div id="panes"></div>
+  <div id="err" class="err" role="alert" hidden></div>
+</div>
+<script src="jpk.js"></script>
+<script src="onboarding.js"></script>
+</body>
+</html>
