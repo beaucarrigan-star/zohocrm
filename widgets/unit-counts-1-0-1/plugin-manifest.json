@@ -1,0 +1,13 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "whiteListedDomains": [],
+  "cspDomains": { "connect-src": [] },
+  "modules": {
+    "widgets": [
+      { "name": "Daily Unit Counts", "location": "web_tab", "url": "/app/widget.html" }
+    ]
+  },
+  "config": []
+}

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily unit counts</title>
+<link rel="stylesheet" href="jpk.css">
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<style>
+  .ctl{display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .sw{display:inline-flex;gap:8px;align-items:center;font-size:13px;font-weight:600}
+  .sw input{width:18px;height:18px;accent-color:var(--teal);margin:0}
+  .th{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:10px}
+  .th output{font-family:var(--mono);font-size:13px}
+  .tile.lnk{cursor:pointer;border:1px solid transparent}
+  .tile.lnk:hover{border-color:var(--line)}
+</style>
+</head>
+<body>
+<div class="jpk-wrap">
+  <div class="rec">
+    <div style="min-width:0">
+      <div class="eyebrow">Daily unit counts</div>
+      <h1>GPS units on leg and spares</h1>
+      <div class="facts" id="facts"></div>
+    </div>
+    <div class="actions"><div id="more"></div><span id="about"></span></div>
+  </div>
+  <div id="nx"></div>
+  <div class="ctl">
+    <div class="seg" id="range" role="group" aria-label="Date range"><button data-d="7" aria-pressed="false">7 days</button><button data-d="14" aria-pressed="false">14 days</button><button data-d="30" aria-pressed="true">30 days</button></div>
+    <label class="sw"><input type="checkbox" id="sheb" checked> Exclude Sheboygan</label>
+  </div>
+  <div id="tabs"></div>
+  <section id="p-fleet">
+    <div class="tiles" id="tiles"></div>
+    <div class="grid">
+      <div class="card c6"><h2>Leased on leg</h2><div id="ch-leased"></div></div>
+      <div class="card c6"><h2>Purchased on leg <em>own scale</em></h2><div id="ch-purch"></div></div>
+      <div class="card c12"><h2>Leased spare % <em>spares divided by leased on leg</em></h2><div id="ch-pct"></div>
+        <div class="th"><label for="thr" class="sm muted">Threshold line</label><input type="range" id="thr" min="5" max="50" step="1" value="20"><output id="thro" for="thr">20%</output></div>
+        <p class="sm muted" style="margin:6px 0 0">The line is a guide only. Each customer is checked against its own contract on the Customers tab.</p></div>
+    </div>
+  </section>
+  <section id="p-cust">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px"><b id="cust-h">Spares by customer</b>
+        <span class="row" id="cf" style="gap:6px"><button class="pill" data-f="over" aria-pressed="true">Over clause</button><button class="pill" data-f="all" aria-pressed="false">All</button></span></div>
+      <div class="sm muted" style="margin-bottom:8px">Leased GPS only. Purchased devices never count as spares.</div>
+      <div id="ct"></div>
+    </div>
+  </section>
+  <div id="err" class="err" role="alert" hidden></div>
+</div>
+<script src="jpk.js"></script>
+<script src="units.js"></script>
+</body>
+</html>
