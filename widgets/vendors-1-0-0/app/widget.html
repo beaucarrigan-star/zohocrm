@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vendor</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="vendors.css">
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+</head>
+<body>
+<div class="jpk-wrap">
+  <div class="rec">
+    <div style="min-width:0">
+      <div class="eyebrow">Vendor</div>
+      <h1 id="vname">Loading vendor</h1>
+      <div class="facts" id="facts"></div>
+    </div>
+    <div class="actions">
+      <label class="sr" for="vpick">Switch vendor</label>
+      <select id="vpick" hidden></select>
+      <div id="more"></div><span id="about"></span>
+    </div>
+  </div>
+
+  <div id="nx"></div>
+  <div id="tabs"></div>
+
+  <section id="p-call">
+    <div class="grid">
+      <div class="card c7" id="primary"></div>
+      <div class="card c5" id="support"></div>
+      <div class="card c12"><h2>Everyone at this vendor</h2><ul class="list" id="people"></ul></div>
+    </div>
+  </section>
+
+  <section id="p-cost">
+    <div class="card" id="tier" hidden></div>
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px"><b>Device costs</b>
+        <span class="row" id="cf" style="gap:6px"><button class="pill" data-f="need" aria-pressed="true">Needs a look</button><button class="pill" data-f="all" aria-pressed="false">All</button></span></div>
+      <div class="sm muted" style="margin-bottom:8px">Our cost is what you entered. The contract rate comes from verified contract lines. Open a row to correct a cost.</div>
+      <div id="cat"></div>
+    </div>
+  </section>
+  <div id="err" class="err" role="alert" hidden></div>
+</div>
+<script src="jpk.js"></script>
+<script src="vendors.js"></script>
+</body>
+</html>

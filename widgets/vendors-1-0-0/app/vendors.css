@@ -1,0 +1,20 @@
+/* Vendor canvas: only what the kit does not already cover */
+#vpick{max-width:260px}
+.who b.nm{display:block;font-size:17px}
+.who .ttl{color:var(--muted);font-size:13px;margin-bottom:10px}
+.phone{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.phone a{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:18px;color:var(--ink);text-decoration:none;font-weight:500}
+.phone a:hover{text-decoration:underline}
+.kv{margin:0 0 12px}.kv small{display:block;color:var(--muted);font-size:11.5px}
+.kv a{color:var(--info);font-weight:600;overflow-wrap:anywhere}
+.gauge{position:relative;display:flex;height:30px;border-radius:5px;overflow:hidden;border:1px solid var(--line);margin:14px 0 26px}
+.gauge div{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted);background:var(--surface2);border-right:1px solid var(--line);white-space:nowrap}
+.gauge div:last-child{border-right:0}
+.gauge div.on{background:var(--teal);color:var(--on-teal)}
+.gauge .pin{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);flex:none;border:0;padding:0}
+.gauge .pin span{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;font-size:11px;font-family:var(--mono);color:var(--ink);background:none}
+.whatif{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;margin-top:6px}
+.whatif output{font-family:var(--mono);font-size:13px}
+@media (max-width:560px){.gauge div{font-size:10.5px}.gauge .gr{display:none}}
+.kv .phone a{color:var(--ink);font-weight:500}
+.gauge .gr{margin-left:4px}
