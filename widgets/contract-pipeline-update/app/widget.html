@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contract ingest</title>
+<link rel="stylesheet" href="jpk.css">
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+</head>
+<body>
+<div class="jpk-wrap">
+  <div class="rec">
+    <div>
+      <div class="eyebrow">Contract ingest</div>
+      <h1>Read a contract packet</h1>
+      <div class="facts">
+        <div class="fact"><small>Reads</small><span>PDF text, Word and Excel rate sheets</span></div>
+        <div class="fact"><small>Method</small><span>Rules, no AI</span></div>
+        <div class="fact"><small>Then</small><span>You verify every value</span></div>
+      </div>
+    </div>
+    <div class="actions"><div id="more"></div><span id="about"></span></div>
+  </div>
+
+  <div id="nx"></div>
+  <div id="tabs"></div>
+
+  <section id="p-packet">
+    <div class="card" style="max-width:760px">
+      <div id="steps" style="margin-bottom:16px"></div>
+      <div class="row" style="gap:12px 20px;margin-bottom:12px">
+        <div><div class="sm muted" style="margin-bottom:4px">Counterparty</div>
+          <div class="seg" id="cp"><button data-k="Vendor" aria-pressed="true">Vendor</button><button data-k="Customer" aria-pressed="false">Customer</button></div></div>
+        <div style="flex:1;min-width:200px"><label class="sm muted" for="contract" style="display:block;margin-bottom:4px">Contract</label>
+          <select id="contract" style="width:100%"><option>Loading contracts</option></select></div>
+      </div>
+      <div class="sm muted" id="last" style="margin-bottom:12px"></div>
+      <div id="drop"></div>
+      <ul id="files"></ul>
+      <div id="err" class="err" role="alert" hidden></div>
+      <div id="found" style="margin-top:16px" hidden></div>
+    </div>
+  </section>
+
+  <section id="p-backlog">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px"><b>Contracts to read</b>
+        <span class="row" id="bf" style="gap:6px"><button class="pill" data-f="Vendor" aria-pressed="true">Vendor</button><button class="pill" data-f="Customer" aria-pressed="false">Customer</button><button class="pill" data-f="all" aria-pressed="false">All</button></span></div>
+      <div class="sm muted" style="margin-bottom:8px">Vendors first: Allied, SCRAM, SuperCom and Buddi. Verified contracts are hidden; choose All to see them.</div>
+      <div id="bl"></div>
+    </div>
+  </section>
+</div>
+<script src="jpk.js"></script>
+<script src="ingest.js"></script>
+</body>
+</html>
