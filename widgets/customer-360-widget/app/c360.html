@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customer 360</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="c360.css">
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+</head>
+<body>
+<main class="wrap c360" id="app">
+  <section class="rec" id="head" aria-live="polite">
+    <div>
+      <div class="eyebrow">Customer 360</div>
+      <h1 id="acctName">Loading account&hellip;</h1>
+      <div class="facts" id="facts"></div>
+    </div>
+    <div class="actions">
+      <span id="demoBadge" hidden></span>
+      <select id="demoPick" aria-label="Demo account" hidden></select>
+      <button type="button" class="btn" id="openAcct" hidden>Open account</button>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help" aria-label="About this page">About</button>
+    </div>
+  </section>
+
+  <section id="finder" class="card" hidden>
+    <h2>Find a customer</h2>
+    <form class="pickrow" id="findForm">
+      <label class="sr" for="findQ">Account name</label>
+      <input type="text" id="findQ" placeholder="Start typing an account name" autocomplete="off">
+      <button class="btn pri" type="submit">Search</button>
+    </form>
+    <div class="results" id="findOut"></div>
+  </section>
+
+  <div id="next"></div>
+
+  <div id="body" hidden>
+    <div class="card" style="margin-top:12px"><h2>At a glance</h2><div class="tiles" id="tiles"></div></div>
+    <div class="grid">
+      <section class="card c12" id="cardContracts"><h2>Contracts <em id="ctSub"></em></h2><div id="tblContracts"></div></section>
+      <section class="card c6" id="cardCases"><h2>Open cases <em id="csSub"></em></h2><div id="tblCases"></div></section>
+      <section class="card c6" id="cardOnb"><h2>Onboarding <em id="obSub"></em></h2><div id="onb"></div></section>
+      <section class="card c12" id="cardContacts"><h2>Contacts <em id="cnSub"></em></h2><div id="tblContacts"></div></section>
+      <section class="card c12" id="cardSignals" hidden><h2>Why this status</h2><ul class="sig" id="signals"></ul></section>
+    </div>
+  </div>
+</main>
+<script src="jpk.js"></script>
+<script src="c360-model.js"></script>
+<script src="c360-demo.js"></script>
+<script src="c360.js"></script>
+</body>
+</html>
