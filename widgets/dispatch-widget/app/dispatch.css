@@ -1,0 +1,11 @@
+/* Dispatch-only additions. Everything else comes from jpk.css; tokens only, no new colours. */
+.dsp-date{width:auto}
+.dsp-tiles{margin-top:12px}
+.dsp-names{display:flex;gap:4px;flex-wrap:wrap}
+.dsp-none{color:var(--muted)}
+.dsp-help{margin:0;padding:0;list-style:none}
+.dsp-help li{padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;justify-content:space-between}
+.dsp-cell-gap td:first-child{box-shadow:3px 0 0 var(--bad) inset}
+.dsp-cell-warn td:first-child{box-shadow:3px 0 0 var(--warn) inset}
+.dsp-sev{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:8px}
+.dsp-sev.bad{background:var(--bad)}.dsp-sev.warn{background:var(--warn)}

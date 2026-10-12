@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DOC Dispatch</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="dispatch.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">DOC Dispatch <span id="demo-tag" class="chip warn sm" hidden>Demo data</span></div>
+      <h1 id="title">Coverage today</h1>
+      <div class="facts" id="facts"></div>
+    </div>
+    <div class="actions">
+      <label class="sm muted" for="d-date">Day</label>
+      <input type="date" id="d-date" class="dsp-date">
+      <button type="button" class="btn" id="d-today">Today</button>
+      <button type="button" class="btn" id="d-refresh">Refresh</button>
+      <button type="button" class="btn" id="d-help" aria-label="About this page">About</button>
+    </div>
+  </header>
+
+  <div id="d-next"></div>
+  <div class="tiles dsp-tiles" id="d-tiles" aria-label="Coverage summary"></div>
+
+  <div id="d-tabs"></div>
+  <section data-pane="today">
+    <div class="toolbar"><div class="seg" id="d-shifts" role="group" aria-label="Shift"></div></div>
+    <div id="d-today-t"></div>
+  </section>
+  <section data-pane="gaps"><div id="d-gaps-t"></div></section>
+  <section data-pane="people">
+    <div class="grid">
+      <div class="card c7"><h2>Installers present now <em id="d-pres-note"></em></h2><div id="d-pres-t"></div></div>
+      <div class="card c5"><h2>Installer load <em>slots on this day</em></h2><div id="d-load-t"></div></div>
+    </div>
+  </section>
+  <section data-pane="checks"><div class="card"><h2>Data checks <em>fix in the CRM, then Refresh</em></h2><ul class="list" id="d-checks"></ul></div></section>
+  <p class="muted sm" id="d-foot"></p>
+</div>
+
+<!-- Zoho SDK is optional; without it the page runs on demo data. -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="dispatch-model.js"></script>
+<script src="dispatch.js"></script>
+</body>
+</html>
