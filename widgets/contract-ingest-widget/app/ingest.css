@@ -1,0 +1,13 @@
+/* Contract Ingest extras. Everything else comes from jpk.css. */
+.drop{border:2px dashed var(--line);border-radius:6px;padding:18px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;margin-bottom:14px;background:var(--surface2)}
+.drop.over{border-color:var(--teal);background:var(--teal-soft)}
+.drop[hidden]{display:none}
+.demo-opt{display:flex;gap:6px;align-items:center}
+#files{margin-top:4px}
+.frow{all:unset;box-sizing:border-box;display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;padding:2px 0}
+.frow:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.fn{min-width:0;overflow-wrap:anywhere}
+.dl-act{background:var(--surface2);border-radius:5px;padding:10px 12px;font-size:13px}
+#cp{margin:6px 0 4px}
+#cp button:disabled{opacity:.5;cursor:not-allowed}
+.tile b{font-size:18px}
