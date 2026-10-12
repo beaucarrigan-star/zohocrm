@@ -29,7 +29,14 @@
 
   function typeLabel(t) { return t && t !== '-None-' ? t : 'Alert'; }
 
-  function accountName(a) { return a.Account && a.Account.name ? a.Account.name : 'No account'; }
+  function accountName(a) {
+    var x = a.Account;
+    if (x && typeof x === 'object' && x.name) return x.name;
+    if (typeof x === 'string' && x && !/^\d+$/.test(x)) return x;
+    if (a['Account.name']) return a['Account.name'];
+    var m = /^[^-]+ - [^-]+ - (.+)$/.exec(a.Name || '');
+    return m ? m[1] : 'No account';
+  }
 
   /* Short, plain sentence of what is being asked for. */
   function ask(a) {
