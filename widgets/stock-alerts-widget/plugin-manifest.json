@@ -1,0 +1,19 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": [],
+    "font-src": []
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Stock Alerts", "location": "crm.button", "url": "/app/stock.html" },
+      { "name": "Stock Alerts Tab", "location": "crm.webtab", "url": "/app/stock.html" }
+    ]
+  }
+}
