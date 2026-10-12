@@ -1,8 +1,9 @@
 /* Contract Review widget (button popup on Contracts). Phase 4, 27 Sep 2026.
    A person Confirms / Edits / Rejects every value the ingest wrote, then presses Verify.
      Terms   -> Contracts fields; decisions kept in Contracts.Ingest_Review so a rerun never undoes them
-     Rates   -> Rate_Lines subform: Confirm/Edit set Line_Verified; Reject sets Superseded_By = "Rejected in review"
-                (never deleted, and the worker's key match keeps it from being re-inserted)
+     Rates   -> Rate_Lines subform, state in Line_Status (Proposed / Verified / Superseded / Rejected; see line-status.js).
+                Every change also writes Line_Verified and Superseded_By for the margin function and con_worker.
+                Vendor contracts show "Vendor costs" by device with tier tables; others show "Billing rates". Never deleted.
      Clauses -> Contract_Clauses.Status Proposed -> Confirmed / Rejected
      Verify  -> Ingest_Status = Ingested, Last_Verified = today (fires the Contracts workflow)
    Band mode (10 Oct 2026): band.js sets CI.BAND before loading this file and calls CI.Review.start() each time the
@@ -12,12 +13,12 @@
   'use strict';
   var api = CI.api, H = CI.H, esc = H.esc;
   var BAND = CI.BAND || null;
-  var S = { tab: 'terms', edit: null, busy: false, open: {} };
+  var S = { tab: 'terms', edit: null, busy: false, open: {}, rf: 'current', products: [] };
   var app = document.getElementById('app'), bar = document.getElementById('bar');
 
   /* ---------------- load ---------------- */
   function start() {
-    S = { tab: 'terms', edit: null, busy: false, open: {} };
+    S = { tab: 'terms', edit: null, busy: false, open: {}, rf: 'current', products: [] };
     if (BAND) {
       bar.innerHTML = '<div class="kicker">Contract review</div><h1>Loading…</h1>';
       app.innerHTML = '<div class="loading">Reading the contract, its rate lines and proposed clauses…</div>';
@@ -31,6 +32,10 @@
       S.review = H.parseReview(S.c.Ingest_Review);
       S.tab = firstTabWithWork();
       render();
+      /* vendor contracts: Products rows for the contract-vs-Products cost check (soft: the tab works without them) */
+      if (S.c.Counterparty_Type === 'Vendor' && S.c.Vendor && S.c.Vendor.id) {
+        api.vendorProducts(S.c.Vendor.id).then(function (p) { S.products = p || []; if (S.tab === 'rates') render(); }, function () {});
+      }
     }).catch(function (e) {
       bar.querySelector('h1').textContent = 'Contract review';
       app.innerHTML = '<main><div class="empty">Could not load this contract: ' + esc(H.errText(e)) + '</div></main>';
@@ -200,41 +205,105 @@
     return String(raw);
   }
 
-  /* ---- Rates ---- */
-  function renderRates() {
-    var rows = rateRows();
-    var pend = rows.filter(function (x) { return x.state === 'pending'; }).length;
-    var h = '<div class="sec-head"><h2>Rate lines</h2><span class="hint">' + esc((H.profile(S.c.Counterparty_Type) || {}).rates || '') + ' Every line on this Contract. Ingested lines need a Confirm (sets Line verified) or a Reject (kept, marked rejected, never deleted). Hand-entered lines are shown for context.</span>' +
-      (pend && !verified() ? '<button class="btn sm" data-act="r-all">Confirm all ' + pend + '</button>' : '') + '</div>';
-    if (!rows.length) return h + '<div class="empty">No rate lines on this Contract.</div>';
-    var groups = {};
-    rows.forEach(function (x) { (groups[x.r.Rate_Device || 'Other'] = groups[x.r.Rate_Device || 'Other'] || []).push(x); });
-    var byId = {}; rows.forEach(function (x) { byId[x.r.id] = x.r; });
-    h += '<table class="t rt"><thead><tr><th>Tier</th><th class="r">$ / day</th><th>Effective</th><th>Source</th><th>Conf.</th><th>State</th><th class="r"></th></tr></thead><tbody>';
-    Object.keys(groups).sort().forEach(function (g) {
-      h += '<tr class="grp"><td colspan="7">' + esc(g) + '</td></tr>';
-      groups[g].sort(function (a, b) { return (Number(a.r.Tier_Min_Units) || 0) - (Number(b.r.Tier_Min_Units) || 0) || String(a.r.Effective_Date || '').localeCompare(String(b.r.Effective_Date || '')); })
-        .forEach(function (x) { h += rateRow(x, byId); });
-    });
-    return h + '</tbody></table>';
+  /* ---- Rates (Line_Status; vendor costs vs billing rates) ---- */
+  var RF = [['current', 'Current'], ['Proposed', 'Proposed'], ['Verified', 'Verified'], ['Superseded', 'Superseded'], ['Rejected', 'Rejected'], ['all', 'All']];
+  function rfTest(ls, key) {
+    if (key === 'all') return true;
+    if (key === 'current') return ls !== 'Superseded' && ls !== 'Rejected';
+    return ls === key;
   }
   function tierText(r) {
     var a = Number(r.Tier_Min_Units) || 0, b = Number(r.Tier_Max_Units) || 0;
     if (!a && !b) return 'All units'; return b ? a + '–' + b : a + '+';
   }
-  function rateRow(x, byId) {
-    var r = x.r, key = 'r:' + r.id, st = x.state, editing = S.edit === key;
-    var dim = st === 'superseded' || st === 'rejected';
-    var state = { pending: '<span class="chip new">To review</span>', verified: '<span class="chip good">Verified</span>', hand: '<span class="chip muted">Hand-entered</span>',
-      rejected: '<span class="chip muted">Rejected</span>', superseded: '<span class="chip muted">Superseded</span>' }[st];
-    if (st === 'superseded' && byId[r.Superseded_By]) { var n = byId[r.Superseded_By]; state += ' <small>by ' + H.money(n.Rate_Daily_Amount) + ' eff ' + esc(H.date(n.Effective_Date)) + '</small>'; }
-    var acts = '';
-    if (!verified() && !editing) {
-      if (st === 'pending') acts = btn('ok', 'r-confirm', key, 'Confirm') + btn('', 'r-edit', key, 'Edit') + btn('no', 'r-reject', key, 'Reject');
-      else if (st === 'hand') acts = btn('', 'r-confirm', key, 'Verify');
-      else if (st === 'verified' || st === 'rejected') acts = '<button class="btn link sm" data-act="r-undo" data-k="' + esc(key) + '">Undo</button>';
+  function amountText(r) { return H.oneTime(r) ? H.money(r.Rate_Daily_Amount) + ' <small>one-time</small>' : H.money(r.Rate_Daily_Amount); }
+  /* the line in force for a device: current status, effective by today, and (when tiered) the tier holding the Products volume */
+  function activeLine(lines, vol) {
+    var today = H.today();
+    var cand = lines.filter(function (x) { return rfTest(x.ls, 'current') && !H.oneTime(x.r) && (!x.r.Effective_Date || String(x.r.Effective_Date) <= today); });
+    var tiered = cand.some(function (x) { return H.tiered(x.r); });
+    if (tiered) {
+      if (vol == null) return null;
+      cand = cand.filter(function (x) { var a = Number(x.r.Tier_Min_Units) || 0, b = Number(x.r.Tier_Max_Units) || 0; return vol >= a && (!b || vol <= b); });
     }
-    var h = '<tr class="' + (dim ? 'dim' : '') + '"><td>' + esc(tierText(r)) + '</td><td class="r num"><span class="amt">' + H.money(r.Rate_Daily_Amount) + '</span></td><td class="num">' + esc(H.date(r.Effective_Date)) +
+    cand.sort(function (x, y) { return String(y.r.Effective_Date || '').localeCompare(String(x.r.Effective_Date || '')); });
+    return cand[0] || null;
+  }
+  function productFor(device) {
+    var d = String(device || '').toLowerCase();
+    return (S.products || []).filter(function (p) { return d && String(p.Contract_Rate_Device || '').toLowerCase() === d; })[0] || null;
+  }
+  function costCheck(device, act) {
+    if (S.c.Counterparty_Type !== 'Vendor') return '';
+    var p = productFor(device);
+    if (!p) return '<span class="costchk"><span class="chip muted">No matching Products row</span></span>';
+    if (!act) return '<span class="costchk"><span class="chip muted">Products: ' + esc(p.Product_Name) + '</span><span>no current line to compare</span></span>';
+    var pc = Number(p.Cost_Lease_Daily), cc = Number(act.r.Rate_Daily_Amount);
+    if (!isFinite(pc) || p.Cost_Lease_Daily == null) return '<span class="costchk"><span class="chip muted">Products has no lease cost</span></span>';
+    var same = Math.abs(pc - cc) < 0.005;
+    return '<span class="costchk"><span class="chip ' + (same ? 'good' : 'warn') + '">' + (same ? 'Matches Products' : 'Differs from Products') + '</span><span>Contract ' + H.money(cc) + ' · Products ' + H.money(pc) + '</span></span>';
+  }
+  function termsCard() {
+    var c = S.c, items = [];
+    function add(k, v) { if (!H.blank(v)) items.push('<div class="tc"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div>'); }
+    add('Billing basis', c.Rate_Basis);
+    add('Admin rate', H.blank(c.Admin_Rate_Pct) ? '' : Number(c.Admin_Rate_Pct) + '%');
+    add('Escalator', H.blank(c.Escalator_Pct) ? '' : Number(c.Escalator_Pct) + '%');
+    add('Invoice cadence', c.Invoice_Cadence);
+    add('Payment terms', H.blank(c.Payment_Terms_Days) ? '' : c.Payment_Terms_Days + ' days');
+    add('Spare device clause', c.Spare_Device_Clause);
+    var cl = { Confirmed: 0, Proposed: 0, Rejected: 0 };
+    S.clauses.forEach(function (k) { if (cl[k.Status] != null) cl[k.Status]++; });
+    add('Clauses', S.clauses.length ? cl.Confirmed + ' confirmed, ' + cl.Proposed + ' proposed' + (cl.Rejected ? ', ' + cl.Rejected + ' rejected' : '') : '');
+    return items.length ? '<div class="terms-card">' + items.join('') + '</div>' : '';
+  }
+  function renderRates() {
+    var vendor = S.c.Counterparty_Type === 'Vendor', customer = S.c.Counterparty_Type === 'Customer';
+    var all = rateRows().map(function (x) { x.ls = H.lineStatus(x.r); return x; });
+    var pend = all.filter(function (x) { return x.state === 'pending'; }).length;
+    var title = vendor ? 'Vendor costs' : customer ? 'Billing rates' : 'Rate lines';
+    var h = '<div class="sec-head"><h2>' + title + '</h2><span class="hint">' + esc((H.profile(S.c.Counterparty_Type) || {}).rates || '') +
+      ' Ingested lines need a Verify or a Reject. Reject keeps the line but marks it not current; Supersede points it at the line that replaced it. Nothing is deleted.</span>' +
+      (pend && !verified() ? '<button class="btn sm" data-act="r-all">Verify all ' + pend + '</button>' : '') + '</div>';
+    if (!vendor) h += termsCard();
+    if (!all.length) return h + '<div class="empty">No rate lines on this Contract.</div>';
+    h += '<div class="lsbar" role="group" aria-label="Filter rate lines by status">' + RF.map(function (f) {
+      var n = all.filter(function (x) { return rfTest(x.ls, f[0]); }).length;
+      return '<button type="button" class="f" data-act="r-filter" data-k="' + f[0] + '" aria-pressed="' + (S.rf === f[0]) + '">' + f[1] + '<span class="c">' + n + '</span></button>';
+    }).join('') + '</div>';
+    var shown = all.filter(function (x) { return rfTest(x.ls, S.rf); });
+    if (!shown.length) return h + '<div class="empty">No ' + (S.rf === 'all' ? '' : RF.filter(function (f) { return f[0] === S.rf; })[0][1].toLowerCase() + ' ') + 'lines. Pick another filter above.</div>';
+    var byId = {}; all.forEach(function (x) { byId[x.r.id] = x.r; });
+    var groups = {}, devAll = {};
+    all.forEach(function (x) { var g = x.r.Rate_Device || 'Other'; (devAll[g] = devAll[g] || []).push(x); });
+    shown.forEach(function (x) { var g = x.r.Rate_Device || 'Other'; (groups[g] = groups[g] || []).push(x); });
+    Object.keys(groups).sort().forEach(function (g) {
+      var p = vendor ? productFor(g) : null, vol = p && p.Tier_Volume != null && isFinite(Number(p.Tier_Volume)) ? Number(p.Tier_Volume) : null;
+      var act = activeLine(devAll[g], vol);
+      var tiered = devAll[g].some(function (x) { return H.tiered(x.r); });
+      h += '<div class="devhead"><b>' + esc(g) + '</b>' + (tiered ? ' <span class="chip teal">Tiered</span>' : '') +
+        (vendor && vol != null ? ' <span class="chip muted">Volume ' + vol + '</span>' : '') + costCheck(g, act) + '</div>';
+      h += '<table class="t rt"><thead><tr><th>Tier</th><th class="r">$ / day</th><th>Effective</th><th>Source</th><th>Conf.</th><th>Status</th><th class="r"></th></tr></thead><tbody>';
+      groups[g].sort(function (a, b) { return (Number(a.r.Tier_Min_Units) || 0) - (Number(b.r.Tier_Min_Units) || 0) || String(a.r.Effective_Date || '').localeCompare(String(b.r.Effective_Date || '')); })
+        .forEach(function (x) { h += rateRow(x, byId, devAll[g], act && act.r.id === x.r.id); });
+      h += '</tbody></table>';
+    });
+    return h;
+  }
+  function rateRow(x, byId, siblings, isCur) {
+    var r = x.r, key = 'r:' + r.id, ls = x.ls, st = x.state, editing = S.edit === key, sup = S.edit === 'rs:' + r.id;
+    var dim = ls === 'Superseded' || ls === 'Rejected';
+    var state = { Proposed: st === 'hand' ? '<span class="chip muted">Hand-entered</span>' : '<span class="chip new">Proposed</span>', Verified: '<span class="chip good">Verified</span>',
+      Rejected: '<span class="chip muted">Rejected</span>', Superseded: '<span class="chip muted">Superseded</span>' }[ls];
+    if (ls === 'Superseded' && byId[r.Superseded_By]) { var n = byId[r.Superseded_By]; state += ' <small>by ' + H.money(n.Rate_Daily_Amount) + ' eff ' + esc(H.date(n.Effective_Date)) + '</small>'; }
+    if (isCur) state += ' <span class="chip teal">In force</span>';
+    var acts = '';
+    if (!verified() && !editing && !sup) {
+      if (ls === 'Proposed') acts = btn('ok', 'r-confirm', key, st === 'hand' ? 'Verify' : 'Confirm') + btn('', 'r-edit', key, 'Edit') + btn('', 'r-sup', key, 'Supersede') + (st === 'hand' ? '' : btn('no', 'r-reject', key, 'Reject'));
+      else if (ls === 'Verified') acts = btn('', 'r-edit', key, 'Edit') + btn('', 'r-sup', key, 'Supersede') + '<button class="btn link sm" data-act="r-undo" data-k="' + esc(key) + '">Undo</button>';
+      else acts = '<button class="btn link sm" data-act="r-undo" data-k="' + esc(key) + '">Restore</button>';
+    }
+    var h = '<tr class="' + (dim ? 'dim' : '') + (isCur ? ' cur' : '') + '"><td>' + esc(tierText(r)) + '</td><td class="r num"><span class="amt">' + amountText(r) + '</span></td><td class="num">' + esc(H.date(r.Effective_Date)) +
       '</td><td>' + esc(H.cite(r.Source_Ref)) + (r.Rate_Terms ? '<br><small style="color:var(--muted)">' + esc(r.Rate_Terms) + '</small>' : '') +
       (x.snip && x.snip.ev ? quote(key, x.snip.ev, r.Rate_Daily_Amount) : '') + '</td><td>' + conf(r.Confidence) + '</td><td>' + state + '</td><td class="r"><div class="acts">' + acts + '</div></td></tr>';
     if (editing) {
@@ -244,6 +313,13 @@
         '<label>Tier max<input type="number" step="1" name="tmax" value="' + esc(r.Tier_Max_Units == null ? '' : r.Tier_Max_Units) + '"></label>' +
         '<label>Effective<input type="date" name="eff" value="' + esc(r.Effective_Date || '') + '"></label></div>' +
         '<button class="btn sm primary" type="submit">Save and verify</button><button class="btn sm" type="button" data-act="cancel">Cancel</button></form></td></tr>';
+    }
+    if (sup) {
+      var others = siblings.filter(function (o) { return o.r.id !== r.id && o.ls !== 'Rejected' && o.ls !== 'Superseded'; });
+      h += '<tr><td colspan="7"><form class="edit" data-form="rs" data-k="' + esc(key) + '"><div class="grid">' +
+        '<label style="grid-column:1/-1">Replaced by<select name="by"><option value="">A line that is not on this contract</option>' +
+        others.map(function (o) { return '<option value="' + esc(o.r.id) + '">' + esc(H.money(o.r.Rate_Daily_Amount) + ' · ' + tierText(o.r) + ' · eff ' + (H.date(o.r.Effective_Date) || 'no date')) + '</option>'; }).join('') +
+        '</select></label></div><button class="btn sm primary" type="submit">Mark superseded</button><button class="btn sm" type="button" data-act="cancel">Cancel</button></form></td></tr>';
     }
     return h;
   }
@@ -334,6 +410,8 @@
     switch (act) {
       case 'cancel': S.edit = null; render(); break;
       case 't-edit': case 'r-edit': case 'c-edit': S.edit = k; render(); break;
+      case 'r-sup': S.edit = 'rs:' + k.slice(2); render(); break;
+      case 'r-filter': S.rf = k; render(); break;
       case 't-confirm': x = termByKey(k); run('Confirmed', saveDecision(x.f.f, { s: 'confirmed', v: x.crm })); break;
       case 't-keep': x = termByKey(k); run('Kept as is', saveDecision(x.f.f, { s: 'confirmed', v: x.crm })); break;
       case 't-apply': x = termByKey(k); run('Written to the Contract', saveDecision(x.f.f, { s: 'edited', v: x.f.v }, x.f.v, true)); break;
@@ -348,14 +426,14 @@
           run(todo.length + ' confirmed', api.updateContract({ Ingest_Review: JSON.stringify(rv) }).then(reloadContract));
         });
         break;
-      case 'r-confirm': id = k.slice(2); run('Line verified', rateUpdate(obj(id, { Line_Verified: true }))); break;
-      case 'r-reject': id = k.slice(2); run('Line rejected (kept, not current)', rateUpdate(obj(id, { Superseded_By: H.REJECTED, Line_Verified: false }))); break;
+      case 'r-confirm': id = k.slice(2); run('Line verified', rateUpdate(obj(id, H.statusFields('Verified')))); break;
+      case 'r-reject': id = k.slice(2); run('Line rejected (kept, not current)', rateUpdate(obj(id, H.statusFields('Rejected')))); break;
       case 'r-undo': id = k.slice(2); x = rateRows().filter(function (r) { return r.r.id === id; })[0];
-        run('Back to review', rateUpdate(obj(id, x.state === 'rejected' ? { Superseded_By: null } : { Line_Verified: false }))); break;
+        run('Back to proposed', rateUpdate(obj(id, H.statusFields('Proposed')))); break;
       case 'r-all':
         var rs = rateRows().filter(function (r) { return r.state === 'pending'; });
-        H.confirmDialog('Verify ' + rs.length + ' rate lines?', 'Sets Line verified on each ingested line as it stands. A later ingest will never change a verified line.', 'Verify all').then(function (ok) {
-          if (!ok) return; var ch = {}; rs.forEach(function (r) { ch[r.r.id] = { Line_Verified: true }; }); run(rs.length + ' lines verified', rateUpdate(ch));
+        H.confirmDialog('Verify ' + rs.length + ' rate lines?', 'Marks each ingested line Verified as it stands. A later ingest will never change a verified line.', 'Verify all').then(function (ok) {
+          if (!ok) return; var ch = {}; rs.forEach(function (r) { ch[r.r.id] = H.statusFields('Verified'); }); run(rs.length + ' lines verified', rateUpdate(ch));
         });
         break;
       case 'c-confirm': run('Clause confirmed', api.updateClause({ id: k.slice(2), Status: 'Confirmed' }).then(reloadClauses)); break;
@@ -400,7 +478,9 @@
       run('Saved', saveDecision(x.f.f, { s: 'edited', v: val }, val, true));
     } else if (kind === 'r') {
       var num = function (n) { return v(n) === '' ? null : Number(v(n)); };
-      run('Line saved and verified', rateUpdate(obj(k.slice(2), { Rate_Daily_Amount: num('amt'), Tier_Min_Units: num('tmin'), Tier_Max_Units: num('tmax'), Effective_Date: v('eff') || null, Line_Verified: true })));
+      run('Line saved and verified', rateUpdate(obj(k.slice(2), Object.assign({ Rate_Daily_Amount: num('amt'), Tier_Min_Units: num('tmin'), Tier_Max_Units: num('tmax'), Effective_Date: v('eff') || null }, H.statusFields('Verified')))));
+    } else if (kind === 'rs') {
+      run('Line marked superseded', rateUpdate(obj(k.slice(2), H.statusFields('Superseded', v('by') || null))));
     } else if (kind === 'c') {
       var data = { id: k.slice(2), Title: v('title'), Name: v('title').slice(0, 120), Clause_Type: v('type'), Cadence: v('cadence'), Due_Date: v('due') || null, Clause_Text: v('text'), Status: 'Confirmed' };
       if (v('owner')) data.Owner = { id: v('owner') };
