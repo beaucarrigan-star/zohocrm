@@ -1,0 +1,19 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": [],
+    "font-src": []
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Relationships Flow", "location": "crm.button", "url": "/app/rel.html" },
+      { "name": "Relationships Flow Tab", "location": "crm.webtab", "url": "/app/rel.html" }
+    ]
+  }
+}
