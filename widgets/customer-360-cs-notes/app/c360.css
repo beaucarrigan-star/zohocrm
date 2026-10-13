@@ -1,0 +1,16 @@
+/* Customer 360: page-specific bits only. Everything else comes from jpk.css. */
+.c360 .sig{list-style:none;margin:0;padding:0}
+.c360 .sig li{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--line)}
+.c360 .sig li:last-child{border-bottom:0}
+.c360 .pickrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.c360 .pickrow input[type=text]{width:min(320px,100%)}
+.c360 .cell-sub{display:block;font-size:12px;color:var(--muted)}
+.c360 .err-card{border-color:var(--bad)}
+.c360 .tile.good b{color:var(--good)}.c360 .tile.warn b{color:var(--warn)}.c360 .tile.bad b{color:var(--bad)}
+.c360 .tile b.txt{font-family:var(--font);font-size:15px;font-weight:700}
+.c360 .results button{display:block;width:100%;text-align:left;margin-top:4px}
+
+/* Latest from CS (13 Oct 2026) */
+.cs-card .cs-n{padding:6px 0;border-bottom:1px solid var(--line)}.cs-card .cs-n:last-child{border-bottom:0}
+.cs-card .cs-n.first .cs-t{font-size:14px}.cs-card .cs-t{font-weight:600}.cs-card .cs-m{color:var(--muted);font-size:12px;margin-left:8px}
+.cs-card .cs-b{white-space:pre-line;overflow-wrap:anywhere;margin-top:2px}.cs-card .cs-n:not(.first) .cs-b{color:var(--muted);font-size:12.5px}
