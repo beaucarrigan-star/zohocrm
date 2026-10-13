@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Supply flow</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="supply.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Equipment, stock and accessories</div>
+      <h1>Supply flow</h1>
+      <div class="muted sm" id="asof"></div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
+      <label class="lead sm">Order limit <input type="number" id="lead" min="1" max="60" step="1" aria-label="Business days a device order may stay Placed before it is flagged"> business days</label>
+      <div class="seg" id="track" role="group" aria-label="Show devices, accessories or returns"></div>
+      <div class="seg" id="win" role="group" aria-label="Time window for received and closed items"></div>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help">How this works</button>
+    </div>
+  </header>
+
+  <div id="nx"></div>
+
+  <ol class="flow" id="flow" aria-label="Path from signal to closed"></ol>
+
+  <section class="card lane-card" aria-live="polite">
+    <h2><span id="lane-title">Pick a step above</span><em id="lane-hint"></em></h2>
+    <div id="lane-table"></div>
+  </section>
+  <p class="muted sm" id="foot"></p>
+</div>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="triage-model.js"></script>
+<script src="equip-model.js"></script>
+<script src="stock-flow-model.js"></script>
+<script src="supply-flow-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="flow-tools.js"></script>
+<script src="supply.js"></script>
+<script src="jpk-intro.js"
+  data-what="One path for everything that goes out to the field: device orders, accessory orders and returns. Starts at the alert or request that calls for it, follows it through the decision, the vendor order and receiving, to the field count and the return. Click any step to see its records, and any record to see its path."
+  data-fed="Stock Alerts, Accessory Order Recommendations, Vendor Orders, Cases, Daily Unit Counts, Accessory Shipments (the imported order history) and Device Returns."
+  data-feeds="Nothing (read-only). To approve an alert use Stock Alerts; to order or contact use the Accessory Board and the Order area; to bring in new accessory history use the shipment import."></script>
+</body>
+</html>
