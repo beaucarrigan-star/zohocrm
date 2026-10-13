@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Support flow</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="flow.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Support</div>
+      <h1>Support flow</h1>
+      <div class="muted sm" id="asof"></div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
+      <div class="seg" id="win" role="group" aria-label="Time window for emails"></div>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help">How this works</button>
+    </div>
+  </header>
+
+  <div id="nx"></div>
+
+  <ol class="flow" id="flow" aria-label="Support path from email to account"></ol>
+
+  <section class="card lane-card" aria-live="polite">
+    <h2><span id="lane-title">Pick a step above</span><em id="lane-hint"></em></h2>
+    <div id="lane-table"></div>
+  </section>
+  <section class="card trend-card"><h2>Monthly trend<em>last six months, current month so far</em></h2><div id="trend" class="trend-wrap"></div></section>
+  <section class="card trend-card"><h2>Monthly trend<em>last six months, current month so far</em></h2><div id="trend" class="trend-wrap"></div></section>
+  <p class="muted sm" id="foot"></p>
+</div>
+<!-- Zoho SDK first (only inside CRM), then jpk, then the widget -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="triage-model.js"></script>
+<script src="flow-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="flow-tools.js"></script>
+<script src="flow.js"></script>
+<script src="jpk-intro.js"
+  data-what="Shows the whole support path in one place: emails in, triage, cases, and the accounts that need a look. Click any step to see its records, and any record to see its path."
+  data-fed="Support Emails (from the shared mailbox), Cases and Accounts."
+  data-feeds="Nothing (read-only). To change an email's result use Support Triage; to move cases use the Cases list."></script>
+</body>
+</html>
