@@ -1,1 +1,18 @@
-{"service":"CRM","cspDomains":{"connect-src":[]},"modules":{"widgets":[{"location":"web_tab","name":"Network Home","url":"/app/widget.html","logo":""}]},"config":[],"locale":["en"]}
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": ["fonts.googleapis.com"],
+    "font-src": ["fonts.gstatic.com"]
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Network Home", "location": "crm.webtab", "url": "/app/widget.html" }
+    ]
+  }
+}
