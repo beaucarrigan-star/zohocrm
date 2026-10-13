@@ -1,18 +1,30 @@
 {
-  "locale": ["en"],
+  "locale": [
+    "en"
+  ],
   "service": "CRM",
   "storage": false,
   "config": [],
   "usedConnections": [],
   "cspDomains": {
     "connect-src": [],
-    "script-src": ["live.zwidgets.com"],
-    "style-src": ["fonts.googleapis.com"],
-    "font-src": ["fonts.gstatic.com"]
+    "script-src": [
+      "live.zwidgets.com"
+    ],
+    "style-src": [
+      "fonts.googleapis.com"
+    ],
+    "font-src": [
+      "fonts.gstatic.com"
+    ]
   },
   "modules": {
     "widgets": [
-      { "name": "BD Home", "location": "crm.dashboard", "url": "/app/widget.html" }
+      {
+        "name": "BD Home",
+        "location": "crm.dashboard",
+        "url": "/app/widget.html"
+      }
     ]
   }
 }
