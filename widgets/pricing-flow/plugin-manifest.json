@@ -1,0 +1,19 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": [],
+    "font-src": []
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Pricing Flow", "location": "crm.button", "url": "/app/pricing.html" },
+      { "name": "Pricing Flow Tab", "location": "crm.webtab", "url": "/app/pricing.html" }
+    ]
+  }
+}
