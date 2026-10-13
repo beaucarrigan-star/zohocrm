@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Equipment flow</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="equip.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Equipment</div>
+      <h1>Equipment flow</h1>
+      <div class="muted sm" id="asof"></div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
+      <label class="lead sm">Order limit <input type="number" id="lead" min="1" max="60" step="1" aria-label="Business days a device order may stay Placed before it is flagged"> business days</label>
+      <div class="seg" id="win" role="group" aria-label="Time window for received orders"></div>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help">How this works</button>
+    </div>
+  </header>
+
+  <div id="nx"></div>
+
+  <ol class="flow" id="flow" aria-label="Device path from need to the field"></ol>
+
+  <section class="card lane-card" aria-live="polite">
+    <h2><span id="lane-title">Pick a step above</span><em id="lane-hint"></em></h2>
+    <div id="lane-table"></div>
+  </section>
+  <p class="muted sm" id="foot"></p>
+</div>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="triage-model.js"></script>
+<script src="equip-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="flow-tools.js"></script>
+<script src="equip.js"></script>
+<script src="jpk-intro.js"
+  data-what="Follows a device from the request or stock alert that calls for it, through the vendor order and receiving, to the field count, and shows returns going back. Click any step to see its records, and any record to see its path."
+  data-fed="Vendor Orders, Cases, Stock Alerts, Daily Unit Counts and (once it exists) Device Returns."
+  data-feeds="Nothing (read-only). To place or receive an order use the Order area on the account or case; to act on a stock alert use Stock Alerts."></script>
+</body>
+</html>
