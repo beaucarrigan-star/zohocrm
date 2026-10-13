@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relationship Flow</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="rel.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Accounts, opportunities and renewals in one view</div>
+      <h1>Relationship Flow</h1>
+      <div class="muted sm" id="asof"></div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
+      <div class="seg" id="scope" role="group" aria-label="Which accounts to show"></div>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help">How this works</button>
+    </div>
+  </header>
+
+  <div id="nx"></div>
+
+  <ol class="flow" id="flow" aria-label="Path from account to renewal"></ol>
+
+  <details class="card cleanup" id="cleanup"></details>
+
+  <section class="card lane-card" aria-live="polite">
+    <h2><span id="lane-title">Pick a step above</span><em id="lane-hint"></em></h2>
+    <div id="lane-table"></div>
+  </section>
+  <p class="muted sm" id="foot"></p>
+</div>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="rel-flow-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="flow-tools.js"></script>
+<script src="rel.js"></script>
+<script src="jpk-intro.js"
+  data-what="See every account from first contact to contract renewal, and the clean-up list of records missing an account, type, email or contract. For your daily follow-ups, use BD + CS Home."
+  data-fed="Accounts, contacts, opportunities, calls, meetings, support emails and customer contracts."
+  data-feeds="This page only shows records. To change one, click it and use Open; Open account shows Customer 360 for that customer."></script>
+</body>
+</html>
