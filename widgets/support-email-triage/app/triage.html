@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Support email triage</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="triage.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Support Emails</div>
+      <h1>Email triage</h1>
+      <div class="muted sm" id="asof"></div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help">How this works</button>
+    </div>
+  </header>
+
+  <div id="nx"></div>
+
+  <div id="tabs"></div>
+  <section data-pane="untouched"><div id="t-untouched"></div></section>
+  <section data-pane="noaccount"><div id="t-noaccount"></div></section>
+  <section data-pane="ignored"><div id="t-ignored"></div></section>
+  <p class="muted sm" id="foot"></p>
+</div>
+<!-- Zoho SDK first (only inside CRM), then jpk, then the widget -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="triage-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="triage.js"></script>
+<script src="jpk-intro.js"
+  data-what="Sorts inbound support emails into three lanes: left for review, no account, and ignored. Open a row to give it a result."
+  data-fed="Support Emails collected from the shared mailbox; the Case Intake Exclusions list decides which are ignored."
+  data-feeds="Cases. Emails that become cases are created by support_email_to_case; your choice here sets the email's Intake Result."></script>
+</body>
+</html>
