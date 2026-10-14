@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contract Ingest</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="ingest.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Contracts</div>
+      <h1>Contract Ingest</h1>
+      <div class="muted sm">Add a contract packet, let the system read it, then review what it found.</div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
+      <button type="button" class="btn" id="help">About this widget</button>
+    </div>
+  </header>
+
+  <div id="steps"></div>
+  <div id="nx"></div>
+
+  <div id="tabs"></div>
+
+  <section data-pane="packet">
+    <div class="grid">
+      <div class="card c7">
+        <h2>This packet</h2>
+        <div class="eyebrow">Who is the other party?</div>
+        <div class="seg" id="cp" role="group" aria-label="Counterparty">
+          <button type="button" data-k="Customer" aria-pressed="true">Customer</button>
+          <button type="button" data-k="Vendor" aria-pressed="false">Vendor</button>
+        </div>
+        <p class="muted sm" id="cp-note"></p>
+
+        <label class="eyebrow" for="contract">Contract</label>
+        <select id="contract" style="width:100%;margin:6px 0 14px"></select>
+
+        <div id="drop" class="drop" hidden>
+          <div><b>Drop the packet here</b></div>
+          <div class="muted sm">A .zip, or the PDFs and Excel files.</div>
+          <label class="btn" for="file">Choose files</label>
+          <input type="file" id="file" class="sr" multiple accept=".zip,.pdf,.xlsx">
+          <button type="button" class="btn" id="ex" hidden>Use example packet</button>
+          <label class="sm muted demo-opt"><input type="checkbox" id="demo-unchanged"> Demo: treat as an unchanged packet</label>
+        </div>
+
+        <ul class="list" id="files"></ul>
+        <p class="muted sm" id="files-note"></p>
+      </div>
+
+      <div class="card c5">
+        <h2>What was found</h2>
+        <div class="tiles" id="found" hidden></div>
+        <p class="q" id="run-summary" hidden></p>
+        <div id="alt" hidden>
+          <p class="sm">Some files are scans and have no text to read. Run OCR on your PC, add the searchable copy and read again.</p>
+          <button type="button" class="btn" id="open-anyway">Open review anyway</button>
+        </div>
+        <p class="muted sm">Nothing is changed in your contract values until you verify each one in the review.</p>
+      </div>
+    </div>
+  </section>
+
+  <section data-pane="backlog">
+    <div class="card"><div id="bl"></div></div>
+  </section>
+</div>
+<!-- Zoho SDK first (only inside CRM), then jpk, then the widget -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="ingest.js"></script>
+<script src="jpk-intro.js"
+  data-what="Upload a contract packet and let the system read it. It pulls out documents, rate lines and clauses for you to check."
+  data-fed="The files you add, matched to a Contract record."
+  data-feeds="Contract Documents, Rate Lines and Contract Clauses, then sets the contract to Needs Review so Contract Review can verify them."></script>
+</body>
+</html>
