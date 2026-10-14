@@ -176,10 +176,10 @@
   var s = function (v) { return v && v !== '-None-' ? String(v) : ''; };
   var RM = window.RecModules;
   RM.p_contract = laneView({
-    key: 'p_contract', title: 'Contract ingest', swLabel: 'Contract ingest', group: 'Contract', entity: 'Contracts', demo: 'contracts', noun: 'contract', nameKey: 'Name', acct: 'Account',
-    sub: 'Where each contract is in ingest, cleanup and reconciliation. Upload new packets in the Contract Ingest tab.',
+    key: 'p_contract', title: 'Contract ingest', swLabel: 'Pipeline', group: 'Contract', entity: 'Contracts', demo: 'contracts', noun: 'contract', nameKey: 'Name', acct: 'Account',
+    sub: 'Where each contract is in ingest, cleanup and reconciliation. Upload new packets under Ingest.',
     select: 'Name, Account, Contract_Status, Ingest_Status, Needs_Cleanup, Reconciliation_Status, Days_to_Final_End, Renewal_Band',
-    foot: 'Read only. Reconciliation compares each contract with the billing system. Packets are uploaded in the Contract Ingest tab until that action moves here.',
+    foot: 'Read only. Reconciliation compares each contract with the billing system. Packets are uploaded under Ingest.',
     lanes: [
       { id: 'review', label: 'Needs review', kpi: 'warn', test: function (r) { return s(r.Ingest_Status) === 'Needs Review'; } },
       { id: 'cleanup', label: 'Needs cleanup', kpi: 'warn', test: function (r) { return truthy(r.Needs_Cleanup); } },
@@ -193,9 +193,9 @@
   });
   RM.p_solicit = laneView({
     key: 'p_solicit', title: 'Solicitations', swLabel: 'Solicitations', group: 'Solicitations', entity: 'Solicitations', demo: 'solicitations', noun: 'solicitation', nameKey: 'Name', acct: 'Issuing_Agency',
-    sub: 'Every solicitation by deadline and bid decision. Start a new one in the Solicitation Wizard tab.',
+    sub: 'Every solicitation by deadline and bid decision. Start a new one under New.',
     select: 'Name, Issuing_Agency, Status, Proposal_Due, Days_To_Deadline, Bid_Decision, Best_Score, Unmet_Mandatory_Count',
-    foot: 'Read only. New solicitations are created in the Solicitation Wizard tab until that action moves here.',
+    foot: 'Read only. New solicitations are created under New.',
     lanes: [
       { id: 'soon', label: 'Due within 30 days', kpi: 'bad', test: function (r) { var d = r.Days_To_Deadline; return d != null && d !== '' && +d >= 0 && +d <= 30; } },
       { id: 'nodec', label: 'No bid decision', kpi: 'warn', test: function (r) { return !s(r.Bid_Decision); } },
