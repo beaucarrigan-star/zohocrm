@@ -61,7 +61,7 @@
     var rows = M.trend({ emails: state.emails, cases: state.cases }, state.now, 6);
     var max = 1; rows.forEach(function (r) { max = Math.max(max, r.requests, r.cases); });
     function bar(n, cls) { return '<span class="tb ' + cls + '" style="width:' + Math.round(100 * n / max) + '%"></span>'; }
-    function delta(cur, prev) { return prev == null ? '' : (cur > prev ? ' \u25b2' : cur < prev ? ' \u25bc' : ' \u2013'); }
+    function delta(cur, prev) { return prev == null ? '' : (cur > prev ? ' ▲' : cur < prev ? ' ▼' : ' –'); }
     $('#trend').innerHTML = '<table class="trend"><thead><tr><th>Month</th><th>Requests in</th><th>Became a case</th><th class="r">Share</th><th>Cases opened</th><th class="r">Order cases</th><th class="r">Returns</th></tr></thead><tbody>' +
       rows.map(function (r, i) {
         var p = i ? rows[i - 1] : null;
@@ -170,7 +170,7 @@
         h += t.orders.map(function (o) {
           var tn = o.status === 'Received' ? 'good' : o.status === 'Cancelled' ? 'neutral' : 'info';
           return '<div class="it"><b>' + J.esc(o.type + ' order' + (o.vendorName ? ' from ' + o.vendorName : '')) + '</b>' +
-            '<div class="meta">' + J.esc([o.reference ? 'Ref ' + o.reference : '', o.orderMs ? 'Ordered ' + when(o.orderMs) : '', o.receivedMs ? 'Received ' + when(o.receivedMs) : ''].filter(Boolean).join(' \u00b7 ')) + '</div>' +
+            '<div class="meta">' + J.esc([o.reference ? 'Ref ' + o.reference : '', o.orderMs ? 'Ordered ' + when(o.orderMs) : '', o.receivedMs ? 'Received ' + when(o.receivedMs) : ''].filter(Boolean).join(' · ')) + '</div>' +
             '<div>' + J.chip(o.status, tn) + ' <button type="button" class="lnk sm" data-a="open-order" data-id="' + J.esc(o.id) + '">Open order</button></div></div>';
         }).join('');
         if (c.open && t.orders.every(function (o) { return o.status === 'Received'; })) h += '<div class="note-bad">Order received but the case is still open.</div>';
@@ -178,7 +178,7 @@
     }
     if (c.rma || c.need === 'device') {
       var bits = [c.vendorName ? 'Vendor ' + c.vendorName : '', c.vendorTicket ? 'Ticket ' + c.vendorTicket : '', c.serial ? 'Serial ' + c.serial : '', c.resolution ? 'Resolution ' + c.resolution : ''].filter(Boolean);
-      h += '<div class="it"><b>' + (c.rma ? 'Return or replacement' : 'Device problem') + '</b><div class="meta">' + (bits.length ? J.esc(bits.join(' \u00b7 ')) : 'No vendor, ticket or serial recorded on the case.') + '</div>' +
+      h += '<div class="it"><b>' + (c.rma ? 'Return or replacement' : 'Device problem') + '</b><div class="meta">' + (bits.length ? J.esc(bits.join(' · ')) : 'No vendor, ticket or serial recorded on the case.') + '</div>' +
         (c.rma ? '' : '<div class="meta">No vendor ticket yet. If the device goes back to the vendor, record the ticket number on the case.</div>') + '</div>';
     }
     if (!h) h = '<div class="none">' + (c.category ? J.esc(c.category) + ': this case does not call for an order or return.' : 'No case category set, so no order or return is expected.') + '</div>';
