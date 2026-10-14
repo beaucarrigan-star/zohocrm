@@ -1,0 +1,26 @@
+{
+  "locale": [
+    "en"
+  ],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": [
+      "live.zwidgets.com"
+    ],
+    "style-src": [],
+    "font-src": []
+  },
+  "modules": {
+    "widgets": [
+      {
+        "name": "Accounts (dark)",
+        "location": "crm.webtab",
+        "url": "/app/widget.html"
+      }
+    ]
+  }
+}
