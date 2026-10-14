@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDEC Home</title>
+<!-- PDEC Home v1.1 (Oct 13 2026; v1.1 fixes the preview panel showing on load). Director page for Program Development, Evaluation and Compliance. Standalone widget (no home-kit includes).
+     Reads Deliverables, Compliance_Items, Program_Metrics and Solicitations with COQL; ?preview=1 runs on sample data. -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: sticky toolbar + jump bar, three zones (My work, Numbers, Reference), collapsible sections, peek panel for the view behind each number */
+:root{
+  --bg:#f4f6f7;--surface:#ffffff;--fg:#1c2b33;--muted:#5d6e78;--line:#d9e0e4;
+  --accent:#0f6b6b;--accent-soft:#dff0ef;
+  --ok:#2e7d4f;--ok-soft:#e1f2e8;--warn:#a86a00;--warn-soft:#fbefd5;--bad:#b3261e;--bad-soft:#fbe3e1;
+  --sans:'Source Sans 3',system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12191d;--surface:#1a2429;--fg:#e4ecef;--muted:#93a5ae;--line:#2c3a41;
+  --accent:#58c4c0;--accent-soft:#1a3a3a;
+  --ok:#6fcf97;--ok-soft:#183425;--warn:#f0b955;--warn-soft:#3a2e12;--bad:#ff8a80;--bad-soft:#3d1d1b;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12191d;--surface:#1a2429;--fg:#e4ecef;--muted:#93a5ae;--line:#2c3a41;
+  --accent:#58c4c0;--accent-soft:#1a3a3a;
+  --ok:#6fcf97;--ok-soft:#183425;--warn:#f0b955;--warn-soft:#3a2e12;--bad:#ff8a80;--bad-soft:#3d1d1b;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--sans)}
+*{box-sizing:border-box}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px}
+.bar .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+h1{font-size:20px;margin:0;font-weight:700}
+.who{color:var(--muted);font-size:14px}
+.sample{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;background:var(--warn-soft);color:var(--warn);padding:3px 8px;border-radius:4px}
+.jump{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+button,.btn{font:inherit;cursor:pointer}
+.jump a,.jump button{background:none;border:1px solid var(--line);color:var(--fg);padding:4px 10px;border-radius:6px;text-decoration:none;font-size:13px}
+.jump a:hover,.jump button:hover{border-color:var(--accent);color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.zone{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:28px 0 10px}
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+section.card>header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+section.card>header h2{font-size:16px;margin:0;font-weight:600}
+section.card>header .sub{color:var(--muted);font-size:13px}
+section.card>header .chev{margin-left:auto;color:var(--muted);transition:transform .15s}
+section.card.closed>header .chev{transform:rotate(-90deg)}
+section.card.closed>.body{display:none}
+.body{padding:0 14px 14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:none;color:var(--fg);border-radius:999px;padding:3px 11px;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.go{cursor:pointer}tr.go:hover td{background:var(--accent-soft)}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.p-bad{background:var(--bad-soft);color:var(--bad)}.p-warn{background:var(--warn-soft);color:var(--warn)}.p-ok{background:var(--ok-soft);color:var(--ok)}.p-n{background:var(--accent-soft);color:var(--accent)}
+.hard{font:500 10px var(--mono);letter-spacing:.05em;border:1px solid var(--bad);color:var(--bad);border-radius:3px;padding:0 4px;margin-left:6px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;text-align:left;color:var(--fg);display:flex;flex-direction:column;gap:2px}
+.tile:hover{border-color:var(--accent)}
+.tile .v{font:500 30px/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.tile .l{font-size:13px;color:var(--muted)}
+.tile.bad .v{color:var(--bad)}.tile.warn .v{color:var(--warn)}.tile.ok .v{color:var(--ok)}
+.meter{height:8px;border-radius:4px;background:var(--line);position:relative;min-width:90px}
+.meter i{position:absolute;inset:0 auto 0 0;border-radius:4px;background:var(--accent)}
+.meter.warn i{background:var(--warn)}.meter.bad i{background:var(--bad)}.meter.ok i{background:var(--ok)}
+.links{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;color:var(--fg);text-decoration:none;background:var(--surface)}
+.links a:hover{border-color:var(--accent)}.links small{display:block;color:var(--muted)}
+.empty{color:var(--muted);padding:10px 0}
+.qa{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.qa button{border:1px dashed var(--line);background:none;color:var(--muted);border-radius:6px;padding:4px 10px;font-size:13px}
+#peek{position:fixed;inset:0 0 0 auto;width:min(520px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.18);z-index:10;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+#peek[hidden]{display:none}
+#peek header{display:flex;align-items:center;gap:10px;padding:14px;border-bottom:1px solid var(--line)}
+#peek h3{margin:0;font-size:16px}
+#peek .x{margin-left:auto;background:none;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:3px 10px}
+#peek .pb{padding:14px;overflow:auto;flex:1}
+.view{font:500 12px var(--mono);color:var(--accent);background:var(--accent-soft);padding:6px 8px;border-radius:5px;margin-bottom:12px;overflow-wrap:anywhere}
+.th{background:none;border:1px solid var(--line);color:var(--fg);padding:4px 10px;border-radius:6px;font-size:13px}
+.disp{position:relative;display:inline-block}
+#dpanel{position:absolute;right:0;top:calc(100% + 6px);width:240px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:12px;display:flex;flex-direction:column;gap:6px;z-index:20}
+#dpanel[hidden]{display:none}
+#dpanel .dl{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;margin-top:6px}
+#dpanel .dl b{color:var(--fg);font-weight:500}
+#dpanel input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:flex}
+.seg button{flex:1;background:none;border:1px solid var(--line);color:var(--fg);padding:4px 6px;font-size:13px}
+.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}.seg button+button{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+#dpanel .th{margin-top:8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.mut{color:var(--muted)}.err{color:var(--bad);margin:6px 0}
+.jump button#refresh{border-color:var(--line)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px;z-index:30}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar"><div class="row">
+    <h1>PDEC Home</h1><span class="who" id="who">PDEC</span><span class="sample" id="src" hidden>Sample data</span><span class="who" id="asof"></span>
+    <nav class="jump" aria-label="Jump to">
+      <button id="refresh" type="button" title="Reload the numbers" aria-label="Reload the numbers">Refresh</button><a href="#z-work">My work</a><a href="#z-num">Numbers</a><a href="#z-perf">Program performance</a><a href="#z-dev">Program development</a><a href="#z-ref">Reference</a>
+      <span class="disp"><button id="theme" type="button" aria-expanded="false" aria-controls="dpanel">Display</button>
+        <div id="dpanel" hidden>
+          <div class="dl">Theme</div>
+          <div class="seg" id="seg" role="group" aria-label="Theme"><button type="button" data-t="system" aria-pressed="true">System</button><button type="button" data-t="light" aria-pressed="false">Light</button><button type="button" data-t="dark" aria-pressed="false">Dark</button></div>
+          <label class="dl" for="bri">Brightness <b id="bri-v">100%</b></label>
+          <input type="range" id="bri" min="70" max="130" step="5" value="100">
+          <label class="dl" for="con">Contrast <b id="con-v">100%</b></label>
+          <input type="range" id="con" min="80" max="140" step="5" value="100">
+          <button type="button" class="th" id="dreset">Reset</button>
+        </div></span>
+    </nav>
+  </div></div>
+
+  <div class="zone" id="z-work">My work</div>
+
+  <section class="card" id="s-del"><header tabindex="0" role="button"><h2>Deliverables</h2><span class="sub" id="del-sub"></span><span class="chev">▾</span></header>
+    <div class="body">
+      <div class="chips" id="del-chips" role="group" aria-label="Deliverable filter"></div>
+      <div class="tw"><table><thead><tr><th>Due</th><th>Deliverable</th><th>Contract / Funder</th><th>Program</th><th>Status</th></tr></thead><tbody id="del-rows"></tbody></table></div>
+      <div class="qa"><button type="button" disabled>Mark submitted</button><button type="button" disabled>Add deliverable</button><button type="button" disabled>Request proof</button><span class="who" style="align-self:center">Quick actions arrive in the team release.</span></div>
+    </div></section>
+
+  <section class="card" id="s-comp"><header tabindex="0" role="button"><h2>Compliance</h2><span class="sub" id="comp-sub"></span><span class="chev">▾</span></header>
+    <div class="body"><div class="tw"><table><thead><tr><th>Expires / review</th><th>Item</th><th>Category</th><th>Authority</th><th>Status</th></tr></thead><tbody id="comp-rows"></tbody></table></div></div></section>
+
+  <div class="zone" id="z-num">Numbers</div>
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card" id="z-perf" style="margin-top:14px"><header tabindex="0" role="button"><h2>Program performance</h2><span class="sub">Latest period, actual against target</span><span class="chev">▾</span></header>
+    <div class="body"><div class="tw"><table><thead><tr><th>Program</th><th>Metric</th><th>Period</th><th class="n">Target</th><th class="n">Actual</th><th>Progress</th><th>Status</th></tr></thead><tbody id="perf-rows"></tbody></table></div></div></section>
+
+  <section class="card" id="z-dev"><header tabindex="0" role="button"><h2>Program development</h2><span class="sub">Open solicitations and new-program opportunities</span><span class="chev">▾</span></header>
+    <div class="body"><div class="tw"><table><thead><tr><th>Proposal due</th><th>Solicitation</th><th>Stage</th><th>Go / no-go</th></tr></thead><tbody id="dev-rows"></tbody></table></div></div></section>
+
+  <div class="zone" id="z-ref">Reference</div>
+  <section class="card"><header tabindex="0" role="button"><h2>Reference</h2><span class="sub">Contracts, policies, templates</span><span class="chev">▾</span></header>
+    <div class="body"><div class="links" id="refs"></div></div></section>
+</div>
+
+<aside id="peek" hidden aria-label="Records behind this number">
+  <header><h3 id="pk-title"></h3><button class="x" id="pk-x" type="button">Close</button></header>
+  <div class="pb"><div class="view" id="pk-view"></div><div class="tw"><table><tbody id="pk-rows"></tbody></table></div>
+  <p class="who">Select a record to open it in CRM.</p></div>
+</aside>
+<div id="toast" role="status" hidden></div>
+<script id="pdec-page">
+(function(){
+'use strict';
+var PREVIEW=/[?&]preview=1/.test(location.search)||typeof ZOHO==='undefined';
+var $=function(s){return document.querySelector(s)};
+var day=864e5,t0=new Date();t0.setHours(0,0,0,0);
+function ymd(x){return x.getFullYear()+'-'+('0'+(x.getMonth()+1)).slice(-2)+'-'+('0'+x.getDate()).slice(-2)}
+function off(s){if(!s)return null;var p=String(s).slice(0,10).split('-');if(p.length<3)return null;return Math.round((new Date(+p[0],+p[1]-1,+p[2])-t0)/day)}
+function d(n){return new Date(t0.getTime()+n*day)}
+function fmt(x){return x.toLocaleDateString(undefined,{month:'short',day:'numeric'})}
+function rel(n){return n<0?Math.abs(n)+'d overdue':n===0?'Today':'in '+n+'d'}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function pick(v){return v&&v!=='-None-'?v:''}
+function look(l){return l&&l.name?l.name:''}
+
+/* ---------- data layer ---------- */
+var SOL_OPEN=['Identified','Reviewing','Scoring','Decision Pending','Go - In Progress','Submitted','Shortlisted / Orals'];
+var CLOSED_DEL={Submitted:1,Waived:1};
+var MODS={Deliverables:'Deliverables',Compliance:'Compliance_Items',Metrics:'Program_Metrics',Solicitations:'Solicitations'};
+var D={del:[],comp:[],met:[],dev:[]},ERR={},ME=null;
+
+function rowsOf(r){return (r&&(r.data||r.rows))||[]}
+function coql(q){return ZOHO.CRM.API.coql({select_query:q}).then(rowsOf)}
+function coqlSafe(name,full,plain){return coql(full).catch(function(){return plain?coql(plain):Promise.reject()}).catch(function(){ERR[name]=1;return []})}
+
+function sample(){
+  var a=function(n){return ymd(d(n))};
+  return {
+   del:[
+    {id:'d1',Name:'Quarterly participant outcomes report',Due_Date:a(-9),Deliverable_Status:'In Progress',Hard_Deadline:true,Program:'Treatment Court',Funder:'Wisconsin DHS','Contract.Name':'Sheboygan County HHS'},
+    {id:'d2',Name:'Monthly invoice with service log',Due_Date:a(-3),Deliverable_Status:'Not Started',Hard_Deadline:false,Program:'Electronic Monitoring',Funder:'County','Contract.Name':'Waushara County Jail'},
+    {id:'d3',Name:'Annual program narrative',Due_Date:a(2),Deliverable_Status:'In Progress',Hard_Deadline:false,Program:'Electronic Monitoring',Funder:'County','Contract.Name':'Taylor Co Sheriff'},
+    {id:'d4',Name:'Federal progress report SF-PPR',Due_Date:a(6),Deliverable_Status:'Not Started',Hard_Deadline:true,Program:'Re-entry',Funder:'BJA','Contract.Name':'JusticePoint Re-entry Grant'},
+    {id:'d5',Name:'Staff credential roster',Due_Date:a(12),Deliverable_Status:'Not Started',Hard_Deadline:false,Program:'Treatment Court',Funder:'Wisconsin DHS','Contract.Name':'Sheboygan County HHS'},
+    {id:'d6',Name:'Evaluation data submission',Due_Date:a(27),Deliverable_Status:'Not Started',Hard_Deadline:true,Program:'Re-entry',Funder:'BJA','Contract.Name':'JusticePoint Re-entry Grant'}],
+   comp:[
+    {id:'c1',Name:'State vendor registration renewal',Category:'License',Authority:'Wisconsin DOA',Expiry_or_Review_Date:a(-4),Compliance_Status:'Expired'},
+    {id:'c2',Name:'Business associate agreement review',Category:'Policy Review',Authority:'HIPAA',Expiry_or_Review_Date:a(21),Compliance_Status:'Due Soon'},
+    {id:'c3',Name:'Background check policy review',Category:'Policy Review',Authority:'Internal',Expiry_or_Review_Date:a(63),Compliance_Status:'Due Soon'},
+    {id:'c4',Name:'Data security attestation',Category:'Audit',Authority:'CJIS',Expiry_or_Review_Date:a(88),Compliance_Status:'Current'}],
+   met:[
+    {id:'m1',Program:'Treatment Court',Metric:'Participants enrolled',Period_End:a(-14),Target:120,Actual:96,Metric_Status:'At Risk'},
+    {id:'m2',Program:'Electronic Monitoring',Metric:'Active participants',Period_End:a(-14),Target:310,Actual:325,Metric_Status:'On Track'},
+    {id:'m3',Program:'Re-entry',Metric:'Employment placements',Period_End:a(-14),Target:40,Actual:19,Metric_Status:'Behind'}],
+   dev:[
+    {id:'s1',Name:'Charlotte CCPA EM Services',Status:'Reviewing',Bid_Decision:'Pending',Proposal_Due:a(5)},
+    {id:'s2',Name:'Taylor Co Sheriff EM Services',Status:'Submitted',Bid_Decision:'Prime',Proposal_Due:a(-6)},
+    {id:'s3',Name:'Fond du Lac Co HHS EM Services (anticipated)',Status:'Identified',Bid_Decision:null,Proposal_Due:null}]};
+}
+function loadAll(){
+  ERR={};
+  if(PREVIEW){var s=sample();D=s;return Promise.resolve()}
+  var f="Name, Due_Date, Deliverable_Status, Hard_Deadline, Program, Funder, Deliverable_Type, Recurrence, Submitted_Date";
+  return Promise.all([
+    coqlSafe('Deliverables',"select "+f+", Contract.Name, Account.Account_Name from Deliverables where id is not null order by Due_Date asc limit 200","select "+f+" from Deliverables where id is not null limit 200"),
+    coqlSafe('Compliance',"select Name, Category, Program, Authority, Expiry_or_Review_Date, Compliance_Status, Contract.Name from Compliance_Items where id is not null order by Expiry_or_Review_Date asc limit 200","select Name, Category, Program, Authority, Expiry_or_Review_Date, Compliance_Status from Compliance_Items where id is not null limit 200"),
+    coqlSafe('Metrics',"select Name, Program, Metric, Period_Start, Period_End, Target, Actual, Metric_Status, Contract.Name from Program_Metrics where id is not null order by Period_End desc limit 200","select Name, Program, Metric, Period_Start, Period_End, Target, Actual, Metric_Status from Program_Metrics where id is not null limit 200"),
+    coqlSafe('Solicitations',"select Name, Status, Bid_Decision, Proposal_Due from Solicitations where Status in ("+SOL_OPEN.map(function(s){return"'"+s+"'"}).join(',')+") limit 200")
+  ]).then(function(r){D={del:r[0],comp:r[1],met:r[2],dev:r[3]}});
+}
+
+/* ---------- derived rows ---------- */
+function delRows(){return D.del.map(function(r){
+  var n=off(r.Due_Date),st=pick(r.Deliverable_Status)||'Not Started',closed=!!CLOSED_DEL[st];
+  return {id:r.id,mod:'Deliverables',t:r.Name||'(untitled)',n:n,c:look(r.Contract)||r['Contract.Name']||look(r.Account)||r['Account.Account_Name']||'',f:r.Funder||'',p:pick(r.Program),s:st,h:!!r.Hard_Deadline,closed:closed,late:!closed&&n!==null&&n<0};
+}).sort(function(a,b){return (a.n===null)-(b.n===null)||a.n-b.n})}
+function compRows(){return D.comp.map(function(r){
+  var n=off(r.Expiry_or_Review_Date);return {id:r.id,mod:'Compliance_Items',t:r.Name||'(untitled)',c:pick(r.Category),a:r.Authority||'',n:n,s:pick(r.Compliance_Status)||'Current',na:r.Compliance_Status==='Not Applicable'};
+}).filter(function(r){return !r.na&&r.n!==null}).sort(function(a,b){return a.n-b.n})}
+function metRows(){
+  var latest={};
+  D.met.forEach(function(r){var k=(r.Program||'')+'|'+(r.Metric||'');var e=latest[k];if(!e||String(r.Period_End||'')>String(e.Period_End||''))latest[k]=r});
+  return Object.keys(latest).map(function(k){var r=latest[k];
+    return {id:r.id,mod:'Program_Metrics',p:pick(r.Program)||'No program',m:r.Metric||r.Name||'',per:r.Period_End?fmt(d(off(r.Period_End))):'',t:r.Target,a:r.Actual,s:pick(r.Metric_Status)||'On Track'};
+  }).sort(function(a,b){return String(a.p).localeCompare(b.p)||String(a.m).localeCompare(b.m)})}
+function devRows(){return D.dev.map(function(r){
+  return {id:r.id,mod:'Solicitations',t:r.Name||'(untitled)',n:off(r.Proposal_Due),st:r.Status||'',g:r.Bid_Decision||''};
+}).sort(function(a,b){return (a.n===null)-(b.n===null)||a.n-b.n})}
+
+function pill(c,t){return '<span class="pill p-'+c+'">'+esc(t)+'</span>'}
+function stCls(s){return /overdue|expired|behind/i.test(s)?'bad':/risk|due soon|review|progress/i.test(s)?'warn':/current|track|submitted|waived/i.test(s)?'ok':'n'}
+function note(name,msg){return ERR[name]?'<p class="err">'+msg+'</p>':''}
+
+/* ---------- render ---------- */
+var filt='all',TILES=[],DEL=[];
+function chips(){
+  var c=[['all','All'],['overdue','Overdue'],['30','Next 30 days'],['hard','Hard deadlines']];
+  $('#del-chips').innerHTML=c.map(function(x){return '<button type="button" class="chip" data-f="'+x[0]+'" aria-pressed="'+(filt===x[0])+'">'+x[1]+'</button>'}).join('');
+}
+function paintDel(){
+  var open=DEL.filter(function(r){return !r.closed});
+  var rows=DEL.filter(function(r){
+    if(filt==='overdue')return r.late;
+    if(filt==='30')return !r.closed&&r.n!==null&&r.n>=0&&r.n<=30;
+    if(filt==='hard')return r.h&&!r.closed;
+    return !r.closed;});
+  var over=open.filter(function(r){return r.late}).length,due30=open.filter(function(r){return r.n!==null&&r.n>=0&&r.n<=30}).length;
+  $('#del-sub').textContent=ERR.Deliverables?'':over+' overdue · '+due30+' due in the next 30 days';
+  var empty=D.del.length?'No deliverables match this filter.':'No deliverables yet. Add the first one from the Deliverables tab.';
+  $('#del-rows').innerHTML=ERR.Deliverables?'<tr><td colspan="5" class="empty">Deliverables are not shared with your profile yet. Ask an administrator to share the module.</td></tr>':rows.length?rows.map(function(r,i){
+    var nn=r.n===null;
+    return '<tr class="go" tabindex="0" data-k="del" data-i="'+DEL.indexOf(r)+'"><td class="n">'+(nn?'No date':fmt(d(r.n))+'<br><small class="mut">'+rel(r.n)+'</small>')+'</td><td>'+esc(r.t)+(r.h?'<span class="hard">HARD</span>':'')+'</td><td>'+esc(r.c||'—')+(r.f?'<br><small class="mut">'+esc(r.f)+'</small>':'')+'</td><td>'+esc(r.p||'—')+'</td><td>'+pill(r.late?'bad':stCls(r.s),r.late?'Overdue':r.s)+'</td></tr>'}).join(''):'<tr><td colspan="5" class="empty">'+empty+'</td></tr>';
+}
+var COMP=[],MET=[],DEV=[];
+function paint(){
+  DEL=delRows();COMP=compRows();MET=metRows();DEV=devRows();
+  var open=DEL.filter(function(r){return !r.closed});
+  var overdue=open.filter(function(r){return r.late}),due30=open.filter(function(r){return r.n!==null&&r.n>=0&&r.n<=30});
+  var comp90=COMP.filter(function(r){return r.n<=90});
+  var by=function(s){return MET.filter(function(r){return r.s===s})};
+  var behind=by('Behind'),risk=by('At Risk'),ok=by('On Track');
+  var sols=DEV.filter(function(r){return r.st!=='Submitted'});
+  var pend=DEV.filter(function(r){return r.st!=='Submitted'&&(!r.g||r.g==='Pending')});
+  var dl=function(r){return [r.t,r.c||r.f||'',r.n===null?'No date':rel(r.n),r]};
+  TILES=[
+   ['Overdue deliverables',overdue.length,'bad','Deliverables','Due_Date before today, not submitted',overdue.map(dl),'Deliverables'],
+   ['Due in 30 days',due30.length,'warn','Deliverables','Due_Date within 30 days, not submitted',due30.map(dl),'Deliverables'],
+   ['Compliance within 90 days',comp90.length,'warn','Compliance Items','Expiry_or_Review_Date within 90 days',comp90.map(function(r){return [r.t,r.a||r.c,rel(r.n),r]}),'Compliance'],
+   ['Metrics behind',behind.length,'bad','Program Metrics','Metric_Status = Behind, latest period',behind.map(function(r){return [r.m,r.p,r.a+' of '+r.t,r]}),'Metrics'],
+   ['Metrics at risk',risk.length,'warn','Program Metrics','Metric_Status = At Risk, latest period',risk.map(function(r){return [r.m,r.p,r.a+' of '+r.t,r]}),'Metrics'],
+   ['Metrics on track',ok.length,'ok','Program Metrics','Metric_Status = On Track, latest period',ok.map(function(r){return [r.m,r.p,r.a+' of '+r.t,r]}),'Metrics'],
+   ['Open solicitations',sols.length,'','Solicitations','Status in open stages',sols.map(function(r){return [r.t,r.st,r.g||'Not decided',r]}),'Solicitations'],
+   ['Go / no-go pending',pend.length,'warn','Solicitations','Bid_Decision pending or empty',pend.map(function(r){return [r.t,r.st,r.g||'Not decided',r]}),'Solicitations']];
+  $('#tiles').innerHTML=TILES.map(function(t,i){
+    var bad=ERR[t[6]];
+    return '<button type="button" class="tile '+(bad?'':t[2])+'" data-i="'+i+'"><span class="v">'+(bad?'—':t[1])+'</span><span class="l">'+t[0]+'</span></button>'}).join('');
+  chips();paintDel();
+
+  var cr=comp90.slice();
+  $('#comp-sub').textContent=ERR.Compliance?'':cr.length+' expiring or due for review within 90 days';
+  $('#comp-rows').innerHTML=ERR.Compliance?'<tr><td colspan="5" class="empty">Compliance Items are not shared with your profile yet.</td></tr>':cr.length?cr.map(function(r,i){
+    return '<tr class="go" tabindex="0" data-k="comp" data-i="'+COMP.indexOf(r)+'"><td class="n">'+fmt(d(r.n))+'<br><small class="mut">'+rel(r.n)+'</small></td><td>'+esc(r.t)+'</td><td>'+esc(r.c||'—')+'</td><td>'+esc(r.a||'—')+'</td><td>'+pill(r.n<0?'bad':stCls(r.s),r.n<0?'Expired':r.s)+'</td></tr>'}).join(''):'<tr><td colspan="5" class="empty">'+(D.comp.length?'Nothing expires or comes up for review in the next 90 days.':'No compliance items yet. Add the first one from the Compliance Items tab.')+'</td></tr>';
+
+  $('#perf-rows').innerHTML=ERR.Metrics?'<tr><td colspan="7" class="empty">Program Metrics are not shared with your profile yet.</td></tr>':MET.length?MET.map(function(r,i){
+    var has=typeof r.t==='number'&&r.t>0&&typeof r.a==='number',pct=has?Math.min(100,Math.round(r.a/r.t*100)):0,c=stCls(r.s);
+    return '<tr class="go" tabindex="0" data-k="met" data-i="'+i+'"><td>'+esc(r.p)+'</td><td>'+esc(r.m)+'</td><td>'+esc(r.per||'—')+'</td><td class="n">'+(r.t==null?'—':r.t)+'</td><td class="n">'+(r.a==null?'—':r.a)+'</td><td>'+(has?'<div class="meter '+c+'" role="img" aria-label="'+pct+' percent of target"><i style="width:'+pct+'%"></i></div>':'')+'</td><td>'+pill(c,r.s)+'</td></tr>'}).join(''):'<tr><td colspan="7" class="empty">No program metrics yet. Add the first one from the Program Metrics tab.</td></tr>';
+
+  $('#dev-rows').innerHTML=ERR.Solicitations?'<tr><td colspan="4" class="empty">Solicitations are not shared with your profile yet.</td></tr>':DEV.length?DEV.map(function(r,i){
+    return '<tr class="go" tabindex="0" data-k="dev" data-i="'+i+'"><td class="n">'+(r.n===null?'Not set':fmt(d(r.n))+'<br><small class="mut">'+rel(r.n)+'</small>')+'</td><td>'+esc(r.t)+'</td><td>'+pill('n',r.st)+'</td><td>'+pill(!r.g||r.g==='Pending'?'warn':'ok',r.g||'Not decided')+'</td></tr>'}).join(''):'<tr><td colspan="4" class="empty">No open solicitations right now.</td></tr>';
+}
+
+/* ---------- reference links (the module tabs) ---------- */
+var REFS=[['Deliverables','Every deliverable, all programs','Deliverables'],['Compliance Items','Registrations, policies, audits','Compliance_Items'],['Program Metrics','Targets and actuals by period','Program_Metrics'],['Solicitations','Bids and go/no-go','Solicitations'],['Contracts','Contract records and summaries','Contracts']];
+function tabUrl(m){return '/crm/org882980956/tab/'+m}
+$('#refs').innerHTML=REFS.map(function(r){return '<a href="'+tabUrl(r[2])+'" target="_top"><strong>'+r[0]+'</strong><small>'+r[1]+'</small></a>'}).join('');
+
+/* ---------- peek panel ---------- */
+function openRec(mod,id){
+  if(PREVIEW)return toast('Preview: would open the '+mod.replace(/_/g,' ')+' record.');
+  try{ZOHO.CRM.UI.Record.open({Entity:mod,RecordID:id})}catch(e){try{window.top.location.href='/crm/org882980956/tab/'+mod+'/'+id}catch(_){}}
+}
+function peek(title,view,rows,facts){
+  $('#pk-title').textContent=title;$('#pk-view').textContent=view;
+  var h='';
+  if(facts)h+=facts.map(function(f){return '<tr><td>'+esc(f[0])+'</td><td>'+esc(f[1])+'</td><td></td></tr>'}).join('');
+  if(rows)h+=rows.length?rows.map(function(r,i){return '<tr class="go" tabindex="0" data-rec="'+i+'"><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td><td class="n">'+esc(r[2])+'</td></tr>'}).join(''):'<tr><td class="empty">Nothing here.</td></tr>';
+  $('#pk-rows').innerHTML=h;PK_ROWS=rows||[];
+  $('#peek').hidden=false;$('#pk-x').focus();
+}
+var PK_ROWS=[],PK_REC=null;
+$('#tiles').addEventListener('click',function(e){var b=e.target.closest('.tile');if(!b)return;var t=TILES[b.dataset.i];PK_REC=null;peek(t[0],t[3]+' · '+t[4],t[5])});
+$('#pk-rows').addEventListener('click',function(e){var tr=e.target.closest('tr[data-rec]');if(!tr)return;var r=PK_ROWS[tr.dataset.rec];if(r&&r[3])openRec(r[3].mod,r[3].id)});
+function recPeek(list,i){
+  var r=list[i];if(!r)return;
+  var f=[];
+  if(r.mod==='Deliverables')f=[['Contract',r.c||'—'],['Funder',r.f||'—'],['Program',r.p||'—'],['Due',r.n===null?'No date':fmt(d(r.n))+' ('+rel(r.n)+')'],['Hard deadline',r.h?'Yes':'No'],['Status',r.s]];
+  else if(r.mod==='Compliance_Items')f=[['Category',r.c||'—'],['Authority',r.a||'—'],['Date',fmt(d(r.n))+' ('+rel(r.n)+')'],['Status',r.s]];
+  else if(r.mod==='Program_Metrics')f=[['Program',r.p],['Period ending',r.per||'—'],['Target',r.t==null?'—':r.t],['Actual',r.a==null?'—':r.a],['Status',r.s]];
+  else f=[['Stage',r.st],['Proposal due',r.n===null?'Not set':fmt(d(r.n))],['Go / no-go',r.g||'Not decided']];
+  PK_REC=r;peek(r.t||r.m||'Record',r.mod.replace(/_/g,' '),null,f.concat([['','']]));
+  var openRow=document.createElement('tr');openRow.innerHTML='<td colspan="3"><button type="button" class="th" id="pk-open">Open record in CRM</button></td>';$('#pk-rows').lastChild.replaceWith(openRow);
+  $('#pk-open').addEventListener('click',function(){openRec(r.mod,r.id)});
+}
+var LISTS={del:function(){return DEL},comp:function(){return COMP},met:function(){return MET},dev:function(){return DEV}};
+['#del-rows','#comp-rows','#perf-rows','#dev-rows'].forEach(function(s){
+  var h=function(e){var tr=e.target.closest('tr.go');if(!tr)return;recPeek(LISTS[tr.dataset.k](),+tr.dataset.i)};
+  $(s).addEventListener('click',h);
+  $(s).addEventListener('keydown',function(e){if(e.key==='Enter'){h(e)}});
+});
+$('#pk-x').addEventListener('click',function(){$('#peek').hidden=true});
+$('#del-chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;filt=b.dataset.f;chips();paintDel()});
+
+function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(function(){t.hidden=true},2600)}
+
+/* ---------- collapse ---------- */
+function toggle(h){h.parentNode.classList.toggle('closed');h.setAttribute('aria-expanded',String(!h.parentNode.classList.contains('closed')));try{var o=[].map.call(document.querySelectorAll('section.card.closed'),function(s){return s.id}).filter(Boolean);localStorage.setItem('pdec-closed',o.join())}catch(_){}}
+[].forEach.call(document.querySelectorAll('section.card>header'),function(h){h.setAttribute('aria-expanded','true');h.addEventListener('click',function(){toggle(h)});h.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(h)}})});
+try{(localStorage.getItem('pdec-closed')||'').split(',').forEach(function(id){var s=id&&document.getElementById(id);if(s){s.classList.add('closed');s.firstElementChild.setAttribute('aria-expanded','false')}})}catch(_){}
+
+/* ---------- display settings ---------- */
+var DS={t:'system',b:100,c:100};
+try{var sv=JSON.parse(localStorage.getItem('pdec-display')||'null');if(sv){DS.t=sv.t||'system';DS.b=+sv.b||100;DS.c=+sv.c||100}}catch(_){}
+function applyDS(save){
+  var r=document.documentElement;
+  if(DS.t==='system')r.removeAttribute('data-theme');else r.dataset.theme=DS.t;
+  r.style.filter=(DS.b===100&&DS.c===100)?'':'brightness('+DS.b+'%) contrast('+DS.c+'%)';
+  [].forEach.call(document.querySelectorAll('#seg button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.t===DS.t))});
+  $('#bri').value=DS.b;$('#con').value=DS.c;$('#bri-v').textContent=DS.b+'%';$('#con-v').textContent=DS.c+'%';
+  if(save)try{localStorage.setItem('pdec-display',JSON.stringify(DS))}catch(_){}
+}
+$('#seg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;DS.t=b.dataset.t;applyDS(true)});
+$('#bri').addEventListener('input',function(){DS.b=+this.value;applyDS(true)});
+$('#con').addEventListener('input',function(){DS.c=+this.value;applyDS(true)});
+$('#dreset').addEventListener('click',function(){DS={t:'system',b:100,c:100};applyDS(true)});
+$('#theme').addEventListener('click',function(e){e.stopPropagation();var p=$('#dpanel');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))});
+document.addEventListener('click',function(e){var p=$('#dpanel');if(!p.hidden&&!e.target.closest('.disp')){p.hidden=true;$('#theme').setAttribute('aria-expanded','false')}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){$('#dpanel').hidden=true;$('#peek').hidden=true;$('#theme').setAttribute('aria-expanded','false')}});
+applyDS(false);
+
+/* ---------- boot ---------- */
+function stamp(){$('#asof').textContent=(PREVIEW?'Sample data · ':'')+'Updated '+new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}
+function refresh(){$('#asof').textContent='Loading…';return loadAll().then(function(){paint();stamp()}).catch(function(){paint();stamp()})}
+$('#refresh').addEventListener('click',refresh);
+function start(){
+  if(PREVIEW){$('#src').hidden=false}
+  var go=function(){refresh()};
+  if(!PREVIEW)ZOHO.CRM.CONFIG.getCurrentUser().then(function(r){var u=r&&r.users&&r.users[0];if(u){ME=u;$('#who').textContent=(u.full_name||'')+(u.role&&u.role.name?' · '+u.role.name:'')}}).catch(function(){});
+  go();
+}
+if(PREVIEW)start();
+else{var booted=false;ZOHO.embeddedApp.on('PageLoad',function(){if(!booted){booted=true;start()}});ZOHO.embeddedApp.init();setTimeout(function(){if(!booted){booted=true;start()}},2500)}
+window.__pdec={D:function(){return D},paint:paint,delRows:delRows,compRows:compRows,metRows:metRows,devRows:devRows,off:off};
+})();
+
+</script>
+</body>
+</html>
