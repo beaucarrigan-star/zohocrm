@@ -1,0 +1,14 @@
+/* Stock Alerts extras. Everything else comes from jpk.css. */
+.selbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.selbar[hidden]{display:none}
+.selbar .btn:last-child{margin-left:auto}
+td.chk,th.chk{width:34px}
+.fld{display:block;width:100%;box-sizing:border-box;margin:4px 0 12px;font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:5px;background:var(--surface)}
+textarea.fld{min-height:220px;line-height:1.45;resize:vertical}
+.fld.err{border-color:var(--bad,#b3261e)}
+.errtxt{color:var(--bad,#b3261e);font-size:13px;margin:-8px 0 10px}
+.dact{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.sendnote{background:var(--surface2);border-radius:5px;padding:10px 12px;font-size:13px;margin:8px 0}
+.res li{display:flex;gap:8px;align-items:baseline;margin:4px 0}
+.prog{font-weight:600;margin:8px 0}
+.rawhtml{font-family:ui-monospace,Menlo,monospace;font-size:12px}
