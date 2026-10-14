@@ -1,0 +1,13 @@
+/* order.css: only what jpk.css and ship.css do not give. */
+.item-row{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:8px;margin-bottom:8px;align-items:center}
+.item-row input[type=number]{width:100%}
+.item-row .other{grid-column:2/3}
+#plan{margin-top:14px}
+#plan .row{margin-top:6px}
+#plan a.btn{text-decoration:none;display:inline-block}
+#o-vendor{width:100%;margin:2px 0 6px}
+.hist-item{max-width:30ch;overflow-wrap:anywhere}
+@media (max-width:600px){.item-row{grid-template-columns:72px minmax(0,1fr)}.item-row .rm{grid-column:1/-1}}
+#form label{display:block;margin-top:10px}#o-type{display:block;width:100%}#ship-wrap textarea{margin-top:4px}
+.recv{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}.recv h3{margin:0 0 6px;font-size:14px}
+.stock{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}.stock p{margin:4px 0}
