@@ -1224,13 +1224,14 @@
     else if (ev.key === 'Escape') { closeAcct(); $('acct-q').focus(); }
   }
   function showTab(tab) {
-    if (!state.internal && (tab === 'compare' || tab === 'catalog')) tab = 'scenario';
+    if (!state.internal && (tab === 'compare' || tab === 'catalog' || tab === 'flow')) tab = 'scenario';
     state.tab = tab;
     Array.prototype.forEach.call(document.querySelectorAll('.tabs [data-tab]'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
-    ['scenario', 'compare', 'catalog', 'proposal'].forEach(function (k) { $('tab-' + k).hidden = k !== tab; });
-    $('scen-strip').hidden = tab === 'catalog';   /* the catalog is shared setup, not part of this scenario */
+    ['scenario', 'compare', 'catalog', 'flow', 'proposal'].forEach(function (k) { $('tab-' + k).hidden = k !== tab; });
+    $('scen-strip').hidden = tab === 'catalog' || tab === 'flow';   /* the catalog is shared setup, not part of this scenario */
     if (tab === 'compare') renderCompare();
     if (tab === 'catalog') renderCatalog();
+    if (tab === 'flow' && window.PricingFlowView) window.PricingFlowView.show();
     if (tab === 'proposal') { renderPropControls(); renderDoc(); }
     store.set('em-pricing-tab', tab);
     resize();
@@ -1291,7 +1292,7 @@
     state.internal = !!on; store.set('em-pricing-internal', on ? '1' : '0');
     document.body.classList.toggle('hide-internal', !on);
     var b = $('btn-internal'); if (b) { b.setAttribute('aria-checked', String(!on)); b.title = on ? 'Switch to customer view: hides vendors, costs and margins (for screen-sharing)' : 'Customer view is on: vendors, costs and margins are hidden'; }
-    if (!on && (state.tab === 'compare' || state.tab === 'catalog')) showTab('scenario');
+    if (!on && (state.tab === 'compare' || state.tab === 'catalog' || state.tab === 'flow')) showTab('scenario');
     if (state.scenario) { renderBuilder(); renderResults(); }
   }
   /* ---------- display menu: theme and brightness (same pattern as the EM and Network home pages, per browser) ---------- */

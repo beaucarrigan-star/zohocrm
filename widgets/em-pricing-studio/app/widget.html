@@ -419,6 +419,7 @@
   body.hide-internal .split { grid-template-columns: minmax(0, 1fr); }
   body.hide-internal .mast::after { background: #FFC59E; }
 </style>
+<link rel="stylesheet" href="pricing-flow.css">
 </head>
 <body>
 <header class="mast">
@@ -454,6 +455,7 @@
   <span class="arrow" aria-hidden="true">›</span>
   <button role="tab" data-tab="proposal" aria-selected="false"><span class="tn int">3</span><span class="tn ext">2</span>Proposal</button>
   <span class="spacer"></span>
+  <button role="tab" class="int" data-tab="flow" aria-selected="false" title="Follow pricing from inputs to the decision (read only)"><span class="tn">F</span>Pricing flow</button>
   <button role="tab" class="int setup-tab" data-tab="catalog" aria-selected="false" title="What each device costs JusticePoint (shared by every scenario)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6.5h12M6 6.5V13"/></svg>Cost catalog</button>
 </nav>
 <div class="scen-strip" id="scen-strip"><h1 id="scen-title">Loading…</h1><div class="sub" id="scen-sub"></div></div>
@@ -484,6 +486,7 @@
       </div>
     </div>
   </section>
+  <section id="tab-flow" role="tabpanel" hidden><div id="flow-root"></div></section>
   <section id="tab-proposal" role="tabpanel" hidden>
     <div class="prop">
       <div class="card controls" id="prop-controls"></div>
@@ -497,7 +500,9 @@
 <div class="toast" id="toast" hidden role="status"></div>
 <script src="engine.js"></script>
 <script src="crm-api.js"></script>
+<script src="pricing-flow-model.js"></script>
 <script src="studio.js"></script>
+<script src="pricing-flow.js"></script>
 <script src="contract-check.js"></script>
 </body>
 </html>
