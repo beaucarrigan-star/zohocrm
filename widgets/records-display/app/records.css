@@ -137,3 +137,13 @@ select.search{padding:6px 8px}
 }
 .topact .btn{padding:5px 11px;font-size:13px}
 .tabmore .cnt{margin-left:6px;background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line);border-radius:999px;padding:0 7px;font-size:11px}
+
+/* account picker in Quick edit (Contacts) */
+.acct{grid-column:1/-1;min-width:0}.acct .acl{display:block;color:var(--muted);font-size:12px;margin-bottom:4px}
+.acct .acv{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.acct .acv b{font-weight:600;overflow-wrap:anywhere}
+.acct .search{width:100%;margin-top:8px}
+.acres{list-style:none;margin:6px 0 0;padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.acres li{padding:6px 8px}.acres li.mut{color:var(--muted);font-size:13px}
+.acres button{all:unset;display:block;width:100%;padding:6px 8px;border-radius:6px;cursor:pointer;box-sizing:border-box}
+.acres button:hover,.acres button:focus-visible{background:var(--teal-soft);outline:none}
+.acres button:focus-visible{box-shadow:inset 0 0 0 2px var(--teal)}

@@ -336,12 +336,38 @@
         qel.innerHTML = '<h3>Quick edit' + (Date.now() - lastSaved < 60000 ? '<span class="saved">✓ Saved</span>' : '') + '</h3><div class="edit">' + C.quick.map(function (f) {
           var cur = R.plain(r[f.t === 'user' ? 'Owner.first_name' : f.k]); cur = cur == null || cur === '-None-' ? '' : String(cur);
           if (f.t === 'user') { var us = (qopts.__users || []).slice(); if (cur && !us.some(function (u) { return u.name === cur; })) us.unshift({ id: '', name: cur }); return '<label>' + esc(f.label) + '<select data-q="' + f.k + '">' + us.map(function (u) { return '<option value="' + esc(u.id) + '"' + (u.name === cur ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('') + '</select></label>'; }
+          if (f.t === 'account') {
+            var ac = r.Account_Name, acn = R.plain(ac) || '';
+            return '<div class="acct"><span class="acl">' + esc(f.label) + '</span><div class="acv"><b>' + (acn ? esc(acn) : '<span class="mut">Not set</span>') + '</b> <button type="button" class="btn sm" data-acc="change" aria-expanded="' + !!qopts.__accOpen + '">' + (qopts.__accOpen ? 'Cancel' : 'Change') + '</button>' + (acn && !qopts.__accOpen ? ' <button type="button" class="btn sm" data-acc="clear">Clear</button>' : '') + '</div>'
+              + (qopts.__accOpen ? '<input type="search" class="search" data-acs placeholder="Type part of an account name" aria-label="Search accounts" autocomplete="off"><ul class="acres" role="listbox" aria-label="Matching accounts"><li class="mut">Type at least 2 letters</li></ul>' : '') + '</div>';
+          }
           var lock = f.admin && !qopts.__admin, lab = esc(f.label) + (f.admin ? ' <span class="mut">(admin only)</span>' : '');
           if (f.t === 'pick') { var xs = (qopts[f.k] || []).slice(); if (cur && xs.indexOf(cur) < 0) xs.unshift(cur); return '<label>' + lab + '<select data-q="' + f.k + '"' + (lock ? ' disabled title="Only an administrator can change this"' : '') + '><option value="">Not set</option>' + xs.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>'; }
           return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:10px 0 0;font-size:12px">Changes save to Zoho as you make them. Undo appears after each save.</p>';
       };
       paintQ();
       if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
+      var accT = 0;
+      function accSearch(q) {
+        var ul = qel.querySelector('.acres'); if (!ul) return;
+        if (q.length < 2) { ul.innerHTML = '<li class="mut">Type at least 2 letters</li>'; return; }
+        var tok = ++accT, show = function (rows) {
+          if (tok !== accT || !qel.querySelector('.acres')) return;
+          ul = qel.querySelector('.acres');
+          ul.innerHTML = rows.length ? rows.map(function (a) { return '<li><button type="button" data-accid="' + esc(a.id) + '" data-accname="' + esc(R.plain(a.Account_Name)) + '">' + esc(R.plain(a.Account_Name)) + '</button></li>'; }).join('') : '<li class="mut">No account matches</li>';
+        };
+        if (!live) { var dr = ((window.RECORDS_DEMO || {}).accounts || {}).rows || []; show(dr.filter(function (a) { return String(R.plain(a.Account_Name) || '').toLowerCase().indexOf(q.toLowerCase()) >= 0; }).slice(0, 10)); return; }
+        ul.innerHTML = '<li class="mut">Searching</li>';
+        coql("select id, Account_Name from Accounts where Account_Name like '%" + R.qstr(q) + "%' order by Account_Name asc limit 10").then(function (x) { show(x.rows); }, function (er) { if (tok === accT && qel.querySelector('.acres')) qel.querySelector('.acres').innerHTML = '<li class="err">Search failed: ' + esc(er && er.message || er) + '</li>'; });
+      }
+      var accTimer;
+      qel.oninput = function (e) { if (e.target.hasAttribute('data-acs')) { clearTimeout(accTimer); var v = e.target.value.trim(); accTimer = setTimeout(function () { accSearch(v); }, 250); } };
+      qel.onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.getAttribute('data-acc') === 'change') { qopts.__accOpen = !qopts.__accOpen; paintQ(); var inp = qel.querySelector('[data-acs]'); if (inp) inp.focus(); return; }
+        if (b.getAttribute('data-acc') === 'clear') { qopts.__accOpen = false; editRaw(cfg.entity, r, { Account_Name: [null, null] }, 'account cleared', again); return; }
+        if (b.hasAttribute('data-accid')) { var aid = b.getAttribute('data-accid'), an = b.getAttribute('data-accname'); qopts.__accOpen = false; editRaw(cfg.entity, r, { Account_Name: [{ id: aid }, { id: aid, name: an }] }, 'account set to ' + an, again); }
+      };
       qel.onchange = function (e) {
         var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
         if (f.admin && !qopts.__admin) { toast('Only an administrator can change ' + f.label.toLowerCase()); paintQ(); return; }
