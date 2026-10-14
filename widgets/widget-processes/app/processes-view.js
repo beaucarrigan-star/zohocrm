@@ -36,7 +36,7 @@
     B.busy = true; B.err = ''; B.ferr = '';
     if (!X.isLive()) { var d = window.PROC_DEMO; B.periods = d.periods; B.findings = d.findings; B.fields = {}; B.loaded = true; B.busy = false; return Promise.resolve(); }
     var p = firstOk([
-      { q: 'select ' + PSEL + ', Last_Run_Status, Last_Run_At, Reconciled_On, Accounting_Report_At from Billing_Periods where id is not null', fields: {} },
+      { q: 'select ' + PSEL + ', Last_Run_Status, Last_Run_At, Last_Run_Message, Reconciled_On, Accounting_Report_At from Billing_Periods where id is not null', fields: {} },
       { q: 'select ' + PSEL + ', Last_Run_At from Billing_Periods where id is not null', fields: { report: false } },
       { q: 'select ' + PSEL + ' from Billing_Periods where id is not null', fields: { report: false, runAt: false } }
     ], 'id asc').then(function (r) { B.periods = r.rows; B.fields = r.fields; }, function (e) { B.err = e.message || 'Could not read Billing Periods'; });
@@ -101,6 +101,7 @@
   function findingsDraw(root) {
     var all = FM.normalizeAll(B.findings), pers = {};
     all.forEach(function (r) { if (r.period) pers[r.period] = 1; });
+    B.periods.forEach(function (p) { var k = String(p.Period || '').trim(); if (k) pers[k] = pers[k] || 0; });
     var plist = Object.keys(pers).sort().reverse();
     if (!GS.period || !pers[GS.period]) GS.period = plist[0] || null;
     var rows = all.filter(function (r) { return r.period === GS.period; }), t = FM.totals(rows), mx = FM.matrix(rows);
@@ -109,8 +110,10 @@
     if (!B.loaded) h += '<div class="empty">Loading billing…</div>';
     else if (!plist.length) h += '<div class="empty"><b>No findings read</b></div>';
     else {
-      h += '<div class="bar"><label class="mut">Month <select id="per" class="search" style="max-width:200px">' + plist.map(function (p) { return '<option value="' + p + '"' + (p === GS.period ? ' selected' : '') + '>' + esc(BF.monthLabel(p)) + '</option>'; }).join('') + '</select></label>' +
+      var per0 = B.periods.filter(function (p) { return String(p.Period || '').trim() === GS.period; })[0];
+      h += '<div class="bar"><label class="mut">Month <select id="per" class="search" style="max-width:200px">' + plist.map(function (p) { return '<option value="' + p + '"' + (p === GS.period ? ' selected' : '') + '>' + esc(BF.monthLabel(p)) + (pers[p] ? '' : ' (no findings)') + '</option>'; }).join('') + '</select></label>' +
         '<button type="button" class="pillbtn" id="oo" aria-pressed="' + GS.openOnly + '">Open only</button>' + (GS.vendor || GS.category ? '<button type="button" class="pillbtn" id="clr" aria-pressed="false">Clear: ' + esc(GS.vendor || 'any vendor') + ' / ' + esc(GS.category || 'any type') + '</button>' : '') + '</div>';
+      if (!rows.length) h += '<div class="err">No findings are saved for ' + esc(BF.monthLabel(GS.period)) + '.' + (per0 && per0.Last_Run_Message ? ' Last run said: ' + esc(per0.Last_Run_Message) : '') + (per0 && !per0.Upload_Vendor ? ' Upload Vendor is blank on this month.' : '') + '</div>';
       h += '<div class="kpis"><div class="kpi"><div class="l">Findings</div><div class="v">' + t.total + '</div></div><div class="kpi warn"><div class="l">Open</div><div class="v">' + t.open + '</div></div><div class="kpi"><div class="l">At stake</div><div class="v">' + esc(money(t.dollars)) + '</div></div><div class="kpi bad"><div class="l">Overbilled</div><div class="v">' + esc(money(t.overbilledDollars)) + '</div></div></div>';
       h += '<div class="tw"><table><thead><tr><th>Vendor</th>' + mx.categories.map(function (c) { return '<th class="r">' + esc(c) + '</th>'; }).join('') + '<th class="r">Total</th></tr></thead><tbody>' +
         mx.vendors.map(function (v) { return '<tr><td class="main"><a href="#" data-v="' + esc(v.vendor) + '" data-c="" style="color:inherit">' + esc(v.vendor) + '</a></td>' + mx.categories.map(function (c) { var x = v.cells[c]; return '<td class="r">' + (x ? '<a href="#" data-v="' + esc(v.vendor) + '" data-c="' + esc(c) + '" style="color:var(--acc)">' + x.open + '/' + x.total + '</a>' : '') + '</td>'; }).join('') + '<td class="r">' + v.open + '/' + v.total + '</td></tr>'; }).join('') + '</tbody></table></div><p class="mut" style="padding:6px 24px 0;font-size:12px">Cells show open / total. Click one to filter.</p>';
