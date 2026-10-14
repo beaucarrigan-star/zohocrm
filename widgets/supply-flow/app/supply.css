@@ -48,3 +48,9 @@
 .hist-flag{display:inline-block;margin-left:6px}
 .seg+.seg{margin-left:4px}
 .actions{flex-wrap:wrap}
+
+/* jpk theme v2: the widget rules above set 6px/5px radii after the theme layer loads; restore the theme radii. Visual only. */
+.stage,.chain>li{border-radius:var(--r)}
+.lane,.lead input{border-radius:var(--r-sm)}
+/* The "Supply flow additions" .flow rule above re-sets five columns after the 1180px media query, so phones got five 49px columns. Restore the single column. */
+@media (max-width:1180px){.flow{grid-template-columns:minmax(0,1fr)}}

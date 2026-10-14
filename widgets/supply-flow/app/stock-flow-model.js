@@ -1,4 +1,4 @@
-/* Stock and accessories flow: pure logic (no DOM, no Zoho). Works in browser (window.StockFlowModel) and node (require).
+/* Stock and accessories flow: pure logic (no DOM, no Zoho). Works in the browser (window.StockFlowModel) and node (require).
    Proactive side: the system raises a signal (stock alert, accessory recommendation), a person decides, and the result should be
    an order, a return request, or a follow-up. This follows each signal to what happened, and lists the ones where nothing did.
    Field names: EM_Stock_Alerts and Accessory_Order_Recommendations per ux/stock-alerts and ux/accessory-shipments (read live 11-12 Oct 2026),
