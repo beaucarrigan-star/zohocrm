@@ -1,0 +1,66 @@
+{
+  "locale": [
+    "en"
+  ],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": [
+      "live.zwidgets.com"
+    ],
+    "style-src": [],
+    "font-src": []
+  },
+  "modules": {
+    "widgets": [
+      {
+        "name": "Accounts (dark)",
+        "location": "crm.webtab",
+        "url": "/app/accounts.html"
+      },
+      {
+        "name": "Cases (dark)",
+        "location": "crm.webtab",
+        "url": "/app/cases.html"
+      },
+      {
+        "name": "Opportunities (dark)",
+        "location": "crm.webtab",
+        "url": "/app/deals.html"
+      },
+      {
+        "name": "Contacts (dark)",
+        "location": "crm.webtab",
+        "url": "/app/contacts.html"
+      },
+      {
+        "name": "Contracts (dark)",
+        "location": "crm.webtab",
+        "url": "/app/contracts.html"
+      },
+      {
+        "name": "Customer Onboarding (dark)",
+        "location": "crm.webtab",
+        "url": "/app/onboarding.html"
+      },
+      {
+        "name": "Solicitations (dark)",
+        "location": "crm.webtab",
+        "url": "/app/solicitations.html"
+      },
+      {
+        "name": "Vendors (dark)",
+        "location": "crm.webtab",
+        "url": "/app/vendors.html"
+      },
+      {
+        "name": "Billing Periods (dark)",
+        "location": "crm.webtab",
+        "url": "/app/billing.html"
+      }
+    ]
+  }
+}
