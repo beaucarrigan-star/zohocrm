@@ -203,6 +203,70 @@
     cols: [{ k: 'Name', label: 'Solicitation', main: 1 }, { k: 'Issuing_Agency', label: 'Agency' }, { k: 'Status', label: 'Status', pill: 1 }, { k: 'Proposal_Due', label: 'Due', t: 'date' }, { k: 'Days_To_Deadline', label: 'Days', t: 'num', r: 1 }, { k: 'Bid_Decision', label: 'Decision', pill: 1 }, { k: 'Best_Score', label: 'Score', t: 'num', r: 1 }],
     detail: [['Issuing_Agency', 'Agency'], ['Status', 'Status'], ['Proposal_Due', 'Proposal due', 'date'], ['Bid_Decision', 'Bid decision'], ['Best_Score', 'Best score', 'num'], ['Unmet_Mandatory_Count', 'Unmet mandatory', 'num']]
   });
+
+  /* ---------- Billing run: create the month, attach the vendor zip, reconcile ---------- */
+  /* Reconcile still runs from the button on the Billing Period record. To start it from here, make a standalone function
+     (REST API on) that does what that button does, and put its name here. Until then the last step opens the month. */
+  var RECONCILE_FN = '';
+  var VENDORS = ['Allied', 'SCRAM', 'SuperCom', 'Buddi', 'Drug Testing'];
+  var RS = { month: '', vendor: 'Allied', files: [], period: null, step: 1, msg: '', busy: false, status: null };
+  function curMonth() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+  function periodFor(key) { return B.periods.filter(function (p) { return String(p.Period || '').trim() === key; })[0] || null; }
+  function sdk() { return window.ZOHO && window.ZOHO.CRM; }
+  function runDraw(root) {
+    var h = '<div class="wrap">' + X.head('Processes', 'Billing run', 'Create the month, attach the vendor zip, reconcile', '', '') + X.switchHtml() + X.demoNote() + errBox();
+    if (!RS.month) RS.month = curMonth();
+    var ex = periodFor(RS.month), lbl = BF.monthLabel(RS.month);
+    h += '<div class="cards"><section class="card"><h3>1. Month and vendor</h3><dl><dt>Month</dt><dd><input type="month" id="rn-m" class="search" value="' + esc(RS.month) + '"></dd><dt>Vendor</dt><dd><select id="rn-v" class="search">' +
+      VENDORS.map(function (v) { return '<option' + (v === RS.vendor ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select></dd></dl>' +
+      '<p class="mut" style="margin:10px 0 0;font-size:12px">' + (RS.period ? 'Using ' + esc(RS.period.name) + '.' : ex ? esc(lbl) + ' already exists (' + esc(ex.Period_Status || 'no status') + '). The zip is added to that month. Its upload vendor is ' + esc(ex.Upload_Vendor || 'blank') + '.' : esc(lbl) + ' does not exist yet. It will be created as Open.') + '</p></section>';
+    h += '<section class="card"><h3>2. Vendor zip</h3><input type="file" id="rn-f" multiple accept=".zip,.pdf,.csv,.xlsx"><p class="mut" style="margin:10px 0 0;font-size:12px">' +
+      (RS.files.length ? RS.files.map(function (f) { return esc(f.name) + ' (' + Math.round(f.size / 1024) + ' KB)'; }).join('<br>') : 'One zip per vendor per month: the invoice plus the daily assigned and spare device files.') + '</p>' +
+      '<div class="acts"><button type="button" class="btn pri" id="rn-go"' + (RS.busy || !RS.files.length ? ' disabled' : '') + '>' + (RS.busy ? 'Working…' : 'Create month and attach') + '</button></div></section>';
+    h += '<section class="card"><h3>3. Reconcile</h3><p style="margin:0">' + (RS.period ? 'The zip is on ' + esc(RS.period.name) + '.' : 'Do steps 1 and 2 first.') + '</p>' +
+      (RS.status ? '<dl style="margin-top:10px"><dt>Run status</dt><dd>' + esc(RS.status.Last_Run_Status || 'None yet') + '</dd><dt>Last run</dt><dd>' + esc(RS.status.Last_Run_At || '') + '</dd><dt>Message</dt><dd>' + esc(RS.status.Last_Run_Message || '') + '</dd></dl>' : '') +
+      '<div class="acts"><button type="button" class="btn pri" id="rn-rec"' + (RS.period && !RS.busy ? '' : ' disabled') + '>' + (RECONCILE_FN ? 'Reconcile now' : 'Open month, then press Reconcile') + '</button>' +
+      '<button type="button" class="btn" id="rn-st"' + (RS.period ? '' : ' disabled') + '>Check run status</button></div>' +
+      (RECONCILE_FN ? '' : '<p class="mut" style="margin:10px 0 0;font-size:12px">Reconcile still runs from the button on the Billing Period record. Once that button is made callable from here this step becomes one click.</p>') + '</section></div>';
+    if (RS.msg) h += '<div class="attn" style="background:var(--s1);border-color:var(--line);color:var(--ink)">' + esc(RS.msg) + '</div>';
+    h += '<p class="mut" style="padding:12px 24px 0;font-size:12px">Creates one Billing Period record and attaches your files to it. It never edits findings or money.</p></div>';
+    root.innerHTML = h; X.bindSwitch();
+    $('rn-m').onchange = function (e) { RS.month = e.target.value; RS.period = null; RS.msg = ''; runDraw(root); };
+    $('rn-v').onchange = function (e) { RS.vendor = e.target.value; };
+    $('rn-f').onchange = function (e) { RS.files = Array.prototype.slice.call(e.target.files); runDraw(root); };
+    $('rn-go').onclick = function () { runGo(root); };
+    $('rn-st').onclick = function () { runStatus(root); };
+    $('rn-rec').onclick = function () { runRec(root); };
+  }
+  function runGo(root) {
+    if (!RS.month || !RS.files.length) return;
+    RS.busy = true; RS.msg = ''; runDraw(root);
+    var done = function (p, note) { RS.period = p; RS.busy = false; RS.msg = note; runDraw(root); loadBilling(true); };
+    var fail = function (e) { RS.busy = false; RS.msg = 'Could not finish: ' + ((e && (e.message || (e.data && e.data[0] && e.data[0].message) || e.code)) || e) + '. Nothing was reconciled.'; runDraw(root); };
+    if (!X.isLive()) { return setTimeout(function () { done({ id: 'demo', name: BF.monthLabel(RS.month) }, 'Demo: would create ' + BF.monthLabel(RS.month) + ' and attach ' + RS.files.length + ' file(s).'); }, 300); }
+    var ex = periodFor(RS.month);
+    var ensure = ex ? Promise.resolve({ id: ex.id, name: ex.Name || BF.monthLabel(RS.month) }) :
+      sdk().API.insertRecord({ Entity: 'Billing_Periods', APIData: { Name: BF.monthLabel(RS.month), Period: RS.month, Upload_Vendor: RS.vendor, Period_Status: 'Open' } }).then(function (res) {
+        var d = res && res.data && res.data[0]; if (!d || d.code !== 'SUCCESS') throw new Error((d && d.message) || 'Create failed');
+        return { id: d.details.id, name: BF.monthLabel(RS.month) };
+      });
+    ensure.then(function (p) {
+      return RS.files.reduce(function (chain, f) {
+        return chain.then(function () { return sdk().API.attachFile({ Entity: 'Billing_Periods', RecordID: p.id, File: { Name: f.name, Content: f } }).then(function (r) { var d = r && r.data && r.data[0]; if (d && d.code && d.code !== 'SUCCESS') throw new Error(d.message || d.code); }); });
+      }, Promise.resolve()).then(function () { RS.files = []; done(p, (ex ? 'Added the file(s) to ' : 'Created ') + p.name + ' and attached the file(s). Next: reconcile.'); });
+    }).catch(fail);
+  }
+  function runStatus(root) {
+    if (!RS.period || !X.isLive()) { RS.msg = X.isLive() ? '' : 'Demo: no run yet.'; runDraw(root); return; }
+    X.coql("select Last_Run_Status, Last_Run_At, Last_Run_Message from Billing_Periods where id = '" + RS.period.id + "'").then(function (r) { RS.status = r.rows[0] || null; runDraw(root); }, function (e) { RS.msg = 'Could not read the run: ' + e.message; runDraw(root); });
+  }
+  function runRec(root) {
+    if (!RECONCILE_FN || !X.isLive()) { X.openCrm('Billing_Periods', RS.period.id); return; }
+    RS.busy = true; runDraw(root);
+    sdk().FUNCTIONS.execute(RECONCILE_FN, { arguments: JSON.stringify({ id: RS.period.id }) }).then(function () { RS.busy = false; RS.msg = 'Reconcile started. Check run status in a minute.'; runDraw(root); },
+      function (e) { RS.busy = false; RS.msg = 'Reconcile did not start: ' + ((e && e.message) || e); runDraw(root); });
+  }
+  RM.billing_run = { key: 'billing_run', title: 'Billing run', swLabel: 'Run', group: 'Billing', entity: 'Billing_Periods', custom: true, render: function (root, ctx) { X = ctx; runDraw(root); if (!B.loaded && !B.busy) loadBilling().then(function () { runDraw(root); }); } };
   RM.billing_flow = billingView('billing_flow', 'Billing flow', flowDraw);
   RM.billing_findings = billingView('billing_findings', 'Billing findings', findingsDraw);
   if (RM.billing) { RM.billing.swLabel = 'Months'; RM.billing.group = 'Billing'; }
