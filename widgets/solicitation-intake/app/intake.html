@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Solicitation</title>
+<link rel="stylesheet" href="intake.css">
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1>New solicitation</h1>
+    <ol class="steps" id="steps" aria-label="Steps">
+      <li data-s="0" aria-current="step">Basics</li>
+      <li data-s="1">Dates</li>
+      <li data-s="2">Scope</li>
+      <li data-s="3">Packet</li>
+    </ol>
+  </header>
+
+  <main>
+    <!-- Step 1: basics -->
+    <section class="step" data-step="0">
+      <label class="req">Title <input id="Name" maxlength="120" placeholder="City of Charlotte CCPA - EM Services - 2026-09"></label>
+      <div class="row">
+        <label class="req">Type
+          <select id="Solicitation_Type">
+            <option value="">Choose</option>
+            <option>RFP</option><option>RFI</option><option>RFQ</option><option>Sole Source</option>
+            <option>IFB</option><option>RFA (grant)</option><option>Renewal Notice</option><option>Other</option>
+          </select>
+        </label>
+        <label>Solicitation number <input id="Solicitation_Number" maxlength="100"></label>
+      </div>
+      <fieldset>
+        <legend class="req">Funder or agency</legend>
+        <label>Find an Account <input id="acctSearch" placeholder="Type 3+ letters" autocomplete="off"></label>
+        <ul id="acctResults" class="results" role="listbox"></ul>
+        <div id="acctPicked" class="picked" hidden></div>
+        <label>Or type the agency name (no Account yet) <input id="Issuing_Agency_Text" maxlength="255"></label>
+      </fieldset>
+      <div class="row">
+        <label class="req">Scorecard
+          <select id="Lead_Organization">
+            <option>JusticePoint</option><option>Sirona Recovery</option><option>The Difference Principle</option>
+          </select>
+        </label>
+        <label>State
+          <select id="Governing_State">
+            <option value="">Choose</option><option>WI</option><option>MN</option><option>MI</option><option>IA</option><option>NC</option>
+            <option>VA</option><option>IL</option><option>IN</option><option>OH</option><option>Multi-state</option><option>Other</option>
+          </select>
+        </label>
+      </div>
+      <label>Portal or posting URL <input id="Portal_URL" type="url" placeholder="https://"></label>
+    </section>
+
+    <!-- Step 2: dates -->
+    <section class="step" data-step="1" hidden>
+      <div class="row">
+        <label>Release date <input id="Release_Date" type="date"></label>
+        <label>Questions due <input id="Questions_Round_1_Due" type="datetime-local"></label>
+      </div>
+      <div class="row">
+        <label class="req">Proposal due <input id="Proposal_Due" type="datetime-local"></label>
+        <label>Timezone note <input id="Deadline_Timezone_Note" maxlength="255" placeholder="2:00 PM Eastern"></label>
+      </div>
+      <div class="row">
+        <label>Anticipated award <input id="Anticipated_Award" type="date"></label>
+        <label>Anticipated start <input id="Anticipated_Start" type="date"></label>
+      </div>
+      <p class="hint" id="dateWarn" role="status"></p>
+    </section>
+
+    <!-- Step 3: scope -->
+    <section class="step" data-step="2" hidden>
+      <fieldset>
+        <legend>Services</legend>
+        <div class="chips" id="Service_Lines">
+          <label><input type="checkbox" value="EM GPS">EM GPS</label>
+          <label><input type="checkbox" value="EM RF / RB">EM RF / RB</label>
+          <label><input type="checkbox" value="EM Alcohol / CAM">EM Alcohol / CAM</label>
+          <label><input type="checkbox" value="Pretrial">Pretrial</label>
+          <label><input type="checkbox" value="Diversion">Diversion</label>
+          <label><input type="checkbox" value="Treatment">Treatment</label>
+          <label><input type="checkbox" value="Case Management">Case Management</label>
+          <label><input type="checkbox" value="Consulting">Consulting</label>
+          <label><input type="checkbox" value="Other">Other</label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Devices we would bid</legend>
+        <div class="chips" id="devices"><span class="hint">Loading active products</span></div>
+      </fieldset>
+      <div class="row">
+        <label>Estimated units <input id="Working_Volume_Estimate" maxlength="255" placeholder="120 GPS, 40 RB"></label>
+        <label>Stated budget ($) <input id="Stated_Budget" type="number" min="0" step="1"></label>
+      </div>
+      <label>Scope summary <textarea id="Service_Type_Summary" rows="3"></textarea></label>
+    </section>
+
+    <!-- Step 4: packet -->
+    <section class="step" data-step="3" hidden>
+      <label>Packet (.zip, or a single PDF / Word / Excel file)
+        <input id="packet" type="file" accept=".zip,.pdf,.docx,.xlsx,.xls,.csv,.txt">
+      </label>
+      <p class="hint">Limits match the pipeline: 200 files, 60 MB per file, 250 MB unzipped. Zoho caps one attachment at 20 MB; put bigger packets in SharePoint and attach later.</p>
+      <fieldset>
+        <legend>Parsers to run after create</legend>
+        <label class="chk"><input type="checkbox" name="parser" value="requirements" checked> Requirements from PDF text (rule ingest)</label>
+        <label class="chk"><input type="checkbox" name="parser" value="tables" checked> Requirement tables from Excel / Word (Form K style)</label>
+        <label class="chk"><input type="checkbox" name="parser" value="header"> Key dates and header fields</label>
+      </fieldset>
+      <label class="chk"><input type="checkbox" id="makeScenario" checked> Also create a first Bid Scenario (Prime, Active, chosen scorecard)</label>
+      <div class="summary" id="summary"></div>
+    </section>
+
+    <div id="msg" class="msg" role="alert" hidden></div>
+  </main>
+
+  <footer class="bar">
+    <button type="button" class="btn" id="back" disabled>Back</button>
+    <span class="grow"></span>
+    <button type="button" class="btn" id="cancel">Cancel</button>
+    <button type="button" class="btn primary" id="next">Next</button>
+  </footer>
+</div>
+<script src="intake.js"></script>
+<script src="jpk-intro.js"
+  data-what="Four-step form to enter a new RFP, RFI or RFQ and attach its packet. It can also create the first Bid Scenario."
+  data-fed="What you type, the Accounts list, active Products, and the packet file."
+  data-feeds="Solicitations, with Requirements read from the packet, and an optional Bid Scenario that is then scored."></script>
+</body>
+</html>
