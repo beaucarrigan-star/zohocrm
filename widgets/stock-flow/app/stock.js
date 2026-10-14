@@ -138,12 +138,12 @@
     if (t.alert) {
       var a = t.alert;
       h += '<div class="it"><b>' + J.esc(a.type || 'Stock alert') + (a.accountName && a.kind !== 'house' ? ' - ' + J.esc(a.accountName) : '') + '</b><div class="meta">' +
-        J.esc([a.family, a.spare != null ? a.spare + ' spare' : '', a.threshold != null ? 'floor ' + a.threshold : '', a.order > 0 ? 'suggests sending ' + a.order : '', a.ret > 0 ? 'suggests taking back ' + a.ret : ''].filter(Boolean).join(' \u00b7 ')) + '</div>' +
+        J.esc([a.family, a.spare != null ? a.spare + ' spare' : '', a.threshold != null ? 'floor ' + a.threshold : '', a.order > 0 ? 'suggests sending ' + a.order : '', a.ret > 0 ? 'suggests taking back ' + a.ret : ''].filter(Boolean).join(' · ')) + '</div>' +
         '<div>' + J.chip(a.status, a.open ? 'info' : a.status === 'Dismissed' ? 'neutral' : 'good') + btn('open-alert', a.id, 'Open alert') + '</div></div>';
     }
     if (t.rec) {
       var c = t.rec;
-      h += '<div class="it"><b>Accessories for ' + J.esc(c.accountName) + '</b><div class="meta">' + J.esc([c.suggested ? 'Suggested ' + c.suggested : '', c.nextMs ? 'Next due ' + when(c.nextMs) : ''].filter(Boolean).join(' \u00b7 ')) + '</div>' +
+      h += '<div class="it"><b>Accessories for ' + J.esc(c.accountName) + '</b><div class="meta">' + J.esc([c.suggested ? 'Suggested ' + c.suggested : '', c.nextMs ? 'Next due ' + when(c.nextMs) : ''].filter(Boolean).join(' · ')) + '</div>' +
         '<div>' + J.chip(c.status, c.bucket === 'overdue' || c.bucket === 'chase' ? 'warn' : 'info') + btn('open-rec', c.id, 'Open recommendation') + '</div></div>';
     }
     return h || '<div class="none">No alert or recommendation is linked.</div>';
@@ -152,22 +152,22 @@
     var h = '';
     if (t.alert) {
       var a = t.alert, bits = [a.email ? 'Email: ' + a.email : 'No email status', a.sentMs ? 'sent ' + when(a.sentMs) : '', a.resolution ? 'Resolution: ' + a.resolution : ''].filter(Boolean);
-      h += '<div class="it"><b>' + J.esc({ approve: 'Waiting for approval', action: 'Needs action', waiting: 'Waiting on customer', done: 'Done', dismissed: 'Dismissed' }[a.lane] || a.lane) + '</b><div class="meta">' + J.esc(bits.join(' \u00b7 ')) + '</div></div>';
+      h += '<div class="it"><b>' + J.esc({ approve: 'Waiting for approval', action: 'Needs action', waiting: 'Waiting on customer', done: 'Done', dismissed: 'Dismissed' }[a.lane] || a.lane) + '</b><div class="meta">' + J.esc(bits.join(' · ')) + '</div></div>';
     }
     if (t.rec) {
       var c = t.rec, bits2 = [c.contactedMs ? 'Contacted ' + when(c.contactedMs) : 'Not contacted', c.handledBy ? 'by ' + c.handledBy : '', c.orderedMs ? 'Ordered ' + when(c.orderedMs) : ''].filter(Boolean);
-      h += '<div class="it"><b>' + J.esc(c.status) + '</b><div class="meta">' + J.esc(bits2.join(' \u00b7 ')) + '</div></div>';
+      h += '<div class="it"><b>' + J.esc(c.status) + '</b><div class="meta">' + J.esc(bits2.join(' · ')) + '</div></div>';
     }
     return h || '<div class="none">Nothing recorded.</div>';
   }
   function actionHtml(t) {
     var h = '';
     t.orders.forEach(function (o) {
-      h += '<div class="it"><b>' + J.esc((o.vendorName || 'Vendor not set') + ': ' + o.type + ' order') + '</b><div class="meta">' + J.esc([o.reference ? 'Ref ' + o.reference : 'No reference', o.orderMs ? 'Ordered ' + when(o.orderMs) : ''].filter(Boolean).join(' \u00b7 ')) + '</div>' +
+      h += '<div class="it"><b>' + J.esc((o.vendorName || 'Vendor not set') + ': ' + o.type + ' order') + '</b><div class="meta">' + J.esc([o.reference ? 'Ref ' + o.reference : 'No reference', o.orderMs ? 'Ordered ' + when(o.orderMs) : ''].filter(Boolean).join(' · ')) + '</div>' +
         '<div>' + J.chip(o.status, o.status === 'Received' ? 'good' : o.status === 'Cancelled' ? 'neutral' : 'info') + btn('open-order', o.id, 'Open order') + '</div></div>';
     });
     t.returns.forEach(function (r) {
-      h += '<div class="it"><b>' + J.esc((r.type || 'Return') + (r.family ? ': ' + r.family : '') + (r.qty != null ? ' x' + r.qty : '')) + '</b><div class="meta">' + J.esc([r.vendorName, r.rma ? 'RMA ' + r.rma : 'No RMA number', r.requestedMs ? 'Requested ' + when(r.requestedMs) : ''].filter(Boolean).join(' \u00b7 ')) + '</div>' +
+      h += '<div class="it"><b>' + J.esc((r.type || 'Return') + (r.family ? ': ' + r.family : '') + (r.qty != null ? ' x' + r.qty : '')) + '</b><div class="meta">' + J.esc([r.vendorName, r.rma ? 'RMA ' + r.rma : 'No RMA number', r.requestedMs ? 'Requested ' + when(r.requestedMs) : ''].filter(Boolean).join(' · ')) + '</div>' +
         '<div>' + J.chip(r.status, r.open ? 'info' : 'good') + btn('open-return', r.id, 'Open return') + '</div></div>';
     });
     if (h) return h;
