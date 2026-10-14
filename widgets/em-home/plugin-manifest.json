@@ -1,1 +1,6 @@
-{"service":"CRM","cspDomains":{"connect-src":[]},"modules":{"widgets":[{"location":"web_tab","name":"EM Home","url":"/app/widget.html","logo":""}]},"config":[],"locale":["en"]}
+{
+  "service": "CRM",
+  "cspDomains": { "connect-src": ["https://crm.zoho.com"] },
+  "modules": { "widgets": [ { "location": "crm.webtab", "url": "/app/widget.html", "name": "EM Home" } ] },
+  "config": []
+}
