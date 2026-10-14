@@ -7,7 +7,7 @@
   function sdk() { return window.ZOHO && window.ZOHO.CRM; }
   function q1(v) { return String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
   function errMsg(e) { return (e && (e.message || (e.data && e.data[0] && e.data[0].message) || e.code)) || String(e); }
-  function okRes(r, what) { var d = r && r.data && r.data[0]; if (d && d.code && d.code !== 'SUCCESS') throw new Error(d.message || d.code); return d; }
+  function okRes(r, what) { var d = r && r.data && r.data[0]; if (d && d.code && d.code !== 'SUCCESS') { var f = d.details && (d.details.api_name || d.details.expected_data_type) ? ' (field ' + (d.details.api_name || '?') + (d.details.expected_data_type ? ', expects ' + d.details.expected_data_type : '') + ')' : ''; throw new Error((d.message || d.code) + f); } return d; }
   function pageAll(base, order) {
     var all = [];
     function page(off) { return X.coql(base + ' order by ' + order + ' limit 200 offset ' + off).then(function (r) { all = all.concat(r.rows); return r.rows.length >= 200 && all.length < 3000 ? page(off + 200) : all; }); }
@@ -121,8 +121,12 @@
 
   /* ================= New solicitation ================= */
   var TYPES = ['RFP', 'RFI', 'RFQ', 'Sole Source'];
-  var LINES = ['Electronic Monitoring', 'GPS Monitoring', 'Alcohol Monitoring', 'Drug Testing', 'Pretrial Services', 'Other'];
-  var SS0 = function () { return { step: 1, v: { type: 'RFP', lines: [], parsers: { text: true, ocr: false } }, file: null, acct: null, hits: [], busy: false, msg: '', err: '', done: null }; };
+  var LINES = ['EM GPS', 'EM RF / RB', 'EM Alcohol / CAM', 'Pretrial', 'Diversion', 'Treatment', 'Case Management', 'Consulting', 'Other'];
+  var STATES = ['WI', 'MN', 'MI', 'IA', 'NC', 'VA', 'IL', 'IN', 'OH', 'Multi-state', 'Other'];
+  var ORGS = ['JusticePoint', 'Sirona Recovery', 'The Difference Principle'];
+  /* datetime-local "2026-10-20T14:00" -> Zoho "2026-10-20T14:00:00-04:00" (viewer's offset on that date) */
+  function zdt(v) { if (!v) return null; var d = new Date(v), off = -d.getTimezoneOffset(), a = Math.abs(off), pad = function (n) { return (n < 10 ? '0' : '') + n; }; return v.slice(0, 16) + ':00' + (off >= 0 ? '+' : '-') + pad(Math.floor(a / 60)) + ':' + pad(a % 60); }
+  var SS0 = function () { return { step: 1, v: { type: 'RFP', lines: [], parsers: { requirements: true, tables: true, header: false }, org: 'JusticePoint', scen: true }, file: null, acct: null, hits: [], busy: false, msg: '', err: '', done: null }; };
   var SW = SS0();
   function val(k) { var x = SW.v[k]; return x == null ? '' : x; }
   function inp(k, label, type, ph) { return '<label class="mut" style="display:block;font-size:12px;margin:8px 0 2px">' + label + '</label><input class="search" style="width:100%" data-f="' + k + '" type="' + (type || 'text') + '" value="' + esc(val(k)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>'; }
@@ -137,15 +141,15 @@
     if (s === 1) {
       h += '<h3>Basics</h3>' + inp('name', 'Solicitation name *') + '<label class="mut" style="display:block;font-size:12px;margin:8px 0 2px">Type</label><select class="search" data-f="type">' + TYPES.map(function (t) { return '<option' + (t === v.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
         '<label class="mut" style="display:block;font-size:12px;margin:8px 0 2px">Issuing agency (search accounts)</label>' + (SW.acct ? '<div><b>' + esc(SW.acct.name) + '</b> <button type="button" class="btn" id="sw-clr">Change</button></div>' : '<input class="search" style="width:100%" id="sw-as" placeholder="Type 3 letters" value="' + esc(val('acctq')) + '">' + (SW.hits.length ? '<div class="acts" style="flex-wrap:wrap">' + SW.hits.map(function (a, i) { return '<button type="button" class="btn" data-hit="' + i + '">' + esc(a.name) + '</button>'; }).join('') + '</div>' : '')) +
-        (SW.acct ? '' : inp('agencyText', 'Or type the agency if it is not an account yet')) + inp('number', 'Solicitation number') + inp('state', 'Governing state', 'text', 'WI') + inp('portal', 'Portal URL', 'url');
+        (SW.acct ? '' : inp('agencyText', 'Or type the agency if it is not an account yet')) + inp('number', 'Solicitation number') + '<label class="mut" style="display:block;font-size:12px;margin:8px 0 2px">Scorecard</label><select class="search" data-f="org">' + ORGS.map(function (o) { return '<option' + (o === v.org ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>' + '<label class="mut" style="display:block;font-size:12px;margin:8px 0 2px">State</label><select class="search" data-f="state"><option value="">Choose</option>' + STATES.map(function (o) { return '<option' + (o === v.state ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>' + inp('portal', 'Portal URL', 'url');
     } else if (s === 2) {
-      h += '<h3>Dates</h3>' + inp('release', 'Release date', 'date') + inp('q1', 'Questions due', 'date') + inp('due', 'Proposal due *', 'date') + inp('tz', 'Deadline time zone note', 'text', 'e.g. 2:00 PM Central') + inp('award', 'Anticipated award', 'date') + inp('start', 'Anticipated start', 'date');
+      h += '<h3>Dates</h3>' + inp('release', 'Release date', 'date') + inp('q1', 'Questions due', 'datetime-local') + inp('due', 'Proposal due *', 'datetime-local') + inp('tz', 'Deadline time zone note', 'text', '2:00 PM Eastern') + inp('award', 'Anticipated award', 'date') + inp('start', 'Anticipated start', 'date');
     } else if (s === 3) {
       h += '<h3>Scope</h3><div class="acts" style="flex-wrap:wrap;margin:0">' + LINES.map(function (l) { return '<button type="button" class="pillbtn' + '" aria-pressed="' + (v.lines.indexOf(l) > -1) + '" data-ln="' + esc(l) + '">' + esc(l) + '</button>'; }).join('') + '</div>' +
-        inp('volume', 'Working volume estimate', 'number') + inp('budget', 'Stated budget', 'number') + '<label class="mut" style="display:block;font-size:12px;margin:8px 0 2px">What the agency is asking for</label><textarea class="search" style="width:100%;min-height:70px" data-f="summary">' + esc(val('summary')) + '</textarea>';
+        inp('volume', 'Estimated units', 'text', '120 GPS, 40 RB') + inp('budget', 'Stated budget', 'number') + '<label class="mut" style="display:block;font-size:12px;margin:8px 0 2px">What the agency is asking for</label><textarea class="search" style="width:100%;min-height:70px" data-f="summary">' + esc(val('summary')) + '</textarea>';
     } else {
       h += '<h3>Packet</h3><input type="file" id="sw-f" accept=".pdf,.zip,.docx,.xlsx"><p class="mut" style="margin:10px 0 0;font-size:12px">' + (SW.file ? kb(SW.file) : 'The solicitation document. Up to 20 MB. You can also skip it and attach later on the record.') + '</p>' +
-        '<label style="display:block;margin-top:10px"><input type="checkbox" data-p="text"' + (v.parsers.text ? ' checked' : '') + '> Read text</label><label style="display:block"><input type="checkbox" data-p="ocr"' + (v.parsers.ocr ? ' checked' : '') + '> Run OCR on scanned pages</label>' +
+        '<label style="display:block;margin-top:10px"><input type="checkbox" data-p="requirements"' + (v.parsers.requirements ? ' checked' : '') + '> Requirements from PDF text</label><label style="display:block"><input type="checkbox" data-p="tables"' + (v.parsers.tables ? ' checked' : '') + '> Requirement tables from Excel / Word</label><label style="display:block"><input type="checkbox" data-p="header"' + (v.parsers.header ? ' checked' : '') + '> Key dates and header fields</label><label style="display:block"><input type="checkbox" data-s="1"' + (v.scen ? ' checked' : '') + '> Also create a first Bid Scenario (Prime, Active)</label>' +
         '<dl style="margin-top:12px"><dt>Name</dt><dd>' + esc(val('name')) + '</dd><dt>Type</dt><dd>' + esc(v.type) + '</dd><dt>Agency</dt><dd>' + esc(SW.acct ? SW.acct.name : val('agencyText')) + '</dd><dt>Proposal due</dt><dd>' + esc(val('due')) + '</dd></dl>';
     }
     if (SW.err) h += '<div class="err" style="margin-top:12px">' + esc(SW.err) + '</div>';
@@ -162,14 +166,14 @@
     root.onclick = function (e) {
       var t = e.target.closest('[data-hit]'); if (t) { read(); SW.acct = SW.hits[+t.getAttribute('data-hit')]; SW.hits = []; wDraw(root); return; }
       t = e.target.closest('[data-ln]'); if (t) { read(); var l = t.getAttribute('data-ln'), i = v.lines.indexOf(l); if (i > -1) v.lines.splice(i, 1); else v.lines.push(l); wDraw(root); return; }
-      t = e.target.closest('[data-p]'); if (t) v.parsers[t.getAttribute('data-p')] = t.checked;
+      t = e.target.closest('[data-p]'); if (t) { v.parsers[t.getAttribute('data-p')] = t.checked; return; } t = e.target.closest('[data-s]'); if (t) v.scen = t.checked;
     };
   }
   function check(s) {
     var v = SW.v;
     if (s === 1 && !String(v.name || '').trim()) return 'Give the solicitation a name.';
     if (s === 1 && !SW.acct && !String(v.agencyText || '').trim()) return 'Choose the issuing agency or type it.';
-    if (s === 2) { if (!v.due) return 'Proposal due date is required.'; var d = ['release', 'q1', 'due', 'award', 'start'].filter(function (k) { return v[k]; }).map(function (k) { return v[k]; }); for (var i = 1; i < d.length; i++) if (d[i] < d[i - 1]) return 'Dates must run in order: release, questions, proposal due, award, start.'; }
+    if (s === 2) { if (!v.due) return 'Proposal due date is required.'; var d = ['release', 'q1', 'due', 'award', 'start'].filter(function (k) { return v[k]; }).map(function (k) { return String(v[k]).slice(0, 10); }); for (var i = 1; i < d.length; i++) if (d[i] < d[i - 1]) return 'Dates must run in order: release, questions, proposal due, award, start.'; }
     return '';
   }
   function acctSearch(text, root) {
@@ -189,20 +193,24 @@
       X.coql("select id, Name from Solicitations where Name = '" + q1(v.name) + "' limit 1").then(function (r) { return r.rows; }, function () { return []; })
     ]).then(function (a) {
       var dup = a[0][0] || a[1][0]; if (dup) throw new Error('A solicitation already exists: ' + dup.Name + '. Open it instead of creating a duplicate.');
-      var d = { Name: v.name, Solicitation_Type: v.type, Status: 'Identified' };
-      if (SW.acct) d.Issuing_Agency = { id: SW.acct.id }; else d.Issuing_Agency_Text = v.agencyText;
-      [['Solicitation_Number', 'number'], ['Governing_State', 'state'], ['Portal_URL', 'portal'], ['Release_Date', 'release'], ['Questions_Round_1_Due', 'q1'], ['Proposal_Due', 'due'], ['Deadline_Timezone_Note', 'tz'], ['Anticipated_Award', 'award'], ['Anticipated_Start', 'start'], ['Service_Type_Summary', 'summary']].forEach(function (m) { if (v[m[1]]) d[m[0]] = v[m[1]]; });
+      var today = new Date().toISOString().slice(0, 10), d = { Name: v.name, Solicitation_Type: v.type, Status: 'Identified', Date_Received: today };
+      if (SW.acct) d.Issuing_Agency = { id: SW.acct.id }; d.Issuing_Agency_Text = v.agencyText || (SW.acct ? SW.acct.name : '');
+      [['Solicitation_Number', 'number'], ['Governing_State', 'state'], ['Portal_URL', 'portal'], ['Release_Date', 'release'],  ['Deadline_Timezone_Note', 'tz'], ['Anticipated_Award', 'award'], ['Anticipated_Start', 'start'], ['Service_Type_Summary', 'summary']].forEach(function (m) { if (v[m[1]]) d[m[0]] = v[m[1]]; });
+      if (v.q1) d.Questions_Round_1_Due = zdt(v.q1);
+      d.Proposal_Due = zdt(v.due);
+      d.Extraction_Notes = 'Created with the intake wizard ' + today + '. Scorecard: ' + v.org + '.';
       if (v.lines.length) d.Service_Lines = v.lines;
-      if (v.volume) d.Working_Volume_Estimate = +v.volume; if (v.budget) d.Stated_Budget = +v.budget;
+      if (v.volume) d.Working_Volume_Estimate = String(v.volume); if (v.budget) { d.Stated_Budget = Number(v.budget); d.Budget_Disclosed = true; }
       return api.insertRecord({ Entity: 'Solicitations', APIData: d, Trigger: ['workflow'] });
     }).then(function (r) {
       var d = okRes(r); SW.created = d.details.id;
-      return api.insertRecord({ Entity: 'Bid_Scenarios', APIData: { Name: v.name + ' (Prime)', Solicitation: { id: SW.created }, Role: 'Prime', Status: 'Active', Recommendation: 'Not yet scored' } }).then(function () {}, function () {});
+      if (!v.scen) return;
+      return api.insertRecord({ Entity: 'Bid_Scenarios', APIData: { Name: (v.org + ' Prime - ' + v.name).slice(0, 120), Solicitation: { id: SW.created }, Scenario_Type: 'Prime', Lead_Organization: v.org, Scenario_Status: 'Active', Recommendation: 'Not yet scored' }, Trigger: ['workflow'] }).then(function (x) { try { okRes(x); } catch (e) { SW.scenWarn = errMsg(e); } }, function (e) { SW.scenWarn = errMsg(e); });
     }).then(function () {
       if (!SW.file) return false;
       return api.attachFile({ Entity: 'Solicitations', RecordID: SW.created, File: { Name: SW.file.name, Content: SW.file } }).then(function (r) { okRes(r); return runFn('sol_wizard_ingest', { solicitationId: String(SW.created), parsers: parsers }); }).then(function (o) { if (o && o.ok === false) throw new Error(o.error || 'The reader did not start'); return true; });
     }).then(function (att) {
-      SW.busy = false; SW.done = { id: SW.created, name: v.name, attached: att, note: att ? 'Reading has started. When it finishes, open the record and press Seed spec assessments.' : 'No packet was attached. Add it on the record when you have it.' }; wDraw(root);
+      SW.busy = false; SW.done = { id: SW.created, name: v.name, attached: att, note: (SW.scenWarn ? 'The Bid Scenario was not created (' + SW.scenWarn + '); add it from the record. ' : '') + (att ? 'Reading has started. When it finishes, open the record and press Seed spec assessments.' : 'No packet was attached. Add it on the record when you have it.') }; wDraw(root);
     }).catch(fail);
   }
   RM.solicit_new = { key: 'solicit_new', title: 'New solicitation', swLabel: 'New', group: 'Solicitations', entity: 'Solicitations', custom: true, render: function (root, ctx) { X = ctx; wDraw(root); } };
