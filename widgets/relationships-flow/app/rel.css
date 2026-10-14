@@ -44,3 +44,19 @@
 .seg-wrap{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
 .lead.lim input{width:48px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12.5px;margin-top:4px}.kv dt{color:var(--muted)}.kv dd{margin:0}
+
+/* v2: clean-up list, org-wide, one owner */
+.cleanup{margin-top:16px;padding:0}
+.cleanup>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;padding:12px 14px}
+.cleanup>summary::-webkit-details-marker{display:none}
+.cleanup>summary::before{content:"\25B8";color:var(--muted)}
+.cleanup[open]>summary::before{content:"\25BE"}
+.cleanup .cu-t{font-weight:700}
+.cleanup .cu-s{color:var(--muted);font-size:12.5px}
+.cleanup .cu-lanes{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 10px;padding:0 14px 12px}
+.flow{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1180px){.flow{grid-template-columns:minmax(0,1fr)}}
+
+/* jpk theme v2: the widget rules above set 6px/5px radii after the theme layer loads; restore the theme radii. Visual only. */
+.stage,.chain>li{border-radius:var(--r)}
+.lane,.lead input{border-radius:var(--r-sm)}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Relationships flow</title>
+<title>Relationship Flow</title>
 <link rel="stylesheet" href="jpk.css">
 <link rel="stylesheet" href="rel.css">
 </head>
@@ -11,15 +11,13 @@
 <div class="wrap">
   <header class="rec">
     <div>
-      <div class="eyebrow">Accounts, contacts and opportunities</div>
-      <h1>Relationships flow</h1>
+      <div class="eyebrow">Accounts, opportunities and renewals in one view</div>
+      <h1>Relationship Flow</h1>
       <div class="muted sm" id="asof"></div>
     </div>
     <div class="actions">
       <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
       <div class="seg" id="scope" role="group" aria-label="Which accounts to show"></div>
-      <label class="lead lim sm">Cold after <input type="number" id="lim-touch" min="1" max="365" step="1" value="60" aria-label="Days without a touch before an account counts as cold"> days</label>
-      <label class="lead lim sm">Idle after <input type="number" id="lim-deal" min="1" max="365" step="1" value="30" aria-label="Days without activity before an opportunity counts as idle"> days</label>
       <button type="button" class="btn" id="refresh">Refresh</button>
       <button type="button" class="btn" id="help">How this works</button>
     </div>
@@ -28,6 +26,8 @@
   <div id="nx"></div>
 
   <ol class="flow" id="flow" aria-label="Path from account to renewal"></ol>
+
+  <details class="card cleanup" id="cleanup"></details>
 
   <section class="card lane-card" aria-live="polite">
     <h2><span id="lane-title">Pick a step above</span><em id="lane-hint"></em></h2>
@@ -42,8 +42,8 @@
 <script src="flow-tools.js"></script>
 <script src="rel.js"></script>
 <script src="jpk-intro.js"
-  data-what="Follows each account from who they are, through their contacts and last touch, to open opportunities and renewal. Click a step to see its records, then a record to see the whole path for that account."
-  data-fed="Accounts, Contacts and Opportunities (read-only)."
-  data-feeds="Nothing (read-only). Open the account, contact or opportunity from the path to change it; Customer 360 shows one account in full."></script>
+  data-what="See every account from first contact to contract renewal, and the clean-up list of records missing an account, type, email or contract. For your daily follow-ups, use BD + CS Home."
+  data-fed="Accounts, contacts, opportunities, calls, meetings, support emails and customer contracts."
+  data-feeds="This page only shows records. To change one, click it and use Open; Open account shows Customer 360 for that customer."></script>
 </body>
 </html>
