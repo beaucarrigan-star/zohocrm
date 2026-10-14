@@ -1378,6 +1378,7 @@
             <b id="bulk-n">0 selected</b>
             <label>Status <select id="bulk-status" aria-label="Set status on selected cases"></select></label>
             <label>Owner <select id="bulk-owner" aria-label="Set owner on selected cases"></select></label>
+            <span class="bulk-res" id="bulk-res" hidden><label>Resolution <select id="bulk-res-cat" aria-label="Resolution category for every selected case"></select></label><label>Solution <input type="text" id="bulk-res-sol" maxlength="250" style="min-width:220px" placeholder="One line on what fixed it (all selected)" aria-label="Solution for every selected case"></label></span>
             <span class="sp"></span>
             <button type="button" class="btn primary" data-bulk="apply" id="bulk-go">Apply</button>
             <button type="button" class="btn" data-bulk="clear">Clear</button>
@@ -1633,7 +1634,9 @@
                  Extra case columns read (with a fallback if CRM refuses them): Pushed_To, Case_Origin, Related_To.Full_Name.
      ========================================================================= */
 
-  var VERSION = 'EM Home v34';
+  /* v35.1 (Oct 14 2026): Resolve, Send and resolve, and the bulk bar (Status Resolved or Closed) ask for Resolution Category and
+     Solution, which the Blueprint requires since Oct 13. Label fixed (the v35 build still said v34). */
+  var VERSION = 'EM Home v35.1';
 
   /* ---------- config ---------- */
   var ORG = 'org882980956';
@@ -2894,7 +2897,7 @@
       var cur = (e.message.match(/\(([^)]*)\)\.?\s*$/) || [])[1] || '';
       var hops = (status === 'Closed' ? ['In Progress', 'Resolved'] : ['In Progress']).filter(function (h) { return h !== cur; });
       var step = { Internal_Comments: data.Internal_Comments };
-      return hops.reduce(function (p, h) { return p.then(function () { return run(h, step); }); }, Promise.resolve()).then(function () { return run(status, data); });
+      return hops.reduce(function (p, h) { return p.then(function () { return run(h, h === 'Resolved' ? data : step); }); }, Promise.resolve()).then(function () { return run(status, data); });
     });
   }
   function changeCase(id, ch, label) {
@@ -2927,8 +2930,8 @@
   function showResolveForm() {
     var a = $('pk-actions'); if (!a || a.querySelector('.pk-resolve')) return;
     a.insertAdjacentHTML('beforeend', '<div class="pk-resolve composer" style="flex-basis:100%;margin-top:4px">'
-      + '<label>Resolution <select data-pk="rs-cat" aria-label="Resolution category"><option value="">Resolution category (optional)</option>' + RESOLUTION_CATEGORIES.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select></label>'
-      + '<label>Solution <input type="text" data-pk="rs-sol" placeholder="One line on what fixed it (optional)" aria-label="Solution"></label>'
+      + '<label>Resolution <select data-pk="rs-cat" aria-label="Resolution category"><option value="">Resolution category</option>' + RESOLUTION_CATEGORIES.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select></label>'
+      + '<label>Solution <input type="text" data-pk="rs-sol" placeholder="One line on what fixed it" aria-label="Solution"></label>'
       + '<label class="kb"><span class="kb-box"><input type="checkbox" data-pk="rs-kb"> Also build a Solution (KB draft) from this line</span></label>'
       + '<div class="send-row"><button type="button" class="btn primary" data-pk="resolve-go">Resolve</button><button type="button" class="btn" data-pk="resolve-cancel">Cancel</button><span class="pk-msg" data-pk="rs-msg" aria-live="polite"></span></div></div>');
     var sel = a.querySelector('[data-pk="rs-cat"]'); if (sel) sel.focus();
@@ -2937,9 +2940,9 @@
   function submitResolve(btn) {
     var peek = $('peek'), cat = peek.querySelector('[data-pk="rs-cat"]'), sol = peek.querySelector('[data-pk="rs-sol"]'), msg = peek.querySelector('[data-pk="rs-msg"]');
     var r = findCase(P.id); if (!r || !cat || !sol) return;
-    /* Resolution category and Solution are optional on Resolve (Sep 28 2026); only the Solution-draft box needs the line */
+    /* Resolution category and Solution are required on Resolve (Blueprint, Oct 13 2026) */
     var kb = peek.querySelector('[data-pk="rs-kb"]'), mkSol = !!(kb && kb.checked);
-    if (mkSol && !sol.value.trim()) { if (msg) { msg.textContent = 'Write the one-line solution to build a Solution draft, or untick the box.'; msg.className = 'pk-msg bad'; } return; }
+    if (!cat.value || !sol.value.trim()) { if (msg) { msg.textContent = 'Pick a resolution category and write one line for the Solution (both are required to resolve).'; msg.className = 'pk-msg bad'; } (cat.value ? sol : cat).focus(); return; }
     var ex = {}; if (cat.value) ex.Resolution_Category = cat.value; if (sol.value.trim()) ex.Solution = sol.value.trim();
     /* bp: extra fields that go only to the Blueprint call (em_case_reply), never to a direct Cases update */
     changeCase(P.id, { status: 'Resolved', extra: ex, bp: mkSol ? { _makeSolution: true } : null }, caseName(r) + ' resolved' + (mkSol ? ' · Solution draft built' : ''));
@@ -3210,8 +3213,8 @@
       + '<label>Subject <input type="text" data-pk="subject" value="' + esc(subj) + '" aria-label="Subject"></label>'
       + '<label class="stack"><span class="sr">Message</span><textarea data-pk="body" aria-label="Message">' + esc(body) + '</textarea></label>'
       + '<div class="resolve-fields" data-pk="resolve-fields" hidden>'
-      + '<label>Resolution <select data-pk="res-cat" aria-label="Resolution category"><option value="">Resolution category (optional)</option>' + RESOLUTION_CATEGORIES.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select></label>'
-      + '<label>Solution <input type="text" data-pk="res-sol" placeholder="One line on what fixed it (optional)" aria-label="Solution"></label>'
+      + '<label>Resolution <select data-pk="res-cat" aria-label="Resolution category"><option value="">Resolution category</option>' + RESOLUTION_CATEGORIES.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select></label>'
+      + '<label>Solution <input type="text" data-pk="res-sol" placeholder="One line on what fixed it" aria-label="Solution"></label>'
       + '<label class="kb"><span class="kb-box"><input type="checkbox" data-pk="res-kb"> Also build a Solution (KB draft) from this line</span></label></div>'
       + '<div class="send-row"><button type="button" class="btn primary" data-pk="send" data-mode="send">Send</button>'
       + '<button type="button" class="btn" data-pk="send" data-mode="wait" title="Sends, then runs Ask Customer so the case waits on them">Send and wait on customer</button>'
@@ -3260,7 +3263,7 @@
     if (mode === 'resolve') {
       var cat = v('res-cat'), sol = v('res-sol').trim();
       var kbc = peek.querySelector('[data-pk="res-kb"]'), rd = { Internal_Comments: 'Resolved by email from EM Home: ' + subject };
-      if (kbc && kbc.checked && !sol) { setResolveMode('resolve'); say('Write the one-line solution to build a Solution draft, or untick the box.', 'bad'); return; }
+      if (!cat || !sol) { setResolveMode('resolve'); say('Pick a resolution category and write one line for the Solution (both are required to resolve).', 'bad'); return; }
       if (cat) rd.Resolution_Category = cat; if (sol) rd.Solution = sol; if (kbc && kbc.checked) rd._makeSolution = true;
       args.transition = 'Resolve'; args.targetStatus = 'Resolved'; args.data = JSON.stringify(rd); label += ' · resolved';
     }
@@ -3734,6 +3737,13 @@
     return out;
   }
   function pruneSel() { var ok = {}; visRows().forEach(function (r) { ok[r.id] = 1; }); Object.keys(Q.sel).forEach(function (id) { if (!ok[id]) delete Q.sel[id]; }); }
+  var BULK_RES_STATUS = { 'Resolved': 1, 'Closed': 1 };
+  function bulkResSync() {
+    var box = $('bulk-res'), st = $('bulk-status'); if (!box || !st) return;
+    var cat = $('bulk-res-cat');
+    if (cat && !cat.options.length) cat.innerHTML = '<option value="">Resolution category</option>' + RESOLUTION_CATEGORIES.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+    var on = !!BULK_RES_STATUS[st.value]; box.hidden = !on; box.style.cssText = on ? 'display:inline-flex;flex-wrap:wrap;gap:6px 14px;align-items:center' : 'display:none';
+  }
   function fillBulkSelects() {
     var st = $('bulk-status'), ow = $('bulk-owner');
     if (st && !st.options.length) st.innerHTML = '<option value="">Status: no change</option>' + STATUS_CHOICES.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('');
@@ -3768,6 +3778,8 @@
     } else if (t.hasAttribute('data-selgroup')) {
       var k = t.getAttribute('data-selgroup'); Q.open[k] = true; /* select the whole group, including rows still folded under "+ N more" */
       var onG = t.checked; if (onG) renderQueue(); setSel(groupMembers(k).map(function (r) { return r.id; }), onG);
+    } else if (t.id === 'bulk-status') {
+      bulkResSync(); resize();
     } else if (t.id === 'sel-all') {
       var onA = t.checked; if (onA) { QGROUPS.forEach(function (g) { Q.open[g.k] = true; }); renderQueue(); }
       setSel(visRows().map(function (r) { return r.id; }), onA);
@@ -3777,15 +3789,15 @@
     var t = ev.target; if (!t.closest) return;
     Q.shiftDown = !!ev.shiftKey;
     var b = t.closest('[data-bulk]'); if (!b) return;
-    if (b.getAttribute('data-bulk') === 'clear') { Q.sel = {}; syncSel(); resize(); }
+    if (b.getAttribute('data-bulk') === 'clear') { Q.sel = {}; var bs = $('bulk-status'); if (bs) bs.value = ''; var bsol = $('bulk-res-sol'); if (bsol) bsol.value = ''; bulkResSync(); syncSel(); resize(); }
     else if (b.getAttribute('data-bulk') === 'apply') bulkApply();
   }
-  function saveOne(id, c, note) {
+  function saveOne(id, c, note, extra) {
     var p = { id: String(id) }; if (c.owner) p.Owner = { id: String(c.owner.id) }; if (c.status) p.Status = c.status;
     return api.update('Cases', p).catch(function (e) {
       if (e.message !== 'RECORD_IN_BLUEPRINT' || !c.status) throw e;
       var q = { id: String(id) }; if (c.owner) q.Owner = { id: String(c.owner.id) };
-      return (c.owner ? api.update('Cases', q) : Promise.resolve()).then(function () { return blueprintStatus(id, c.status, note, null); });
+      return (c.owner ? api.update('Cases', q) : Promise.resolve()).then(function () { return blueprintStatus(id, c.status, note, c.status && BULK_RES_STATUS[c.status] ? extra : null); });
     });
   }
   var bulkBusy = false;
@@ -3793,6 +3805,12 @@
     if (bulkBusy) return;
     var status = $('bulk-status').value, ownerId0 = $('bulk-owner').value;
     if (!status && !ownerId0) { toast('Pick a status, an owner, or both first', { bad: true, ms: 4000 }); return; }
+    var resExtra = null;
+    if (BULK_RES_STATUS[status]) {
+      var rc = $('bulk-res-cat'), rs = $('bulk-res-sol'), rcv = rc ? rc.value : '', rsv = rs ? rs.value.trim() : '';
+      if (!rcv || !rsv) { bulkResSync(); toast('To set ' + status + ', pick a resolution category and write one line for the Solution. They go on every selected case.', { bad: true, ms: 6000 }); (rcv ? rs : rc) && (rcv ? rs : rc).focus(); return; }
+      resExtra = { Resolution_Category: rcv, Solution: rsv };
+    }
     var owner = ownerId0 ? TEAM.filter(function (x) { return x.id === ownerId0; })[0] : null;
     var ids = Object.keys(Q.sel).filter(function (id) { return findCase(id); });
     var jobs = ids.map(function (id) { var r = findCase(id), c = {};
@@ -3808,7 +3826,7 @@
     (function next() {
       if (i >= jobs.length) return finish();
       var j = jobs[i++]; toast('Updating ' + i + ' of ' + jobs.length + ' · ' + caseName(j.r) + '…', { ms: 120000 });
-      saveOne(j.id, j.c, note).then(function () { apply(j.r, j.c); delete Q.sel[j.id]; done.push(j); renderQueue(); })
+      saveOne(j.id, j.c, note, resExtra).then(function () { apply(j.r, j.c); delete Q.sel[j.id]; done.push(j); renderQueue(); })
         .catch(function (e) { failed.push({ j: j, msg: e.message === 'RECORD_IN_BLUEPRINT' ? 'the Blueprint refused it' : e.message }); })
         .then(next);
     })();
