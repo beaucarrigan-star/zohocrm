@@ -61,3 +61,11 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--s2)}
 .sw{display:flex;flex-wrap:wrap;gap:6px;padding:14px 24px 0}.swb{background:var(--s1);border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:600}.swb[aria-selected=true]{background:#123D40;border-color:var(--acc);color:var(--ink)}.swb:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @media (max-width:640px){.sw{padding-left:14px;padding-right:14px}}
 .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.acts .btn{text-decoration:none;display:inline-block}
+.swg{align-self:center;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:0 2px 0 10px}.swg:first-child{margin-left:0}
+select.search{padding:6px 8px}
+
+.edit{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:6px}
+.edit label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:4px}
+.edit input,.edit select{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:7px 9px;min-width:0}
+.edit input:focus-visible,.edit select:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+tr.sel td{background:#123D40}

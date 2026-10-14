@@ -22,6 +22,7 @@
     },
     rec: {
       select: ['Account_Name', 'Owner.first_name', 'Account_Type', 'Phone', 'Website', 'Parent_Account', 'Annual_Revenue', 'Billing_City', 'Billing_State', 'Customer_Health', 'Health_Score', 'Renewal_Date', 'Renewal_Amount', 'Days_To_Renewal', 'Last_Touch', 'Touch_Status', 'Days_Since_Touch', 'Last_Training_Date', 'Open_Cases', 'EM_Total_Units', 'GPS_On_Leg', 'GPS_Spare', 'GPS_Utilization_Pct', 'Device_s_Used', 'ED_CEO', 'Contact_Email', 'Key_Personnel', 'Current_Vendor', 'BD_Attention', 'BD_Attention_Note', 'Former_Customer'],
+      quick: [{ k: 'Account_Type', label: 'Account type', t: 'pick', admin: true, opts: ['Customer', 'Prospect', 'Partner', 'Vendor', 'Other'] }, { k: 'Last_Touch', label: 'Last touch', t: 'date' }, { k: 'Owner', label: 'Owner', t: 'user' }],
       title: function (r) { return P(r.Account_Name); },
       kicker: function (r) { return 'Account' + (r.Account_Type ? ' · ' + P(r.Account_Type) : ''); },
       sub: function (r) { return [r.Billing_City, r.Billing_State].filter(Boolean).join(', ') + (r[OWN] ? ' · Owner ' + P(r[OWN]) : ''); },
@@ -57,6 +58,7 @@
     },
     rec: {
       select: ['Subject', 'Case_Number', 'Account_Name', 'Owner.first_name', 'Status', 'Priority', 'Case_Origin', 'Case_Category', 'Case_Age_days', 'Queue', 'Dispatch_Status', 'Dispatch_Exception', 'Dispatch_Exception_Note', 'Scheduled_Start', 'Scheduled_End', 'Assigned_Installer', 'Job_Type', 'Service_City', 'Service_County', 'DOC_Region', 'Requested_Date', 'Due_By', 'Participant_ID', 'Device_Serial', 'Vendor_Ticket_Number', 'Resolution_Category', 'Reported_By', 'Email', 'Phone', 'Description', 'Internal_Comments', 'Solution'],
+      quick: [{ k: 'Status', label: 'Status', t: 'pick', opts: ['New', 'In Progress', 'On Hold', 'Closed'] }, { k: 'Priority', label: 'Priority', t: 'pick', opts: ['High', 'Medium', 'Low'] }, { k: 'Queue', label: 'Queue', t: 'pick', opts: ['Support', 'Reports', 'Personal'] }],
       title: function (r) { return P(r.Subject); },
       kicker: function (r) { return 'Case' + (r.Case_Category ? ' · ' + P(r.Case_Category) : ''); },
       sub: function (r) { return [P(r.Account_Name), r[OWN] ? 'Owner ' + P(r[OWN]) : '', r.Case_Origin ? 'via ' + P(r.Case_Origin) : ''].filter(Boolean).join(' · '); },
@@ -86,6 +88,7 @@
     },
     rec: {
       select: ['Deal_Name', 'Account_Name', 'Contact_Name', 'Owner.first_name', 'Type', 'Stage', 'Stage_Group', 'Closing_Date', 'Next_Step', 'Total_Opportunity_Revenue', 'Total_Allied_Revenue_Annual', 'Total_SCRAM_Revenue_Annual', 'Total_Buddi_Revenue_Annual', 'Total_SuperCom_DV_Revenue_Annual', 'Service_Lines', 'Pipeline', 'Daily_Rate', 'Quantity', 'Vendor_Used', 'Source_Campaign', 'Lost_To', 'Description', 'Opportunity_Notes'],
+      quick: [{ k: 'Stage', label: 'Stage', t: 'pick', opts: ['Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'] }, { k: 'Next_Step', label: 'Next step', t: 'text' }, { k: 'Closing_Date', label: 'Close date', t: 'date' }, { k: 'Owner', label: 'Owner', t: 'user' }],
       title: function (r) { return P(r.Deal_Name); },
       kicker: function (r) { return 'Opportunity' + (r.Type ? ' · ' + P(r.Type) : ''); },
       sub: function (r) { return [P(r.Account_Name), P(r.Contact_Name), r[OWN] ? 'Owner ' + P(r[OWN]) : ''].filter(Boolean).join(' · '); },
@@ -141,6 +144,7 @@
     },
     rec: {
       select: ['Name', 'Account', 'Vendor', 'Counterparty_Type', 'Contract_Status', 'Contract_Type', 'Contract_Start_Date', 'Contract_End_Date', 'Final_End_Date', 'Days_to_Final_End', 'Renewal_Band', 'Renewal_Status', 'Renewal_Owner', 'Notice_Deadline', 'Notice_Passed', 'Notice_Period_Days', 'Auto_Renews', 'Renewal_Options_Left', 'Amendment_Count', 'Payment_Terms_Days', 'Invoice_Cadence', 'Rate_Basis', 'Escalator_Pct', 'Admin_Rate_Pct', 'Not_To_Exceed', 'Lowest_Margin', 'Average_Margin', 'Margin_Tier', 'Ingest_Status', 'Reconciliation_Status', 'Data_Issues', 'Contract_Notes', 'Renewal_Notes'],
+      quick: [{ k: 'Contract_Status', label: 'Contract status', t: 'pick', admin: true, opts: ['Draft', 'Active', 'Expired', 'Terminated'] }, { k: 'Renewal_Status', label: 'Renewal status', t: 'pick', opts: ['Not started', 'In progress', 'Renewed', 'Lost'] }],
       title: function (r) { return P(r.Name); },
       kicker: function (r) { return 'Contract' + (r.Contract_Type ? ' · ' + P(r.Contract_Type) : ''); },
       sub: function (r) { return [P(r.Account) || P(r.Vendor), r.Counterparty_Type ? P(r.Counterparty_Type) : ''].filter(Boolean).join(' · '); },
@@ -173,6 +177,7 @@
     },
     rec: {
       select: ['Name', 'Account', 'Deal', 'Contract', 'Status', 'Phase', 'Risk', 'Blocked_Reason', 'Days_to_Go_live', 'Go_live_Target', 'Go_live_Actual', 'Kickoff_Date', 'Overdue_Tasks', 'Open_Gate_Tasks', 'Last_Step_Completed_On', 'Expected_GPS', 'Expected_RB', 'Expected_RF', 'Expected_TAD', 'Template_Key', 'Plan_Anchored_Go_live'],
+      quick: [{ k: 'Status', label: 'Status', t: 'pick', opts: ['Not started', 'In progress', 'Blocked', 'Complete'] }, { k: 'Risk', label: 'Risk', t: 'pick', opts: ['Low', 'Medium', 'High'] }, { k: 'Go_live_Target', label: 'Go-live target', t: 'date' }, { k: 'Blocked_Reason', label: 'Blocked reason', t: 'text' }],
       title: function (r) { return P(r.Name); },
       kicker: function (r) { return 'Onboarding' + (r.Phase ? ' · ' + P(r.Phase) : ''); },
       sub: function (r) { return [P(r.Account), P(r.Deal)].filter(Boolean).join(' · '); },

@@ -109,6 +109,64 @@
   function openCrm(entity, id) { if (live) window.ZOHO.CRM.UI.Record.open({ Entity: entity, RecordID: id }); else toast('Opens the CRM record when running inside Zoho'); }
   function createCrm() { if (live) window.ZOHO.CRM.UI.Record.create({ Entity: cfg.entity }); else toast('Opens the New form when running inside Zoho'); }
 
+  /* ---------- edit in place: one write path for every view (Zoho record permissions still apply to each write) ---------- */
+  function update(entity, id, data) {
+    if (!live) return Promise.resolve();
+    var d = {}; Object.keys(data).forEach(function (k) { d[k] = data[k]; }); d.id = id;
+    return window.ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: d }).then(function (res) {
+      var x = res && res.data && res.data[0];
+      if (x && x.code && x.code !== 'SUCCESS') throw new Error(x.message || x.code);
+    });
+  }
+  var plCache = {};
+  function picklist(entity, field, fallback) {
+    var k = entity + '.' + field; if (plCache[k]) return Promise.resolve(plCache[k]);
+    if (!live || !window.ZOHO.CRM.META || !window.ZOHO.CRM.META.getFields) return Promise.resolve(fallback || []);
+    return window.ZOHO.CRM.META.getFields({ Entity: entity }).then(function (res) {
+      var f = ((res && res.fields) || []).filter(function (x) { return x.api_name === field; })[0];
+      var v = f && f.pick_list_values ? f.pick_list_values.map(function (p) { return p.actual_value; }).filter(function (x) { return x && x !== '-None-'; }) : [];
+      if (v.length) plCache[k] = v; return v.length ? v : (fallback || []);
+    }, function () { return fallback || []; });
+  }
+  /* admin-only quick-edit fields (flag admin:true in modules.js): editable only when the signed-in user's profile is Administrator.
+     Fails closed (read-only) if the profile cannot be read. This is a screen guard; Zoho profile permissions remain the real lock. */
+  var adminP = null;
+  function isAdmin() {
+    if (adminP) return adminP;
+    if (!live) return (adminP = Promise.resolve(true));
+    adminP = new Promise(function (res) {
+      var t = setTimeout(function () { res(false); }, 10000);
+      window.ZOHO.CRM.CONFIG.getCurrentUser().then(function (r) { clearTimeout(t); var u = r && r.users && r.users[0], pn = u && u.profile && u.profile.name; res(/^(administrator|super admin)/i.test(String(pn || ''))); }, function () { clearTimeout(t); res(false); });
+    });
+    return adminP;
+  }
+  var usersCache = null;
+  function userList() {
+    if (usersCache) return Promise.resolve(usersCache);
+    var demo = [{ id: 'u1', name: 'Beau Carrigan' }, { id: 'u2', name: 'Dana Pipeline' }];
+    if (!live || !window.ZOHO.CRM.API.getAllUsers) return Promise.resolve(demo);
+    return window.ZOHO.CRM.API.getAllUsers({ Type: 'ActiveUsers' }).then(function (r) {
+      var us = ((r && r.users) || []).map(function (u) { return { id: String(u.id), name: u.full_name || u.name || '' }; }).filter(function (u) { return u.id && u.name; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+      usersCache = us; return us;
+    }, function () { return []; });
+  }
+  function toastUndo(m, undo) {
+    toast(m);
+    if (!undo || !toastEl) return;
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Undo'; b.style.cssText = 'margin-left:12px;background:none;border:1px solid #3FB3B7;color:#9CCFCF;border-radius:6px;padding:2px 10px;cursor:pointer';
+    b.onclick = function () { toastEl.hidden = true; undo(); }; toastEl.appendChild(b); clearTimeout(toastT); toastT = setTimeout(function () { toastEl.hidden = true; }, 7000);
+  }
+  var apiOf = function (v) { return v && typeof v === 'object' ? (v.id ? { id: v.id } : null) : (v === '' || v === undefined ? null : v); };
+  /* change fields on one raw record already on screen: write, update the raw object, redraw, offer Undo. changes: {Field: [apiValue, localValue]} */
+  function editRaw(entity, raw, changes, label, redraw) {
+    var keys = Object.keys(changes), oldLocal = {}, oldApi = {}, api = {};
+    if (keys.every(function (k) { return JSON.stringify(apiOf(raw[k])) === JSON.stringify(changes[k][0]) || (raw[k] == null && changes[k][0] == null); })) return Promise.resolve();
+    keys.forEach(function (k) { oldLocal[k] = raw[k]; oldApi[k] = apiOf(raw[k]); api[k] = changes[k][0]; });
+    return update(entity, raw.id, api).then(function () {
+      keys.forEach(function (k) { raw[k] = changes[k][1]; }); redraw();
+      toastUndo('Saved: ' + label, function () { update(entity, raw.id, oldApi).then(function () { keys.forEach(function (k) { raw[k] = oldLocal[k]; }); redraw(); toast('Undone'); }, function (e) { toast('Could not undo: ' + (e && e.message || e)); }); });
+    }, function (e) { toast('Could not save: ' + (e && e.message || e)); redraw(); });
+  }
   var toastEl, toastT;
   function toast(m) {
     if (!toastEl) { toastEl = document.createElement('div'); toastEl.setAttribute('role', 'status'); toastEl.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1A2B2D;border:1px solid #2A3F41;color:#E4EEEE;padding:9px 16px;border-radius:8px;z-index:9'; document.body.appendChild(toastEl); }
@@ -134,7 +192,9 @@
 
   function switchHtml() {
     if (!SW) return '';
-    return '<div class="sw" role="tablist" aria-label="Module">' + SW.map(function (k) { return '<button type="button" class="swb" role="tab" data-m="' + esc(k) + '" aria-selected="' + (MODS[k] === cfg) + '">' + esc(MODS[k].title) + '</button>'; }).join('') + '</div>';
+    var g = null;
+    return '<div class="sw" role="tablist" aria-label="Module">' + SW.map(function (k) { var m = MODS[k], pre = ''; if (m.group && m.group !== g) pre = '<span class="swg">' + esc(m.group) + '</span>'; g = m.group || g;
+      return pre + '<button type="button" class="swb" role="tab" data-m="' + esc(k) + '" aria-selected="' + (m === cfg) + '">' + esc(m.swLabel || m.title) + '</button>'; }).join('') + '</div>';
   }
   function bindSwitch() {
     var b = root.querySelector('.sw'); if (!b) return;
@@ -218,6 +278,7 @@
     if (!live) h += '<div class="demo">Demo data: connect inside Zoho CRM to see live records.</div>';
     if (attn) h += '<div class="attn" role="alert">' + esc(attn) + '</div>';
     h += '<div class="kpis">' + C.kpis.map(function (k) { var v = R.fmt(k.v(r), k.t), t = k.tone ? k.tone(r) : ''; return '<div class="kpi ' + (t === 'grey' ? '' : t) + '"><div class="l">' + esc(k.label) + '</div><div class="v">' + (v === '' ? '–' : esc(v)) + '</div></div>'; }).join('') + '</div>';
+    if (C.quick) h += '<div class="cards"><section class="card" id="quick"></section></div>';
     h += '<div class="fbar"><button type="button" class="pillbtn" id="emp" aria-pressed="false"></button></div><div class="cards" id="secs"></div>';
     var items = REL.forModule(cfg.entity, GEN);
     if (items.length) h += '<div class="tabs" role="tablist" id="tabs">' + items.map(function (t, i) { return '<button type="button" class="tab" role="tab" data-t="' + esc(t.id) + '" aria-selected="' + (i === 0) + '">' + esc(t.label) + '<span class="cnt" id="cnt-' + esc(t.id) + '"></span></button>'; }).join('') + '</div><div class="pane" id="pane"></div>';
@@ -230,6 +291,31 @@
       b.hidden = !s.any || (!s.hidden && !showEmpty); b.setAttribute('aria-pressed', showEmpty); b.textContent = showEmpty ? 'Hide empty fields' : 'Show ' + s.hidden + ' empty fields';
     }
     document.getElementById('emp').onclick = function () { showEmpty = !showEmpty; paintSecs(); };
+    if (C.quick) {
+      var qel = document.getElementById('quick'), qopts = { __admin: false }, again = function () { var y = window.scrollY; drawRecord(r, id, scroll); window.scrollTo(0, y); };
+      var paintQ = function () {
+        qel.innerHTML = '<h3>Quick edit</h3><div class="edit">' + C.quick.map(function (f) {
+          var cur = R.plain(r[f.t === 'user' ? 'Owner.first_name' : f.k]); cur = cur == null || cur === '-None-' ? '' : String(cur);
+          if (f.t === 'user') { var us = (qopts.__users || []).slice(); if (cur && !us.some(function (u) { return u.name === cur; })) us.unshift({ id: '', name: cur }); return '<label>' + esc(f.label) + '<select data-q="' + f.k + '">' + us.map(function (u) { return '<option value="' + esc(u.id) + '"' + (u.name === cur ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('') + '</select></label>'; }
+          var lock = f.admin && !qopts.__admin, lab = esc(f.label) + (f.admin ? ' <span class="mut">(admin only)</span>' : '');
+          if (f.t === 'pick') { var xs = (qopts[f.k] || []).slice(); if (cur && xs.indexOf(cur) < 0) xs.unshift(cur); return '<label>' + lab + '<select data-q="' + f.k + '"' + (lock ? ' disabled title="Only an administrator can change this"' : '') + '><option value="">Not set</option>' + xs.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>'; }
+          return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:8px 0 0;font-size:12px">Saves to Zoho as you change it, with Undo.</p>';
+      };
+      paintQ();
+      if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
+      qel.onchange = function (e) {
+        var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
+        if (f.admin && !qopts.__admin) { toast('Only an administrator can change ' + f.label.toLowerCase()); paintQ(); return; }
+        if (f.t === 'user') {
+          var u = (qopts.__users || []).filter(function (x) { return x.id === v; })[0]; if (!u || !v) return; var oldName = r['Owner.first_name'], oldId = (qopts.__users.filter(function (x) { return x.name === oldName; })[0] || {}).id;
+          update(cfg.entity, id, { Owner: { id: v } }).then(function () { r['Owner.first_name'] = u.name; again(); toastUndo('Saved: owner set to ' + u.name, oldId ? function () { update(cfg.entity, id, { Owner: { id: oldId } }).then(function () { r['Owner.first_name'] = oldName; again(); toast('Undone'); }, function (er) { toast('Could not undo: ' + (er && er.message || er)); }); } : null); }, function (er) { toast('Could not save: ' + (er && er.message || er)); again(); });
+          return;
+        }
+        c[k] = [v || null, v || null]; editRaw(cfg.entity, r, c, f.label + (v ? ' set to ' + v : ' cleared'), again);
+      };
+      if (C.quick.some(function (f) { return f.t === 'user'; })) userList().then(function (us) { qopts.__users = us; paintQ(); });
+      C.quick.forEach(function (f) { if (f.t === 'pick') picklist(cfg.entity, f.k, f.opts || []).then(function (v) { qopts[f.k] = v; paintQ(); }); });
+    }
     paintSecs(); window.scrollTo(0, 0);
     if (!items.length) return;
     var data = {}, pend = {}, cur = items[0].id;
@@ -262,7 +348,7 @@
     items.slice(0, 6).forEach(load); paint();
   }
 
-  var CTX = { R: R, esc: esc, head: head, tableHtml: tableHtml, pillHtml: pillHtml, openCrm: openCrm, toast: toast, coql: coql, isLive: function () { return live; }, switchHtml: switchHtml, bindSwitch: bindSwitch, demoNote: function () { return live ? '' : '<div class="demo">Demo data: connect inside Zoho CRM to see live records.</div>'; } };
+  var CTX = { R: R, esc: esc, head: head, tableHtml: tableHtml, pillHtml: pillHtml, openCrm: openCrm, toast: toast, coql: coql, update: update, editRaw: editRaw, userList: userList, picklist: picklist, toastUndo: toastUndo, isLive: function () { return live; }, switchHtml: switchHtml, bindSwitch: bindSwitch, demoNote: function () { return live ? '' : '<div class="demo">Demo data: connect inside Zoho CRM to see live records.</div>'; } };
 
   /* ---------- start ---------- */
   function start(init) {
