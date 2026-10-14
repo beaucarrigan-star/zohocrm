@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Billing Findings</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="findings.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Vendor billing check</div>
+      <h1>Billing findings</h1>
+      <div class="muted sm" id="ctx">Loading periods...</div>
+    </div>
+    <div class="actions">
+      <label class="sm muted" for="period">Period</label>
+      <select id="period" aria-label="Billing period"></select>
+      <button type="button" class="btn" id="help">About</button>
+    </div>
+  </header>
+
+  <div id="demo-note" class="next" hidden>
+    <div class="nt"><b>Demo data</b><span>Not connected to Zoho. Numbers mirror Sep and Oct 2026 but rows are made up.</span></div>
+  </div>
+  <div id="recon" class="next" hidden></div>
+  <div id="err" class="err" role="alert" hidden></div>
+
+  <section class="card" style="margin-top:12px" aria-labelledby="h-sum">
+    <h2 id="h-sum">This period <em id="sum-sub"></em></h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="legend" id="sev-legend"></div>
+  </section>
+
+  <section class="card" style="margin-top:16px" aria-labelledby="h-mx">
+    <h2 id="h-mx">Findings by vendor and type <em>Select a count to list those findings</em></h2>
+    <div id="matrix"></div>
+  </section>
+
+  <section class="card" style="margin-top:16px" aria-labelledby="h-dt">
+    <h2 id="h-dt">Findings <em id="dt-sub"></em></h2>
+    <div class="toolbar">
+      <span id="active-filter" class="row"></span>
+      <label class="row sm"><input type="checkbox" id="open-only"> Open only</label>
+    </div>
+    <div id="detail"></div>
+  </section>
+</div>
+
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="findings-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="findings.js"></script>
+<script src="jpk-intro.js"
+  data-what="Monthly vendor billing check: where a vendor's invoice differs from what we expect, grouped by vendor and type of finding."
+  data-fed="Billing Periods and Billing Findings, which the monthly vendor-billing check writes, plus Vendors and Vendor Rates."
+  data-feeds="Nothing. It is read-only; work each finding on its own record."></script>
+</body>
+</html>

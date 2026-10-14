@@ -1,0 +1,19 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": [],
+    "font-src": []
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Billing Findings", "location": "crm.button", "url": "/app/findings.html" },
+      { "name": "Billing Findings Tab", "location": "crm.webtab", "url": "/app/findings.html" }
+    ]
+  }
+}
