@@ -140,7 +140,7 @@
     if (typeof m === 'string' && m) return m + (det ? ' (' + det + ')' : '') + (/blueprint/i.test(m + ' ' + (x.code || '')) ? '' : '');
     try { return JSON.stringify(e).slice(0, 200); } catch (_) { return 'unknown error'; }
   }
-  var CASE_STEP_FN = 'cases_bulk_transition';   /* Deluge function (REST API on); args ids, transitionName, noteText */
+  var CASE_STEP_FN = 'case_step';   /* Deluge function (REST API on): runs one blueprint step now; args caseId, transitionName, noteText */
   var plCache = {};
   function picklist(entity, field, fallback) {
     var k = entity + '.' + field; if (plCache[k]) return Promise.resolve(plCache[k]);
@@ -440,36 +440,27 @@
       var qel = document.getElementById('quick'), qopts = { __admin: false }, again = function () { var y = window.scrollY; drawRecord(r, id, scroll); window.scrollTo(0, y); };
       /* Cases are on a blueprint: status moves by named step (Acknowledge, Start Working, Resolve, Close, Reopen) through the same
          Deluge function as the list-view buttons. It queues the step; a workflow runs it within seconds; we poll the case until it lands. */
-      var bp = { names: null, busy: '', msg: '' };
+      var bp = { names: null, busy: '', msg: '', note: '' };
       var BPSTEPS = ['Acknowledge', 'Start Working', 'Resolve', 'Close', 'Reopen'], BPSTATUS = { 'Acknowledge': 'Acknowledged', 'Start Working': 'In Progress', 'Resolve': 'Resolved', 'Close': 'Closed', 'Reopen': 'In Progress' };
       var bpHtml = function () {
         var names = (bp.names || BPSTEPS).filter(function (n) { return BPSTEPS.indexOf(n) >= 0; });
         return '<div class="bp" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)"><div class="mut" style="font-size:12px;margin-bottom:6px">Status: <b style="color:var(--ink)">' + esc(R.plain(r.Status) || 'Not set') + '</b>. Move this case:</div><div style="display:flex;gap:6px;flex-wrap:wrap">' +
           (names.length ? names.map(function (n) { return '<button type="button" class="btn' + (n === 'Resolve' ? ' pri' : '') + '" data-tr="' + esc(n) + '"' + (bp.busy ? ' disabled' : '') + '>' + esc(n) + '</button>'; }).join('') : '<span class="mut" style="font-size:12px">No status steps are available from here.</span>') +
-          '<button type="button" class="btn" data-act="crm-status"' + (bp.busy ? ' disabled' : '') + '>Open in Zoho</button></div>' + (bp.msg ? '<div role="status" class="mut" style="font-size:12px;margin-top:6px">' + esc(bp.msg) + '</div>' : '') + '</div>';
+          '<button type="button" class="btn" data-act="crm-status"' + (bp.busy ? ' disabled' : '') + '>Open in Zoho</button></div><input type="text" data-bpnote placeholder="Note for the step (optional)" maxlength="250" value="' + esc(bp.note) + '" style="margin-top:8px;width:100%">' + (bp.msg ? '<div role="status" class="mut" style="font-size:12px;margin-top:6px">' + esc(bp.msg) + '</div>' : '') + '</div>';
       };
       var runStep = function (name) {
         bp.busy = name; bp.msg = name + ': sending to Zoho...'; paintQ();
         if (!live) { r.Status = BPSTATUS[name]; bp.busy = ''; lastSaved = Date.now(); toast('Demo: status set to ' + r.Status); again(); return; }
-        var t0 = Date.now(), before = R.plain(r.Status), done = false;
-        var secs = function () { return Math.round((Date.now() - t0) / 1000) + 's'; };
-        var fail = function (e) { if (done) return; done = true; bp.busy = ''; bp.msg = 'Not done: ' + errMsg(e); paintQ(); };
+        var fail = function (e) { bp.busy = ''; bp.msg = 'Not done: ' + errMsg(e); paintQ(); };
         var timeout = function (ms, what) { return new Promise(function (_, rej) { setTimeout(function () { rej(new Error(what + ' did not answer in ' + Math.round(ms / 1000) + 's')); }, ms); }); };
-        Promise.race([window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ ids: String(id), transitionName: name, noteText: '' }) }), timeout(30000, 'The function ' + CASE_STEP_FN)]).then(function (res) {
+        Promise.race([window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ caseId: String(id), transitionName: name, noteText: bp.note || '' }) }), timeout(60000, 'The function ' + CASE_STEP_FN)]).then(function (res) {
           if (res && res.code && String(res.code).toLowerCase() !== 'success') throw new Error((res.message || res.code) + '');
-          var out = res && res.details && res.details.output; if (out && /unknown action|no cases selected|failed/i.test(String(out))) throw new Error(String(out));
-          var poll = function (n) {
-            if (done) return;
-            Promise.race([window.ZOHO.CRM.API.getRecord({ Entity: 'Cases', RecordID: id }), timeout(15000, 'Reading the case')]).then(function (g) {
-              if (done) return;
-              var d = g && g.data && g.data[0] || {}, br = String(d.Bulk_Result || ''), ba = d.Bulk_Action ? String(d.Bulk_Action) : '', st = R.plain(d.Status);
-              if (!ba && /^Done/.test(br) || (st && st !== before && st === BPSTATUS[name])) { done = true; r.Status = d.Status; lastSaved = Date.now(); toast('Saved: ' + name + ' (' + st + ')'); again(); }
-              else if (!ba && br && !/^Queued/.test(br)) { done = true; bp.busy = ''; bp.msg = br; paintQ(); }
-              else if (n >= 45) { done = true; bp.busy = ''; bp.msg = name + ' was queued ' + secs() + ' ago but has not run (Bulk_Action "' + ba + '", Bulk_Result "' + br + '", Status "' + st + '"). Check that the "Cases - Bulk action worker" workflow is active.'; paintQ(); }
-              else { bp.msg = name + ': waiting for Zoho (' + secs() + '). Bulk_Action "' + ba + '", Bulk_Result "' + br + '", Status "' + st + '"'; paintQ(); setTimeout(function () { poll(n + 1); }, 2000); }
-            }, fail);
-          };
-          poll(0);
+          var out = String((res && res.details && res.details.output) || '');
+          if (!/^Done/.test(out)) { bp.busy = ''; bp.msg = out || 'No answer from the function.'; paintQ(); return; }
+          return window.ZOHO.CRM.API.getRecord({ Entity: 'Cases', RecordID: id }).then(function (g) {
+            var d = g && g.data && g.data[0] || {}; r.Status = d.Status || BPSTATUS[name]; bp.note = ''; lastSaved = Date.now();
+            toast('Saved: ' + name + ' (' + R.plain(r.Status) + ')'); again();
+          });
         }).catch(fail);
       };
       if (cfg.key === 'cases' && live && window.ZOHO.CRM.API.getBlueprint) window.ZOHO.CRM.API.getBlueprint({ Entity: 'Cases', RecordID: id }).then(function (g) {
@@ -485,6 +476,7 @@
       };
       paintQ();
       if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
+      qel.oninput = function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-bpnote')) bp.note = e.target.value; };
       qel.onclick = function (e) { var t = e.target.closest && e.target.closest('[data-tr]'); if (t && !bp.busy) { runStep(t.getAttribute('data-tr')); return; } var b = e.target.closest && e.target.closest('[data-act=crm-status]'); if (b) openCrm(cfg.entity, id); };
       qel.onchange = function (e) {
         var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
