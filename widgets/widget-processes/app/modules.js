@@ -130,6 +130,7 @@
         { title: 'Reach', rows: [['Email', 'Email'], ['Mobile', 'Mobile'], ['Office phone', 'Office_Phone'], ['Department', 'Department'], ['Follow-up preference', 'Follow_Up_Preference'], ['Source inbox', 'Source_Inbox'], ['Lead source', 'Lead_Source']] },
         { title: 'Context', rows: [['Vendor', 'Vendor_Name'], ['Vendor role', 'Vendor_Role'], ['Devices used', 'Device_s_Used']] },
         { title: 'Discussion topics', text: 'Discussion_Topics' }],
+      quick: [{ k: 'Account_Name', label: 'Account', t: 'account' }],
       tabs: []
     }
   };

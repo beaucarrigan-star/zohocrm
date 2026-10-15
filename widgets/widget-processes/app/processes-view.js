@@ -1,5 +1,7 @@
 /* processes-view.js: Contract, Billing (Flow, Findings, Months) and Solicitations views for the Processes widget.
-   Read-only status views. Rows open the native CRM record. Billing months reuse the Records engine (RecModules.billing). */
+   Status views; rows open the native CRM record. Billing months reuse the Records engine (RecModules.billing).
+   v3.1 (Oct 14): Administrators can set a finding's Status (the decision) in Billing > Findings, and a solicitation's Status in
+   Solicitations, right in the table. Each change saves at once with Undo. Everyone else sees the same tables read-only. */
 (function () {
   'use strict';
   var BF = window.BillingFlowModel, FM = window.FindingsModel, X;
@@ -98,6 +100,22 @@
 
   /* ---------- Billing findings ---------- */
   var GS = { period: null, vendor: '', category: '', openOnly: true, sel: null };
+  var FSTAT = ['Open', 'Disputed with vendor', 'Resolved - credited', 'Resolved - explained', 'Not an issue'], FOPEN = { 'Open': 1, 'Disputed with vendor': 1 };
+  var ADM = null, fstatPl = null;
+  function adminCheck(redraw) {
+    if (ADM === null) { ADM = false; X.hasRole(['admin']).then(function (a) { ADM = a; if (a) redraw(); }); }
+    if (ADM && !fstatPl) { fstatPl = FSTAT; X.picklist('Billing_Findings', 'Status', FSTAT).then(function (v) { if (v && v.length) { fstatPl = v; redraw(); } }); }
+  }
+  /* a finding's decision: Status, with Is_Open kept in step (Open and Disputed with vendor are open) */
+  function decide(root, raw, v) {
+    var old = { Status: raw.Status || null, Is_Open: raw.Is_Open }, nu = { Status: v, Is_Open: !!FOPEN[v] };
+    if (old.Status === v) return;
+    var apply = function (x) { raw.Status = x.Status; raw.Is_Open = x.Is_Open; findingsDraw(root); };
+    X.update('Billing_Findings', raw.id, nu).then(function () {
+      apply(nu);
+      X.toastUndo('Saved: ' + (raw.Subject || 'finding') + ' set to ' + v, function () { X.update('Billing_Findings', raw.id, { Status: old.Status, Is_Open: old.Is_Open == null ? !!FOPEN[old.Status] : old.Is_Open }).then(function () { apply(old); X.toast('Undone'); }, function (e) { X.toast('Could not undo: ' + ((e && e.message) || e)); }); });
+    }, function (e) { X.toast('Could not save: ' + ((e && e.message) || e)); findingsDraw(root); });
+  }
   function findingsDraw(root) {
     var all = FM.normalizeAll(B.findings), pers = {};
     all.forEach(function (r) { if (r.period) pers[r.period] = 1; });
@@ -117,8 +135,11 @@
       h += '<div class="kpis"><div class="kpi"><div class="l">Findings</div><div class="v">' + t.total + '</div></div><div class="kpi warn"><div class="l">Open</div><div class="v">' + t.open + '</div></div><div class="kpi"><div class="l">At stake</div><div class="v">' + esc(money(t.dollars)) + '</div></div><div class="kpi bad"><div class="l">Overbilled</div><div class="v">' + esc(money(t.overbilledDollars)) + '</div></div></div>';
       h += '<div class="tw"><table><thead><tr><th>Vendor</th>' + mx.categories.map(function (c) { return '<th class="r">' + esc(c) + '</th>'; }).join('') + '<th class="r">Total</th></tr></thead><tbody>' +
         mx.vendors.map(function (v) { return '<tr><td class="main"><a href="#" data-v="' + esc(v.vendor) + '" data-c="" style="color:inherit">' + esc(v.vendor) + '</a></td>' + mx.categories.map(function (c) { var x = v.cells[c]; return '<td class="r">' + (x ? '<a href="#" data-v="' + esc(v.vendor) + '" data-c="' + esc(c) + '" style="color:var(--acc)">' + x.open + '/' + x.total + '</a>' : '') + '</td>'; }).join('') + '<td class="r">' + v.open + '/' + v.total + '</td></tr>'; }).join('') + '</tbody></table></div><p class="mut" style="padding:6px 24px 0;font-size:12px">Cells show open / total. Click one to filter.</p>';
-      h += list.length ? X.tableHtml([{ k: 'participant', label: 'Subject', main: 1 }, { k: 'vendor', label: 'Vendor' }, { k: 'category', label: 'Type' }, { k: 'checkId', label: 'Check' }, { k: 'severity', label: 'Severity', pill: 1 }, { k: 'status', label: 'Status', pill: 1 }, { k: 'dollars', label: 'Dollars', r: 1 }],
-        list.slice(0, 300).map(function (r) { return { participant: r.participant, vendor: r.vendor, category: r.category, checkId: r.checkId, severity: r.severity, status: r.status, dollars: r.dollars ? money(r.dollars) : '' }; }), true) : '<div class="empty"><b>No findings match</b></div>';
+      var fed = ADM ? { pl: { status: fstatPl || FSTAT }, admin: true, title: function (r) { return r.participant || 'finding'; } } : null;
+      if (fed && per0 && /Reconciled|Frozen/.test(String(per0.Period_Status || ''))) h += '<div class="attn" style="background:var(--s1);border-color:var(--line);color:var(--ink)">' + esc(BF.monthLabel(GS.period)) + ' is ' + esc(per0.Period_Status) + '. Changing a decision here un-reconciles the month; run Reconcile again afterwards.</div>';
+      h += list.length ? X.tableHtml([{ k: 'participant', label: 'Subject', main: 1 }, { k: 'vendor', label: 'Vendor' }, { k: 'category', label: 'Type' }, { k: 'checkId', label: 'Check' }, { k: 'severity', label: 'Severity', pill: 1 }, { k: 'status', label: 'Decision', pill: 1, ed: 'pick', opts: FSTAT }, { k: 'dollars', label: 'Dollars', r: 1 }],
+        list.slice(0, 300).map(function (r) { return { participant: r.participant, vendor: r.vendor, category: r.category, checkId: r.checkId, severity: r.severity, status: r.status, dollars: r.dollars ? money(r.dollars) : '' }; }), true, fed) +
+        (fed ? '<p class="mut edhint">Decision (✎) saves to the finding at once, with Undo, and is read back on the next Reconcile. Administrators only.</p>' : '') : '<div class="empty"><b>No findings match</b></div>';
     }
     root.innerHTML = h + '</div>';
     X.bindSwitch();
@@ -128,8 +149,15 @@
       if ((t = e.target.closest('a[data-v]'))) { e.preventDefault(); GS.vendor = t.getAttribute('data-v'); GS.category = t.getAttribute('data-c'); findingsDraw(root); }
       else if (e.target.closest('#oo')) { GS.openOnly = !GS.openOnly; findingsDraw(root); }
       else if (e.target.closest('#clr')) { GS.vendor = ''; GS.category = ''; findingsDraw(root); }
+      else if (e.target.closest('.lec')) return;
       else if ((t = e.target.closest('tr[data-i]'))) X.openCrm('Billing_Findings', list[+t.getAttribute('data-i')].id);
     };
+    root.onchange = function (e) {
+      if (e.target.getAttribute('data-le') !== 'status' || !ADM) return;
+      var tr = e.target.closest('tr[data-i]'), f = tr && list[+tr.getAttribute('data-i')]; if (!f) return;
+      var raw = B.findings.filter(function (x) { return String(x.id) === String(f.id); })[0]; if (raw && e.target.value) decide(root, raw, e.target.value); else findingsDraw(root);
+    };
+    adminCheck(function () { findingsDraw(root); });
     var per = $('per'); if (per) per.onchange = function () { GS.period = per.value; GS.vendor = GS.category = ''; findingsDraw(root); };
   }
 
@@ -140,7 +168,7 @@
 
   /* ---------- lane views: Contract and Solicitations ---------- */
   function laneView(o) {
-    var S = { rows: [], loaded: false, busy: false, err: '', lane: o.lanes[0].id, sel: null }, root;
+    var S = { rows: [], loaded: false, busy: false, err: '', lane: o.lanes[0].id, sel: null, canEdit: null, pl: {} }, root;
     function lanesOf() { return o.lanes.map(function (l) { var items = S.rows.filter(l.test); return { id: l.id, label: l.label, count: items.length, items: items, hint: l.hint || '' }; }); }
     function draw() {
       var ls = lanesOf(), lane = ls.filter(function (l) { return l.id === S.lane; })[0] || ls[0];
@@ -150,7 +178,11 @@
       h += lanePills(ls, lane.id, 'ln');
       if (!S.loaded) h += '<div class="empty">Loading…</div>';
       else if (!lane.items.length) h += '<div class="empty"><b>Nothing here</b></div>';
-      else h += X.tableHtml(o.cols, lane.items.slice(0, 300), true);
+      else {
+        var ed = o.edit && S.canEdit ? { pl: S.pl, admin: true, title: function (r) { return X.R.plain(r[o.nameKey]) || o.noun; } } : null;
+        var cols = ed ? o.cols.map(function (c) { var x = o.edit.cols[c.k]; if (!x) return c; var y = {}; for (var k in c) y[k] = c[k]; y.ed = x.ed; y.opts = x.opts; return y; }) : o.cols;
+        h += X.tableHtml(cols, lane.items.slice(0, 300), true, ed) + (ed ? '<p class="mut edhint">Columns marked ✎ save to Zoho at once, with Undo. ' + esc(o.edit.who) + '.</p>' : '');
+      }
       var cur = S.sel != null && lane.items[S.sel];
       if (cur) h += '<div class="cards"><section class="card" id="det"><h3>' + esc(cur[o.nameKey]) + '</h3><dl>' + o.detail.map(function (d) { return '<dt>' + esc(d[1]) + '</dt><dd>' + esc(X.R.fmt(cur[d[0]], d[2])) + '</dd>'; }).join('') + '</dl><div class="acts"><button type="button" class="btn pri" data-a="open">Open ' + esc(o.noun) + '</button>' +
         (cur[o.acct] && cur[o.acct].id ? '<button type="button" class="btn" data-a="acct">Open account</button>' : '') + '<button type="button" class="btn" data-a="close">Close</button></div></section></div>';
@@ -161,8 +193,16 @@
         var t;
         if ((t = e.target.closest('[data-ln]'))) { S.lane = t.getAttribute('data-ln'); S.sel = null; draw(); }
         else if ((t = e.target.closest('button[data-a]'))) { var a = t.getAttribute('data-a'), c = lane.items[S.sel]; if (a === 'open') X.openCrm(o.entity, c.id); else if (a === 'acct') X.openCrm('Accounts', c[o.acct].id); else { S.sel = null; draw(); } }
+        else if (e.target.closest('.lec')) return;
         else if ((t = e.target.closest('tr[data-i]'))) { S.sel = +t.getAttribute('data-i'); draw(); var d = $('det'); if (d) d.scrollIntoView({ block: 'nearest' }); }
       };
+      root.onchange = function (e) {
+        var k = e.target.getAttribute('data-le'), tr = e.target.closest('tr[data-i]'); if (!k || !tr || !S.canEdit) return;
+        var row = lane.items[+tr.getAttribute('data-i')], v = e.target.value.trim(), ch = {}; if (!row) return;
+        ch[k] = [v || null, v || null];
+        X.editRaw(o.entity, row, ch, k.replace(/_/g, ' ').toLowerCase() + (v ? ' set to ' + v : ' cleared') + ' on ' + (X.R.plain(row[o.nameKey]) || o.noun), draw);
+      };
+      if (o.edit && S.canEdit == null) { S.canEdit = false; X.hasRole(o.edit.roles).then(function (a) { S.canEdit = a; if (!a) return; Object.keys(o.edit.cols).forEach(function (k) { var c = o.edit.cols[k]; if (c.ed === 'pick') { S.pl[k] = c.opts; X.picklist(o.entity, k, c.opts).then(function (v) { if (v && v.length) S.pl[k] = v; draw(); }); } }); draw(); }); }
     }
     function load(force) {
       if (S.busy || (S.loaded && !force)) return Promise.resolve();
@@ -195,7 +235,8 @@
     key: 'p_solicit', title: 'Solicitations', swLabel: 'Solicitations', group: 'Solicitations', entity: 'Solicitations', demo: 'solicitations', noun: 'solicitation', nameKey: 'Name', acct: 'Issuing_Agency',
     sub: 'Every solicitation by deadline and bid decision. Start a new one under New.',
     select: 'Name, Issuing_Agency, Status, Proposal_Due, Days_To_Deadline, Bid_Decision, Best_Score, Unmet_Mandatory_Count',
-    foot: 'Read only. New solicitations are created under New.',
+    foot: 'Administrators can change Status in the table. New solicitations are created under New.',
+    edit: { roles: ['admin'], who: 'Administrators only', cols: { Status: { ed: 'pick', opts: ['Identified', 'Reviewing', 'Bid Decision Pending', 'Preparing Proposal', 'Submitted', 'Shortlisted / Orals', 'Won', 'Lost', 'No-Bid - Tracking', 'Cancelled by Agency'] } } },
     lanes: [
       { id: 'soon', label: 'Due within 30 days', kpi: 'bad', test: function (r) { var d = r.Days_To_Deadline; return d != null && d !== '' && +d >= 0 && +d <= 30; } },
       { id: 'nodec', label: 'No bid decision', kpi: 'warn', test: function (r) { return !s(r.Bid_Decision); } },

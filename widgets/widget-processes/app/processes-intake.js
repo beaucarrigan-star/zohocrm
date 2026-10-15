@@ -51,7 +51,7 @@
     h += '<section class="card"><h3>2. Packet</h3><input type="file" id="ci-f" multiple accept=".zip,.pdf,.xlsx"><p class="mut" style="margin:10px 0 0;font-size:12px">' +
       (C.files.length ? C.files.map(kb).join('<br>') : 'A zip, PDFs or spreadsheets: the agreement, amendments and rate sheets.') + '</p>' +
       '<div class="acts"><button type="button" class="btn pri" id="ci-go"' + (!cur || !C.files.length || C.busy ? ' disabled' : '') + '>' + (C.busy ? 'Working…' : 'Attach and read') + '</button></div></section>';
-    h += '<section class="card"><h3>3. Follow the read</h3>' + (R ? runHtml(R) : '<p class="mut" style="margin:0">Starts after you attach a packet.</p>') +
+    h += '<section class="card" style="min-width:0"><h3>3. Follow the read</h3>' + (R ? runHtml(R) : '<p class="mut" style="margin:0">Starts after you attach a packet.</p>') +
       (cur && R && R.done ? '<div class="acts"><button type="button" class="btn pri" id="ci-open">Open review</button></div>' : '') + '</section></div>';
     if (C.msg) h += '<div class="attn" style="background:var(--s1);border-color:var(--line);color:var(--ink)">' + esc(C.msg) + '</div>';
     h += '<div class="cards"><section class="card" style="grid-column:1/-1"><h3>Backlog (' + bl.length + ')</h3>' + (!C.loaded ? '<p class="mut">Loading…</p>' : !bl.length ? '<p class="mut" style="margin:0">Nothing waiting.</p>' :
@@ -68,10 +68,12 @@
       t = e.target.closest('[data-bl]'); if (t) { var r = C.list.filter(function (x) { return x.id === t.getAttribute('data-bl'); })[0]; if (r) { C.type = r.Counterparty_Type === 'Vendor' ? 'Vendor' : 'Customer'; C.sel = r.id; C.run = null; C.msg = 'Selected ' + r.Name + '. Add its packet in step 2.'; cDraw(root); window.scrollTo(0, 0); } }
     };
   }
+  /* Long file names in the worker's summary have no spaces, so they must be allowed to break anywhere or they run out of the card. */
+  var WRAP = 'overflow-wrap:anywhere;word-break:break-word;';
   function runHtml(R) {
-    var chips = (R.docs || []).map(function (d) { var st = d.Parse_Status || ''; var tone = /Parsed/i.test(st) ? 'good' : /No text|OCR/i.test(st) ? 'warn' : /Fail/i.test(st) ? 'bad' : 'info'; return '<tr><td>' + esc(d.File_Name || '') + '</td><td>' + esc(d.Doc_Type || '') + '</td><td>' + X.pillHtml(st || 'Waiting') + '</td></tr>'; }).join('');
+    var chips = (R.docs || []).map(function (d) { var st = d.Parse_Status || ''; var tone = /Parsed/i.test(st) ? 'good' : /No text|OCR/i.test(st) ? 'warn' : /Fail/i.test(st) ? 'bad' : 'info'; return '<tr><td style="' + WRAP + '">' + esc(d.File_Name || '') + '</td><td>' + esc(d.Doc_Type || '') + '</td><td>' + X.pillHtml(st || 'Waiting') + '</td></tr>'; }).join('');
     return '<dl><dt>Status</dt><dd>' + esc(R.status || 'Waiting for the worker') + '</dd><dt>Documents</dt><dd>' + (R.docs || []).length + '</dd><dt>Clauses</dt><dd>' + (R.clauses || 0) + '</dd><dt>Rate lines</dt><dd>' + (R.rates || 0) + '</dd></dl>' +
-      (R.summary ? '<p style="margin:10px 0 0;font-size:13px">' + esc(R.summary) + '</p>' : '') + (R.note ? '<p class="mut" style="margin:10px 0 0;font-size:12px">' + esc(R.note) + '</p>' : '') +
+      (R.summary ? '<div style="margin:10px 0 0;font-size:12px;line-height:1.5;white-space:pre-wrap;' + WRAP + 'max-height:320px;overflow-y:auto;padding:8px 10px;background:var(--s1);border:1px solid var(--line);border-radius:8px">' + esc(R.summary) + '</div>' : '') + (R.note ? '<p class="mut" style="margin:10px 0 0;font-size:12px;' + WRAP + '">' + esc(R.note) + '</p>' : '') +
       (chips ? '<div class="tw" style="margin-top:10px"><table><tbody>' + chips + '</tbody></table></div>' : '') + (R.polling ? '<p class="mut" style="margin:10px 0 0;font-size:12px">Checking every 5 seconds…</p>' : '');
   }
   function cStart(root) {
