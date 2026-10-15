@@ -141,7 +141,9 @@
   /* ---------- wiring ---------- */
   function render() {
     $('tabs').className = 'ctabs'; $('tabs').setAttribute('role', 'tablist'); $('tabs').setAttribute('aria-label', 'PDEC Home sections');
-    $('tabs').innerHTML = TABS.map(function (t) { return '<button type="button" role="tab" id="tab-' + t[0] + '" data-t="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '" aria-controls="view" tabindex="' + (S.tab === t[0] ? 0 : -1) + '">' + t[1] + '</button>'; }).join('');
+    var tabsEl = $('tabs');
+    if (!tabsEl.firstChild) tabsEl.innerHTML = TABS.map(function (t) { return '<button type="button" role="tab" id="tab-' + t[0] + '" data-t="' + t[0] + '" aria-controls="view">' + t[1] + '</button>'; }).join('');
+    Array.prototype.forEach.call(tabsEl.children, function (b) { var on = b.getAttribute('data-t') === S.tab; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
     $('view').setAttribute('role', 'tabpanel'); $('view').setAttribute('aria-labelledby', 'tab-' + S.tab);
     if (!S.data) return;
     $('view').innerHTML = { overview: vOverview, journey: vJourney, report: vReport }[S.tab]();
@@ -171,5 +173,14 @@
     + '<p>Each person is placed at the furthest step they have reached, worked out from Zoho and never typed: <b>Met</b> (on the campaign), <b>In conversation</b> (a call, meeting or note after the event), <b>Opportunity</b> (an open opportunity whose Source Campaign is this conference), <b>Proposal sent</b>, <b>Won</b>.</p>'
     + '<p>Source Campaign is the first conference only. Leave it blank for relationships that did not start at a conference.</p>'
     + '<p>The report tab is for Ed and Nick. Save it as a PDF or open an email from your own address. Nothing is sent from this page, and they see only what you send.</p>' });
+  /* Light / dark / follow the device. Remembered per browser; works without storage. */
+  function setTheme(v, save) {
+    if (v === 'light' || v === 'dark') document.documentElement.setAttribute('data-theme', v); else { v = 'auto'; document.documentElement.removeAttribute('data-theme'); }
+    Array.prototype.forEach.call(document.querySelectorAll('#theme [data-th]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-th') === v)); });
+    if (save) { try { localStorage.setItem('pdec-theme', v); } catch (e) { /* storage unavailable */ } }
+  }
+  document.getElementById('theme').addEventListener('click', function (e) { var b = e.target.closest('[data-th]'); if (b) setTheme(b.getAttribute('data-th'), true); });
+  var savedTheme = 'auto'; try { savedTheme = localStorage.getItem('pdec-theme') || 'auto'; } catch (e) { /* storage unavailable */ }
+  setTheme(savedTheme, false);
   load();
 })();
