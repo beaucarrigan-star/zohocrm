@@ -58,7 +58,7 @@
     },
     rec: {
       select: ['Subject', 'Case_Number', 'Account_Name', 'Owner.first_name', 'Status', 'Priority', 'Case_Origin', 'Case_Category', 'Case_Age_days', 'Queue', 'Dispatch_Status', 'Dispatch_Exception', 'Dispatch_Exception_Note', 'Scheduled_Start', 'Scheduled_End', 'Assigned_Installer', 'Job_Type', 'Service_City', 'Service_County', 'DOC_Region', 'Requested_Date', 'Due_By', 'Participant_ID', 'Device_Serial', 'Vendor_Ticket_Number', 'Resolution_Category', 'Reported_By', 'Email', 'Phone', 'Description', 'Internal_Comments', 'Solution'],
-      quick: [{ k: 'Status', label: 'Status', t: 'pick', opts: ['New', 'In Progress', 'On Hold', 'Closed'] }, { k: 'Priority', label: 'Priority', t: 'pick', opts: ['High', 'Medium', 'Low'] }, { k: 'Queue', label: 'Queue', t: 'pick', opts: ['Support', 'Reports', 'Personal'] }],
+      quick: [{ k: 'Priority', label: 'Priority', t: 'pick', opts: ['High', 'Medium', 'Low'] }, { k: 'Queue', label: 'Queue', t: 'pick', opts: ['Support', 'Reports', 'Personal'] }],
       title: function (r) { return P(r.Subject); },
       kicker: function (r) { return 'Case' + (r.Case_Category ? ' · ' + P(r.Case_Category) : ''); },
       sub: function (r) { return [P(r.Account_Name), r[OWN] ? 'Owner ' + P(r[OWN]) : '', r.Case_Origin ? 'via ' + P(r.Case_Origin) : ''].filter(Boolean).join(' · '); },
