@@ -440,20 +440,27 @@
       var qel = document.getElementById('quick'), qopts = { __admin: false }, again = function () { var y = window.scrollY; drawRecord(r, id, scroll); window.scrollTo(0, y); };
       /* Cases are on a blueprint: status moves by named step (Acknowledge, Start Working, Resolve, Close, Reopen) through the same
          Deluge function as the list-view buttons. It queues the step; a workflow runs it within seconds; we poll the case until it lands. */
-      var bp = { names: null, busy: '', msg: '', note: '' };
+      var bp = { names: null, busy: '', msg: '', note: '', form: false, cats: null, cat: '', sol: '' };
       var BPSTEPS = ['Acknowledge', 'Start Working', 'Resolve', 'Close', 'Reopen'], BPSTATUS = { 'Acknowledge': 'Acknowledged', 'Start Working': 'In Progress', 'Resolve': 'Resolved', 'Close': 'Closed', 'Reopen': 'In Progress' };
+      /* Resolve needs a resolution category and a solution (mandatory on the blueprint step): ask for them first */
+      var formHtml = function () {
+        var cats = bp.cats || [];
+        return '<div class="bpform" style="margin-top:10px;display:grid;gap:8px"><label class="mut" style="font-size:12px">Resolution category<select data-bpcat style="width:100%"><option value="">Choose...</option>' + cats.map(function (c) { return '<option value="' + esc(c) + '"' + (c === bp.cat ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></label>' +
+          '<label class="mut" style="font-size:12px">Solution<textarea data-bpsol rows="3" maxlength="2000" style="width:100%" placeholder="What fixed it, or why the case is resolved">' + esc(bp.sol || '') + '</textarea></label>' +
+          '<div style="display:flex;gap:6px"><button type="button" class="btn pri" data-act="bp-go"' + (bp.busy ? ' disabled' : '') + '>Resolve case</button><button type="button" class="btn" data-act="bp-cancel"' + (bp.busy ? ' disabled' : '') + '>Cancel</button></div></div>';
+      };
       var bpHtml = function () {
         var names = (bp.names || BPSTEPS).filter(function (n) { return BPSTEPS.indexOf(n) >= 0; });
         return '<div class="bp" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)"><div class="mut" style="font-size:12px;margin-bottom:6px">Status: <b style="color:var(--ink)">' + esc(R.plain(r.Status) || 'Not set') + '</b>. Move this case:</div><div style="display:flex;gap:6px;flex-wrap:wrap">' +
           (names.length ? names.map(function (n) { return '<button type="button" class="btn' + (n === 'Resolve' ? ' pri' : '') + '" data-tr="' + esc(n) + '"' + (bp.busy ? ' disabled' : '') + '>' + esc(n) + '</button>'; }).join('') : '<span class="mut" style="font-size:12px">No status steps are available from here.</span>') +
-          '<button type="button" class="btn" data-act="crm-status"' + (bp.busy ? ' disabled' : '') + '>Open in Zoho</button></div><input type="text" data-bpnote placeholder="Note for the step (optional)" maxlength="250" value="' + esc(bp.note) + '" style="margin-top:8px;width:100%">' + (bp.msg ? '<div role="status" class="mut" style="font-size:12px;margin-top:6px">' + esc(bp.msg) + '</div>' : '') + '</div>';
+          '<button type="button" class="btn" data-act="crm-status"' + (bp.busy ? ' disabled' : '') + '>Open in Zoho</button></div>' + (bp.form ? formHtml() : '') + '<input type="text" data-bpnote placeholder="Note for the step (optional)" maxlength="250" value="' + esc(bp.note) + '" style="margin-top:8px;width:100%">' + (bp.msg ? '<div role="status" class="mut" style="font-size:12px;margin-top:6px">' + esc(bp.msg) + '</div>' : '') + '</div>';
       };
-      var runStep = function (name) {
+      var runStep = function (name, extra) {
         bp.busy = name; bp.msg = name + ': sending to Zoho...'; paintQ();
         if (!live) { r.Status = BPSTATUS[name]; bp.busy = ''; lastSaved = Date.now(); toast('Demo: status set to ' + r.Status); again(); return; }
         var fail = function (e) { bp.busy = ''; bp.msg = 'Not done: ' + errMsg(e); paintQ(); };
         var timeout = function (ms, what) { return new Promise(function (_, rej) { setTimeout(function () { rej(new Error(what + ' did not answer in ' + Math.round(ms / 1000) + 's')); }, ms); }); };
-        Promise.race([window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ caseId: String(id), transitionName: name, noteText: bp.note || '' }) }), timeout(60000, 'The function ' + CASE_STEP_FN)]).then(function (res) {
+        Promise.race([window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ caseId: String(id), transitionName: name, noteText: extra ? JSON.stringify(extra) : (bp.note || '') }) }), timeout(60000, 'The function ' + CASE_STEP_FN)]).then(function (res) {
           if (res && res.code && String(res.code).toLowerCase() !== 'success') throw new Error((res.message || res.code) + '');
           var out = String((res && res.details && res.details.output) || '');
           if (!/^Done/.test(out)) { bp.busy = ''; bp.msg = out || 'No answer from the function.'; paintQ(); return; }
@@ -477,8 +484,18 @@
       };
       paintQ();
       if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
-      qel.oninput = function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-bpnote')) bp.note = e.target.value; };
-      qel.onclick = function (e) { var t = e.target.closest && e.target.closest('[data-tr]'); if (t && !bp.busy) { runStep(t.getAttribute('data-tr')); return; } var b = e.target.closest && e.target.closest('[data-act=crm-status]'); if (b) openCrm(cfg.entity, id); };
+      qel.oninput = function (e) { var a = e.target.hasAttribute ? e.target : null; if (!a) return; if (a.hasAttribute('data-bpnote')) bp.note = a.value; if (a.hasAttribute('data-bpsol')) bp.sol = a.value; };
+      qel.onclick = function (e) {
+        var go = e.target.closest && e.target.closest('[data-act]'), act = go && go.getAttribute('data-act');
+        if (act === 'bp-cancel') { bp.form = false; bp.msg = ''; paintQ(); return; }
+        if (act === 'bp-go') {
+          var cs = qel.querySelector('[data-bpcat]'), so = qel.querySelector('[data-bpsol]'); bp.cat = cs ? cs.value : ''; bp.sol = so ? so.value.trim() : '';
+          if (!bp.cat || !bp.sol) { bp.msg = 'Choose a resolution category and write a solution first.'; paintQ(); return; }
+          bp.form = false; runStep('Resolve', { Resolution_Category: bp.cat, Solution: bp.sol }); return;
+        }
+        var t = e.target.closest && e.target.closest('[data-tr]');
+        if (t && !bp.busy && t.getAttribute('data-tr') === 'Resolve') { bp.form = true; bp.msg = ''; paintQ(); picklist('Cases', 'Resolution_Category', ['Resolved', 'Duplicate', 'No action needed', 'Other']).then(function (v) { bp.cats = v; paintQ(); }); return; }
+        if (t && !bp.busy) { runStep(t.getAttribute('data-tr')); return; } var b = e.target.closest && e.target.closest('[data-act=crm-status]'); if (b) openCrm(cfg.entity, id); };
       qel.onchange = function (e) {
         var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
         if (f.admin && !qopts.__admin) { toast('Only an administrator can change ' + f.label.toLowerCase()); paintQ(); return; }
