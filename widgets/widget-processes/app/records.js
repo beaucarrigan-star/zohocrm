@@ -10,7 +10,7 @@
   if (!cfg) { root.innerHTML = '<div class="err">Unknown module: ' + esc(window.RECORDS_MODULE) + '</div>'; return; }
 
   var live = false;                       /* true once the Zoho SDK answers PageLoad */
-  var st = { filter: 'all', search: '', rows: [], offset: 0, more: false, loading: false, token: 0, pl: {}, admin: false };
+  var st = { filter: 'all', search: '', rows: [], offset: 0, more: false, loading: false, token: 0, pl: {}, admin: false, stepBusy: '', stepForm: null };
   var PAGE = 100;
 
   /* ---------- data layer ---------- */
@@ -141,6 +141,26 @@
     try { return JSON.stringify(e).slice(0, 200); } catch (_) { return 'unknown error'; }
   }
   var CASE_STEP_FN = 'case_step';   /* Deluge function (REST API on): runs one blueprint step now; args caseId, transitionName, noteText */
+  var LSTATUS = { 'Start Working': 'In Progress', 'Resolve': 'Resolved', 'Close': 'Closed', 'Reopen': 'In Progress', 'Acknowledge': 'Acknowledged' };
+  /* run one blueprint step on one case through the case_step function; resolves with the status text it returns ("Done: Resolve") or rejects with a readable error */
+  function callStep(id, name, extra) {
+    if (!live) return Promise.resolve('Done: ' + name);
+    var to = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('The function ' + CASE_STEP_FN + ' did not answer in 60s')); }, 60000); });
+    return Promise.race([window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ caseId: String(id), transitionName: name, noteText: extra ? JSON.stringify(extra) : '' }) }), to]).then(function (res) {
+      if (res && res.code && String(res.code).toLowerCase() !== 'success') throw new Error((res.message || res.code) + '');
+      var out = String((res && res.details && res.details.output) || '');
+      if (!/^Done/.test(out)) throw new Error(out || 'No answer from the function.');
+      return out;
+    }, function (e) { throw (e instanceof Error ? e : new Error(errMsg(e))); });
+  }
+  /* the one step offered on a Cases list row, by current status (Resolve asks for category + solution first) */
+  function nextStep(row) {
+    var s = String(R.plain(row.Status) || '');
+    if (/^(new|acknowledged)$/i.test(s)) return 'Start Working';
+    if (/^(in progress|on hold|waiting|escalated)$/i.test(s)) return 'Resolve';
+    if (/^resolved$/i.test(s)) return 'Close';
+    return '';
+  }
   var plCache = {};
   function picklist(entity, field, fallback) {
     var k = entity + '.' + field; if (plCache[k]) return Promise.resolve(plCache[k]);
@@ -240,6 +260,7 @@
   }
   function cell(c, row, ed) {
     var v = row[c.k], cls = [];
+    if (c.step) { var ns = nextStep(row); return '<td class="lstep">' + (ns ? '<button type="button" class="btn sm' + (ns === 'Resolve' ? ' pri' : '') + '" data-lstep="' + esc(ns) + '"' + (st.stepBusy ? ' disabled' : '') + '>' + esc(ns === 'Start Working' ? 'Start' : ns) + '</button>' : '') + '</td>'; }
     if (c.r) cls.push('r'); if (c.main) cls.push('main');
     if (ed && c.ed && (!c.edIf || c.edIf(row))) { cls.push('lec'); return '<td class="' + cls.join(' ') + '">' + edCell(c, row, ed) + '</td>'; }
     var inner = c.pill ? pillHtml(v) : esc(c.trunc ? R.trunc(R.fmt(v, c.t), c.trunc) : R.fmt(v, c.t));
@@ -365,7 +386,46 @@
     box.innerHTML = tableHtml(cfg.list.cols, st.rows, true, ed) + (st.more ? '<button type="button" class="btn more" id="more">Load more</button>' : '') +
       (ed ? '<p class="mut edhint">Columns marked ✎ save to Zoho as you change them, with Undo. Click anywhere else on a row to open it.</p>' : '');
     var tb = box.querySelector('tbody');
-    tb.onclick = function (e) { if (e.target.closest('.lec')) return; var tr = e.target.closest('tr[data-i]'); if (tr) showRecord(st.rows[+tr.getAttribute('data-i')].id); };
+    if (st.stepForm) {   /* inline Resolve form under its row */
+      var fi = -1; st.rows.forEach(function (x, i) { if (String(x.id) === String(st.stepForm.id)) fi = i; });
+      var ftr = fi >= 0 && tb.querySelector('tr[data-i="' + fi + '"]');
+      if (ftr) {
+        var cats = st.stepForm.cats || [], sf = st.stepForm;
+        var frow = document.createElement('tr'); frow.className = 'stepform';
+        frow.innerHTML = '<td colspan="' + cfg.list.cols.length + '"><div class="f"><label>Resolution category<select data-sf="cat"><option value="">Choose...</option>' + cats.map(function (c) { return '<option value="' + esc(c) + '"' + (c === sf.cat ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></label>' +
+          '<label>Solution<input type="text" data-sf="sol" maxlength="2000" placeholder="What fixed it, or why the case is resolved" value="' + esc(sf.sol || '') + '"></label>' +
+          '<div class="acts"><button type="button" class="btn pri" data-sfgo' + (st.stepBusy ? ' disabled' : '') + '>Resolve case</button><button type="button" class="btn" data-sfno' + (st.stepBusy ? ' disabled' : '') + '>Cancel</button></div></div>' + (sf.msg ? '<div class="mut sfmsg" role="status">' + esc(sf.msg) + '</div>' : '') + '</td>';
+        ftr.parentNode.insertBefore(frow, ftr.nextSibling);
+      }
+    }
+    var finishStep = function (row, name) {
+      var done = function (stt) { row.Status = stt; st.stepBusy = ''; st.stepForm = null; toast('Saved: ' + name + ' on ' + (R.plain(row[main.k]) || 'case') + ' (' + stt + ')'); lastSaved = Date.now(); drawList(); };
+      if (!live) { done(LSTATUS[name] || row.Status); return; }
+      window.ZOHO.CRM.API.getRecord({ Entity: 'Cases', RecordID: row.id }).then(function (g) { var d = g && g.data && g.data[0]; done(d && d.Status || LSTATUS[name]); }, function () { done(LSTATUS[name]); });
+    };
+    var runRowStep = function (row, name, extra) {
+      st.stepBusy = String(row.id); if (st.stepForm) st.stepForm.msg = name + '...'; drawList();
+      callStep(row.id, name, extra).then(function () { finishStep(row, name); }, function (er) {
+        st.stepBusy = ''; if (st.stepForm) st.stepForm.msg = 'Not done: ' + er.message; else toast('Not done: ' + er.message); drawList();
+      });
+    };
+    tb.oninput = function (e) { var k = e.target.getAttribute && e.target.getAttribute('data-sf'); if (k && st.stepForm) st.stepForm[k] = e.target.value; };
+    tb.onclick = function (e) {
+      var ls = e.target.closest('[data-lstep]'), sfgo = e.target.closest('[data-sfgo]'), sfno = e.target.closest('[data-sfno]');
+      if (sfno) { st.stepForm = null; drawList(); return; }
+      if (sfgo && st.stepForm) {
+        var sf2 = st.stepForm, rw = st.rows.filter(function (x) { return String(x.id) === String(sf2.id); })[0];
+        if (!sf2.cat || !String(sf2.sol || '').trim()) { sf2.msg = 'Choose a resolution category and write a solution first.'; drawList(); return; }
+        if (rw) runRowStep(rw, 'Resolve', { Resolution_Category: sf2.cat, Solution: String(sf2.sol).trim() }); return;
+      }
+      if (ls && !st.stepBusy) {
+        var tr0 = ls.closest('tr[data-i]'), row0 = tr0 && st.rows[+tr0.getAttribute('data-i')], nm = ls.getAttribute('data-lstep'); if (!row0) return;
+        if (nm === 'Resolve') { st.stepForm = { id: row0.id, cat: '', sol: '', msg: '', cats: null }; drawList(); picklist('Cases', 'Resolution_Category', ['Resolved', 'Duplicate', 'No action needed', 'Other']).then(function (v) { if (st.stepForm) { st.stepForm.cats = v; drawList(); } }); return; }
+        runRowStep(row0, nm); return;
+      }
+      if (e.target.closest('.lec,.lstep,.stepform')) return;
+      var tr = e.target.closest('tr[data-i]'); if (tr) showRecord(st.rows[+tr.getAttribute('data-i')].id);
+    };
     tb.onchange = function (e) {
       var k = e.target.getAttribute('data-le'), tr = e.target.closest('tr[data-i]'); if (!k || !tr) return;
       var row = st.rows[+tr.getAttribute('data-i')], c = cfg.list.cols.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), ch = {};
