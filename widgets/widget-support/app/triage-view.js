@@ -70,7 +70,7 @@
     var r = f.row;
     return { id: r.id, subject: r.subject || '(no subject)', sender: r.senderName ? r.senderName + ' <' + r.senderEmail + '>' : r.senderEmail, account: r.accountName || 'No match', received: when(r.receivedMs), waiting: ageText(f), result: r.result || 'Not set' };
   }
-  var COLS = [{ k: 'subject', label: 'Subject', main: 1 }, { k: 'sender', label: 'From' }, { k: 'account', label: 'Account' }, { k: 'received', label: 'Received' }, { k: 'waiting', label: 'Waiting', r: 1 }, { k: 'result', label: 'Result', pill: 1 }];
+  var COLS = [{ k: 'subject', label: 'Subject', main: 1 }, { k: 'sender', label: 'From' }, { k: 'account', label: 'Account' }, { k: 'received', label: 'Received' }, { k: 'waiting', label: 'Waiting', r: 1, num: 1 }, { k: 'result', label: 'Result', pill: 1 }];
 
   function detail(f) {
     var r = f.row, esc = X.esc;

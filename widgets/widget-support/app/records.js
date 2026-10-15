@@ -246,6 +246,7 @@
   }
 
   /* ---------- rendering helpers ---------- */
+  function badgeHtml(v, tone) { var t = R.plain(v); return t == null || t === '' ? '' : '<span class="badge ' + (tone || R.tone(t)) + '">' + esc(t) + '</span>'; }
   function pillHtml(v, tone) { var t = R.plain(v); return t == null || t === '' ? '' : '<span class="pill ' + (tone || R.tone(t)) + '">' + esc(t) + '</span>'; }
   /* list inline edit (v3, Oct 14): a column with ed: 'pick' | 'date' | 'text' renders a control in the cell when the table is drawn with an edit context {pl, admin, title(row)} */
   function edCell(c, row, ed) {
@@ -261,13 +262,13 @@
   function cell(c, row, ed) {
     var v = row[c.k], cls = [];
     if (c.step) { var ns = nextStep(row); return '<td class="lstep">' + (ns ? '<button type="button" class="btn sm' + (ns === 'Resolve' ? ' pri' : '') + '" data-lstep="' + esc(ns) + '"' + (st.stepBusy ? ' disabled' : '') + '>' + esc(ns === 'Start Working' ? 'Start' : ns) + '</button>' : '') + '</td>'; }
-    if (c.r) cls.push('r'); if (c.main) cls.push('main');
+    if (c.r) cls.push('r'); if (c.num) cls.push('num'); if (c.main) cls.push('main');
     if (ed && c.ed && (!c.edIf || c.edIf(row))) { cls.push('lec'); return '<td class="' + cls.join(' ') + '">' + edCell(c, row, ed) + '</td>'; }
-    var inner = c.pill ? pillHtml(v) : esc(c.trunc ? R.trunc(R.fmt(v, c.t), c.trunc) : R.fmt(v, c.t));
+    var inner = c.badge ? badgeHtml(v) : c.pill ? pillHtml(v) : esc(c.trunc ? R.trunc(R.fmt(v, c.t), c.trunc) : R.fmt(v, c.t));
     return '<td class="' + cls.join(' ') + '">' + inner + '</td>';
   }
   function tableHtml(cols, rows, clickable, ed) {
-    var h = '<div class="tw"><table><thead><tr>' + cols.map(function (c) { return '<th scope="col"' + (c.r ? ' class="r"' : '') + '>' + esc(c.label) + (ed && c.ed ? ' <span class="edmark" aria-hidden="true" title="Editable here">✎</span>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
+    var h = '<div class="tw"><table><thead><tr>' + cols.map(function (c) { return '<th scope="col"' + (c.r ? ' class="r' + (c.num ? ' num' : '') + '"' : '') + '>' + esc(c.label) + (ed && c.ed ? ' <span class="edmark" aria-hidden="true" title="Editable here">✎</span>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
     rows.forEach(function (r, i) { h += '<tr data-i="' + i + '"' + (clickable ? ' class="click" tabindex="0"' : '') + '>' + cols.map(function (c) { return cell(c, r, ed); }).join('') + '</tr>'; });
     return h + '</tbody></table></div>';
   }
