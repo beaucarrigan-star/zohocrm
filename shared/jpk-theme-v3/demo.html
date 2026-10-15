@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jpk-theme-v3 demo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<style>
+  html,body{height:100%}
+  .demo-note{padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .demo-note .seg{margin-left:auto}
+  .legacy{padding:16px;display:grid;gap:14px;background:var(--bg)}
+  .legacy h2{font-size:14px;margin:0}
+</style>
+</head>
+<body>
+<div class="jpk-shell" id="shell">
+  <nav class="jpk-rail" aria-label="Modules">
+    <div class="logo"><img src="jpk-logo.png" alt="The Difference Principle, JusticePoint, Sirona Recovery"></div>
+    <div id="brand"></div>
+    <div class="grp">Records</div>
+    <a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>Accounts<span class="cnt" id="c-acc">142</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Contacts</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6zM14 3v6h6M9 13h6M9 17h6"/></svg>Contracts<span class="cnt" id="c-con">38</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM9 7V4h6v3M4 12h16"/></svg>Cases<span class="cnt" id="c-cas">12</span></a>
+    <div class="grp">Operations</div>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4zM3 12l9 4 9-4M3 17l9 4 9-4"/></svg>Vendors</a>
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>Billing</a>
+    <div class="me"><span class="av">BC</span>Beau Carrigan</div>
+  </nav>
+  <div class="jpk-main">
+    <div class="demo-note">jpk-theme-v3 demo: every component below is styled by jpk.css v1.1.0 + jpk-theme-v3.css with no markup changes, plus the new layout parts.
+      <div class="seg" id="theme"><button aria-pressed="true" data-th="system">System</button><button aria-pressed="false" data-th="light">Light</button><button aria-pressed="false" data-th="dark">Dark</button></div></div>
+    <div class="jpk-cmd">
+      <div class="crumb">Records › <b>Accounts</b></div>
+      <div class="tools"><div class="search"><input id="q" type="search" placeholder="Search accounts" aria-label="Search accounts"><kbd>/</kbd></div><button class="ib" aria-label="Columns"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16M15 4v16"/></svg></button><button class="btn pri">New account</button></div>
+    </div>
+    <div class="jpk-views">
+      <div class="vtabs" role="tablist"><button role="tab" aria-selected="false">All <span class="cnt">142</span></button><button role="tab" aria-selected="true">My accounts <span class="cnt">46</span></button><button role="tab" aria-selected="false">Renewal due <span class="cnt">7</span></button></div>
+      <div class="dds"><button class="dd on">Owner <b>Me</b></button><button class="dd">Status</button><button class="dd">+ Filter</button></div>
+    </div>
+    <div class="scopehint" id="hint" hidden></div>
+    <div class="tw flush"><table>
+      <thead><tr><th class="cb"><i></i></th><th>Account</th><th>Brand · Program</th><th>Status</th><th class="sort" aria-sort="descending">Contract end</th><th class="num">Monthly</th></tr></thead>
+      <tbody id="rows">
+        <tr class="click" data-brand="jp" aria-selected="true"><td class="cb"><i></i></td><td class="name">Milwaukee County Pretrial</td><td class="sub">JusticePoint EM · GPS, SCRAM</td><td><span class="chip good">Active</span></td><td>Dec 31, 2026</td><td class="num">$48,210</td></tr>
+        <tr class="click" data-brand="jp"><td class="cb"><i></i></td><td class="name">Dane County Sheriff</td><td class="sub">JusticePoint EM · GPS</td><td><span class="chip warn">Renewal due</span></td><td>Nov 15, 2026</td><td class="num">$22,940</td></tr>
+        <tr class="click" data-brand="sr"><td class="cb"><i></i></td><td class="name">Brown County Community Programs</td><td class="sub">Sirona Recovery · Residential</td><td><span class="chip bad">Needs attention</span></td><td>Mar 31, 2027</td><td class="num">$9,860</td></tr>
+        <tr class="click" data-brand="dp"><td class="cb"><i></i></td><td class="name">Racine County Human Services</td><td class="sub">The Difference Principle · Consulting</td><td><span class="chip info">On hold</span></td><td>Dec 31, 2026</td><td class="num">$14,300</td></tr>
+      </tbody></table></div>
+    <div class="tfoot"><span id="foot">1–4 of 46</span><span class="pager"><button>‹</button><button aria-current="page">1</button><button>2</button><button>›</button></span></div>
+
+    <div class="rband">
+      <div class="crumb">Records › Accounts › <b>Milwaukee County Pretrial</b></div>
+      <div class="rtitle"><h3>Milwaukee County Pretrial</h3><span class="chip good">Active</span><span class="meta">JusticePoint EM · Since 2019</span><div class="acts"><button class="btn sm">Open in CRM</button><button class="btn sm pri">Log activity</button></div></div>
+      <div class="ctabs" role="tablist"><button aria-selected="true">Overview</button><button aria-selected="false">Contracts<span class="cnt">3</span></button><button aria-selected="false">Billing<span class="cnt">14</span></button><button aria-selected="false">Activity</button></div>
+    </div>
+    <div class="rgrid">
+      <div style="display:grid;gap:16px;align-content:start;min-width:0">
+        <div class="kpis"><div class="kpi"><small>Monthly billed</small><b>$48,210</b><span>+2.1%</span></div><div class="kpi"><small>Devices active</small><b>212</b><span>of 240</span></div><div class="kpi"><small>Open cases</small><b>3</b><span>1 overdue</span></div><div class="kpi"><small>Contract ends</small><b>77 d</b><span>Dec 31</span></div></div>
+        <div class="sec"><div class="hd"><h4>Details</h4><a>Edit</a></div><dl class="kv"><div><dt>Owner</dt><dd>Rosa Moreno</dd></div><div><dt>Primary contact</dt><dd>J. Okafor</dd></div><div><dt>Brand</dt><dd>JusticePoint EM</dd></div></dl></div>
+        <div class="sec"><div class="hd"><h4>Vendor billing · September</h4><a>Open</a></div>
+          <div class="sum"><div><small>Billed</small><b>$186,420</b></div><div><small>Expected</small><b>$183,975</b></div><div><small>Variance</small><b>$2,445</b><span class="d dn">1.3%</span></div><div><small>Flagged</small><b>7</b><span class="d">of 212</span></div></div>
+          <div class="tw flush" style="margin-top:12px"><table><thead><tr><th class="num">Billed</th><th class="num">Expected</th><th class="num">Variance</th><th>Status</th><th>Vendor</th></tr></thead><tbody>
+            <tr><td class="num">$23,460.00</td><td class="num">$22,940.00</td><td class="num var pos">+$520.00</td><td><span class="badge warn">Flagged</span></td><td>SecureAlert</td></tr>
+            <tr><td class="num">$9,860.00</td><td class="num">$9,860.00</td><td class="num var">—</td><td><span class="badge good">Verified</span></td><td>SCRAM Systems</td></tr>
+          </tbody></table></div></div>
+        <div class="sec"><div class="hd"><h4>Cases</h4><span class="fchip"><span>Status</span> <b>is not</b> Closed <i>×</i></span></div>
+          <div class="lgrp"><span class="stico prog"></span>In progress <span class="cnt">2</span><span class="ms">Oldest first</span></div>
+          <div class="lrow"><span class="stico prog"></span><span class="id">CASE-4821</span><span class="ttl">Device swap for client 2207 <span>Milwaukee County Pretrial</span></span><span class="lab">EM Support</span><span></span><span class="due soon">Due today</span><span class="av">RM</span></div>
+          <div class="lrow"><span class="stico prog"></span><span class="id">CASE-4809</span><span class="ttl">Invoice variance, September <span>Outagamie County Court</span></span><span class="lab">Billing</span><span></span><span class="due">Oct 20</span><span class="av">BC</span></div>
+        </div>
+      </div>
+      <div class="sec"><div class="hd"><h4>Activity</h4><button class="btn sm pri">Log activity</button></div>
+        <div class="jpk-tl">
+          <div class="day">Today · Oct 15</div>
+          <div class="ev"><span class="ico b"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div class="c"><div class="l1"><b>Renewal check-in scheduled</b><em>9:12 AM</em></div><p>Rosa Moreno · Nov 3 call with J. Okafor.</p><div class="assocs"><span>J. Okafor</span><span>EM Services 2024–2026</span></div></div></div>
+          <div class="day">Tuesday · Oct 13</div>
+          <div class="ev"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span><div class="c"><div class="l1"><b>Case #4821 resolved</b><em>4:40 PM</em></div><p>EM Support · device swap completed.</p></div></div>
+        </div></div>
+    </div>
+
+    <div class="legacy">
+      <h2>Legacy jpk v1.1.0 components, re-skinned by the tokens alone</h2>
+      <div class="row"><button class="btn">Default</button><button class="btn pri">Primary</button><button class="btn" disabled>Disabled</button><span class="pill" aria-pressed="false">Pill</span><span class="pill" aria-pressed="true">Pill on</span><div class="seg"><button aria-pressed="true">Seg A</button><button aria-pressed="false">Seg B</button></div><span class="chip good">Good</span><span class="chip warn">Warn</span><span class="chip bad">Bad</span><span class="chip">Neutral</span><span class="loz good">Active</span><span class="loz warn">Renewal due</span></div>
+      <div class="tiles"><div class="tile"><small>EM units</small><b>212</b><i>28 spare</i></div><div class="tile"><small>Open cases</small><b>3</b><i>1 overdue</i></div></div>
+      <div class="steps"><div class="step done">Intake</div><div class="step cur">Review</div><div class="step">Approve</div></div>
+      <div class="card hl"><h2>Highlighted card <em>jpk .card.hl</em></h2><p style="margin:0">Body text in Public Sans. <a href="#">A link</a>.</p></div>
+      <div class="next"><div class="nt"><b>Next: verify 7 flagged lines</b><span>September vendor billing</span><div class="bar"><i style="width:62%"></i></div></div><div class="nx-act"><button class="btn pri">Open</button></div></div>
+      <div class="q">A quoted note with the accent rule.</div>
+    </div>
+  </div>
+</div>
+<script src="jpk-brand.js"></script>
+<script>
+  var totals={all:46,jp:31,sr:9,dp:6},rail={all:[142,38,12],jp:[96,27,8],sr:[28,6,3],dp:[18,5,1]};
+  function apply(k){
+    var shown=0;document.querySelectorAll('#rows tr').forEach(function(tr){var on=k==='all'||tr.dataset.brand===k;tr.hidden=!on;if(on)shown++});
+    document.getElementById('foot').textContent='1–'+shown+' of '+totals[k];
+    document.getElementById('c-acc').textContent=rail[k][0];document.getElementById('c-con').textContent=rail[k][1];document.getElementById('c-cas').textContent=rail[k][2];
+    var h=document.getElementById('hint');h.hidden=(k==='all');h.textContent='Scoped to '+scope.label()+' · COQL: '+scope.where('Brand');
+  }
+  var scope=JPK.brand({mount:document.getElementById('brand'),counts:{all:142,jp:96,sr:28,dp:18},storageKey:null,onChange:apply});
+  apply(scope.get());
+  document.getElementById('theme').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+    if(b.dataset.th==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',b.dataset.th);
+    this.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))})});
+  document.querySelectorAll('[role=tablist]').forEach(function(t){t.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;t.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-selected','false')});b.setAttribute('aria-selected','true')})});
+</script>
+</body>
+</html>
