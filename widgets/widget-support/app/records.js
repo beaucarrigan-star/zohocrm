@@ -29,11 +29,24 @@
     var f = cfg.list.filters.filter(function (x) { return x.key === st.filter; })[0];
     if (!live) {
       var s = st.search.toLowerCase(), sf = cfg.list.searchField;
-      var rows = demoRows().filter(function (r) { return !s || String(R.plain(r[sf]) || '').toLowerCase().indexOf(s) >= 0; });
+      var rows = demoRows().filter(function (r) { return (!s || String(R.plain(r[sf]) || '').toLowerCase().indexOf(s) >= 0) && demoBrandOk(r); });
       return Promise.resolve({ rows: rows, more: false });
     }
     var c = { select: cfg.list.select, order: cfg.list.order, searchField: cfg.list.searchField, page: PAGE };
-    return coql(R.listQuery(cfg.entity, c, { where: f && f.where, search: st.search, offset: st.offset }));
+    var bw = brandWhere(), where = f && f.where, search = st.search, clientSearch = null;
+    if (bw) {   /* this org's COQL takes at most two ANDed conditions: brand + filter go to the server, search is then applied to the page client-side */
+      where = where ? '(' + where + ') and (' + bw + ')' : bw;
+      if (search && where !== bw) { clientSearch = search; search = ''; }
+      else if (search) { where = bw; }
+    }
+    st.clientSearch = clientSearch;
+    return coql(R.listQuery(cfg.entity, c, { where: where, search: search, offset: st.offset })).then(function (res) {
+      if (clientSearch) { var cs = clientSearch.toLowerCase(), sf2 = cfg.list.searchField; res.rows = res.rows.filter(function (r) { return String(R.plain(r[sf2]) || '').toLowerCase().indexOf(cs) >= 0; }); }
+      return res;
+    }, function (e) {
+      if (bw && !brandOff[cfg.key]) { brandOff[cfg.key] = true; brandNote(); return fetchList(); }   /* field not filterable here: fall back once, unscoped */
+      throw e;
+    });
   }
   var REL = window.RecRelations, LAY = window.RecLayouts || {}, GEN = window.RecRelMods || {};
   var SDKOPEN = { Contract_Roles: null, Stage_History: null, CheckLists: null, Contact_Roles: null, Products: 'Products', Cases: 'Cases', Deals: 'Deals', Contact_Name: 'Products' };
@@ -210,26 +223,53 @@
     return '<div class="l2"><div class="seg sw2" role="tablist" aria-label="' + esc(cfg.group) + '">' + ks.map(function (k) {
       return '<button type="button" class="swb" role="tab" data-m="' + esc(k) + '" aria-selected="' + (MODS[k] === cfg) + '">' + esc(modLabel(MODS[k])) + '</button>'; }).join('') + '</div></div>';
   }
-  function topBar(buttons) {
-    return '<div class="stripe"></div><header class="top"><div class="brand"><i>JP</i> CRM</div>' + l1Html() + '<div class="topact">' + (buttons || '') + '</div></header>' + l2Html();
+  /* v3 shell: the rail (records-shell.js) owns L1/L2 navigation; the page starts with a command bar
+     (breadcrumb TAB › module, then the page's own buttons). l1Html/l2Html are kept for pages without a rail. */
+  function hasRail() { return !!(window.RecShell && document.getElementById('rail')); }
+  function topBar(buttons, title) {
+    if (!hasRail()) return '<header class="top"><div class="brand"><i>JP</i> CRM</div>' + l1Html() + '<div class="topact">' + (buttons || '') + '</div></header>' + l2Html();
+    return '<header class="jpk-cmd"><nav class="crumb" aria-label="Section"><span>' + esc(TAB) + '</span><span class="sep">›</span><b>' + esc(title || cfg.title) + '</b></nav><div class="tools">' + (buttons || '') + '</div></header>';
   }
   function head(kick, title, sub, pill, buttons) {
     barDone = true;
-    var h = topBar(buttons);
-    if (sub || pill) h += '<div class="subline"><b>' + esc(title) + '</b>' + (pill || '') + (sub ? '<span class="mut">' + esc(sub) + '</span>' : '') + '</div>';
+    var h = topBar(buttons, cfg.title);
+    if (sub || pill || (title && title !== cfg.title)) h += '<div class="subline"><b>' + esc(title) + '</b>' + (pill || '') + (sub ? '<span class="mut">' + esc(sub) + '</span>' : '') + '</div>';
     else if (title) h += '<h1 class="sr">' + esc(title) + '</h1>';
     return h;
   }
   function switchHtml() { if (barDone) { barDone = false; return ''; } return topBar(''); }
+  function switchTo(k) { if (!MODS[k] || MODS[k] === cfg) return; cfg = MODS[k]; st.filter = 'all'; st.search = ''; st.token++; showList(); }
   function bindSwitch() {
+    if (window.RecShell) window.RecShell.setCurrent(cfg.key);
     var cur = root.querySelector('.l1 [aria-selected=true]'); if (cur && cur.scrollIntoView) { try { cur.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
     Array.prototype.forEach.call(root.querySelectorAll('.sw,.sw2'), function (b) {
       b.onclick = function (e) {
         var x = e.target.closest('[data-m]'); if (!x) return; var k = x.getAttribute('data-m');
         if (MODS[k] === cfg || (x.hasAttribute('data-g') && MODS[k].group === cfg.group)) return;
-        cfg = MODS[k]; st.filter = 'all'; st.search = ''; st.token++; showList();
+        switchTo(k);
       };
     });
+  }
+
+  /* ---------- brand scope (rail switcher) ---------- */
+  var BRANDF = { accounts: 'Brand', contacts: 'Account_Name.Brand', deals: 'Account_Name.Brand', cases: 'Account_Name.Brand', onboarding: 'Account_Name.Brand', contracts: 'Account_Name.Brand' };
+  var brandOff = {};   /* module key -> true once a scoped query failed (field not filterable); scope then shows a note instead */
+  function brandField() { return cfg.brandField || BRANDF[cfg.key] || null; }
+  function brandScope() { return window.RecShell && window.RecShell.brand ? window.RecShell.brand() : null; }
+  function brandWhere() { var b = brandScope(), f = brandField(); return b && f && !brandOff[cfg.key] ? b.where(f) : ''; }
+  function brandNote() {
+    var b = brandScope(), el = document.getElementById('bhint'); if (!el) return;
+    if (!b || b.get() === 'all') { el.hidden = true; return; }
+    var f = brandField();
+    el.hidden = false;
+    el.textContent = !f ? 'Brand scope (' + b.label() + ') does not apply to ' + cfg.title.toLowerCase() + '; showing all.' :
+      brandOff[cfg.key] ? cfg.title + ' cannot be filtered by brand yet (needs a Brand field on this module); showing all brands.' :
+      'Scoped to ' + b.label() + '. Switch brand in the rail to change.';
+  }
+  function demoBrandOk(r) {
+    var b = brandScope(); if (!b || b.get() === 'all' || !brandField()) return true;
+    var v = R.plain(r.Brand) || (r.Account_Name && (r.Account_Name.Brand || r.Account_Name.brand)) || r._brand; if (!v) return true;
+    return (b.brand().values || []).indexOf(String(v)) >= 0;
   }
 
   /* ---------- list view ---------- */
@@ -241,15 +281,18 @@
       switchHtml() + (live ? '' : '<div class="demo">Demo data · connect inside Zoho CRM to see live records.</div>') +
       '<div class="bar"><input class="search" id="q" type="search" placeholder="' + esc(L.searchHint || 'Search') + '" aria-label="Search" value="' + esc(st.search) + '">' +
       '<div id="pills" role="group" aria-label="Filter" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>' +
+      '<div class="scopehint" id="bhint" hidden></div>' +
       '<div class="count" id="count" aria-live="polite"></div><div id="list"></div></div>';
-    bindSwitch();
+    bindSwitch(); brandNote();
     var nb = document.getElementById('new'); if (nb) nb.onclick = createCrm;
     var t; document.getElementById('q').oninput = function (e) { clearTimeout(t); var v = e.target.value; t = setTimeout(function () { st.search = v.trim(); reload(); }, 300); };
     drawPills(); reload();
   }
   function drawPills() {
     var p = document.getElementById('pills');
-    p.innerHTML = cfg.list.filters.map(function (f) { return '<button type="button" class="pillbtn" data-f="' + esc(f.key) + '" aria-pressed="' + (f.key === st.filter) + '">' + esc(f.label) + '</button>'; }).join('');
+    var fl = cfg.list.filters.filter(function (f) { return !(brandScope() && f.where && /^\s*Brand\s*=/.test(f.where)); });   /* brand filters are replaced by the rail switcher */
+    if (!fl.some(function (f) { return f.key === st.filter; })) st.filter = 'all';
+    p.innerHTML = fl.map(function (f) { return '<button type="button" class="pillbtn" data-f="' + esc(f.key) + '" aria-pressed="' + (f.key === st.filter) + '">' + esc(f.label) + '</button>'; }).join('');
     p.onclick = function (e) { var b = e.target.closest('[data-f]'); if (b) { st.filter = b.getAttribute('data-f'); drawPills(); reload(); } };
   }
   function reload() { st.rows = []; st.offset = 0; st.more = false; loadMore(true); }
@@ -336,12 +379,38 @@
         qel.innerHTML = '<h3>Quick edit' + (Date.now() - lastSaved < 60000 ? '<span class="saved">✓ Saved</span>' : '') + '</h3><div class="edit">' + C.quick.map(function (f) {
           var cur = R.plain(r[f.t === 'user' ? 'Owner.first_name' : f.k]); cur = cur == null || cur === '-None-' ? '' : String(cur);
           if (f.t === 'user') { var us = (qopts.__users || []).slice(); if (cur && !us.some(function (u) { return u.name === cur; })) us.unshift({ id: '', name: cur }); return '<label>' + esc(f.label) + '<select data-q="' + f.k + '">' + us.map(function (u) { return '<option value="' + esc(u.id) + '"' + (u.name === cur ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('') + '</select></label>'; }
+          if (f.t === 'account') {
+            var ac = r.Account_Name, acn = R.plain(ac) || '';
+            return '<div class="acct"><span class="acl">' + esc(f.label) + '</span><div class="acv"><b>' + (acn ? esc(acn) : '<span class="mut">Not set</span>') + '</b> <button type="button" class="btn sm" data-acc="change" aria-expanded="' + !!qopts.__accOpen + '">' + (qopts.__accOpen ? 'Cancel' : 'Change') + '</button>' + (acn && !qopts.__accOpen ? ' <button type="button" class="btn sm" data-acc="clear">Clear</button>' : '') + '</div>'
+              + (qopts.__accOpen ? '<input type="search" class="search" data-acs placeholder="Type part of an account name" aria-label="Search accounts" autocomplete="off"><ul class="acres" role="listbox" aria-label="Matching accounts"><li class="mut">Type at least 2 letters</li></ul>' : '') + '</div>';
+          }
           var lock = f.admin && !qopts.__admin, lab = esc(f.label) + (f.admin ? ' <span class="mut">(admin only)</span>' : '');
           if (f.t === 'pick') { var xs = (qopts[f.k] || []).slice(); if (cur && xs.indexOf(cur) < 0) xs.unshift(cur); return '<label>' + lab + '<select data-q="' + f.k + '"' + (lock ? ' disabled title="Only an administrator can change this"' : '') + '><option value="">Not set</option>' + xs.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>'; }
           return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:10px 0 0;font-size:12px">Changes save to Zoho as you make them. Undo appears after each save.</p>';
       };
       paintQ();
       if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
+      var accT = 0;
+      function accSearch(q) {
+        var ul = qel.querySelector('.acres'); if (!ul) return;
+        if (q.length < 2) { ul.innerHTML = '<li class="mut">Type at least 2 letters</li>'; return; }
+        var tok = ++accT, show = function (rows) {
+          if (tok !== accT || !qel.querySelector('.acres')) return;
+          ul = qel.querySelector('.acres');
+          ul.innerHTML = rows.length ? rows.map(function (a) { return '<li><button type="button" data-accid="' + esc(a.id) + '" data-accname="' + esc(R.plain(a.Account_Name)) + '">' + esc(R.plain(a.Account_Name)) + '</button></li>'; }).join('') : '<li class="mut">No account matches</li>';
+        };
+        if (!live) { var dr = ((window.RECORDS_DEMO || {}).accounts || {}).rows || []; show(dr.filter(function (a) { return String(R.plain(a.Account_Name) || '').toLowerCase().indexOf(q.toLowerCase()) >= 0; }).slice(0, 10)); return; }
+        ul.innerHTML = '<li class="mut">Searching</li>';
+        coql("select id, Account_Name from Accounts where Account_Name like '%" + R.qstr(q) + "%' order by Account_Name asc limit 10").then(function (x) { show(x.rows); }, function (er) { if (tok === accT && qel.querySelector('.acres')) qel.querySelector('.acres').innerHTML = '<li class="err">Search failed: ' + esc(er && er.message || er) + '</li>'; });
+      }
+      var accTimer;
+      qel.oninput = function (e) { if (e.target.hasAttribute('data-acs')) { clearTimeout(accTimer); var v = e.target.value.trim(); accTimer = setTimeout(function () { accSearch(v); }, 250); } };
+      qel.onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.getAttribute('data-acc') === 'change') { qopts.__accOpen = !qopts.__accOpen; paintQ(); var inp = qel.querySelector('[data-acs]'); if (inp) inp.focus(); return; }
+        if (b.getAttribute('data-acc') === 'clear') { qopts.__accOpen = false; editRaw(cfg.entity, r, { Account_Name: [null, null] }, 'account cleared', again); return; }
+        if (b.hasAttribute('data-accid')) { var aid = b.getAttribute('data-accid'), an = b.getAttribute('data-accname'); qopts.__accOpen = false; editRaw(cfg.entity, r, { Account_Name: [{ id: aid }, { id: aid, name: an }] }, 'account set to ' + an, again); }
+      };
       qel.onchange = function (e) {
         var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
         if (f.admin && !qopts.__admin) { toast('Only an administrator can change ' + f.label.toLowerCase()); paintQ(); return; }
@@ -396,9 +465,17 @@
 
   var CTX = { R: R, esc: esc, head: head, tableHtml: tableHtml, pillHtml: pillHtml, openCrm: openCrm, toast: toast, coql: coql, update: update, editRaw: editRaw, userList: userList, picklist: picklist, toastUndo: toastUndo, isLive: function () { return live; }, switchHtml: switchHtml, bindSwitch: bindSwitch, skel: skel, demoNote: function () { return live ? '' : '<div class="demo">Demo data · connect inside Zoho CRM to see live records.</div>'; } };
 
+  /* compatibility shim for views built on the v3.1 engine (hasRole): only used when this engine lacks it */
+  if (!CTX.hasRole) CTX.hasRole = function (roles) { roles = roles || []; if (!live) return Promise.resolve(true); return roles.indexOf('admin') >= 0 && roles.length === 1 ? isAdmin() : isAdmin().then(function (a) { return a || roles.length > 1; }); };
+
   /* ---------- start ---------- */
   function start(init) {
     live = !!(init && !init.demo);
+    if (window.RecShell && document.getElementById('rail')) {
+      window.RecShell.init({ mods: MODS, sw: SW || [cfg.key], grouped: GROUPED, tab: TAB, current: cfg.key, onSwitch: switchTo,
+        onBrand: function () { brandNote(); if (document.getElementById('list')) { st.token++; reload(); } } });
+      if (live && window.ZOHO.CRM.CONFIG && window.ZOHO.CRM.CONFIG.getCurrentUser) window.ZOHO.CRM.CONFIG.getCurrentUser().then(function (r) { var u = r && r.users && r.users[0]; window.RecShell.setUser(u && (u.full_name || u.name)); }, function () {}); else window.RecShell.setUser(live ? '' : 'Demo user');
+    }
     var eid = init && init.EntityId; eid = Array.isArray(eid) ? eid[0] : eid;
     if (SW && live && eid) { SW.forEach(function (k) { if (MODS[k].entity === init.Entity) cfg = MODS[k]; }); }
     if (live && eid && init.Entity === cfg.entity) showRecord(String(eid)); else showList();
@@ -410,4 +487,62 @@
     window.ZOHO.embeddedApp.init();
     setTimeout(function () { go({ demo: true }); }, 5000);
   } else go({ demo: true });
+})();
+
+/* ===== jpk display preferences v1 (2026-10): theme, brightness, contrast. Self-contained; appended to jpk.js / records.js. ===== */
+;(function(){
+  if(typeof document==='undefined'||window.__jpkDisplay)return; window.__jpkDisplay=1;
+  var KEY='jpk.display.v1', D={theme:'auto',bright:100,contrast:'standard'}, S={theme:D.theme,bright:D.bright,contrast:D.contrast};
+  try{var raw=localStorage.getItem(KEY); if(raw){var o=JSON.parse(raw); if(['auto','light','dark'].indexOf(o.theme)>-1)S.theme=o.theme; if(o.bright>=80&&o.bright<=120)S.bright=+o.bright; if(o.contrast==='high')S.contrast='high';}}catch(e){}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+  var root=document.documentElement;
+  function apply(){
+    if(S.theme==='auto')root.removeAttribute('data-theme');else root.setAttribute('data-theme',S.theme);
+    if(S.contrast==='high')root.setAttribute('data-contrast','high');else root.removeAttribute('data-contrast');
+    root.style.filter=S.bright===100?'':'brightness('+(S.bright/100)+')';
+  }
+  apply();
+  var css=document.createElement('style');
+  css.textContent=
+  ':root[data-contrast="high"]{--ink:#000;--muted:#2F4446;--line:#5E7577;--teal:#07575A;--teal-soft:#C9E6E6;--on-teal:#fff;--good:#0F5E38;--warn:#6A4204;--warn-ink:#6A4204;--bad:#962019;--info:#183F78}'+
+  '@media (prefers-color-scheme:dark){:root[data-contrast="high"]:not([data-theme="light"]){--ink:#fff;--muted:#C9D8D9;--line:#7C979A;--teal:#6FD0D4;--teal-soft:#1D4A4D;--on-teal:#04191A;--good:#7FD8A3;--warn:#F2C36B;--warn-ink:#F2C36B;--bad:#FFA19A;--info:#A9C9F5}}'+
+  ':root[data-theme="dark"][data-contrast="high"]{--ink:#fff;--muted:#C9D8D9;--line:#7C979A;--teal:#6FD0D4;--teal-soft:#1D4A4D;--on-teal:#04191A;--good:#7FD8A3;--warn:#F2C36B;--warn-ink:#F2C36B;--bad:#FFA19A;--info:#A9C9F5}'+
+  ':root[data-contrast="high"] td,:root[data-contrast="high"] th,:root[data-contrast="high"] .card,:root[data-contrast="high"] .btn{border-color:var(--line)}'+
+  '#jpkd{position:fixed;right:12px;bottom:12px;z-index:70;font:13px/1.4 var(--font,system-ui,sans-serif);color:var(--ink)}'+
+  '#jpkd>button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface,#fff);color:var(--ink,#000);box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:17px;line-height:1;padding:0;cursor:pointer}'+
+  '#jpkd>button:hover,#jpkd>button[aria-expanded=true]{border-color:var(--teal)}'+
+  '#jpkd .pn{position:absolute;right:0;bottom:44px;width:248px;max-width:calc(100vw - 24px);background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:12px 14px}'+
+  '#jpkd .pn[hidden]{display:none}#jpkd h4{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}'+
+  '#jpkd .g{margin-bottom:12px}#jpkd .g:last-child{margin-bottom:0}'+
+  '#jpkd .sg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}'+
+  '#jpkd .sg button{flex:1;background:transparent;border:0;border-right:1px solid var(--line);padding:6px 4px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer}'+
+  '#jpkd .sg button:last-child{border-right:0}#jpkd .sg button[aria-pressed=true]{background:var(--teal-soft);color:var(--teal)}'+
+  '#jpkd input[type=range]{width:100%;accent-color:var(--teal)}#jpkd .rv{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}'+
+  '#jpkd .rs{background:none;border:0;color:var(--teal);font:inherit;font-weight:600;text-decoration:underline;padding:0;cursor:pointer}'+
+  '@media print{#jpkd{display:none}}';
+  document.head.appendChild(css);
+  function el(t,p,h){var e=document.createElement(t);for(var k in p)e.setAttribute(k,p[k]);if(h!=null)e.innerHTML=h;return e}
+  function build(){
+    if(document.getElementById('jpkd'))return;
+    var w=el('div',{id:'jpkd'}), b=el('button',{type:'button','aria-label':'Display settings','aria-expanded':'false','aria-controls':'jpkd-pn',title:'Display settings'},'◐');
+    var p=el('div',{id:'jpkd-pn',class:'pn',role:'group','aria-label':'Display settings',hidden:''});
+    p.innerHTML='<div class="g"><h4>Theme</h4><div class="sg" data-k="theme"><button type="button" data-v="auto">Auto</button><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>'+
+      '<div class="g"><h4>Contrast</h4><div class="sg" data-k="contrast"><button type="button" data-v="standard">Standard</button><button type="button" data-v="high">High</button></div></div>'+
+      '<div class="g"><h4>Brightness</h4><input type="range" min="80" max="120" step="5" aria-label="Brightness"><div class="rv"><span id="jpkd-bv"></span><button type="button" class="rs">Reset all</button></div></div>';
+    w.appendChild(p);w.appendChild(b);document.body.appendChild(w);
+    var rng=p.querySelector('input');
+    function sync(){
+      [].forEach.call(p.querySelectorAll('.sg'),function(g){var k=g.getAttribute('data-k');[].forEach.call(g.children,function(x){x.setAttribute('aria-pressed',String(x.getAttribute('data-v')===S[k]))})});
+      rng.value=S.bright;p.querySelector('#jpkd-bv').textContent=S.bright+'%';
+    }
+    function set(){apply();save();sync()}
+    p.addEventListener('click',function(e){var x=e.target.closest('.sg button');if(x){S[x.parentNode.getAttribute('data-k')]=x.getAttribute('data-v');set()}if(e.target.className==='rs'){S.theme=D.theme;S.bright=D.bright;S.contrast=D.contrast;set()}});
+    rng.addEventListener('input',function(){S.bright=+rng.value;set()});
+    function tog(o){p.hidden=!o;b.setAttribute('aria-expanded',String(o))}
+    b.addEventListener('click',function(){tog(p.hidden)});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!p.hidden){tog(false);b.focus()}});
+    document.addEventListener('click',function(e){if(!p.hidden&&!w.contains(e.target))tog(false)});
+    sync();
+  }
+  if(document.body)build();else document.addEventListener('DOMContentLoaded',build);
 })();

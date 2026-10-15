@@ -4,6 +4,6 @@
   "storage": false,
   "config": [],
   "usedConnections": [],
-  "cspDomains": {"connect-src": [], "script-src": ["live.zwidgets.com"], "style-src": [], "font-src": []},
-  "modules": {"widgets": [{"name": "Support Process", "location": "crm.webtab", "url": "/app/support.html"}]}
+  "cspDomains": { "connect-src": [], "script-src": ["live.zwidgets.com"], "style-src": ["fonts.googleapis.com"], "font-src": ["fonts.gstatic.com"] },
+  "modules": { "widgets": [ { "name": "Support Process", "location": "crm.webtab", "url": "/app/support.html" } ] }
 }
