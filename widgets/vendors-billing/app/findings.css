@@ -12,3 +12,14 @@ td.vend{font-weight:600}
 #recon.good{background:var(--good-soft)}
 /* v2 theme: keep banner text AA on the tinted backgrounds */
 #recon.bad .nt span,#recon.good .nt span{color:var(--ink)}
+
+/* theme v3 (15 Oct 2026): summary row + badge table. Visual only. */
+.sumcard{padding:0}
+.sumcard>h2{padding:14px 16px 0;margin:0}
+.sumcard .sum{padding:10px 16px 14px}
+.sumcard .legend{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 14px}
+.sumcard .legend:empty{display:none}
+td.num .var{font-size:inherit}
+#recon.bad{border-left-color:var(--bad)}
+#recon.good{border-left-color:var(--good)}
+.mx-btn{border-radius:var(--r-sm)}

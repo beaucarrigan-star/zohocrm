@@ -12,6 +12,8 @@
   function money(v) { return '$' + (Math.round(v * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
   function showErr(msg) { var e = $('#err'); e.hidden = !msg; e.textContent = msg || ''; }
   var SEV_TONE = { CRITICAL: 'bad', HIGH: 'bad', MEDIUM: 'warn', LOW: 'info', INFO: 'neutral' };
+  /* v3: tinted badge for dense billing tables (Stripe pattern); tone as for JPK.chip */
+  function badge(text, tone) { return '<span class="badge' + (tone && tone !== 'neutral' ? ' ' + tone : '') + '">' + esc(text) + '</span>'; }
 
   /* ---------- data ---------- */
   function loadPeriods() {
@@ -39,14 +41,14 @@
     var tiles = [
       ['Findings', t.total, ''],
       ['Open', t.open, t.closed + ' resolved'],
-      ['Overbilled', money(t.overbilledDollars), (t.byMoney.Overbilled || 0) + ' findings'],
+      ['Overbilled', money(t.overbilledDollars), (t.byMoney.Overbilled || 0) + ' findings', t.overbilledDollars > 0 ? ' dn' : ''],
       ['Unverified', t.byMoney.Unverified || 0, 'money not yet checked']
     ];
     $('#tiles').innerHTML = tiles.map(function (x) {
-      return '<div class="tile"><small>' + esc(x[0]) + '</small><b>' + esc(x[1]) + '</b>' + (x[2] ? '<i>' + esc(x[2]) + '</i>' : '') + '</div>';
+      return '<div><small>' + esc(x[0]) + '</small><b>' + esc(x[1]) + '</b>' + (x[2] ? '<span class="d' + (x[3] || '') + '">' + esc(x[2]) + '</span>' : '') + '</div>';
     }).join('');
     $('#sev-legend').innerHTML = M.SEVERITY_ORDER.filter(function (s) { return t.bySeverity[s]; }).map(function (s) {
-      return JPK.chip(s + ' ' + t.bySeverity[s], SEV_TONE[s]);
+      return badge(s + ' ' + t.bySeverity[s], SEV_TONE[s]);
     }).join(' ');
   }
 
@@ -92,10 +94,10 @@
       { key: 'participant', label: 'Participant', sortable: true, render: function (r) { return '<span class="part">' + esc(r.participant || '(none)') + '</span>'; } },
       { key: 'checkId', label: 'Check', sortable: true, render: function (r) { return '<span class="mono">' + esc(r.checkId) + '</span>'; } },
       { key: 'category', label: 'Type', sortable: true },
-      { key: 'severity', label: 'Severity', sortable: true, sortValue: function (r) { return M.sevRank(r.severity); }, render: function (r) { return JPK.chip(r.severity, SEV_TONE[r.severity]); } },
+      { key: 'severity', label: 'Severity', sortable: true, sortValue: function (r) { return M.sevRank(r.severity); }, render: function (r) { return badge(r.severity, SEV_TONE[r.severity]); } },
       { key: 'moneyType', label: 'Money', sortable: true },
-      { key: 'status', label: 'Status', sortable: true, render: function (r) { return JPK.chip(r.status, r.open ? 'warn' : 'good'); } },
-      { key: 'dollars', label: 'Dollars', align: 'right', num: true, sortable: true, render: function (r) { return r.dollars ? esc(money(r.dollars)) : ''; } }
+      { key: 'status', label: 'Status', sortable: true, render: function (r) { return badge(r.status, r.open ? 'warn' : 'good'); } },
+      { key: 'dollars', label: 'Dollars', align: 'right', num: true, sortable: true, render: function (r) { return r.dollars ? '<span class="var' + (r.moneyType === 'Overbilled' ? ' pos' : '') + '">' + esc(money(r.dollars)) + '</span>' : ''; } }
     ];
     $('#dt-sub').textContent = list.length + ' of ' + S.rows.length;
     if (!S.detailTbl) {
