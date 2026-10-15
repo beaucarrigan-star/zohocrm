@@ -130,8 +130,15 @@
     var d = {}; Object.keys(data).forEach(function (k) { d[k] = data[k]; }); d.id = id;
     return window.ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: d }).then(function (res) {
       var x = res && res.data && res.data[0];
-      if (x && x.code && x.code !== 'SUCCESS') throw new Error(x.message || x.code);
-    });
+      if (x && x.code && x.code !== 'SUCCESS') throw new Error(errMsg(x));
+    }, function (e) { throw (e instanceof Error ? e : new Error(errMsg(e))); });
+  }
+  /* Zoho rejects with plain objects (not Error), which used to show as "object"; pull out the readable part */
+  function errMsg(e) {
+    if (!e) return 'unknown error'; if (typeof e === 'string') return e;
+    var x = (e.data && e.data[0]) || e, m = x.message || e.message || x.code || e.code, det = x.details && (x.details.api_name || x.details.message);
+    if (typeof m === 'string' && m) return m + (det ? ' (' + det + ')' : '') + (/blueprint/i.test(m + ' ' + (x.code || '')) ? '' : '');
+    try { return JSON.stringify(e).slice(0, 200); } catch (_) { return 'unknown error'; }
   }
   var plCache = {};
   function picklist(entity, field, fallback) {
@@ -436,10 +443,11 @@
           if (f.t === 'user') { var us = (qopts.__users || []).slice(); if (cur && !us.some(function (u) { return u.name === cur; })) us.unshift({ id: '', name: cur }); return '<label>' + esc(f.label) + '<select data-q="' + f.k + '">' + us.map(function (u) { return '<option value="' + esc(u.id) + '"' + (u.name === cur ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('') + '</select></label>'; }
           var lock = f.admin && !qopts.__admin, lab = esc(f.label) + (f.admin ? ' <span class="mut">(admin only)</span>' : '');
           if (f.t === 'pick') { var xs = (qopts[f.k] || []).slice(); if (cur && xs.indexOf(cur) < 0) xs.unshift(cur); return '<label>' + lab + '<select data-q="' + f.k + '"' + (lock ? ' disabled title="Only an administrator can change this"' : '') + '><option value="">Not set</option>' + xs.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>'; }
-          return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:10px 0 0;font-size:12px">Changes save to Zoho as you make them. Undo appears after each save.</p>';
+          return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:10px 0 0;font-size:12px">Changes save to Zoho as you make them. Undo appears after each save.</p>' + (cfg.key === 'cases' ? '<p style="margin:8px 0 0"><button type="button" class="btn" data-act="crm-status">Resolve or change status in Zoho</button><span class="mut" style="font-size:12px;margin-left:8px">Cases move through a blueprint, so status changes use its buttons.</span></p>' : '');
       };
       paintQ();
       if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
+      qel.onclick = function (e) { var b = e.target.closest && e.target.closest('[data-act=crm-status]'); if (b) openCrm(cfg.entity, id); };
       qel.onchange = function (e) {
         var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
         if (f.admin && !qopts.__admin) { toast('Only an administrator can change ' + f.label.toLowerCase()); paintQ(); return; }
