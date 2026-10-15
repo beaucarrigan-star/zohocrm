@@ -45,87 +45,37 @@ legend{font-weight:600;font-size:13px;padding:0 4px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 @media (max-width:560px){.row{grid-template-columns:1fr}.steps li{font-size:12px;padding:5px}}
 
-/* ===== kit tokens (light + dark), same values as jpk.css ===== */
+/* ===== kit tokens, jpk-theme v3 (Graphite + cobalt); --teal* alias the accent ===== */
+/* ---------- 1. Tokens ---------- */
 :root{
-  --bg:#EEF2F2; --surface:#FFFFFF; --surface2:#F6F9F9; --ink:#14282A; --muted:#566B6D; --line:#D5DFDF;
-  --teal:#0D6A6D; --teal-soft:#DCEFEF; --on-teal:#FFFFFF;
-  --s1:#0D6A6D; --s2:#22406B; --s3:#C48A1A;
-  --good:#1B7A4B; --good-soft:#DDF1E5; --warn:#9A6208; --warn-soft:#FBEBCB; --bad:#B02F28; --bad-soft:#F9DEDB; --info:#22559B; --info-soft:#DCE8F8;
-  --font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface2:#F7F8FA; --ink:#16191D; --muted:#5F6670; --line:#DCE0E5; --line-strong:#B8BEC7;
+  --accent:#2F55A4; --accent-ink:#284A90; --accent-soft:#E6ECF8; --on-accent:#FFFFFF;
+  --good:#1F6F45; --good-soft:#E3F0E8; --warn:#8A6412; --warn-soft:#F6EEDC; --bad:#A33A33; --bad-soft:#F7E4E3; --info:#4A6B8A; --info-soft:#E4EBF2;
+  --s1:#2F55A4; --s2:#4A6B8A; --s3:#8A6412;
+  --font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-head:'Archivo',var(--font);
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --r:4px; --r-sm:3px; --row:40px;
+  /* legacy aliases so jpk.css v1.1.0 components pick up the new accent */
+  --teal:var(--accent); --teal-soft:var(--accent-soft); --on-teal:var(--on-accent);
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0E1819; --surface:#152325; --surface2:#1A2B2D; --ink:#E4EEEE; --muted:#93A9AB; --line:#2A3F41;
-  --teal:#3FB3B7; --teal-soft:#16393B; --on-teal:#0B1B1C;
-  --s1:#3FB3B7; --s2:#6F92CC; --s3:#E0A93A;
-  --good:#5CC48A; --good-soft:#143324; --warn:#E3B04F; --warn-soft:#3B2D10; --bad:#F0827A; --bad-soft:#3F1B18; --info:#86B1EA; --info-soft:#17294A; color-scheme:dark}}
+  --bg:#121417; --surface:#191C20; --surface2:#1F2328; --ink:#E6E8EB; --muted:#9AA1AB; --line:#2B3038; --line-strong:#424955;
+  --accent:#7F9FE0; --accent-ink:#9DB6EA; --accent-soft:#1E2A45; --on-accent:#0C1424;
+  --good:#5EC58C; --good-soft:#163125; --warn:#E0B055; --warn-soft:#3A2F14; --bad:#F08A82; --bad-soft:#3F1F1D; --info:#8DAAC6; --info-soft:#1C2B3A;
+  --s1:#7F9FE0; --s2:#8DAAC6; --s3:#E0B055;
+  color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0E1819; --surface:#152325; --surface2:#1A2B2D; --ink:#E4EEEE; --muted:#93A9AB; --line:#2A3F41;
-  --teal:#3FB3B7; --teal-soft:#16393B; --on-teal:#0B1B1C;
-  --s1:#3FB3B7; --s2:#6F92CC; --s3:#E0A93A;
-  --good:#5CC48A; --good-soft:#143324; --warn:#E3B04F; --warn-soft:#3B2D10; --bad:#F0827A; --bad-soft:#3F1B18; --info:#86B1EA; --info-soft:#17294A; color-scheme:dark}
+  --bg:#121417; --surface:#191C20; --surface2:#1F2328; --ink:#E6E8EB; --muted:#9AA1AB; --line:#2B3038; --line-strong:#424955;
+  --accent:#7F9FE0; --accent-ink:#9DB6EA; --accent-soft:#1E2A45; --on-accent:#0C1424;
+  --good:#5EC58C; --good-soft:#163125; --warn:#E0B055; --warn-soft:#3A2F14; --bad:#F08A82; --bad-soft:#3F1F1D; --info:#8DAAC6; --info-soft:#1C2B3A;
+  --s1:#7F9FE0; --s2:#8DAAC6; --s3:#E0B055;
+  color-scheme:dark}
 
-
-/* ===== jpk theme v2 (2026-10): appended after jpk.css / kit.css. Same class names, no layout changes.
-   Matches Records / Support Process / Processes / Pricing Studio. ===== */
-:root{--warn:#7F5006;--warn-ink:#7F5006;--line-strong:#7D9193;--r:10px;--r-sm:8px}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--warn:#E3B04F;--warn-ink:#E3B04F;--line-strong:#5F7679}}
-:root[data-theme="dark"]{--warn:#E3B04F;--warn-ink:#E3B04F;--line-strong:#5F7679}
-body{font-family:var(--font,'Public Sans',system-ui,sans-serif)}
-:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-/* surfaces */
-.card,.rec,.stage,.kpi,.chain>li{border-radius:var(--r)}
-.tile,.q,.next{border-radius:var(--r-sm)}
-.card{box-shadow:none}
-.card.hl{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset}
-.card>h2,.stage h2{color:var(--muted)}
-/* buttons */
-.btn,.seg,.menu ul{border-radius:var(--r-sm)}
-.btn:hover:not(:disabled){background:var(--surface);border-color:var(--teal)}
-.btn.pri:hover:not(:disabled){background:var(--teal);filter:brightness(1.08)}
-.btn:disabled{opacity:.55}
-input[type=text],input[type=date],input[type=email],input[type=search],textarea,select,input[type=number]{border-radius:var(--r-sm)}
-input:focus,select:focus,textarea:focus{border-color:var(--teal)}
-/* outline-chip filters */
-.pill{background:transparent;color:var(--muted);font-weight:500}
-.pill:hover{border-color:var(--teal);color:var(--ink)}
-.pill[aria-pressed="true"]{background:transparent;border-color:var(--teal);color:var(--teal);font-weight:600;box-shadow:inset 0 0 0 1px var(--teal)}
-.seg button[aria-pressed="true"]{background:var(--teal-soft);color:var(--teal)}
-/* status chips */
-.chip{font-weight:600}
-.chip.warn,.cnt{color:var(--warn-ink)}
-/* tables: zebra, hover, sticky header */
-.tw{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
-th{background:var(--surface2);padding:10px 12px;position:sticky;top:0;z-index:1}
-td{padding:10px 12px}
-tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--surface2) 55%,transparent)}
-tr.click:hover td,tr.click:focus-visible td,tbody tr:hover td{background:var(--teal-soft)}
-.trend tr.cur,.trend tr.cur td{background:var(--teal-soft)}
-@media (max-width:640px){
- .tw th:first-child,.tw td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line);max-width:132px}
- .tw tbody tr:nth-child(even) td:first-child{background:var(--surface2)}
-}
-/* underline tabs with count badges */
-.ctabs{gap:2px}
-.ctabs button{border-bottom-width:3px;padding:10px 14px;min-height:44px}
-.ctabs button[aria-selected="true"]{color:var(--teal);border-bottom-color:var(--teal)}
-.cnt{background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line);color:var(--muted)}
-.ctabs button[aria-selected="true"] .cnt{background:var(--teal);color:var(--on-teal);box-shadow:none}
-.cnt.warn{background:var(--warn-soft);color:var(--warn-ink);box-shadow:none}
-/* progress / steps */
-.step.cur{background:var(--teal);color:var(--on-teal)}
-.bar{border-radius:99px}.bar>i{border-radius:99px}
-/* drawer + toast */
-.jpk-dr aside{border-radius:var(--r) 0 0 var(--r)}
-#jpk-toast{border-radius:var(--r-sm);font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3)}
-/* skeleton loader (opt-in: <span class="sk"></span>) */
-.sk{display:block;height:14px;border-radius:6px;background:linear-gradient(90deg,var(--surface2),var(--line),var(--surface2));background-size:200% 100%}
-@media (prefers-reduced-motion:no-preference){.sk{animation:jpk-sh 1.4s infinite}@keyframes jpk-sh{to{background-position:-200% 0}}}
-/* phone */
-@media (max-width:640px){.btn{min-height:36px}.wrap{padding:12px}}
 
 /* ===== intake: map the wizard's own names onto the kit tokens, then fix hard-coded colours ===== */
-:root{--soft:var(--surface2);--brand:var(--teal)}
+:root{--soft:var(--surface2);--brand:var(--accent)}
 html,body{background:var(--bg);color:var(--ink);font-family:var(--font)}
 .top,.bar{background:var(--surface)}
 .bar{border-radius:0}
@@ -152,3 +102,21 @@ fieldset{background:var(--surface);border-radius:var(--r)}
 .btn.primary{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
 .btn.primary:hover:not(:disabled){background:var(--teal);filter:brightness(1.08)}
 label.req::after,legend.req::after{color:var(--bad)}
+
+/* ===== theme v3 (15 Oct 2026): Civic shape and type, one accent, selection = ink ===== */
+h1,h2,legend{font-family:var(--font-head);letter-spacing:-.01em;font-weight:600}
+h1{font-size:20px}
+.steps li{border-radius:var(--r-sm);font-weight:500}
+.steps li[aria-current]{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+.steps li.done{background:var(--accent-soft);color:var(--accent-ink);border-color:transparent}
+input,select,textarea{border-radius:var(--r-sm);background:var(--surface2)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+fieldset,.summary,.results,.picked,.msg{border-radius:var(--r)}
+.chips label{border-radius:var(--r-sm)}
+.chips label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.link{color:var(--accent-ink)}
+.picked{background:var(--accent-soft)}
+.msg{border-left-width:3px}
+.btn{border-radius:var(--r-sm);border-color:var(--line-strong);font-weight:500}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn.primary:hover:not(:disabled){background:var(--accent);filter:brightness(1.06)}
