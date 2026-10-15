@@ -72,7 +72,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
 <!--
   BD Home — the fourth home widget (Business Development: Joe and Beau). v1, Sep 30 2026 (Phase 2 of
   claude/bd-home-plan-2026-09-30.md): four boards (Accounts, Opportunities, Vendors & Products, Campaigns),
@@ -1370,6 +1370,66 @@
 .co-bulk .touch .row3 { grid-column: 1 / -1; display: flex; gap: var(--sp-2); justify-content: flex-end; align-items: center; }
 .co-bulk .touch [hidden] { display: none !important; }
 @media (max-width: 700px) { .co-bulk .touch { grid-template-columns: minmax(0, 1fr); } .co-bulk .touch .w2 { grid-column: 1 / -1; } }
+</style>
+<style id="theme-v3">
+/* home-theme-v3.css (15 Oct 2026): theme v3 (Graphite + cobalt, Civic shape and type) for the home-kit pages
+   (BD + CS Home, BD Home, DOC Dispatch, EM Home, Network Home). Injected as <style id="theme-v3"> after the page's last style
+   block, so it only re-points tokens and a few hard-coded rules; no markup or script changes.
+   Rules it follows (THEME-REDESIGN-PLAN): one accent (cobalt) for selection / links / primary; status = dot + text;
+   the three brand colours appear only inside the logo; heading face Archivo. */
+:root{
+  --ground:light-dark(#F7F8FA,#121417); --surface:light-dark(#FFFFFF,#191C20); --surface-2:light-dark(#F7F8FA,#1F2328);
+  --ink:light-dark(#16191D,#E6E8EB); --ink-2:light-dark(#3D434B,#BCC2CA); --muted:light-dark(#5F6670,#9AA1AB);
+  --line:light-dark(#DCE0E5,#2B3038); --line-strong:light-dark(#B8BEC7,#424955);
+  --focus:light-dark(#2F55A4,#7F9FE0); --accent-ink:light-dark(#284A90,#9DB6EA); --zoom:light-dark(#284A90,#9DB6EA);
+  --accent:light-dark(#2F55A4,#7F9FE0); --accent-soft:light-dark(#E6ECF8,#1E2A45);
+  /* the old JusticePoint orange / Sirona / TDP tokens now resolve to the accent or to neutrals */
+  --jp:var(--focus); --jp-ink:var(--accent-ink); --jp-tint:var(--accent-soft);
+  --tdp:var(--muted); --tdp-ink:var(--accent-ink); --tdp-tint:var(--accent-soft);
+  --sirona:var(--muted); --sirona-ink:var(--ink-2); --sirona-tint:var(--surface-2);
+  --good:light-dark(#1F6F45,#5EC58C); --warn:light-dark(#8A6412,#E0B055); --bad:light-dark(#A33A33,#F08A82);
+  --good-tint:light-dark(#E3F0E8,#163125); --warn-tint:light-dark(#F6EEDC,#3A2F14); --bad-tint:light-dark(#F7E4E3,#3F1F1D);
+  --bar:var(--surface); --bar-2:var(--surface-2); --bar-ink:var(--ink); --bar-muted:var(--muted); --bar-line:var(--line);
+  --stripe:none;
+  --font-ui:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-head:"Archivo","Public Sans",system-ui,sans-serif; --font-display:var(--font-head);
+  --radius-sm:3px; --radius:4px;
+  --shadow:none; --shadow-pop:0 8px 24px rgba(0,0,0,.18); --shadow-modal:0 16px 48px -12px rgba(0,0,0,.5);
+  --nh-c1:light-dark(#2F55A4,#7F9FE0); --nh-c2:light-dark(#4A6B8A,#8DAAC6);
+}
+:root[data-contrast="high"]{
+  --focus:light-dark(#16306A,#B7CAF2); --accent-ink:light-dark(#10265A,#D3E0F8); --zoom:light-dark(#10265A,#D3E0F8);
+  --jp:var(--focus); --jp-ink:var(--accent-ink);
+}
+/* masthead: light bar with a hairline (no dark teal band, no three-colour stripe) */
+.mast{border-bottom:1px solid var(--line)}
+.mast::after{display:none}
+.greet h1{font-family:var(--font-head);font-weight:600;letter-spacing:-.01em}
+.mast .brand-chip{background:var(--surface-2);border-color:var(--line);color:var(--ink)}
+.mast .brand-chip:hover{background:var(--surface-2);border-color:var(--line-strong);transform:none}
+.mast .icon-btn{border-color:var(--line);color:var(--muted)}
+.mast .icon-btn:hover,.mast .icon-btn[aria-expanded="true"]{background:var(--surface-2);color:var(--ink);border-color:var(--line-strong)}
+.mast .display{border-left-color:var(--line)}
+.brand-chip .dot{background:var(--muted)!important;border-radius:50%}
+/* selection = ink or cobalt underline; segments are rectangular */
+.seg{border-radius:var(--radius-sm)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);font-weight:600}
+#queue-card .qtabs button[aria-selected="true"]{border-bottom-color:var(--focus)}
+/* case status: dot + text instead of pastel pills */
+.pill{background:transparent!important;color:var(--ink)!important;padding:0!important;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.pill::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--muted);flex:none}
+.pill.new::before{background:var(--info,var(--accent-ink))} .pill.esc::before{background:var(--bad)}
+.pill.wait::before{background:var(--warn)} .pill.prog::before{background:var(--good)}
+/* brand-coded panels and rules (Network Home, BD Home): identified by label, not colour */
+.panel .head{border-top:2px solid var(--line-strong)!important}
+.panel .dot,.lgroup h3 .dot,.notice .rule{background:var(--line-strong)!important}
+.notice.urgent .rule{background:var(--bad)!important}
+.panel svg.spark .line{stroke:var(--accent-ink)!important}
+/* agenda type chips (BD + CS Home): one neutral chip, no per-type hue */
+.agenda .tchip[class*="c-"]{background:var(--surface-2);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line)}
+.agenda .ag-od{background:var(--bad)}
+/* "since you last looked" line: padded like the sections around it, hairline under it */
+.digest{padding:8px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
 </style>
 </head>
 <body>
