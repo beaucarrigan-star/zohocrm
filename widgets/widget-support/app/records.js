@@ -463,8 +463,9 @@
           });
         }).catch(fail);
       };
-      if (cfg.key === 'cases' && live && window.ZOHO.CRM.API.getBlueprint) window.ZOHO.CRM.API.getBlueprint({ Entity: 'Cases', RecordID: id }).then(function (g) {
-        var t = g && g.blueprint && g.blueprint.transitions; if (t && t.length != null) { bp.names = t.map(function (x) { return x.name; }); paintQ(); }
+      if (cfg.key === 'cases' && live) window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ caseId: String(id), transitionName: '?', noteText: '' }) }).then(function (res) {
+        var out = String((res && res.details && res.details.output) || ''), m = /^Steps:\s*(.*)$/.exec(out);
+        if (m) { bp.names = m[1] ? m[1].split('|') : []; paintQ(); }   /* older case_step without "?" leaves all five buttons */
       }, function () {});
       var paintQ = function () {
         qel.innerHTML = '<h3>Quick edit' + (Date.now() - lastSaved < 60000 ? '<span class="saved">✓ Saved</span>' : '') + '</h3><div class="edit">' + C.quick.map(function (f) {
