@@ -1,0 +1,64 @@
+/* flow-v3.css (theme v3 wave 4, 15 Oct 2026): flow-tab layer for the eight flow widgets.
+   Loads AFTER each widget's own css (flow.css, equip.css, ...) and jpk-theme-v3.css. Visual only: no markup or logic changes.
+   Rules: one accent (cobalt) for selection only; status = dot + text; 4px / 3px radii; heading face on stage titles and big numbers;
+   mono for counts and money; hairline lines, no pastel fills. */
+
+/* ---- stages: bordered panels in a row, thin chevron between them ---- */
+.flow{gap:28px}
+.stage{border-radius:var(--r);border-color:var(--line);background:var(--surface);padding:14px 14px 12px}
+.stage+.stage::before{left:-20px;top:36px;border-top-width:6px;border-bottom-width:6px;border-left:9px solid var(--line-strong)}
+.stage h2{font:600 13.5px/1.3 var(--font-head);letter-spacing:-.005em;text-transform:none;color:var(--ink);gap:8px}
+.stage h2 .n{width:auto;height:auto;min-width:0;border-radius:0;background:none;color:var(--muted);font:500 12px var(--mono);letter-spacing:0}
+.stage h2 .n::after{content:"";display:inline-block;width:1px;height:11px;background:var(--line-strong);margin-left:8px;vertical-align:-1px}
+.stage .big{font:600 28px/1.1 var(--font-head);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.stage .biglab{color:var(--muted)}
+
+/* ---- lanes: outline rows; selection = 3px left rule, not a teal outline ---- */
+.lane{border-radius:var(--r-sm);background:transparent;border-color:var(--line);padding:7px 9px 7px 10px}
+.lane:hover{background:var(--surface2);border-color:var(--line-strong)}
+.lane[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--line);box-shadow:inset 3px 0 0 var(--accent)}
+.lane .ln{font-weight:500}
+.lane .lc{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--ink);font:500 12.5px var(--mono);font-variant-numeric:tabular-nums}
+.lane .lc::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--muted);flex:none}
+.lane .lc.good::before{background:var(--good)}
+.lane .lc.warn::before{background:var(--warn)}
+.lane .lc.bad::before{background:var(--bad)}
+.lane .lc.info::before{background:var(--info)}
+.lane .lc.good,.lane .lc.warn,.lane .lc.bad,.lane .lc.info{background:transparent;color:var(--ink)}
+.lane .lc:is(.zero,[data-n="0"]){color:var(--muted)}
+.note-bad{color:var(--bad)}
+
+/* ---- drawer path (chain) ---- */
+.chain>li{border-radius:var(--r);background:var(--surface2)}
+.chain>li:not(:last-child)::after{left:22px;bottom:-15px;border-left-width:6px;border-right-width:6px;border-top:9px solid var(--line-strong)}
+.chain .lh{font-size:11.5px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--muted)}
+
+/* ---- monthly trend (support, equipment, stock, ...): quiet header, mono numbers, selected month = left rule ---- */
+.trend thead th{font:500 12px var(--font);letter-spacing:0;text-transform:none;color:var(--muted)}
+.trend .r{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.trend tr.cur{background:var(--accent-soft)}
+.trend tr.cur>:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.tb{border-radius:1px;height:8px}
+.tb.a{background:var(--muted)}.tb.b{background:var(--good)}.tb.c{background:var(--line-strong)}
+
+/* ---- small controls used inside flows ---- */
+.lead input{border-radius:var(--r-sm);background:var(--surface2);border-color:var(--line);font-family:var(--mono)}
+.fam-n{font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)}
+.cleanup .cu-t{font-family:var(--font-head);font-weight:600}
+.limits{gap:12px}
+
+/* ---- search + "+ New" menu from flow-tools.js (its own style block loads later, so beat it with higher specificity) ---- */
+html .ft-add .ft-menu{border-radius:var(--r);border-color:var(--line-strong);box-shadow:0 4px 14px rgba(22,25,29,.14);background:var(--surface)}
+html .ft-add .ft-menu button{border-radius:var(--r-sm)}
+html .ft-add .ft-menu button:hover,html .ft-add .ft-menu button:focus{background:var(--accent-soft)}
+
+/* ---- narrow screens: one column, chevron points down. Wins over per-widget .flow column rules (this file loads last). ---- */
+@media (max-width:1180px){
+  .flow{grid-template-columns:minmax(0,1fr);gap:28px}
+  .stage+.stage::before{left:calc(50% - 7px);top:-20px;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--line-strong);border-bottom:0}
+}
+@media (max-width:600px){
+  .stage{padding:12px}
+  .stage .big{font-size:24px}
+}
