@@ -8,14 +8,19 @@
      Reads Deliverables, Compliance_Items, Program_Metrics and Solicitations with COQL; ?preview=1 runs on sample data. -->
 <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
 <style>
 /* Layout: sticky toolbar + jump bar, three zones (My work, Numbers, Reference), collapsible sections, peek panel for the view behind each number */
 :root{
-  --bg:#f4f6f7;--surface:#ffffff;--fg:#1c2b33;--muted:#5d6e78;--line:#d9e0e4;
-  --accent:#0f6b6b;--accent-soft:#dff0ef;
-  --ok:#2e7d4f;--ok-soft:#e1f2e8;--warn:#a86a00;--warn-soft:#fbefd5;--bad:#b3261e;--bad-soft:#fbe3e1;
-  --sans:'Source Sans 3',system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;
+  --bg:light-dark(#F4F5F7,#121417); --surface:light-dark(#FFFFFF,#191C20); --fg:light-dark(#16191D,#E6E8EB);
+  --muted:light-dark(#5F6670,#9AA1AB); --line:light-dark(#DCE0E5,#2B3038);
+  --accent:light-dark(#2F55A4,#7F9FE0); --accent-soft:light-dark(#E6ECF8,#1E2A45);
+  --ok:light-dark(#1F6F45,#5EC58C); --ok-soft:light-dark(#E3F0E8,#163125);
+  --warn:light-dark(#8A6412,#E0B055); --warn-soft:light-dark(#F6EEDC,#3A2F14);
+  --bad:light-dark(#A33A33,#F08A82); --bad-soft:light-dark(#F7E4E3,#3F1F1D);
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; --head:"Archivo","Public Sans",system-ui,sans-serif;
+  --radius:4px; color-scheme:light dark;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#12191d;--surface:#1a2429;--fg:#e4ecef;--muted:#93a5ae;--line:#2c3a41;
@@ -97,6 +102,7 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
 .mut{color:var(--muted)}.err{color:var(--bad);margin:6px 0}
 .jump button#refresh{border-color:var(--line)}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px;z-index:30}
+h1,h2,h3{font-family:var(--head)}
 </style>
 </head>
 <body>
