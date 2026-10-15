@@ -1430,6 +1430,11 @@
 .agenda .ag-od{background:var(--bad)}
 /* "since you last looked" line: padded like the sections around it, hairline under it */
 .digest{padding:8px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+/* wave 3: status chips as dot + text (BD Home, BD+CS Home, DOC Dispatch) */
+.tchip.cold,.tchip.warm,.tchip.fresh,.tchip.won,.tchip.lost{background:transparent;color:var(--ink);padding:0;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.tchip.cold::before,.tchip.warm::before,.tchip.fresh::before,.tchip.won::before,.tchip.lost::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--muted);flex:none}
+.tchip.cold::before,.tchip.lost::before{background:var(--bad)}.tchip.warm::before{background:var(--warn)}.tchip.fresh::before,.tchip.won::before{background:var(--good)}
+.delta.worse,.delta.better{background:transparent;padding:0}
 </style>
 </head>
 <body>
