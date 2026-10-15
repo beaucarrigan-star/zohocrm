@@ -1,4 +1,6 @@
 /* vendor-view.js: Vendors view inside the Records widget. Edit in place: vendor on a rate line, line status, device, amount, and vendor details; each change saves to Zoho at once with Undo.
+   v2.1 (Oct 14): Administrators can add a vendor cost line (saved Proposed on the vendor's contract, Undo removes it).
+   v2 (Oct 14): rate lines are written through their contract (Rate_Lines is a subform), and a status change writes Line_Status, Line_Verified and Superseded_By together, like Contract Review.
    Vendor information, vendor cost from contract Rate Lines (Contract Ingest), and the accounts billed with their customer rate,
    tied by contract: customer Rate Lines that name this vendor (Rate_Vendor), matched to its verified vendor cost for the same device. */
 (function () {
@@ -6,7 +8,7 @@
   var VM = window.VendorModel, PAGE = 200, CAP = 5000;
   var VQ = ['Vendor_Name, Relationship_Status, EM_JusticePoint_Vendor, Main_Point_of_Contact, Support_Hours, Support_Email_RMA, After_hours_number, Customer_Portal, Website, Equipment_Used, Device_Order_Method, Device_Order_Email, Device_Order_Contact, Accessory_Order_Method, Accessory_Order_Email, EM_Units_Current, Last_Vendor_Review',
     'Vendor_Name, Relationship_Status, EM_JusticePoint_Vendor, Main_Point_of_Contact, Support_Hours, Support_Email_RMA, After_hours_number, Customer_Portal, Website, Last_Vendor_Review', 'Vendor_Name, Relationship_Status, EM_JusticePoint_Vendor'];
-  var S = { data: null, model: null, mode: 'vendor', vid: null, emOnly: true, costStatus: 'Verified', q: '', err: '', notes: [], loaded: false, busy: false, at: 0, sel: null, editV: false, pl: {} };
+  var S = { data: null, model: null, mode: 'vendor', vid: null, emOnly: true, costStatus: 'Verified', q: '', err: '', notes: [], loaded: false, busy: false, at: 0, sel: null, editV: false, pl: {}, admin: null, addCost: false };
   var X, root;
 
   function pages(q) { var all = []; function go(off) { return X.coql(q + ' limit ' + PAGE + ' offset ' + off).then(function (r) { all = all.concat(r.rows); if (r.rows.length >= PAGE && all.length < CAP) return go(off + PAGE); return all; }); } return go(0); }
@@ -17,7 +19,7 @@
     var d = { vendors: [], contracts: [], rateLines: [] };
     return vendorsRead(0).then(function (r) { d.vendors = r; })
       .then(function () { return pages('select id, Name, Vendor, Account, Contract_Status, Counterparty_Type from Contracts where id is not null order by id asc').then(function (r) { d.contracts = r; }, function (e) { S.notes.push('Contracts could not be read (' + e.message + '), so rates cannot be tied to accounts.'); }); })
-      .then(function () { return pages('select id, Parent_Id, Rate_Vendor, Rate_Type, Rate_Device, Rate_Daily_Amount, Rate_Terms, Line_Status, Tier_Min_Units, Tier_Max_Units, Effective_Date from Rate_Lines where id is not null order by id asc').then(function (r) { d.rateLines = r; }, function (e) { S.notes.push('Rate Lines could not be read (' + e.message + ').'); }); })
+      .then(function () { return pages('select id, Parent_Id, Rate_Vendor, Rate_Type, Rate_Device, Rate_Daily_Amount, Rate_Terms, Line_Status, Line_Verified, Superseded_By, Tier_Min_Units, Tier_Max_Units, Effective_Date from Rate_Lines where id is not null order by id asc').then(function (r) { d.rateLines = r; }, function (e) { S.notes.push('Rate Lines could not be read (' + e.message + ').'); }); })
       .then(function () { S.data = d; finish(); }, function (e) { S.err = e.message || 'Could not read Vendors'; S.busy = false; });
   }
   function finish() { S.model = VM.build(S.data); if (!S.vid || !S.model.vById[S.vid]) { var f = S.model.vendors.filter(function (v) { return v.em; })[0] || S.model.vendors[0]; S.vid = f ? f.id : null; } S.loaded = true; S.busy = false; S.at = Date.now(); }
@@ -26,15 +28,22 @@
   var DEVICES = ['GPS', 'Wrist-worn GPS', '2-Piece GPS', 'Remote Breath', 'CAM', 'CAM Landline', 'Hybrid GPS + Alcohol', 'Victim / DV', 'Other'];
   var apiOf = function (v) { return v && typeof v === 'object' ? (v.id ? { id: v.id } : null) : (v === '' || v === undefined ? null : v); };
   /* save one or more fields on a raw record, update the screen, offer Undo. changes: {Field: [apiValue, localValue]} */
+  /* Rate_Lines is a subform on Contracts: write it through the contract (billing-lines.js reads the contract fresh and sends every row id back) */
+  function writeOne(entity, raw, api) {
+    if (entity !== 'Rate_Lines') return X.update(entity, raw.id, api);
+    var p = raw.Parent_Id, cid = p && typeof p === 'object' ? p.id : p;
+    if (!cid) return Promise.reject(new Error('this line has no contract'));
+    return window.JPBillingLines.writeLine(X.blIo(), String(cid), String(raw.id), api);
+  }
   function save(entity, list, id, changes, label) {
     var raw = list.filter(function (r) { return String(r.id) === String(id); })[0]; if (!raw) return;
     var oldLocal = {}, oldApi = {}, api = {}, keys = Object.keys(changes);
     if (keys.every(function (k) { return JSON.stringify(apiOf(raw[k])) === JSON.stringify(changes[k][0]) || (raw[k] == null && changes[k][0] == null); })) return;
     keys.forEach(function (k) { oldLocal[k] = raw[k]; oldApi[k] = apiOf(raw[k]); api[k] = changes[k][0]; });
-    X.update(entity, id, api).then(function () {
+    writeOne(entity, raw, api).then(function () {
       keys.forEach(function (k) { raw[k] = changes[k][1]; }); S.model = VM.build(S.data); draw();
       X.toastUndo('Saved: ' + label, function () {
-        X.update(entity, id, oldApi).then(function () { keys.forEach(function (k) { raw[k] = oldLocal[k]; }); S.model = VM.build(S.data); draw(); X.toast('Undone'); }, function (e) { X.toast('Could not undo: ' + (e && e.message || e)); });
+        writeOne(entity, raw, oldApi).then(function () { keys.forEach(function (k) { raw[k] = oldLocal[k]; }); S.model = VM.build(S.data); draw(); X.toast('Undone'); }, function (e) { X.toast('Could not undo: ' + (e && e.message || e)); });
       });
     }, function (e) { X.toast('Could not save: ' + (e && e.message || e)); draw(); });
   }
@@ -61,10 +70,43 @@
       var f = e.target.getAttribute('data-f'), v = e.target.value;
       if (f === 'vendor') { var vv = S.model.vById[v]; save('Rate_Lines', S.data.rateLines, id, { Rate_Vendor: [v ? { id: v } : null, v ? { id: v, name: vv ? vv.name : '' } : null] }, 'vendor' + (vv ? ' set to ' + vv.name : ' cleared')); }
       else if (f === 'device') save('Rate_Lines', S.data.rateLines, id, { Rate_Device: [v || null, v || null] }, 'device ' + (v || 'cleared'));
-      else if (f === 'status') save('Rate_Lines', S.data.rateLines, id, { Line_Status: [v, v] }, 'status ' + v);
+      else if (f === 'status') { var sf = window.JPBillingLines.statusFields(v), ch = {}; Object.keys(sf).forEach(function (k) { ch[k] = [sf[k], sf[k]]; }); save('Rate_Lines', S.data.rateLines, id, ch, 'status ' + v); }
       else if (f === 'amount') { var n = v.trim() === '' ? null : +v; if (n != null && (isNaN(n) || n < 0)) { X.toast('Enter an amount of 0 or more'); draw(); return; } save('Rate_Lines', S.data.rateLines, id, { Rate_Daily_Amount: [n, n] }, 'amount ' + (n == null ? 'cleared' : VM.money(n))); }
     };
     led.onclick = function (e) { var b = e.target.closest('[data-a]'); if (!b) return; if (b.getAttribute('data-a') === 'close') { S.sel = null; draw(); } else if (raw) { var p = raw.Parent_Id; X.openCrm('Contracts', p && p.id ? p.id : p); } };
+  }
+  /* ---------- add a vendor cost line (Administrators) ---------- */
+  function vendorContracts(v) { return v.contracts.filter(function (k) { return k.type !== 'Customer'; }); }
+  function addCostForm(v) {
+    var esc = X.esc, ks = vendorContracts(v);
+    if (!ks.length) return '<div class="cards"><section class="card"><h3>Add a vendor cost line</h3><p class="mut" style="margin:0">' + esc(v.name) + ' has no vendor contract on file, so there is nowhere to put the line. Add the contract under Processes > Contract first.</p><div class="acts"><button type="button" class="btn" data-a="ccancel">Close</button></div></section></div>';
+    return '<div class="cards"><section class="card" id="cadd"><h3>Add a vendor cost line: ' + esc(v.name) + '</h3><form class="edit" id="caddf">' +
+      (ks.length > 1 ? '<label>Contract<select name="k">' + ks.map(function (k) { return '<option value="' + esc(k.id) + '">' + esc(k.name) + '</option>'; }).join('') + '</select></label>' : '') +
+      '<label>Device<select name="dev" required><option value="">Pick one</option>' + opts(S.pl.device || DEVICES, '') + '</select></label>' +
+      '<label>Cost per day<input name="amt" type="number" step="0.01" min="0" required></label>' +
+      '<label>Volume from (units)<input name="tmin" type="number" step="1" min="0"></label><label>Volume to (units)<input name="tmax" type="number" step="1" min="0"></label>' +
+      '<label>Effective date<input name="eff" type="date"></label><label>Terms (optional)<input name="terms" type="text" maxlength="255"></label></form>' +
+      '<div class="acts"><button type="button" class="btn pri" data-a="csave">Add line</button><button type="button" class="btn" data-a="ccancel">Cancel</button></div>' +
+      '<p class="mut" style="margin:10px 0 0;font-size:12px">Saved as Proposed on ' + (ks.length > 1 ? 'the contract you pick' : esc(ks[0].name)) + '. Verify it (here or in Contract Review) before it counts for margin. Leave volume blank when the cost applies to every volume.</p></section></div>';
+  }
+  function bindAddCost(v) {
+    var box = document.getElementById('cadd') || null, BL = window.JPBillingLines;
+    root.querySelectorAll('[data-a=ccancel]').forEach(function (b) { b.onclick = function () { S.addCost = false; draw(); }; });
+    if (!box) return;
+    box.querySelector('[data-a=csave]').onclick = function (ev) {
+      var f = document.getElementById('caddf'), g = function (n) { return f.elements[n] ? f.elements[n].value.trim() : ''; }, nm = function (n) { return g(n) === '' ? null : +g(n); };
+      var cid = g('k') || vendorContracts(v)[0].id, dev = g('dev'), amt = nm('amt'), a = nm('tmin'), b = nm('tmax');
+      if (!dev) { X.toast('Pick a device'); return; }
+      if (amt == null || isNaN(amt) || amt < 0) { X.toast('Enter a cost per day of 0 or more'); return; }
+      if ((a != null && (isNaN(a) || a < 0)) || (b != null && (isNaN(b) || b < 0)) || (a != null && b != null && b < a)) { X.toast('Check the volume range'); return; }
+      var fields = Object.assign({ Rate_Type: 'Vendor cost', Rate_Device: dev, Rate_Daily_Amount: amt, Tier_Min_Units: a, Tier_Max_Units: b, Effective_Date: g('eff') || null, Rate_Terms: g('terms') || null, Rate_Vendor: { id: v.id } }, BL.statusFields('Proposed'));
+      ev.target.disabled = true;
+      BL.writeLine(X.blIo(), cid, null, fields).then(function (newId) {
+        var k = vendorContracts(v).filter(function (x) { return x.id === cid; })[0], row = Object.assign({ id: newId || ('pending' + Date.now()) }, fields, { Parent_Id: { id: cid, name: k ? k.name : '' }, Rate_Vendor: { id: v.id, name: v.name } });
+        S.data.rateLines.push(row); S.model = VM.build(S.data); S.addCost = false; S.costStatus = 'all'; draw();
+        X.toastUndo('Saved: ' + dev + ' cost ' + VM.money(amt) + ' a day added (Proposed)', newId ? function () { BL.removeLine(X.blIo(), cid, newId).then(function () { S.data.rateLines = S.data.rateLines.filter(function (x) { return x !== row; }); S.model = VM.build(S.data); draw(); X.toast('Undone'); }, function (e) { X.toast('Could not undo: ' + ((e && e.message) || e)); }); } : null);
+      }, function (e) { ev.target.disabled = false; X.toast('Could not add: ' + ((e && e.message) || e)); });
+    };
   }
   var VFIELDS = [['Relationship_Status', 'Relationship', 'pick'], ['Support_Hours', 'Support hours'], ['Support_Email_RMA', 'RMA email'], ['After_hours_number', 'After-hours number'], ['Customer_Portal', 'Customer portal link'], ['Last_Vendor_Review', 'Last review', 'date']];
   function vendorEditor(v) {
@@ -124,6 +166,7 @@
         h += '<div class="cards">' + (S.editV ? vendorEditor(cur) : infoCard(cur)) + '</div>';
         var cl = cur.costLines.filter(function (l) { return S.costStatus === 'all' || l.status === S.costStatus; });
         h += '<h3 style="padding:14px 24px 0;margin:0">Vendor cost from contracts</h3><div class="bar" id="cs" role="group" aria-label="Line status">' + ['Verified', 'Proposed', 'all'].map(function (s) { return '<button type="button" class="pillbtn" data-cs="' + s + '" aria-pressed="' + (S.costStatus === s) + '">' + (s === 'all' ? 'All lines' : s) + '</button>'; }).join('') + '</div>';
+        if (S.admin) h += S.addCost ? addCostForm(cur) : '<div class="bar"><button type="button" class="pillbtn" id="caddb">+ Add a vendor cost line</button></div>';
         h += cl.length ? X.tableHtml(COST_COLS, cl.map(function (l) { return { contract: l.contractName, device: l.device, tier: VM.tierText(l), cost: l.amount == null ? '' : VM.money(l.amount), status: l.status, terms: l.terms }; }), true) : '<div class="empty"><b>No ' + (S.costStatus === 'all' ? '' : S.costStatus.toLowerCase() + ' ') + 'cost lines for this vendor</b>Contract Ingest adds them from the vendor contract; Contract Review verifies them.</div>';
         h += '<h3 style="padding:14px 24px 0;margin:0">Accounts billed with this vendor\'s devices (' + cur.billed.length + ')</h3>';
         h += cur.billed.length ? X.tableHtml(BILL_COLS(false), cur.billed.map(function (r) { return billedRow(r, false); }), true) : '<div class="empty"><b>No customer rate lines name this vendor</b>Set Rate Vendor on the customer\'s Rate Lines (Contract Review) to tie them.</div>';
@@ -151,10 +194,12 @@
     if (billTb && bound && bound.length && !(S.mode === 'vendor' && !cur.billed.length)) wire(billTb, pickRow('bill', bound));
     if (S.sel) { var all = root.querySelectorAll('tbody tr[data-i]'); /* highlight the selected row */ Array.prototype.forEach.call(all, function (tr) { var tb = tr.parentNode, list = (tb === tbs[0] && S.mode === 'vendor' && costBound.length) ? costBound : bound; var r = list && list[+tr.getAttribute('data-i')]; if (r && String(r.id) === String(S.sel.id)) tr.classList.add('sel'); }); }
     bindLineEditor(); bindVendorEditor();
+    if (cur && S.addCost) bindAddCost(cur);
+    var cb = document.getElementById('caddb'); if (cb) cb.onclick = function () { S.addCost = true; S.sel = null; draw(); var c = document.getElementById('cadd'); if (c) c.scrollIntoView({ block: 'nearest' }); };
     var oa = root.querySelector('[data-a="openv"]'); if (oa) oa.onclick = function () { X.openCrm('Vendors', S.vid); };
     var ea = root.querySelector('[data-a="editv"]'); if (ea) ea.onclick = function () { S.editV = true; draw(); };
   }
   function run(manual) { return load().then(function () { draw(); if (manual) X.toast('Refreshed'); }); }
   window.RecModules.vendor_pricing = { key: 'vendor_pricing', title: 'Vendors', swLabel: 'Vendors', group: 'Vendors', entity: 'Vendors', custom: true,
-    render: function (rootEl, ctx) { root = rootEl; X = ctx; ctx.picklist('Rate_Lines', 'Rate_Device', DEVICES).then(function (v) { S.pl.device = v; }); ctx.picklist('Rate_Lines', 'Line_Status', STATUSES).then(function (v) { S.pl.status = v; }); ctx.picklist('Vendors', 'Relationship_Status', null).then(function (v) { S.pl.rel = v && v.length ? v : null; });  draw(); if (!S.loaded && !S.busy) run(false); } };
+    render: function (rootEl, ctx) { root = rootEl; X = ctx; if (S.admin === null) { S.admin = false; ctx.hasRole(['admin']).then(function (a) { S.admin = a; if (a && S.loaded) draw(); }); } ctx.picklist('Rate_Lines', 'Rate_Device', DEVICES).then(function (v) { S.pl.device = v; }); ctx.picklist('Rate_Lines', 'Line_Status', STATUSES).then(function (v) { S.pl.status = v; }); ctx.picklist('Vendors', 'Relationship_Status', null).then(function (v) { S.pl.rel = v && v.length ? v : null; });  draw(); if (!S.loaded && !S.busy) run(false); } };
 })();
