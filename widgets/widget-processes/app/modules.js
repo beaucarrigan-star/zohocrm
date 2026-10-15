@@ -53,7 +53,7 @@
     list: {
       select: ['Case_Number', 'Subject', 'Account_Name', 'Status', 'Priority', 'Case_Age_days', 'Queue', OWN],
       order: 'Created_Time desc', searchField: 'Subject', searchHint: 'Search case subjects',
-      cols: [{ k: 'Subject', label: 'Subject', main: 1 }, { k: 'Account_Name', label: 'Account' }, { k: 'Status', label: 'Status', ed: 'pick', opts: ['New', 'In Progress', 'On Hold', 'Closed'] }, { k: 'Priority', label: 'Priority', ed: 'pick', opts: ['High', 'Medium', 'Low'] }, { k: 'Queue', label: 'Queue', ed: 'pick', opts: ['Support', 'Reports', 'Personal'] }, { k: 'Case_Age_days', label: 'Age (days)', t: 'num', r: 1 }, { k: OWN, label: 'Owner' }],
+      cols: [{ k: 'Subject', label: 'Subject', main: 1 }, { k: 'Account_Name', label: 'Account' }, { k: 'Status', label: 'Status', pill: 1 }, { k: 'Priority', label: 'Priority', ed: 'pick', opts: ['High', 'Medium', 'Low'] }, { k: 'Queue', label: 'Queue', ed: 'pick', opts: ['Support', 'Reports', 'Personal'] }, { k: 'Case_Age_days', label: 'Age (days)', t: 'num', r: 1 }, { k: OWN, label: 'Owner' }],
       filters: [{ key: 'all', label: 'All' }, { key: 'open', label: 'Open', where: "Status != 'Closed'" }, { key: 'high', label: 'High priority', where: "Priority = 'High'" }, { key: 'closed', label: 'Closed', where: "Status = 'Closed'" }]
     },
     rec: {
