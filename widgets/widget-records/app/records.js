@@ -140,6 +140,7 @@
     if (typeof m === 'string' && m) return m + (det ? ' (' + det + ')' : '') + (/blueprint/i.test(m + ' ' + (x.code || '')) ? '' : '');
     try { return JSON.stringify(e).slice(0, 200); } catch (_) { return 'unknown error'; }
   }
+  var CASE_STEP_FN = 'cases_bulk_transition';   /* Deluge function (REST API on); args ids, transitionName, noteText */
   var plCache = {};
   function picklist(entity, field, fallback) {
     var k = entity + '.' + field; if (plCache[k]) return Promise.resolve(plCache[k]);
@@ -437,17 +438,49 @@
     document.getElementById('emp').onclick = function () { showEmpty = !showEmpty; paintSecs(); };
     if (C.quick) {
       var qel = document.getElementById('quick'), qopts = { __admin: false }, again = function () { var y = window.scrollY; drawRecord(r, id, scroll); window.scrollTo(0, y); };
+      /* Cases are on a blueprint: status moves by named step (Acknowledge, Start Working, Resolve, Close, Reopen) through the same
+         Deluge function as the list-view buttons. It queues the step; a workflow runs it within seconds; we poll the case until it lands. */
+      var bp = { names: null, busy: '', msg: '' };
+      var BPSTEPS = ['Acknowledge', 'Start Working', 'Resolve', 'Close', 'Reopen'], BPSTATUS = { 'Acknowledge': 'Acknowledged', 'Start Working': 'In Progress', 'Resolve': 'Resolved', 'Close': 'Closed', 'Reopen': 'In Progress' };
+      var bpHtml = function () {
+        var names = (bp.names || BPSTEPS).filter(function (n) { return BPSTEPS.indexOf(n) >= 0; });
+        return '<div class="bp" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)"><div class="mut" style="font-size:12px;margin-bottom:6px">Status: <b style="color:var(--ink)">' + esc(R.plain(r.Status) || 'Not set') + '</b>. Move this case:</div><div style="display:flex;gap:6px;flex-wrap:wrap">' +
+          (names.length ? names.map(function (n) { return '<button type="button" class="btn' + (n === 'Resolve' ? ' pri' : '') + '" data-tr="' + esc(n) + '"' + (bp.busy ? ' disabled' : '') + '>' + esc(n) + '</button>'; }).join('') : '<span class="mut" style="font-size:12px">No status steps are available from here.</span>') +
+          '<button type="button" class="btn" data-act="crm-status"' + (bp.busy ? ' disabled' : '') + '>Open in Zoho</button></div>' + (bp.msg ? '<div role="status" class="mut" style="font-size:12px;margin-top:6px">' + esc(bp.msg) + '</div>' : '') + '</div>';
+      };
+      var runStep = function (name) {
+        bp.busy = name; bp.msg = name + '...'; paintQ();
+        if (!live) { r.Status = BPSTATUS[name]; bp.busy = ''; lastSaved = Date.now(); toast('Demo: status set to ' + r.Status); again(); return; }
+        var fail = function (e) { bp.busy = ''; bp.msg = 'Not done: ' + errMsg(e); paintQ(); };
+        window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ ids: String(id), transitionName: name, noteText: '' }) }).then(function (res) {
+          if (res && res.code && String(res.code).toLowerCase() !== 'success') throw new Error((res.message || res.code) + '');
+          var poll = function (n) {
+            window.ZOHO.CRM.API.getRecord({ Entity: 'Cases', RecordID: id }).then(function (g) {
+              var d = g && g.data && g.data[0] || {}, br = String(d.Bulk_Result || '');
+              if (!d.Bulk_Action && br && !/^Queued/.test(br)) {
+                if (/^Done/.test(br)) { r.Status = d.Status; lastSaved = Date.now(); toast('Saved: ' + name + ' (' + R.plain(d.Status) + ')'); again(); }
+                else { bp.busy = ''; bp.msg = br; paintQ(); }
+              } else if (n >= 20) { bp.busy = ''; bp.msg = name + ' is queued and has not finished yet. Refresh in a minute.'; paintQ(); }
+              else setTimeout(function () { poll(n + 1); }, 3000);
+            }, fail);
+          };
+          poll(0);
+        }).catch(fail);
+      };
+      if (cfg.key === 'cases' && live && window.ZOHO.CRM.API.getBlueprint) window.ZOHO.CRM.API.getBlueprint({ Entity: 'Cases', RecordID: id }).then(function (g) {
+        var t = g && g.blueprint && g.blueprint.transitions; if (t && t.length != null) { bp.names = t.map(function (x) { return x.name; }); paintQ(); }
+      }, function () {});
       var paintQ = function () {
         qel.innerHTML = '<h3>Quick edit' + (Date.now() - lastSaved < 60000 ? '<span class="saved">✓ Saved</span>' : '') + '</h3><div class="edit">' + C.quick.map(function (f) {
           var cur = R.plain(r[f.t === 'user' ? 'Owner.first_name' : f.k]); cur = cur == null || cur === '-None-' ? '' : String(cur);
           if (f.t === 'user') { var us = (qopts.__users || []).slice(); if (cur && !us.some(function (u) { return u.name === cur; })) us.unshift({ id: '', name: cur }); return '<label>' + esc(f.label) + '<select data-q="' + f.k + '">' + us.map(function (u) { return '<option value="' + esc(u.id) + '"' + (u.name === cur ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('') + '</select></label>'; }
           var lock = f.admin && !qopts.__admin, lab = esc(f.label) + (f.admin ? ' <span class="mut">(admin only)</span>' : '');
           if (f.t === 'pick') { var xs = (qopts[f.k] || []).slice(); if (cur && xs.indexOf(cur) < 0) xs.unshift(cur); return '<label>' + lab + '<select data-q="' + f.k + '"' + (lock ? ' disabled title="Only an administrator can change this"' : '') + '><option value="">Not set</option>' + xs.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>'; }
-          return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:10px 0 0;font-size:12px">Changes save to Zoho as you make them. Undo appears after each save.</p>' + (cfg.key === 'cases' ? '<p style="margin:8px 0 0"><button type="button" class="btn" data-act="crm-status">Resolve or change status in Zoho</button><span class="mut" style="font-size:12px;margin-left:8px">Cases move through a blueprint, so status changes use its buttons.</span></p>' : '');
+          return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:10px 0 0;font-size:12px">Changes save to Zoho as you make them. Undo appears after each save.</p>' + (cfg.key === 'cases' ? bpHtml() : '');
       };
       paintQ();
       if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
-      qel.onclick = function (e) { var b = e.target.closest && e.target.closest('[data-act=crm-status]'); if (b) openCrm(cfg.entity, id); };
+      qel.onclick = function (e) { var t = e.target.closest && e.target.closest('[data-tr]'); if (t && !bp.busy) { runStep(t.getAttribute('data-tr')); return; } var b = e.target.closest && e.target.closest('[data-act=crm-status]'); if (b) openCrm(cfg.entity, id); };
       qel.onchange = function (e) {
         var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
         if (f.admin && !qopts.__admin) { toast('Only an administrator can change ' + f.label.toLowerCase()); paintQ(); return; }
