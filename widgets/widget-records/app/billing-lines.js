@@ -61,6 +61,13 @@
     if (!lineId) out.push(Object.assign({}, fields));
     return out;
   }
+
+  /* summary strip numbers (v3 .sum): current lines, verified, proposed, and the daily rate billed across current lines */
+  function summary(lines) {
+    var cur = (lines || []).filter(function (r) { return !isOld(r); }), v = 0, p = 0, tot = 0;
+    cur.forEach(function (r) { var s = lineStatus(r); if (s === 'Verified') v++; else p++; var a = num(r.Rate_Daily_Amount); if (a != null) tot += a; });
+    return { lines: cur.length, verified: v, proposed: p, daily: Math.round(tot * 100) / 100 };
+  }
   /* the account's customer contracts and their customer rate lines */
   function shape(contracts, lines) {
     var cs = (contracts || []).filter(function (c) { return pick(c.Counterparty_Type) !== 'Vendor'; }).map(function (c) { return { id: String(c.id), name: c.Name || 'Contract', status: pick(c.Contract_Status) }; });
@@ -113,7 +120,7 @@
   function css() {
     if (cssDone || typeof document === 'undefined') return; cssDone = true;
     var s = document.createElement('style'); s.id = 'jp-bl-css';
-    s.textContent = '.bl{--bl-s2:var(--surface-2,var(--surface2,#F6F9F9));--bl-bad:var(--bad,#B02F28);--bl-r:var(--radius-sm,6px)}' +
+    s.textContent = '.bl{--bl-s2:var(--surface-2,var(--surface2,#F6F9F9));--bl-bad:var(--bad,#B02F28);--bl-r:var(--r-sm,var(--radius-sm,6px))}.bl .sum{padding:0 0 12px}.bl td.num{font-family:var(--mono,inherit);font-variant-numeric:tabular-nums}.bl .badge{margin:0 4px 2px 0}' +
       '.bl h3{margin:0 0 4px}.bl .bl-sub{color:var(--muted);font-size:12px;margin:0 0 10px}' +
       '.bl .bl-acc{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin:0 0 12px}' +
       '.bl .bl-acc>label,.bl .bl-add label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600;min-width:160px;flex:1 1 160px}' +
@@ -198,6 +205,7 @@
     var self = this, old = S.lines.filter(isOld).length, shown = S.lines.filter(function (r) { return S.showOld || !isOld(r); });
     if (!S.contracts.length) h += '<div class="bl-empty">No customer contract on this account yet, so nothing is billed.' + (acc.type === 'Customer' ? ' Add the contract (Processes > Contract) and its rate lines appear here.' : '') + '</div>';
     else {
+      h += self.sumHtml();
       S.contracts.forEach(function (c) {
         var mine = shown.filter(function (r) { return lkId(r.Parent_Id) === c.id; });
         h += '<div class="bl-k">' + esc(c.name) + (c.status ? ' <small>' + esc(c.status) + '</small>' : '') + ' <button type="button" class="bl-link" data-open="' + esc(c.id) + '">Open contract</button></div>';
@@ -212,6 +220,11 @@
     el.innerHTML = h;
     if (S.adding) this.bindAdd();
   };
+  Panel.prototype.sumHtml = function () {
+    var m = summary(this.S.lines);
+    return '<div class="sum"><div><small>Current lines</small><b>' + m.lines + '</b></div><div><small>Verified</small><b>' + m.verified + '</b></div>' +
+      '<div><small>Proposed</small><b>' + m.proposed + '</b></div><div><small>Rates / day, all lines</small><b>' + money(m.daily) + '</b></div></div>';
+  };
   Panel.prototype.vendorOpts = function (cur, curName) {
     var vs = this.S.vendors.slice(); if (cur && !vs.some(function (v) { return v.id === cur; })) vs.unshift({ id: cur, name: curName || 'Current vendor' });
     return '<option value="">Not set</option>' + vs.map(function (v) { return '<option value="' + esc(v.id) + '"' + (v.id === cur ? ' selected' : '') + '>' + esc(v.name) + '</option>'; }).join('');
@@ -222,10 +235,10 @@
     return '<tr class="' + (isOld(r) ? 'old' : '') + '" data-line="' + id + '">' +
       '<td><select data-f="Rate_Device" aria-label="Device for ' + lbl + '">' + this.opts(this.S.devPl, dev, true) + '</select></td>' +
       '<td><select data-f="Rate_Vendor" aria-label="Vendor for ' + lbl + '">' + this.vendorOpts(lkId(r.Rate_Vendor), lkName(r.Rate_Vendor)) + '</select></td>' +
-      '<td class="r"><input type="number" step="0.01" min="0" data-f="Rate_Daily_Amount" aria-label="Rate per day for ' + lbl + '" value="' + (a == null ? '' : esc(a.toFixed(2))) + '"></td>' +
+      '<td class="r num"><input type="number" step="0.01" min="0" data-f="Rate_Daily_Amount" aria-label="Rate per day for ' + lbl + '" value="' + (a == null ? '' : esc(a.toFixed(2))) + '"></td>' +
       (tiers ? '<td>' + esc(tierText(r)) + '</td>' : '') +
       '<td><select data-f="Line_Status" aria-label="Status for ' + lbl + '">' + this.opts(this.S.statusPl, st, false) + '</select></td>' +
-      '<td>' + (fl.length ? '<span class="bl-flag">' + esc(fl.join('. ')) + '</span>' : '') + (r.Rate_Terms ? '<div class="bl-terms">' + esc(r.Rate_Terms) + '</div>' : '') + '</td></tr>';
+      '<td>' + fl.map(function (f) { return '<span class="badge bad">' + esc(f) + '</span>'; }).join('') + (r.Rate_Terms ? '<div class="bl-terms">' + esc(r.Rate_Terms) + '</div>' : '') + '</td></tr>';
   };
   Panel.prototype.addForm = function () {
     var S = this.S;
@@ -313,5 +326,5 @@
   }
   function forget(id) { delete cache[String(id)]; }
 
-  return { mount: mount, forget: forget, writeLine: writeLine, removeLine: removeLine, statusFields: statusFields, lineStatus: lineStatus, subformPayload: subformPayload, shape: shape, flags: flags, tierText: tierText, DEVICES: DEVICES, STATUSES: STATUSES };
+  return { mount: mount, forget: forget, summary: summary, writeLine: writeLine, removeLine: removeLine, statusFields: statusFields, lineStatus: lineStatus, subformPayload: subformPayload, shape: shape, flags: flags, tierText: tierText, DEVICES: DEVICES, STATUSES: STATUSES };
 });

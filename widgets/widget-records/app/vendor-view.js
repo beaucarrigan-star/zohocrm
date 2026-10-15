@@ -137,9 +137,17 @@
     return '<section class="card"><h3>' + esc(v.name) + '</h3><dl>' + (rows.length ? rows.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + (x[2] ? x[1] : esc(x[1])) + '</dd>'; }).join('') : '<dt>Details</dt><dd>None on file</dd>') + '</dl>' +
       '<div class="acts"><button type="button" class="btn pri" data-a="editv">Edit details</button><button type="button" class="btn" data-a="openv">Open vendor record</button></div></section>';
   }
-  var COST_COLS = [{ k: 'contract', label: 'Contract', main: 1 }, { k: 'device', label: 'Device' }, { k: 'tier', label: 'Volume' }, { k: 'cost', label: 'Cost per day', r: 1 }, { k: 'status', label: 'Status', pill: 1 }, { k: 'terms', label: 'From the contract' }];
-  var BILL_COLS = function (withVendor) { return [{ k: 'account', label: 'Account', main: 1 }].concat(withVendor ? [{ k: 'vendor', label: 'Vendor' }] : [], [{ k: 'device', label: 'Device' }, { k: 'tier', label: 'Volume' }, { k: 'rate', label: 'Customer rate / day', r: 1 }, { k: 'cost', label: 'Vendor cost / day', r: 1 }, { k: 'margin', label: 'Margin / day', r: 1 }, { k: 'status', label: 'Status', pill: 1 }, { k: 'check', label: 'Check' }]); };
+  var COST_COLS = [{ k: 'contract', label: 'Contract', main: 1 }, { k: 'device', label: 'Device' }, { k: 'tier', label: 'Volume' }, { k: 'cost', label: 'Cost per day', r: 1, num: 1 }, { k: 'status', label: 'Status', badge: 1 }, { k: 'terms', label: 'From the contract' }];
+  var BILL_COLS = function (withVendor) { return [{ k: 'account', label: 'Account', main: 1 }].concat(withVendor ? [{ k: 'vendor', label: 'Vendor' }] : [], [{ k: 'device', label: 'Device' }, { k: 'tier', label: 'Volume' }, { k: 'rate', label: 'Customer rate / day', r: 1, num: 1 }, { k: 'cost', label: 'Vendor cost / day', r: 1, num: 1 }, { k: 'margin', label: 'Margin / day', r: 1, num: 1 }, { k: 'status', label: 'Status', badge: 1 }, { k: 'check', label: 'Check' }]); };
 
+  function vendorSum(cur, cl) {
+    var m = cur.billed.filter(function (r) { return r.margin != null; }), below = m.filter(function (r) { return r.margin < 0; }).length;
+    var avg = m.length ? m.reduce(function (a, r) { return a + r.margin; }, 0) / m.length : null;
+    var cell = function (l, v, cls) { return '<div><small>' + l + '</small><b' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</b></div>'; };
+    return '<div class="sum">' + cell('Cost lines shown', cl.length) + cell('Accounts billed', cur.billed.length) +
+      cell('Avg margin / day', avg == null ? 'n/a' : (avg < 0 ? '-' : '') + VM.money(Math.abs(avg)), avg != null && avg < 0 ? 'var pos' : '') +
+      cell('Sold below cost', '<span class="badge ' + (below ? 'bad' : 'good') + '">' + below + '</span>') + '</div>';
+  }
   function gapStrip(g) {
     var bits = [];
     if (g.noVendor) bits.push(g.noVendor + ' customer rate' + (g.noVendor === 1 ? ' names' : 's name') + ' no vendor');
@@ -165,6 +173,7 @@
       if (cur) {
         h += '<div class="cards">' + (S.editV ? vendorEditor(cur) : infoCard(cur)) + '</div>';
         var cl = cur.costLines.filter(function (l) { return S.costStatus === 'all' || l.status === S.costStatus; });
+        h += vendorSum(cur, cl);
         h += '<h3 style="padding:14px 24px 0;margin:0">Vendor cost from contracts</h3><div class="bar" id="cs" role="group" aria-label="Line status">' + ['Verified', 'Proposed', 'all'].map(function (s) { return '<button type="button" class="pillbtn" data-cs="' + s + '" aria-pressed="' + (S.costStatus === s) + '">' + (s === 'all' ? 'All lines' : s) + '</button>'; }).join('') + '</div>';
         if (S.admin) h += S.addCost ? addCostForm(cur) : '<div class="bar"><button type="button" class="pillbtn" id="caddb">+ Add a vendor cost line</button></div>';
         h += cl.length ? X.tableHtml(COST_COLS, cl.map(function (l) { return { contract: l.contractName, device: l.device, tier: VM.tierText(l), cost: l.amount == null ? '' : VM.money(l.amount), status: l.status, terms: l.terms }; }), true) : '<div class="empty"><b>No ' + (S.costStatus === 'all' ? '' : S.costStatus.toLowerCase() + ' ') + 'cost lines for this vendor</b>Contract Ingest adds them from the vendor contract; Contract Review verifies them.</div>';
