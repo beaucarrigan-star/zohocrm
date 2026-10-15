@@ -68,7 +68,10 @@
   }
   function renderHeader() {
     var t = state.model.totals;
-    $('#asof').textContent = 'Read ' + new Date(state.now).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '. ' + plural(t.months, 'month') + ', ' + plural(t.findings, 'finding') + ' (' + t.open + ' open), ' + M.money(t.invoiced) + ' invoiced, ' + M.money(t.onHold) + ' on hold.';
+    $('#asof').textContent = 'Read ' + new Date(state.now).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '.';
+    /* v3: Stripe-style summary row */
+    var cell = function (label, big, sub) { return '<div><small>' + J.esc(label) + '</small><b>' + J.esc(big) + '</b>' + (sub ? '<span class="d">' + J.esc(sub) + '</span>' : '') + '</div>'; };
+    $('#sum').innerHTML = cell('Months', t.months, '') + cell('Findings', t.findings, t.open + ' open') + cell('Invoiced', M.money(t.invoiced), '') + cell('On hold', M.money(t.onHold), '');
     $('#foot').textContent = (state.notes.length ? state.notes.join(' ') + ' ' : '') +
       'Read-only. Billing Periods and Findings are Administrator-only in Zoho, so others see a footer note instead of data. Open means the finding\'s Is Open flag (Open or Disputed with vendor). ' +
       'A money finding has dollars or a money type (Overbilled, Unverified, Latent). A reconciled month can still have open findings with no money; that is normal. Late means more than the box above after the month ended. Days use Central time.';
@@ -81,7 +84,7 @@
       { key: 'when', label: 'Date', sortable: true, num: true, sortValue: function (i) { return i.ms == null ? Infinity : i.ms; }, render: function (i) { return J.esc(when(i.ms)); } },
       { key: 'amt', label: 'Amount', sortable: true, num: true, align: 'right', sortValue: function (i) { return i.amount == null ? -Infinity : i.amount; }, render: function (i) { return i.amount == null ? '' : J.esc(M.money(i.amount)); } },
       { key: 'age', label: 'Time', sortable: false, align: 'right', render: function (i) { return '<span class="age">' + J.esc(i.ageText) + '</span>'; } },
-      { key: 'state', label: 'Status', sortable: true, sortValue: function (i) { return i.state; }, render: function (i) { return J.chip(i.state, i.tone); } }
+      { key: 'state', label: 'Status', sortable: true, sortValue: function (i) { return i.state; }, render: function (i) { return '<span class="badge' + (i.tone && i.tone !== 'neutral' ? ' ' + i.tone : '') + '">' + J.esc(i.state) + '</span>'; } }
     ];
   }
   var FT = null;

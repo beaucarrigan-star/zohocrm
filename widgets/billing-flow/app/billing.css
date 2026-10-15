@@ -48,3 +48,8 @@
 /* jpk theme v2: the widget rules above set 6px/5px radii after the theme layer loads; restore the theme radii. Visual only. */
 .stage,.chain>li{border-radius:var(--r)}
 .lane,.lead input{border-radius:var(--r-sm)}
+
+/* theme v3 (15 Oct 2026): summary row + badge table. Visual only. */
+.sumcard{padding:0;margin:12px 0 0}
+.sumcard .sum{padding:14px 16px}
+.stage .big{font-family:var(--font-head);font-weight:600;letter-spacing:-.01em}
