@@ -10,7 +10,7 @@
   if (!cfg) { root.innerHTML = '<div class="err">Unknown module: ' + esc(window.RECORDS_MODULE) + '</div>'; return; }
 
   var live = false;                       /* true once the Zoho SDK answers PageLoad */
-  var st = { filter: 'all', search: '', rows: [], offset: 0, more: false, loading: false, token: 0 };
+  var st = { filter: 'all', search: '', rows: [], offset: 0, more: false, loading: false, token: 0, pl: {}, admin: false };
   var PAGE = 100;
 
   /* ---------- data layer ---------- */
@@ -145,15 +145,42 @@
   }
   /* admin-only quick-edit fields (flag admin:true in modules.js): editable only when the signed-in user's profile is Administrator.
      Fails closed (read-only) if the profile cannot be read. This is a screen guard; Zoho profile permissions remain the real lock. */
-  var adminP = null;
-  function isAdmin() {
-    if (adminP) return adminP;
-    if (!live) return (adminP = Promise.resolve(true));
-    adminP = new Promise(function (res) {
-      var t = setTimeout(function () { res(false); }, 10000);
-      window.ZOHO.CRM.CONFIG.getCurrentUser().then(function (r) { clearTimeout(t); var u = r && r.users && r.users[0], pn = u && u.profile && u.profile.name; res(/^(administrator|super admin)/i.test(String(pn || ''))); }, function () { clearTimeout(t); res(false); });
+  /* v3.1 (Oct 14): role checks by Zoho profile name. admin = Administrator, em = EM Support (EM Operations), bd = Business Development.
+     Demo mode acts as Administrator unless the page URL has ?role=em|bd|standard. Fails closed (no edit) when the profile cannot be read. */
+  var ROLE_RX = { admin: /^(administrator|super admin)/i, em: /^em support/i, bd: /^business development/i };
+  var DEMO_PROFILE = { admin: 'Administrator', em: 'EM Support', bd: 'Business Development', standard: 'Standard' };
+  var profP = null;
+  function profileName() {
+    if (profP) return profP;
+    if (!live) { var m = /[?&]role=(\w+)/.exec(location.search); return (profP = Promise.resolve(DEMO_PROFILE[m ? m[1] : 'admin'] || 'Standard')); }
+    profP = new Promise(function (res) {
+      var t = setTimeout(function () { res(''); }, 10000);
+      window.ZOHO.CRM.CONFIG.getCurrentUser().then(function (r) { clearTimeout(t); var u = r && r.users && r.users[0]; res(String((u && u.profile && u.profile.name) || '')); }, function () { clearTimeout(t); res(''); });
     });
-    return adminP;
+    return profP;
+  }
+  function hasRole(roles) { return profileName().then(function (pn) { return !!pn && roles.some(function (k) { return ROLE_RX[k] && ROLE_RX[k].test(pn); }); }); }
+  function isAdmin() { return hasRole(['admin']); }
+  /* inline edit inside related-list tabs on record pages (Administrator, EM Support, Business Development) */
+  var TAB_ROLES = ['admin', 'em', 'bd'];
+  var TAB_ED = {
+    Deals: { Stage: { ed: 'pick', opts: ['Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'] }, Closing_Date: { ed: 'date' } },
+    Cases: { Status: { ed: 'pick', opts: ['New', 'In Progress', 'On Hold', 'Closed'] }, Priority: { ed: 'pick', opts: ['High', 'Medium', 'Low'] } },
+    Customer_Onboarding: { Status: { ed: 'pick', opts: ['Not started', 'In progress', 'Blocked', 'Complete'] }, Risk: { ed: 'pick', opts: ['Low', 'Medium', 'High'] } },
+    Tasks: { Status: { ed: 'pick', opts: ['Not Started', 'Deferred', 'In Progress', 'Completed', 'Waiting for input'] }, Due_Date: { ed: 'date' } },
+    Contract_Clauses: { Status: { ed: 'pick', opts: ['Proposed', 'Confirmed', 'Rejected'] } }
+  };
+  /* the entity a related row is written to, or null when that row cannot be edited here */
+  function tabEntity(item, row) {
+    if (item.kind === 'coql') return TAB_ED[item.entity] ? item.entity : null;
+    if (item.kind === 'acts') return (row._e || (row.Type === 'Task' ? 'Tasks' : '')) === 'Tasks' ? 'Tasks' : null;
+    if (item.kind === 'coql-tasks') return 'Tasks';
+    return null;
+  }
+  function tabCols(item, cols) {
+    var ent = item.kind === 'acts' ? 'Tasks' : item.entity, spec = TAB_ED[ent]; if (!spec) return null;
+    var any = false, out = cols.map(function (c) { var s = spec[c.k]; if (!s) return c; any = true; var o = {}; for (var k in c) o[k] = c[k]; o.ed = s.ed; o.opts = s.opts; o.edEntity = ent; if (item.kind === 'acts') o.edIf = function (r) { return !!tabEntity(item, r); }; return o; });
+    return any ? out : null;
   }
   var usersCache = null;
   function userList() {
@@ -192,15 +219,27 @@
 
   /* ---------- rendering helpers ---------- */
   function pillHtml(v, tone) { var t = R.plain(v); return t == null || t === '' ? '' : '<span class="pill ' + (tone || R.tone(t)) + '">' + esc(t) + '</span>'; }
-  function cell(c, row) {
+  /* list inline edit (v3, Oct 14): a column with ed: 'pick' | 'date' | 'text' renders a control in the cell when the table is drawn with an edit context {pl, admin, title(row)} */
+  function edCell(c, row, ed) {
+    var cur = R.plain(row[c.k]); cur = cur == null || cur === '-None-' ? '' : String(cur);
+    var lock = c.admin && !ed.admin, name = esc(c.label + ' for ' + (ed.title ? ed.title(row) : 'this row'));
+    var dis = lock ? ' disabled title="Only an administrator can change this"' : '';
+    if (c.ed === 'pick') {
+      var xs = (ed.pl[c.k] || c.opts || []).slice(); if (cur && xs.indexOf(cur) < 0) xs.unshift(cur);
+      return '<select class="le" data-le="' + esc(c.k) + '" aria-label="' + name + '"' + dis + '><option value="">' + (cur ? 'Not set' : '–') + '</option>' + xs.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+    }
+    return '<input class="le" data-le="' + esc(c.k) + '" aria-label="' + name + '" type="' + (c.ed === 'date' ? 'date' : 'text') + '" value="' + esc(c.ed === 'date' ? cur.slice(0, 10) : cur) + '"' + dis + '>';
+  }
+  function cell(c, row, ed) {
     var v = row[c.k], cls = [];
     if (c.r) cls.push('r'); if (c.main) cls.push('main');
+    if (ed && c.ed && (!c.edIf || c.edIf(row))) { cls.push('lec'); return '<td class="' + cls.join(' ') + '">' + edCell(c, row, ed) + '</td>'; }
     var inner = c.pill ? pillHtml(v) : esc(c.trunc ? R.trunc(R.fmt(v, c.t), c.trunc) : R.fmt(v, c.t));
     return '<td class="' + cls.join(' ') + '">' + inner + '</td>';
   }
-  function tableHtml(cols, rows, clickable) {
-    var h = '<div class="tw"><table><thead><tr>' + cols.map(function (c) { return '<th scope="col"' + (c.r ? ' class="r"' : '') + '>' + esc(c.label) + '</th>'; }).join('') + '</tr></thead><tbody>';
-    rows.forEach(function (r, i) { h += '<tr data-i="' + i + '"' + (clickable ? ' class="click" tabindex="0"' : '') + '>' + cols.map(function (c) { return cell(c, r); }).join('') + '</tr>'; });
+  function tableHtml(cols, rows, clickable, ed) {
+    var h = '<div class="tw"><table><thead><tr>' + cols.map(function (c) { return '<th scope="col"' + (c.r ? ' class="r"' : '') + '>' + esc(c.label) + (ed && c.ed ? ' <span class="edmark" aria-hidden="true" title="Editable here">✎</span>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function (r, i) { h += '<tr data-i="' + i + '"' + (clickable ? ' class="click" tabindex="0"' : '') + '>' + cols.map(function (c) { return cell(c, r, ed); }).join('') + '</tr>'; });
     return h + '</tbody></table></div>';
   }
   function skel() { return '<div class="skel" aria-busy="true" aria-label="Loading"><span class="sk"></span><span class="sk"></span><span class="sk"></span><span class="sk"></span><span class="sk"></span><span class="sk"></span></div>'; }
@@ -224,7 +263,7 @@
       return '<button type="button" class="swb" role="tab" data-m="' + esc(k) + '" aria-selected="' + (MODS[k] === cfg) + '">' + esc(modLabel(MODS[k])) + '</button>'; }).join('') + '</div></div>';
   }
   /* v3 shell: the rail (records-shell.js) owns L1/L2 navigation; the page starts with a command bar
-     (breadcrumb TAB › module, then the page's own buttons). l1Html/l2Html are kept for pages without a rail. */
+     (breadcrumb TAB > module, then the page's own buttons). l1Html/l2Html are kept for pages without a rail. */
   function hasRail() { return !!(window.RecShell && document.getElementById('rail')); }
   function topBar(buttons, title) {
     if (!hasRail()) return '<header class="top"><div class="brand"><i>JP</i> CRM</div>' + l1Html() + '<div class="topact">' + (buttons || '') + '</div></header>' + l2Html();
@@ -287,6 +326,10 @@
     var nb = document.getElementById('new'); if (nb) nb.onclick = createCrm;
     var t; document.getElementById('q').oninput = function (e) { clearTimeout(t); var v = e.target.value; t = setTimeout(function () { st.search = v.trim(); reload(); }, 300); };
     drawPills(); reload();
+    var eds = L.cols.filter(function (c) { return c.ed; }), mod = cfg;
+    st.pl = {};
+    eds.forEach(function (c) { if (c.ed === 'pick') picklist(mod.entity, c.k, c.opts || []).then(function (v) { if (mod !== cfg) return; st.pl[c.k] = v; if (st.rows.length) drawList(); }); });
+    if (eds.some(function (c) { return c.admin; })) isAdmin().then(function (a) { if (mod !== cfg) return; st.admin = a; if (st.rows.length) drawList(); });
   }
   function drawPills() {
     var p = document.getElementById('pills');
@@ -309,9 +352,20 @@
     var box = document.getElementById('list'); if (!box) return;
     document.getElementById('count').textContent = st.rows.length + (st.more ? '+' : '') + ' ' + cfg.title.toLowerCase();
     if (!st.rows.length) { box.innerHTML = '<div class="empty"><b>Nothing here</b><br>No ' + esc(cfg.title.toLowerCase()) + ' match this search or filter.</div>'; return; }
-    box.innerHTML = tableHtml(cfg.list.cols, st.rows, true) + (st.more ? '<button type="button" class="btn more" id="more">Load more</button>' : '');
+    var main = cfg.list.cols.filter(function (c) { return c.main; })[0] || cfg.list.cols[0];
+    var ed = cfg.list.cols.some(function (c) { return c.ed; }) ? { pl: st.pl, admin: st.admin, title: function (r) { return R.plain(r[main.k]) || 'this row'; } } : null;
+    box.innerHTML = tableHtml(cfg.list.cols, st.rows, true, ed) + (st.more ? '<button type="button" class="btn more" id="more">Load more</button>' : '') +
+      (ed ? '<p class="mut edhint">Columns marked ✎ save to Zoho as you change them, with Undo. Click anywhere else on a row to open it.</p>' : '');
     var tb = box.querySelector('tbody');
-    tb.onclick = function (e) { var tr = e.target.closest('tr[data-i]'); if (tr) showRecord(st.rows[+tr.getAttribute('data-i')].id); };
+    tb.onclick = function (e) { if (e.target.closest('.lec')) return; var tr = e.target.closest('tr[data-i]'); if (tr) showRecord(st.rows[+tr.getAttribute('data-i')].id); };
+    tb.onchange = function (e) {
+      var k = e.target.getAttribute('data-le'), tr = e.target.closest('tr[data-i]'); if (!k || !tr) return;
+      var row = st.rows[+tr.getAttribute('data-i')], c = cfg.list.cols.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), ch = {};
+      if (!row || !c) return;
+      if (c.admin && !st.admin) { toast('Only an administrator can change ' + c.label.toLowerCase()); drawList(); return; }
+      ch[k] = [v || null, v || null];
+      editRaw(cfg.entity, row, ch, c.label.toLowerCase() + (v ? ' set to ' + v : ' cleared') + ' on ' + (R.plain(row[main.k]) || 'record'), drawList);
+    };
     tb.onkeydown = function (e) { if (e.key === 'Enter' && e.target.matches('tr[data-i]')) showRecord(st.rows[+e.target.getAttribute('data-i')].id); };
     var m = document.getElementById('more'); if (m) m.onclick = function () { m.disabled = true; loadMore(false); };
   }
@@ -358,6 +412,7 @@
     if (attn) h += '<div class="attn" role="alert">' + esc(attn) + '</div>';
     h += '<div class="kpis">' + C.kpis.map(function (k) { var v = R.fmt(k.v(r), k.t), t = k.tone ? k.tone(r) : ''; return '<div class="kpi ' + (t === 'grey' ? '' : t) + '"><div class="l">' + esc(k.label) + '</div><div class="v">' + (v === '' ? '–' : esc(v)) + '</div></div>'; }).join('') + '</div>';
     if (C.quick) h += '<div class="cards"><section class="card qcard" id="quick"></section></div>';
+    if (cfg.entity === 'Accounts' && window.JPBillingLines) h += '<div class="cards"><section class="card" id="vdev" aria-label="Vendor devices billed"></section></div>';
     h += '<div class="fbar"><button type="button" class="pillbtn" id="emp" aria-pressed="false"></button></div><div class="cards" id="secs"></div>';
     var items = REL.forModule(cfg.entity, GEN), VIS = window.innerWidth <= 640 ? 3 : 7;
     if (items.length) h += '<div class="tabs" role="tablist" id="tabs">' + items.map(function (t, i) { return '<button type="button" class="tab' + (i >= VIS ? ' x' : '') + '" role="tab" data-t="' + esc(t.id) + '" aria-selected="' + (i === 0) + '">' + esc(t.label) + '<span class="cnt" id="cnt-' + esc(t.id) + '"></span></button>'; }).join('') +
@@ -379,38 +434,12 @@
         qel.innerHTML = '<h3>Quick edit' + (Date.now() - lastSaved < 60000 ? '<span class="saved">✓ Saved</span>' : '') + '</h3><div class="edit">' + C.quick.map(function (f) {
           var cur = R.plain(r[f.t === 'user' ? 'Owner.first_name' : f.k]); cur = cur == null || cur === '-None-' ? '' : String(cur);
           if (f.t === 'user') { var us = (qopts.__users || []).slice(); if (cur && !us.some(function (u) { return u.name === cur; })) us.unshift({ id: '', name: cur }); return '<label>' + esc(f.label) + '<select data-q="' + f.k + '">' + us.map(function (u) { return '<option value="' + esc(u.id) + '"' + (u.name === cur ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('') + '</select></label>'; }
-          if (f.t === 'account') {
-            var ac = r.Account_Name, acn = R.plain(ac) || '';
-            return '<div class="acct"><span class="acl">' + esc(f.label) + '</span><div class="acv"><b>' + (acn ? esc(acn) : '<span class="mut">Not set</span>') + '</b> <button type="button" class="btn sm" data-acc="change" aria-expanded="' + !!qopts.__accOpen + '">' + (qopts.__accOpen ? 'Cancel' : 'Change') + '</button>' + (acn && !qopts.__accOpen ? ' <button type="button" class="btn sm" data-acc="clear">Clear</button>' : '') + '</div>'
-              + (qopts.__accOpen ? '<input type="search" class="search" data-acs placeholder="Type part of an account name" aria-label="Search accounts" autocomplete="off"><ul class="acres" role="listbox" aria-label="Matching accounts"><li class="mut">Type at least 2 letters</li></ul>' : '') + '</div>';
-          }
           var lock = f.admin && !qopts.__admin, lab = esc(f.label) + (f.admin ? ' <span class="mut">(admin only)</span>' : '');
           if (f.t === 'pick') { var xs = (qopts[f.k] || []).slice(); if (cur && xs.indexOf(cur) < 0) xs.unshift(cur); return '<label>' + lab + '<select data-q="' + f.k + '"' + (lock ? ' disabled title="Only an administrator can change this"' : '') + '><option value="">Not set</option>' + xs.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>'; }
           return '<label>' + esc(f.label) + '<input data-q="' + f.k + '" type="' + (f.t === 'date' ? 'date' : f.t === 'num' ? 'number' : 'text') + '" value="' + esc(cur) + '"></label>'; }).join('') + '</div><p class="mut" style="margin:10px 0 0;font-size:12px">Changes save to Zoho as you make them. Undo appears after each save.</p>';
       };
       paintQ();
       if (C.quick.some(function (f) { return f.admin; })) isAdmin().then(function (a) { qopts.__admin = a; paintQ(); });
-      var accT = 0;
-      function accSearch(q) {
-        var ul = qel.querySelector('.acres'); if (!ul) return;
-        if (q.length < 2) { ul.innerHTML = '<li class="mut">Type at least 2 letters</li>'; return; }
-        var tok = ++accT, show = function (rows) {
-          if (tok !== accT || !qel.querySelector('.acres')) return;
-          ul = qel.querySelector('.acres');
-          ul.innerHTML = rows.length ? rows.map(function (a) { return '<li><button type="button" data-accid="' + esc(a.id) + '" data-accname="' + esc(R.plain(a.Account_Name)) + '">' + esc(R.plain(a.Account_Name)) + '</button></li>'; }).join('') : '<li class="mut">No account matches</li>';
-        };
-        if (!live) { var dr = ((window.RECORDS_DEMO || {}).accounts || {}).rows || []; show(dr.filter(function (a) { return String(R.plain(a.Account_Name) || '').toLowerCase().indexOf(q.toLowerCase()) >= 0; }).slice(0, 10)); return; }
-        ul.innerHTML = '<li class="mut">Searching</li>';
-        coql("select id, Account_Name from Accounts where Account_Name like '%" + R.qstr(q) + "%' order by Account_Name asc limit 10").then(function (x) { show(x.rows); }, function (er) { if (tok === accT && qel.querySelector('.acres')) qel.querySelector('.acres').innerHTML = '<li class="err">Search failed: ' + esc(er && er.message || er) + '</li>'; });
-      }
-      var accTimer;
-      qel.oninput = function (e) { if (e.target.hasAttribute('data-acs')) { clearTimeout(accTimer); var v = e.target.value.trim(); accTimer = setTimeout(function () { accSearch(v); }, 250); } };
-      qel.onclick = function (e) {
-        var b = e.target.closest('button'); if (!b) return;
-        if (b.getAttribute('data-acc') === 'change') { qopts.__accOpen = !qopts.__accOpen; paintQ(); var inp = qel.querySelector('[data-acs]'); if (inp) inp.focus(); return; }
-        if (b.getAttribute('data-acc') === 'clear') { qopts.__accOpen = false; editRaw(cfg.entity, r, { Account_Name: [null, null] }, 'account cleared', again); return; }
-        if (b.hasAttribute('data-accid')) { var aid = b.getAttribute('data-accid'), an = b.getAttribute('data-accname'); qopts.__accOpen = false; editRaw(cfg.entity, r, { Account_Name: [{ id: aid }, { id: aid, name: an }] }, 'account set to ' + an, again); }
-      };
       qel.onchange = function (e) {
         var k = e.target.getAttribute('data-q'); if (!k) return; var f = C.quick.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), c = {};
         if (f.admin && !qopts.__admin) { toast('Only an administrator can change ' + f.label.toLowerCase()); paintQ(); return; }
@@ -424,9 +453,12 @@
       if (C.quick.some(function (f) { return f.t === 'user'; })) userList().then(function (us) { qopts.__users = us; paintQ(); });
       C.quick.forEach(function (f) { if (f.t === 'pick') picklist(cfg.entity, f.k, f.opts || []).then(function (v) { qopts[f.k] = v; paintQ(); }); });
     }
+    var vdev = document.getElementById('vdev');
+    if (vdev) window.JPBillingLines.mount(vdev, blIo(function (f, v) { r[f] = v; paintSecs(); }), { id: String(id), name: C.title(r), type: R.plain(r.Account_Type) || '', raw: r });
     paintSecs(); window.scrollTo(0, 0);
     if (!items.length) return;
-    var data = {}, pend = {}, cur = items[0].id;
+    var data = {}, pend = {}, cur = items[0].id, tabOK = false, tabPl = {};
+    hasRole(TAB_ROLES).then(function (ok) { tabOK = ok; if (ok) paint(); });
     function setCnt(t, txt) { var c = document.getElementById('cnt-' + t.id); if (c) c.textContent = txt; }
     function markX() {   /* show the first VIS tabs (3 on phones, 7 otherwise) and the selected one; More reveals the rest */
       var bs = document.querySelectorAll('#tabs .tab'), n = 0;
@@ -440,12 +472,22 @@
       if (d.err) { pane.innerHTML = '<div class="err" role="alert">Could not load ' + esc(t.label) + ': ' + esc(d.err) + '. Use Open in CRM to see this list there.</div>'; return; }
       if (d.note) { pane.innerHTML = '<div class="empty"><b>' + esc(t.label) + '</b><br>' + esc(d.note) + '<br><br><button class="btn" type="button" id="wopen">Open in CRM</button></div>'; document.getElementById('wopen').onclick = function () { openCrm(cfg.entity, id); }; return; }
       if (!d.rows.length) { pane.innerHTML = '<div class="empty">No ' + esc(t.label.toLowerCase()) + ' yet.</div>'; return; }
-      pane.innerHTML = tableHtml(d.cols, d.rows, !!d.open);
+      var ecols = tabOK ? tabCols(t, d.cols) : null, ent = ecols && ecols.filter(function (c) { return c.ed; })[0].edEntity;
+      if (ecols) ecols.forEach(function (c) { if (c.ed === 'pick' && !tabPl[ent + '.' + c.k]) { tabPl[ent + '.' + c.k] = c.opts; picklist(ent, c.k, c.opts).then(function (v) { if (v && v.length) { tabPl[ent + '.' + c.k] = v; if (cur === t.id) paint(); } }); } });
+      var edc = ecols ? { pl: (function () { var o = {}; ecols.forEach(function (c) { if (c.ed) o[c.k] = tabPl[ent + '.' + c.k]; }); return o; })(), admin: true, title: function (r) { var m = (ecols.filter(function (c) { return c.main; })[0] || ecols[0]); return R.plain(r[m.k]) || 'this row'; } } : null;
+      pane.innerHTML = tableHtml(ecols || d.cols, d.rows, !!d.open, edc) + (edc ? '<p class="mut edhint">Columns marked ✎ save to Zoho as you change them, with Undo.</p>' : '');
+      var tb = pane.querySelector('tbody');
+      if (edc) tb.onchange = function (e) {
+        var k = e.target.getAttribute('data-le'), tr = e.target.closest('tr[data-i]'); if (!k || !tr) return;
+        var rw = d.rows[+tr.getAttribute('data-i')], en = rw && tabEntity(t, rw), c = ecols.filter(function (x) { return x.k === k; })[0], v = e.target.value.trim(), ch = {};
+        if (!rw || !rw.id || !en || !c) { toast('This row cannot be edited here'); paint(); return; }
+        ch[k] = [v || null, v || null];
+        editRaw(en, rw, ch, c.label.toLowerCase() + (v ? ' set to ' + v : ' cleared') + ' on ' + edc.title(rw), paint);
+      };
       if (!d.open) return;
       var go = function (tr) { if (!tr) return; var rw = d.rows[+tr.getAttribute('data-i')], o = d.open(rw); if (o && o[1]) openCrm(o[0], o[1]); };
-      var tb = pane.querySelector('tbody');
-      tb.onclick = function (e) { go(e.target.closest('tr[data-i]')); };
-      tb.onkeydown = function (e) { if (e.key === 'Enter') go(e.target.closest('tr[data-i]')); };
+      tb.onclick = function (e) { if (e.target.closest('.lec')) return; go(e.target.closest('tr[data-i]')); };
+      tb.onkeydown = function (e) { if (e.key === 'Enter' && !e.target.closest('.lec')) go(e.target.closest('tr[data-i]')); };
     }
     function load(t) {
       if (t.id in data || pend[t.id]) return pend[t.id] || Promise.resolve();
@@ -463,7 +505,15 @@
     items.slice(0, 6).forEach(load); paint();
   }
 
-  var CTX = { R: R, esc: esc, head: head, tableHtml: tableHtml, pillHtml: pillHtml, openCrm: openCrm, toast: toast, coql: coql, update: update, editRaw: editRaw, userList: userList, picklist: picklist, toastUndo: toastUndo, isLive: function () { return live; }, switchHtml: switchHtml, bindSwitch: bindSwitch, skel: skel, demoNote: function () { return live ? '' : '<div class="demo">Demo data · connect inside Zoho CRM to see live records.</div>'; } };
+  /* host functions for billing-lines.js (also used by the Vendors view so rate lines are written through the contract subform) */
+  function blIo(onAccount) {
+    return { live: live, coql: function (q) { return coql(q).then(function (x) { return x.rows; }); },
+      getRecord: function (e, rid) { return window.ZOHO.CRM.API.getRecord({ Entity: e, RecordID: rid }).then(function (res) { return (res && res.data && res.data[0]) || null; }); },
+      update: function (e, d) { var x = {}; Object.keys(d).forEach(function (k) { if (k !== 'id') x[k] = d[k]; }); return update(e, d.id, x); },
+      picklist: picklist, open: openCrm, onAccount: onAccount || null,
+      toast: function (m, undo) { if (undo) toastUndo(m, undo); else { toast(m); if (/^Saved/.test(m)) lastSaved = Date.now(); } } };
+  }
+  var CTX = { R: R, blIo: blIo, hasRole: hasRole, esc: esc, head: head, tableHtml: tableHtml, pillHtml: pillHtml, openCrm: openCrm, toast: toast, coql: coql, update: update, editRaw: editRaw, userList: userList, picklist: picklist, toastUndo: toastUndo, isLive: function () { return live; }, switchHtml: switchHtml, bindSwitch: bindSwitch, skel: skel, demoNote: function () { return live ? '' : '<div class="demo">Demo data · connect inside Zoho CRM to see live records.</div>'; } };
 
   /* compatibility shim for views built on the v3.1 engine (hasRole): only used when this engine lacks it */
   if (!CTX.hasRole) CTX.hasRole = function (roles) { roles = roles || []; if (!live) return Promise.resolve(true); return roles.indexOf('admin') >= 0 && roles.length === 1 ? isAdmin() : isAdmin().then(function (a) { return a || roles.length > 1; }); };
