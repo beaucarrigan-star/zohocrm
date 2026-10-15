@@ -13,9 +13,9 @@
     list: {
       select: ['Account_Name', 'Account_Type', 'Customer_Health', 'Renewal_Date', 'Days_To_Renewal', 'Open_Cases', 'Days_Since_Touch', 'EM_Total_Units', 'Brand', OWN],
       order: 'Account_Name asc', searchField: 'Account_Name', searchHint: 'Search accounts',
-      cols: [{ k: 'Account_Name', label: 'Account', main: 1 }, { k: 'Brand', label: 'Brand' }, { k: 'Account_Type', label: 'Type' }, { k: 'Customer_Health', label: 'Health', pill: 1 },
+      cols: [{ k: 'Account_Name', label: 'Account', main: 1 }, { k: 'Brand', label: 'Brand' }, { k: 'Account_Type', label: 'Type', ed: 'pick', admin: true, opts: ['Customer', 'Prospect', 'Partner', 'Vendor', 'Other'] }, { k: 'Customer_Health', label: 'Health', pill: 1 },
         { k: 'Renewal_Date', label: 'Renewal', t: 'date' }, { k: 'Open_Cases', label: 'Open cases', t: 'num', r: 1 }, { k: 'Days_Since_Touch', label: 'Days since touch', t: 'num', r: 1 }, { k: 'EM_Total_Units', label: 'EM units', t: 'num', r: 1 }, { k: OWN, label: 'Owner' }],
-      filters: [{ key: 'all', label: 'All' }, { key: 'renew', label: 'Renewing in 90 days', where: 'Days_To_Renewal between 0 and 90' },
+      filters: [{ key: 'all', label: 'All' }, { key: 'cust', label: 'Customers', where: "Account_Type = 'Customer'" }, { key: 'pros', label: 'Prospects', where: "Account_Type = 'Prospect'" }, { key: 'renew', label: 'Renewing in 90 days', where: 'Days_To_Renewal between 0 and 90' },
         { key: 'cold', label: 'No touch in 60+ days', where: 'Days_Since_Touch > 60' }, { key: 'cases', label: 'Has open cases', where: 'Open_Cases > 0' },
         { key: 'b1', label: 'JusticePoint EM', where: "Brand = 'JusticePoint EM'" }, { key: 'b2', label: 'JusticePoint Programs', where: "Brand = 'JusticePoint Programs'" },
         { key: 'b3', label: 'The Difference Principle', where: "Brand = 'The Difference Principle'" }, { key: 'b4', label: 'Sirona Recovery', where: "Brand = 'Sirona Recovery'" }]
@@ -53,7 +53,7 @@
     list: {
       select: ['Case_Number', 'Subject', 'Account_Name', 'Status', 'Priority', 'Case_Age_days', 'Queue', OWN],
       order: 'Created_Time desc', searchField: 'Subject', searchHint: 'Search case subjects',
-      cols: [{ k: 'Subject', label: 'Subject', main: 1 }, { k: 'Account_Name', label: 'Account' }, { k: 'Status', label: 'Status', pill: 1 }, { k: 'Priority', label: 'Priority', pill: 1 }, { k: 'Queue', label: 'Queue' }, { k: 'Case_Age_days', label: 'Age (days)', t: 'num', r: 1 }, { k: OWN, label: 'Owner' }],
+      cols: [{ k: 'Subject', label: 'Subject', main: 1 }, { k: 'Account_Name', label: 'Account' }, { k: 'Status', label: 'Status', ed: 'pick', opts: ['New', 'In Progress', 'On Hold', 'Closed'] }, { k: 'Priority', label: 'Priority', ed: 'pick', opts: ['High', 'Medium', 'Low'] }, { k: 'Queue', label: 'Queue', ed: 'pick', opts: ['Support', 'Reports', 'Personal'] }, { k: 'Case_Age_days', label: 'Age (days)', t: 'num', r: 1 }, { k: OWN, label: 'Owner' }],
       filters: [{ key: 'all', label: 'All' }, { key: 'open', label: 'Open', where: "Status != 'Closed'" }, { key: 'high', label: 'High priority', where: "Priority = 'High'" }, { key: 'closed', label: 'Closed', where: "Status = 'Closed'" }]
     },
     rec: {
@@ -83,7 +83,7 @@
     list: {
       select: ['Deal_Name', 'Account_Name', 'Stage', 'Closing_Date', 'Total_Opportunity_Revenue', 'Next_Step', OWN],
       order: 'Closing_Date asc', searchField: 'Deal_Name', searchHint: 'Search opportunities',
-      cols: [{ k: 'Deal_Name', label: 'Opportunity', main: 1 }, { k: 'Account_Name', label: 'Account' }, { k: 'Stage', label: 'Stage', pill: 1 }, { k: 'Closing_Date', label: 'Close', t: 'date' }, { k: 'Total_Opportunity_Revenue', label: 'Annual revenue', t: 'money', r: 1 }, { k: 'Next_Step', label: 'Next step' }, { k: OWN, label: 'Owner' }],
+      cols: [{ k: 'Deal_Name', label: 'Opportunity', main: 1 }, { k: 'Account_Name', label: 'Account' }, { k: 'Stage', label: 'Stage', ed: 'pick', opts: ['Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'] }, { k: 'Closing_Date', label: 'Close', t: 'date', ed: 'date' }, { k: 'Total_Opportunity_Revenue', label: 'Annual revenue', t: 'money', r: 1 }, { k: 'Next_Step', label: 'Next step', ed: 'text' }, { k: OWN, label: 'Owner' }],
       filters: [{ key: 'all', label: 'All' }, { key: 'open', label: 'Open', where: "Stage not in ('Closed Won','Closed Lost')" }, { key: 'won', label: 'Won', where: "Stage = 'Closed Won'" }, { key: 'lost', label: 'Lost', where: "Stage = 'Closed Lost'" }]
     },
     rec: {
@@ -130,7 +130,6 @@
         { title: 'Reach', rows: [['Email', 'Email'], ['Mobile', 'Mobile'], ['Office phone', 'Office_Phone'], ['Department', 'Department'], ['Follow-up preference', 'Follow_Up_Preference'], ['Source inbox', 'Source_Inbox'], ['Lead source', 'Lead_Source']] },
         { title: 'Context', rows: [['Vendor', 'Vendor_Name'], ['Vendor role', 'Vendor_Role'], ['Devices used', 'Device_s_Used']] },
         { title: 'Discussion topics', text: 'Discussion_Topics' }],
-      quick: [{ k: 'Account_Name', label: 'Account', t: 'account' }],
       tabs: []
     }
   };
@@ -140,7 +139,7 @@
     list: {
       select: ['Name', 'Account', 'Contract_Status', 'Contract_Type', 'Contract_End_Date', 'Days_to_Final_End', 'Renewal_Band', 'Renewal_Status'],
       order: 'Contract_End_Date asc', searchField: 'Name', searchHint: 'Search contracts',
-      cols: [{ k: 'Name', label: 'Contract', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Contract_Status', label: 'Status', pill: 1 }, { k: 'Contract_Type', label: 'Type' }, { k: 'Contract_End_Date', label: 'Ends', t: 'date' }, { k: 'Days_to_Final_End', label: 'Days left', t: 'num', r: 1 }, { k: 'Renewal_Band', label: 'Band', pill: 1 }, { k: 'Renewal_Status', label: 'Renewal', pill: 1 }],
+      cols: [{ k: 'Name', label: 'Contract', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Contract_Status', label: 'Status', ed: 'pick', admin: true, opts: ['Draft', 'Active', 'Expired', 'Terminated'] }, { k: 'Contract_Type', label: 'Type' }, { k: 'Contract_End_Date', label: 'Ends', t: 'date' }, { k: 'Days_to_Final_End', label: 'Days left', t: 'num', r: 1 }, { k: 'Renewal_Band', label: 'Band', pill: 1 }, { k: 'Renewal_Status', label: 'Renewal', ed: 'pick', opts: ['Not started', 'In progress', 'Renewed', 'Lost'] }],
       filters: [{ key: 'all', label: 'All' }, { key: '90', label: 'Ending in 90 days', where: 'Days_to_Final_End between 0 and 90' }, { key: 'notice', label: 'Notice deadline passed', where: 'Notice_Passed = true' }, { key: 'auto', label: 'Auto-renews', where: 'Auto_Renews = true' }]
     },
     rec: {
@@ -173,7 +172,7 @@
     list: {
       select: ['Name', 'Account', 'Status', 'Phase', 'Risk', 'Days_to_Go_live', 'Overdue_Tasks', 'Open_Gate_Tasks'],
       order: 'Go_live_Target asc', searchField: 'Name', searchHint: 'Search onboardings',
-      cols: [{ k: 'Name', label: 'Onboarding', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Status', label: 'Status', pill: 1 }, { k: 'Phase', label: 'Phase' }, { k: 'Risk', label: 'Risk', pill: 1 }, { k: 'Days_to_Go_live', label: 'Days to go-live', t: 'num', r: 1 }, { k: 'Overdue_Tasks', label: 'Overdue', t: 'num', r: 1 }],
+      cols: [{ k: 'Name', label: 'Onboarding', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Status', label: 'Status', ed: 'pick', opts: ['Not started', 'In progress', 'Blocked', 'Complete'] }, { k: 'Phase', label: 'Phase' }, { k: 'Risk', label: 'Risk', ed: 'pick', opts: ['Low', 'Medium', 'High'] }, { k: 'Days_to_Go_live', label: 'Days to go-live', t: 'num', r: 1 }, { k: 'Overdue_Tasks', label: 'Overdue', t: 'num', r: 1 }],
       filters: [{ key: 'all', label: 'All' }, { key: 'overdue', label: 'Has overdue tasks', where: 'Overdue_Tasks > 0' }, { key: 'blocked', label: 'Blocked', where: 'Blocked_Reason is not null' }]
     },
     rec: {
