@@ -449,19 +449,24 @@
           '<button type="button" class="btn" data-act="crm-status"' + (bp.busy ? ' disabled' : '') + '>Open in Zoho</button></div>' + (bp.msg ? '<div role="status" class="mut" style="font-size:12px;margin-top:6px">' + esc(bp.msg) + '</div>' : '') + '</div>';
       };
       var runStep = function (name) {
-        bp.busy = name; bp.msg = name + '...'; paintQ();
+        bp.busy = name; bp.msg = name + ': sending to Zoho...'; paintQ();
         if (!live) { r.Status = BPSTATUS[name]; bp.busy = ''; lastSaved = Date.now(); toast('Demo: status set to ' + r.Status); again(); return; }
-        var fail = function (e) { bp.busy = ''; bp.msg = 'Not done: ' + errMsg(e); paintQ(); };
-        window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ ids: String(id), transitionName: name, noteText: '' }) }).then(function (res) {
+        var t0 = Date.now(), before = R.plain(r.Status), done = false;
+        var secs = function () { return Math.round((Date.now() - t0) / 1000) + 's'; };
+        var fail = function (e) { if (done) return; done = true; bp.busy = ''; bp.msg = 'Not done: ' + errMsg(e); paintQ(); };
+        var timeout = function (ms, what) { return new Promise(function (_, rej) { setTimeout(function () { rej(new Error(what + ' did not answer in ' + Math.round(ms / 1000) + 's')); }, ms); }); };
+        Promise.race([window.ZOHO.CRM.FUNCTIONS.execute(CASE_STEP_FN, { arguments: JSON.stringify({ ids: String(id), transitionName: name, noteText: '' }) }), timeout(30000, 'The function ' + CASE_STEP_FN)]).then(function (res) {
           if (res && res.code && String(res.code).toLowerCase() !== 'success') throw new Error((res.message || res.code) + '');
+          var out = res && res.details && res.details.output; if (out && /unknown action|no cases selected|failed/i.test(String(out))) throw new Error(String(out));
           var poll = function (n) {
-            window.ZOHO.CRM.API.getRecord({ Entity: 'Cases', RecordID: id }).then(function (g) {
-              var d = g && g.data && g.data[0] || {}, br = String(d.Bulk_Result || '');
-              if (!d.Bulk_Action && br && !/^Queued/.test(br)) {
-                if (/^Done/.test(br)) { r.Status = d.Status; lastSaved = Date.now(); toast('Saved: ' + name + ' (' + R.plain(d.Status) + ')'); again(); }
-                else { bp.busy = ''; bp.msg = br; paintQ(); }
-              } else if (n >= 20) { bp.busy = ''; bp.msg = name + ' is queued and has not finished yet. Refresh in a minute.'; paintQ(); }
-              else setTimeout(function () { poll(n + 1); }, 3000);
+            if (done) return;
+            Promise.race([window.ZOHO.CRM.API.getRecord({ Entity: 'Cases', RecordID: id }), timeout(15000, 'Reading the case')]).then(function (g) {
+              if (done) return;
+              var d = g && g.data && g.data[0] || {}, br = String(d.Bulk_Result || ''), ba = d.Bulk_Action ? String(d.Bulk_Action) : '', st = R.plain(d.Status);
+              if (!ba && /^Done/.test(br) || (st && st !== before && st === BPSTATUS[name])) { done = true; r.Status = d.Status; lastSaved = Date.now(); toast('Saved: ' + name + ' (' + st + ')'); again(); }
+              else if (!ba && br && !/^Queued/.test(br)) { done = true; bp.busy = ''; bp.msg = br; paintQ(); }
+              else if (n >= 45) { done = true; bp.busy = ''; bp.msg = name + ' was queued ' + secs() + ' ago but has not run (Bulk_Action "' + ba + '", Bulk_Result "' + br + '", Status "' + st + '"). Check that the "Cases - Bulk action worker" workflow is active.'; paintQ(); }
+              else { bp.msg = name + ': waiting for Zoho (' + secs() + '). Bulk_Action "' + ba + '", Bulk_Result "' + br + '", Status "' + st + '"'; paintQ(); setTimeout(function () { poll(n + 1); }, 2000); }
             }, fail);
           };
           poll(0);
