@@ -635,7 +635,8 @@
       return initP;
     },
     /* One COQL call, query sent as given. Resolves {rows, more}. An empty result (204) is {rows:[], more:false}. */
-    coql: function (query) {
+    coql: function (query) { return scopedCoql(String(query)); },
+    rawCoql: function (query) {
       if (!hasApi('API')) return Promise.reject(demoErr());
       return window.ZOHO.CRM.API.coql({ select_query: String(query) }).then(function (res) {
         var rows = (res && res.data) || [];
@@ -671,7 +672,34 @@
     error: zerr
   };
 
+  /* ---- brand scope (wave 3): the rail's brand switcher stores the choice; coql adds it to queries on account-linked modules ---- */
+  var BRAND_VALUES = { jp: ['JusticePoint EM', 'JusticePoint Programs'], sr: ['Sirona Recovery'], dp: ['The Difference Principle'] };
+  var BRAND_LABEL = { jp: 'JusticePoint', sr: 'Sirona Recovery', dp: 'The Difference Principle' };
+  var SCOPE_PATH = { Accounts: 'Brand', Contacts: 'Account_Name.Brand', Deals: 'Account_Name.Brand', Cases: 'Account_Name.Brand', Contracts: 'Account.Brand', Support_Emails: 'Account.Brand' };
+  var scopeStats = { applied: 0, failed: [] };
+  function scopeKey() { try { return localStorage.getItem('jpk-brand') || 'all'; } catch (e) { return 'all'; } }
+  function scopeNote() { try { window.dispatchEvent(new Event('jpk-scope')); } catch (e) {} }
+  /* returns {q, mod} with the brand criteria added when the query reads a mapped module with a general filter; single-record lookups are left alone */
+  function scopeQuery(q) {
+    var vals = BRAND_VALUES[scopeKey()], m = /\bfrom\s+([A-Za-z_]+)\s+where\s+/i.exec(q);
+    if (!vals || !m || !SCOPE_PATH[m[1]]) return { q: q };
+    var head = q.slice(0, m.index + m[0].length), rest = q.slice(m.index + m[0].length), t = /\s+(order\s+by|limit)\s+/i.exec(rest);
+    var crit = t ? rest.slice(0, t.index) : rest, tail = t ? rest.slice(t.index) : '';
+    if (/\b(id|Account|Account_Name|Parent_Id)\s*(=|in\s*\()/i.test(crit)) return { q: q };
+    var f = SCOPE_PATH[m[1]], qs = vals.map(function (v) { return "'" + v + "'"; });
+    return { q: head + '(' + (vals.length === 1 ? f + ' = ' + qs[0] : f + ' in (' + qs.join(', ') + ')') + ') and (' + crit + ')' + tail, mod: m[1] };
+  }
+  function scopedCoql(query) {
+    var sq = scopeQuery(query);
+    if (!sq.mod) return crm.rawCoql(query);
+    return crm.rawCoql(sq.q).then(function (r) { scopeStats.applied++; scopeNote(); return r; }, function (e) {
+      if (e && e.demo) throw e;
+      if (scopeStats.failed.indexOf(sq.mod) < 0) scopeStats.failed.push(sq.mod); scopeNote();
+      return crm.rawCoql(query);
+    });
+  }
   window.JPK = {
+    scopeKey: scopeKey, scopeStats: scopeStats, scopeQuery: scopeQuery, scopeLabel: function () { return BRAND_LABEL[scopeKey()] || 'All brands'; },
     version: '1.1.0',
     esc: esc, uid: uid,
     toast: toast, drawer: drawer, chip: chip, table: table, chart: chart,
