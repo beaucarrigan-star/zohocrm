@@ -1657,6 +1657,55 @@
 #work-tiles .wk-note{margin:8px 0 0;padding:6px 10px;border-left:3px solid var(--warn);background:var(--surface2);color:var(--muted);font-size:12.5px}
 @media(max-width:640px){#work-tiles .wk-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
+<style id="work-box-css">
+/* work-box v1 (16 Oct 2026): the "Work box" added to every Queue peek (case, task, email) and every board peek.
+   Everything is scoped under .wb so nothing else on the page changes. Colours come from the page's own tokens. */
+.peek .peek-panel.wb-wide { max-width: 760px; }
+.wb { border-top: 1px solid var(--line); padding-top: var(--sp-3, 12px); }
+.wb h4 { margin: 0; }
+.wb-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.wb-head h4 { flex: 1 1 auto; }
+.wb-tog { border: 0; background: none; color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.wb-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 10px; }
+.wb-tabs button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 3px 11px; font: inherit; font-size: var(--fs-sm, 13px); cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-tabs button[aria-pressed="true"] { background: var(--focus); border-color: var(--focus); color: var(--surface); }
+.wb-tabs button:focus-visible, .wb-tog:focus-visible, .wb .btn:focus-visible, .wb-add:focus-within { outline: 2px solid var(--accent-ink, #1d4ed8); outline-offset: 2px; }
+.wb-sub { margin: 12px 0 0; }
+.wb-sub > h5 { margin: 0 0 6px; font-size: var(--fs-xs, 12px); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.wb-sub > h5 .n { font-weight: 600; color: var(--ink); letter-spacing: 0; }
+.wb-sub > h5 .sp { flex: 1; }
+.wb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px 16px; }
+.wb-f { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wb-f.wide { grid-column: 1 / -1; }
+.wb-f > .k { font-size: var(--fs-xs, 12px); color: var(--muted); }
+.wb-f > .v { overflow-wrap: anywhere; white-space: pre-wrap; }
+.wb-f > .v.empty { color: var(--muted); }
+.wb-f .lock { font-size: var(--fs-xs, 12px); color: var(--muted); margin-left: 6px; }
+.wb-f input:not([type=checkbox]), .wb-f select, .wb-f textarea { width: 100%; box-sizing: border-box; }
+.wb-f textarea { min-height: 70px; resize: vertical; }
+.wb-f.bad input, .wb-f.bad select, .wb-f.bad textarea { border-color: var(--bad, #b42318); }
+.wb-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.wb-msg { font-size: var(--fs-sm, 13px); color: var(--muted); }
+.wb-msg.ok { color: var(--good-ink, #05603a); }
+.wb-msg.bad, .wb-err { color: var(--bad, #b42318); }
+.wb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.wb-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-sm, 13px); align-items: baseline; }
+.wb-list li:last-child { border-bottom: 0; }
+.wb-list .nm { overflow-wrap: anywhere; font-weight: 600; }
+.wb-list .meta { color: var(--muted); text-align: right; white-space: nowrap; }
+.wb-list li.up { grid-template-columns: minmax(0, 1fr) auto auto; }
+.wb-list li.up.err .meta { color: var(--bad, #b42318); white-space: normal; }
+.wb-list li.up.ok .meta { color: var(--good-ink, #05603a); }
+.wb-x { border: 0; background: none; cursor: pointer; color: var(--muted); font: inherit; padding: 0 4px; }
+.wb-drop { margin-top: 8px; border: 1.5px dashed var(--line-strong, var(--line)); border-radius: var(--radius, 8px); padding: 10px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-sm, 13px); }
+.wb-drop.over { border-color: var(--accent-ink, #1d4ed8); background: var(--accent-tint, rgba(29,78,216,.07)); color: var(--ink); }
+.wb-add { position: relative; cursor: pointer; }
+.wb-add input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0 0 0 0); }
+.wb .sk-line { display: block; height: 10px; border-radius: 4px; background: var(--line); margin: 6px 0; opacity: .6; }
+@media (prefers-reduced-motion: no-preference) { .wb .sk-line { animation: wb-pulse 1.2s ease-in-out infinite; } }
+@keyframes wb-pulse { 50% { opacity: .3; } }
+@media (max-width: 560px) { .wb-grid { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
 
@@ -2307,6 +2356,7 @@ function rpRender() {
     + '<div class="rp-right"><h4>Notes' + (RP.notes && RP.notes.length ? ' <span class="fine">' + RP.notes.length + '</span>' : '') + '</h4>' + rpTimelineHTML() + rpComposerHTML() + '</div></div>'
     + '<div class="pk-foot"><span class="fine">N note · S status' + (T.keys ? ' · ' + esc(T.keys) : '') + ' · O open in CRM · Esc close</span></div></div>';
   if (draft.title) $('rp-title').value = draft.title; if (draft.body) $('rp-body').value = draft.body; if (draft.why && $('rp-why')) $('rp-why').value = draft.why;
+  try { if (window.WorkBox) WorkBox.mountRP(el, RP.type, T.module, rec); } catch (e) { /* work-box */ }
   el.hidden = false;
   if (keep) { var k = el.querySelector('[data-rp-f="' + keep + '"]') || $(keep); if (k) k.focus(); }
   resize();
@@ -5499,6 +5549,7 @@ function rpInit() {
     if (kind === 'case') { var r = findCase(id); if (!r) return; peek.innerHTML = peekCaseHTML(r); loadCaseDetail(id, seq); }
     else if (kind === 'task') { if (!Q.tasks[id]) return; peek.innerHTML = peekTaskHTML(Q.tasks[id]); loadTaskDetail(id, seq); }
     else { if (!Q.emails[id]) return; peek.innerHTML = peekEmailHTML(Q.emails[id]); loadEmailDetail(id, seq); if (!Q.emails[id]['Case.id']) renderFind(''); }
+    try { if (window.WorkBox) WorkBox.mountPeek(peek, kind, id); } catch (e) { /* work-box */ }
     var was = peek.hidden; peek.hidden = false;
     if (was) { peek.classList.remove('fade-in'); void peek.offsetWidth; peek.classList.add('fade-in'); }
     positionPeek();
@@ -5542,6 +5593,7 @@ function rpInit() {
   }
   function initQueue() {
     var card = $('queue-card');
+    document.addEventListener('workbox:saved', function (ev) { var d = ev.detail || {}; if (d.module === 'Tasks' && Q.me) { try { loadMyTasks({ id: Q.me }); } catch (e) { /* work-box */ } } });
     Array.prototype.forEach.call(document.querySelectorAll('#scope-seg [data-scope]'), function (b) { b.addEventListener('click', function () { setScope(b.getAttribute('data-scope')); }); });
     card.addEventListener('click', function (ev) {
       var t = ev.target; if (!t.closest) return;
@@ -8971,6 +9023,405 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   }
   root.hidden = false; root.setAttribute('aria-busy', 'true'); root.innerHTML = '<p class="wk-note">Loading your work…</p><p class="wk-note" hidden></p>';
   if (demo && W) runDemo(); else live();
+})();
+</script>
+<script id="work-box-js">
+/* work-box v1 (16 Oct 2026). One "Work box" for any record you can open from the home page: the record's own
+   fields (editable), the record it points at (a renewal task opens its contract), the files already attached, and
+   a way to add more. It talks to Zoho directly (getRecord, updateRecord, getRelatedRecords Attachments, attachFile),
+   so it does not depend on anything else in the page. Entry points: WorkBox.mountPeek (Queue peek) and
+   WorkBox.mountRP (board peek). ?preview=1 runs it on demo data; &deny=1 makes every save and upload fail. */
+(function () {
+  'use strict';
+  if (window.WorkBox) return;
+  var PREVIEW = /[?&]preview=1/.test(location.search) || !window.ZOHO;
+  var DENY = /[?&]deny=1/.test(location.search);
+  var TAB = 'https://crm.zoho.com/crm/org882980956/tab/';
+  var BEAU_ID = '6715134000000503001';
+  var MAX_BYTES = 100 * 1024 * 1024;
+  var STALE_MS = 90000;
+
+  var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  var slug = function (m) { return m === 'Deals' ? 'Potentials' : m; };
+  var recUrl = function (m, id) { return TAB + slug(m) + '/' + id; };
+  var NAMES = { Contracts: 'Contract', Accounts: 'Account', Deals: 'Opportunity', Cases: 'Case', Tasks: 'Task', Support_Emails: 'Email', Vendors: 'Vendor', Campaigns: 'Campaign' };
+  var withTimeout = function (p, ms, what) {
+    return new Promise(function (res, rej) {
+      var t = setTimeout(function () { rej(new Error((what || 'CRM') + ' did not answer in time')); }, ms);
+      Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); });
+    });
+  };
+  function friendly(row) {
+    var c = row && (row.code || row.status), m = row && row.message;
+    if (c === 'NO_PERMISSION' || /permission/i.test(m || '')) return 'Your profile does not allow this change.';
+    if (c === 'RECORD_IN_BLUEPRINT') return 'A Blueprint controls this record. Make the change on the record page.';
+    if (c === 'MANDATORY_NOT_FOUND') return 'A required field is empty.';
+    if (c === 'INVALID_DATA') return 'Zoho refused the value' + (row.details && row.details.api_name ? ' for ' + row.details.api_name : '') + (m ? ': ' + m : '.');
+    if (c === 'DUPLICATE_DATA') return 'Zoho says this duplicates another record.';
+    return m || (c ? String(c) : 'The save did not go through.');
+  }
+  var errText = function (e) { return (e && e.message) ? e.message : friendly(e); };
+  var rowOf = function (resp) {
+    var row = resp && resp.data && resp.data[0];
+    if (row && (row.code === 'SUCCESS' || row.status === 'success')) return row;
+    throw new Error(friendly(row || resp));
+  };
+  var isEmptyList = function (e) { try { return e && (e.status === 204 || /204|no content|no_content/i.test(JSON.stringify(e))); } catch (x) { return false; } };
+
+  /* ---------- the fields shown per module ----------
+     k: API name. Only fields the record actually returns are shown. t: pick | date | int | num | text | area | bool | ro.
+     admin: only the Administrator profile (or Beau) may change it; everyone else sees it with a lock. Picklist choices and
+     any field type not given here come from Zoho's field list for the module. */
+  var CONTRACT_STATUS = ['Active/Complete', 'Sent for Signature', 'Awaiting Countersigned', 'In Progress', 'New Contract Needed', 'Ending - No Renewal', 'Ended'];
+  var FIELDS = {
+    Contracts: [
+      { k: 'Contract_Status', t: 'pick', o: CONTRACT_STATUS, admin: true },
+      { k: 'Renewal_Status', t: 'pick', o: ['Not started', 'In discussion', 'Amendment sent', 'Signed', 'Not renewing'] },
+      { k: 'Contract_Start_Date', t: 'date' }, { k: 'Contract_End_Date', t: 'date' }, { k: 'Final_End_Date', t: 'date' },
+      { k: 'Auto_Renews', t: 'pick', o: ['Yes', 'No', 'Not stated'] },
+      { k: 'Notice_Period_Days', t: 'int' }, { k: 'Renewal_Reminder_Date', t: 'date' },
+      { k: 'Renewal_Options_Left', t: 'int' }, { k: 'Renewal_Option_Length_Mo', t: 'int' },
+      { k: 'Account', t: 'ro' }, { k: 'Alert_Stage', t: 'ro' }, { k: 'Days_To_Expiry', t: 'ro' }, { k: 'Notice_Deadline', t: 'ro' }, { k: 'Notice_Passed', t: 'ro' },
+      { k: 'Renewal_Notes', t: 'area' }, { k: 'Contract_Notes', t: 'area' }
+    ],
+    Tasks: [{ k: 'Status' }, { k: 'Priority' }, { k: 'Due_Date', t: 'date' }, { k: 'Next_Steps', t: 'area' }, { k: 'Description', t: 'area' }],
+    Cases: [{ k: 'Priority' }, { k: 'Subject', t: 'text' }, { k: 'Description', t: 'area' }],
+    Accounts: [{ k: 'Phone', t: 'text' }, { k: 'Website', t: 'text' }, { k: 'Account_Type', admin: true }, { k: 'Description', t: 'area' }],
+    Deals: [{ k: 'Closing_Date', t: 'date' }, { k: 'Amount', t: 'num' }, { k: 'Next_Step', t: 'text' }, { k: 'Description', t: 'area' }],
+    Vendors: [{ k: 'Phone', t: 'text' }, { k: 'Email', t: 'text' }, { k: 'Website', t: 'text' }, { k: 'Description', t: 'area' }],
+    Support_Emails: []
+  };
+  var META = {};          /* module -> { api_name: field } */
+  var API;                /* live or preview */
+  var USER = { loaded: false, admin: false };
+
+  /* ---------- Zoho ---------- */
+  var live = {
+    user: function () { return withTimeout(ZOHO.CRM.CONFIG.getCurrentUser(), 6000, 'user').then(function (r) { return (r && r.users && r.users[0]) || {}; }); },
+    record: function (m, id) { return withTimeout(ZOHO.CRM.API.getRecord({ Entity: m, RecordID: String(id) }), 10000, 'record').then(function (r) { return (r && r.data && r.data[0]) || {}; }); },
+    meta: function (m) { return withTimeout(ZOHO.CRM.META.getFields({ Entity: m }), 9000, 'fields').then(function (r) { return (r && r.fields) || []; }); },
+    atts: function (m, id) {
+      return withTimeout(ZOHO.CRM.API.getRelatedRecords({ Entity: m, RecordID: String(id), RelatedList: 'Attachments', page: 1, per_page: 50 }), 10000, 'attachments')
+        .then(function (r) { return (r && r.data) || []; }, function (e) { if (isEmptyList(e)) return []; throw e; });
+    },
+    update: function (m, data) { return withTimeout(ZOHO.CRM.API.updateRecord({ Entity: m, APIData: data, Trigger: ['workflow'] }), 20000, 'save').then(rowOf); },
+    attach: function (m, id, file) { return withTimeout(ZOHO.CRM.API.attachFile({ Entity: m, RecordID: String(id), File: { Name: file.name, Content: file } }), 120000, 'upload').then(function (r) { if (r && r.data && r.data[0]) rowOf(r); return r; }); }
+  };
+
+  /* preview: demo records so the box can be seen and tested without Zoho */
+  var DEMO = (function () {
+    var pick = function (a) { return a.map(function (v) { return { display_value: v, actual_value: v }; }); };
+    var atts = { 'Contracts:ct1': [
+      { id: 'a1', File_Name: 'Rock Co Pretrial - signed contract.pdf', Size: 2411520, Created_Time: '2026-03-02T10:14:00-06:00', Owner: { name: 'Beau Carrigan' } },
+      { id: 'a2', File_Name: 'Amendment 2 (2025).pdf', Size: 188416, Created_Time: '2025-11-18T09:02:00-06:00', Owner: { name: 'Beau Carrigan' } }] };
+    var rec = {
+      'Tasks:t1': { id: 't1', Subject: 'Contract renewal - 90 day notice: Rock Co Pretrial Program', Status: 'Not Started', Priority: 'High', Due_Date: '2026-10-05', Next_Steps: null, Description: 'Rock County Pretrial Program - contract (with all extensions) ends Dec 31, 2026 (90 days). Renewal status: Not started.', What_Id: { id: 'ct1', name: 'Rock Co Pretrial Program' }, $se_module: 'Contracts' },
+      'Contracts:ct1': { id: 'ct1', Name: 'Rock Co Pretrial Program', Contract_Status: 'Active/Complete', Renewal_Status: 'Not started', Contract_Start_Date: '2023-01-01', Contract_End_Date: '2026-12-31', Final_End_Date: '2026-12-31', Auto_Renews: 'No', Notice_Period_Days: 90, Renewal_Reminder_Date: null, Renewal_Options_Left: 0, Renewal_Option_Length_Mo: 12, Account: { id: 'ac1', name: 'Rock County' }, Alert_Stage: '90 day notice', Days_To_Expiry: 76, Notice_Deadline: '2026-10-02', Notice_Passed: true, Renewal_Notes: null, Contract_Notes: 'Rates per Article 4.' },
+      'Cases:c3': { id: 'c3', Subject: 'Strap replacement', Priority: 'High', Description: 'Customer needs a replacement strap.', Account_Name: { id: 'ac1', name: 'Rock County' } },
+      'Accounts:ac1': { id: 'ac1', Account_Name: 'Rock County', Phone: '(608) 555-0100', Website: 'https://example.org', Account_Type: 'Customer', Description: null },
+      'Support_Emails:e1': { id: 'e1', Name: 'Re: device alert' },
+      'Deals:d1': { id: 'd1', Deal_Name: 'Dane County EM', Closing_Date: '2026-12-01', Amount: 120000, Next_Step: 'Send pricing', Description: null }
+    };
+    var meta = {
+      Tasks: [{ api_name: 'Status', field_label: 'Status', data_type: 'picklist', pick_list_values: pick(['Not Started', 'In Progress', 'Waiting for input', 'Deferred', 'Completed']) }, { api_name: 'Priority', field_label: 'Priority', data_type: 'picklist', pick_list_values: pick(['High', 'Highest', 'Low', 'Lowest', 'Normal']) }, { api_name: 'Due_Date', field_label: 'Due Date', data_type: 'date' }, { api_name: 'Next_Steps', field_label: 'Next Steps', data_type: 'textarea' }, { api_name: 'Description', field_label: 'Description', data_type: 'textarea' }],
+      Cases: [{ api_name: 'Priority', field_label: 'Priority', data_type: 'picklist', pick_list_values: pick(['High', 'Medium', 'Low']) }],
+      Accounts: [{ api_name: 'Account_Type', field_label: 'Account Type', data_type: 'picklist', pick_list_values: pick(['Customer', 'Prospect', 'Partner']) }]
+    };
+    return { rec: rec, atts: atts, meta: meta };
+  })();
+  var delay = function (v, ms) { return new Promise(function (res) { setTimeout(function () { res(v); }, ms || 150); }); };
+  var mock = {
+    user: function () { var na = /[?&]asuser=1/.test(location.search); return delay({ id: na ? '1000' : BEAU_ID, profile: { name: na ? 'EM Support' : 'Administrator' } }, 50); },
+    record: function (m, id) { var r = DEMO.rec[m + ':' + id] || (m === 'Tasks' ? DEMO.rec['Tasks:t1'] : null); r = r ? JSON.parse(JSON.stringify(r)) : { id: id }; r.id = id; return delay(r, 200); },
+    meta: function (m) { return delay(DEMO.meta[m] || [], 100); },
+    atts: function (m, id) { return delay((DEMO.atts[m + ':' + id] || []).slice(), 200); },
+    update: function (m, data) { return new Promise(function (res, rej) { setTimeout(function () { if (DENY) rej(new Error(friendly({ code: 'NO_PERMISSION' }))); else { var r = DEMO.rec[m + ':' + data.id]; if (r) Object.keys(data).forEach(function (k) { if (k !== 'id') r[k] = data[k]; }); res({ id: data.id }); } }, 350); }); },
+    attach: function (m, id, file) { return new Promise(function (res, rej) { setTimeout(function () { if (DENY) rej(new Error(friendly({ code: 'NO_PERMISSION' }))); else { var k = m + ':' + id; (DEMO.atts[k] = DEMO.atts[k] || []).unshift({ id: 'n' + Date.now(), File_Name: file.name, Size: file.size, Created_Time: new Date().toISOString(), Owner: { name: 'You' } }); res({}); } }, 500); }); }
+  };
+  API = PREVIEW ? mock : live;
+
+  /* ---------- state: one object per record opened; the DOM is rebuilt from it ---------- */
+  var S = {};
+  function newState(o) {
+    return { key: o.key, selfModule: o.module, t0: Date.now(), gen: 0, host: null, open: o.module === 'Tasks', began: false, active: 0, resolving: false,
+      targets: [{ k: o.module + ':' + o.id, module: o.module, id: String(o.id), label: o.label || NAMES[o.module] || o.module, role: 'self' }] };
+  }
+  function target(st, k) { for (var i = 0; i < st.targets.length; i++) if (st.targets[i].k === k) return st.targets[i]; return null; }
+
+  function ensureUser() {
+    if (USER.loaded || USER.pending) return USER.pending || Promise.resolve();
+    USER.pending = API.user().then(function (u) {
+      USER.admin = !!(u && ((u.profile && /^administrator$/i.test(u.profile.name || '')) || String(u.id) === BEAU_ID));
+    }, function () { USER.admin = false; }).then(function () { USER.loaded = true; USER.pending = null; repaintAll(); });
+    return USER.pending;
+  }
+  function ensureMeta(module) {
+    if (META[module] !== undefined) return Promise.resolve(META[module]);
+    return API.meta(module).then(function (fs) { var m = {}; fs.forEach(function (f) { m[f.api_name] = f; }); META[module] = m; return m; }, function () { META[module] = {}; return META[module]; });
+  }
+
+  function start(st) {
+    var self = st.targets[0], gen = st.gen;
+    ensureUser();
+    var kind = self.module;
+    if (kind === 'Tasks' || kind === 'Cases') {
+      st.resolving = true; paint(st);
+      loadTarget(st, self).then(function () {
+        if (gen !== st.gen) return;
+        var rec = self.rec || {}, link = null;
+        if (kind === 'Tasks' && rec.What_Id && rec.What_Id.id && rec.$se_module && rec.$se_module !== 'Tasks') link = { module: rec.$se_module, id: String(rec.What_Id.id), name: rec.What_Id.name };
+        if (kind === 'Cases' && rec.Account_Name && rec.Account_Name.id) link = { module: 'Accounts', id: String(rec.Account_Name.id), name: rec.Account_Name.name };
+        if (link && !target(st, link.module + ':' + link.id)) {
+          var lt = { k: link.module + ':' + link.id, module: link.module, id: link.id, label: link.name || NAMES[link.module], role: 'linked' };
+          if (kind === 'Tasks') { st.targets.unshift(lt); st.active = 0; } else st.targets.push(lt);
+        }
+        st.resolving = false; paint(st); activate(st);
+      });
+    } else { activate(st); paint(st); }
+  }
+  function activate(st) {
+    var t = st.targets[st.active]; if (!t) return;
+    loadTarget(st, t); loadAtts(st, t);
+  }
+  function loadTarget(st, t) {
+    if (t.loaded) return Promise.resolve();
+    if (t.pending) return t.pending;
+    var gen = st.gen;
+    t.pending = Promise.all([API.record(t.module, t.id), ensureMeta(t.module)]).then(function (r) {
+      if (gen !== st.gen) return;
+      t.rec = r[0] || {}; t.loaded = true; t.err = null; t.pending = null; paint(st);
+    }, function (e) { if (gen !== st.gen) return; t.err = 'Could not load this record. ' + errText(e); t.pending = null; paint(st); });
+    return t.pending;
+  }
+  function loadAtts(st, t) {
+    var gen = st.gen; t.attBusy = true;
+    return API.atts(t.module, t.id).then(function (rows) { if (gen !== st.gen) return; t.atts = rows; t.attErr = null; }, function (e) { if (gen !== st.gen) return; t.attErr = 'Could not read the attachments. ' + errText(e); })
+      .then(function () { if (gen !== st.gen) return; t.attBusy = false; paint(st); });
+  }
+
+  /* ---------- field list for a target: your list, filled in from Zoho's field metadata ---------- */
+  function fieldsFor(t) {
+    var list = FIELDS[t.module] || [], meta = META[t.module] || {}, rec = t.rec || {}, out = [];
+    list.forEach(function (f) {
+      if (!(f.k in rec)) return;
+      var m = meta[f.k] || {}, type = f.t, opts = f.o;
+      if (!type) {
+        var dt = m.data_type;
+        type = dt === 'picklist' ? 'pick' : dt === 'date' ? 'date' : dt === 'integer' ? 'int' : (dt === 'currency' || dt === 'double' || dt === 'percent') ? 'num' : dt === 'textarea' ? 'area' : (dt === 'text' || dt === 'phone' || dt === 'email' || dt === 'website') ? 'text' : dt === 'boolean' ? 'bool' : 'ro';
+      }
+      if (type === 'pick' && !opts) opts = (m.pick_list_values || []).map(function (p) { return p.display_value; }).filter(function (v) { return v && v !== '-None-'; });
+      if (type === 'pick' && (!opts || !opts.length)) type = 'ro';
+      if (m.read_only === true && !f.t) type = 'ro';
+      out.push({ k: f.k, l: f.l || m.field_label || f.k.replace(/_/g, ' '), t: type, o: opts, admin: !!f.admin });
+    });
+    return out;
+  }
+  var locked = function (f) { return f.t === 'ro' || (f.admin && !USER.admin); };
+  var fmtDate = function (s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); if (!m) return esc(s || ''); return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
+  var fmtSize = function (n) { n = Number(n) || 0; return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? Math.round(n / 1024) + ' KB' : n + ' B'; };
+  var fmtWhen = function (iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
+  function show(f, v) {
+    if (v == null || v === '') return '<span class="v empty">—</span>';
+    if (f.t === 'date' || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))) return fmtDate(v);
+    if (f.t === 'bool' || typeof v === 'boolean') return v ? 'Yes' : 'No';
+    if (typeof v === 'object') return esc(v.name || v.display_value || '');
+    if (f.t === 'num') return esc(Number(v).toLocaleString('en-US'));
+    return esc(v);
+  }
+  var cur = function (f, v) { return v == null ? '' : (f.t === 'bool' ? !!v : typeof v === 'object' ? (v.name || '') : String(v)); };
+
+  /* ---------- render ---------- */
+  function control(f, val, k) {
+    var id = 'wb-' + k.replace(/\W/g, '_') + '-' + f.k, a = ' id="' + id + '" data-wbf="' + esc(f.k) + '" data-wb="field"';
+    if (f.t === 'pick') return '<select' + a + '><option value="">—</option>' + (f.o.indexOf(val) < 0 && val ? '<option selected>' + esc(val) + '</option>' : '') + f.o.map(function (o) { return '<option' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+    if (f.t === 'date') return '<input type="date"' + a + ' value="' + esc(val) + '">';
+    if (f.t === 'int') return '<input type="number" step="1"' + a + ' value="' + esc(val) + '">';
+    if (f.t === 'num') return '<input type="number" step="any"' + a + ' value="' + esc(val) + '">';
+    if (f.t === 'area') return '<textarea' + a + ' rows="3">' + esc(val) + '</textarea>';
+    if (f.t === 'bool') return '<input type="checkbox"' + a + (val ? ' checked' : '') + '>';
+    return '<input type="text"' + a + ' value="' + esc(val) + '">';
+  }
+  function infoHTML(st, t) {
+    var fs = fieldsFor(t), rec = t.rec || {}, edit = !!t.edit, any = fs.some(function (f) { return !locked(f); }), h = '';
+    if (!fs.length) return '';
+    h += '<div class="wb-sub"><h5>' + esc(t.role === 'linked' ? NAMES[t.module] + ' info' : 'Details') + '<span class="sp"></span>' +
+      (any && !edit ? '<button type="button" class="btn" data-wb="edit">Edit</button>' : '') + '</h5><div class="wb-grid">';
+    fs.forEach(function (f) {
+      var wide = f.t === 'area' ? ' wide' : '', bad = t.bad && t.bad[f.k] ? ' bad' : '', lk = f.admin && !USER.admin;
+      var lab = '<span class="k"><label for="wb-' + esc(t.k.replace(/\W/g, '_')) + '-' + esc(f.k) + '">' + esc(f.l) + '</label>' + (lk ? '<span class="lock" title="Only an administrator can change this">🔒 admins only</span>' : '') + '</span>';
+      if (edit && !locked(f)) h += '<div class="wb-f' + wide + bad + '">' + lab + control(f, t.draft[f.k], t.k) + '</div>';
+      else h += '<div class="wb-f' + wide + '"><span class="k">' + esc(f.l) + (lk ? '<span class="lock" title="Only an administrator can change this">🔒 admins only</span>' : '') + '</span><div class="v">' + show(f, rec[f.k]) + '</div></div>';
+    });
+    h += '</div>';
+    if (edit) h += '<div class="wb-actions"><button type="button" class="btn primary" data-wb="save"' + (t.saving ? ' disabled' : '') + '>' + (t.saving ? 'Saving…' : 'Save changes') + '</button><button type="button" class="btn" data-wb="cancel"' + (t.saving ? ' disabled' : '') + '>Cancel</button><span class="wb-msg' + (t.msgBad ? ' bad' : '') + '" role="status" aria-live="polite">' + esc(t.msg || '') + '</span></div>';
+    else if (t.msg) h += '<div class="wb-actions"><span class="wb-msg' + (t.msgBad ? ' bad' : ' ok') + '" role="status" aria-live="polite">' + esc(t.msg) + '</span></div>';
+    return h + '</div>';
+  }
+  function attsHTML(st, t) {
+    var rows = t.atts || [], ups = t.ups || [], h = '<div class="wb-sub"><h5>Attachments <span class="n">' + (t.atts ? rows.length : '') + '</span></h5>';
+    if (t.attErr) h += '<p class="wb-err">' + esc(t.attErr) + ' <button type="button" class="btn" data-wb="reatt">Retry</button></p>';
+    else if (!t.atts) h += '<span class="sk-line" style="width:70%"></span><span class="sk-line" style="width:45%"></span>';
+    else if (!rows.length && !ups.length) h += '<p class="wb-msg">Nothing attached yet.</p>';
+    if (rows.length || ups.length) {
+      h += '<ul class="wb-list">';
+      ups.forEach(function (u, i) {
+        h += '<li class="up ' + u.state + '"><span class="nm">' + esc(u.name) + '</span><span class="meta">' + (u.state === 'wait' ? 'Waiting…' : u.state === 'busy' ? 'Uploading…' : u.state === 'ok' ? 'Added' : esc(u.msg || 'Failed')) + '</span>' + (u.state === 'err' ? '<button type="button" class="wb-x" data-wb="dismiss" data-i="' + i + '" aria-label="Dismiss ' + esc(u.name) + '">✕</button>' : '<span></span>') + '</li>';
+      });
+      rows.forEach(function (a) {
+        var by = (a.Owner && a.Owner.name) || (a.Created_By && a.Created_By.name) || '';
+        h += '<li><a class="nm" target="_top" href="' + esc(recUrl(t.module, t.id)) + '" title="Opens the record in CRM, where the file can be downloaded">' + esc(a.File_Name || a.Name || 'File') + '</a><span class="meta">' + esc([fmtSize(a.Size), fmtWhen(a.Created_Time), by].filter(Boolean).join(' · ')) + '</span></li>';
+      });
+      h += '</ul>';
+    }
+    h += '<div class="wb-drop" data-wb-drop><label class="btn wb-add">Add documents<input type="file" multiple data-wb="file" aria-label="Add documents to this ' + esc((NAMES[t.module] || 'record').toLowerCase()) + '"></label><span>or drop files here · up to 100 MB each, no .exe</span></div></div>';
+    return h;
+  }
+  function paneHTML(st, t) {
+    if (t.err) return '<p class="wb-err">' + esc(t.err) + ' <button type="button" class="btn" data-wb="retry">Retry</button></p>';
+    if (!t.loaded) return '<span class="sk-line" style="width:80%"></span><span class="sk-line" style="width:60%"></span><span class="sk-line" style="width:70%"></span>';
+    return infoHTML(st, t) + attsHTML(st, t);
+  }
+  function paint(st) {
+    var host = st.host; if (!host || !host.isConnected) return;
+    var fo = document.activeElement && host.contains(document.activeElement) ? document.activeElement.id : null;
+    var t = st.targets[st.active] || st.targets[0], name = NAMES[st.selfModule] || 'record';
+    var h = '<div class="wb-head"><h4>Work box</h4><button type="button" class="wb-tog" data-wb="toggle" aria-expanded="' + st.open + '">' + (st.open ? 'Hide' : 'Show') + '</button></div>';
+    if (st.open) {
+      if (st.resolving) h += '<span class="sk-line" style="width:75%"></span><span class="sk-line" style="width:50%"></span>';
+      else {
+        if (st.targets.length > 1) h += '<div class="wb-tabs" role="group" aria-label="Which record">' + st.targets.map(function (x, i) { return '<button type="button" data-wb="tab" data-i="' + i + '" aria-pressed="' + (i === st.active) + '" title="' + esc(x.label) + '">' + esc(x.role === 'self' ? 'This ' + name.toLowerCase() : NAMES[x.module] + ': ' + x.label) + '</button>'; }).join('') + '</div>';
+        h += '<div data-wbt="' + esc(t.k) + '">' + paneHTML(st, t) + '</div>';
+      }
+    }
+    host.innerHTML = h;
+    if (fo) { var el = document.getElementById(fo); if (el) el.focus({ preventScroll: true }); }
+  }
+  function repaintAll() { Object.keys(S).forEach(function (k) { if (S[k].host && S[k].host.isConnected) paint(S[k]); }); }
+
+  /* ---------- editing ---------- */
+  function beginEdit(st, t) {
+    t.edit = true; t.msg = ''; t.bad = null; t.draft = {};
+    fieldsFor(t).forEach(function (f) { if (!locked(f)) t.draft[f.k] = cur(f, (t.rec || {})[f.k]); });
+    paint(st);
+    var first = st.host.querySelector('[data-wb="field"]'); if (first) first.focus({ preventScroll: true });
+  }
+  function toApi(f, v) {
+    if (f.t === 'bool') return !!v;
+    if (v === '' || v == null) return null;
+    if (f.t === 'int') return parseInt(v, 10);
+    if (f.t === 'num') return Number(v);
+    return v;
+  }
+  function saveEdit(st, t) {
+    var fs = fieldsFor(t), ch = {}, bad = {}, msg = '', n = 0;
+    fs.forEach(function (f) {
+      if (locked(f)) return;
+      var now = t.draft[f.k], was = cur(f, (t.rec || {})[f.k]);
+      if (String(now) === String(was)) return;
+      var v = toApi(f, now);
+      if ((f.t === 'int' || f.t === 'num') && v != null && isNaN(v)) { bad[f.k] = 1; msg = f.l + ' must be a number.'; return; }
+      ch[f.k] = v; n++;
+    });
+    var s = ch.Contract_Start_Date !== undefined ? ch.Contract_Start_Date : (t.rec || {}).Contract_Start_Date, e = ch.Contract_End_Date !== undefined ? ch.Contract_End_Date : (t.rec || {}).Contract_End_Date;
+    if (t.module === 'Contracts' && s && e && e < s) { bad.Contract_End_Date = 1; msg = 'The end date is before the start date.'; }
+    if (Object.keys(bad).length) { t.bad = bad; t.msg = msg; t.msgBad = true; paint(st); return; }
+    if (!n) { t.edit = false; t.msg = 'Nothing was changed.'; t.msgBad = false; paint(st); return; }
+    t.saving = true; t.msg = ''; paint(st);
+    var payload = { id: t.id }; Object.keys(ch).forEach(function (k) { payload[k] = ch[k]; });
+    API.update(t.module, payload).then(function () {
+      Object.keys(ch).forEach(function (k) { t.rec[k] = ch[k]; });
+      t.saving = false; t.edit = false; t.msg = 'Saved ' + n + (n === 1 ? ' change.' : ' changes.'); t.msgBad = false; paint(st);
+      try { document.dispatchEvent(new CustomEvent('workbox:saved', { detail: { module: t.module, id: t.id, changes: ch } })); } catch (x) {}
+    }, function (er) { t.saving = false; t.msg = 'Not saved. ' + errText(er); t.msgBad = true; paint(st); });
+  }
+
+  /* ---------- attachments ---------- */
+  function enqueue(st, t, files) {
+    t.ups = t.ups || [];
+    Array.prototype.forEach.call(files, function (f) {
+      var u = { name: f.name, file: f, state: 'wait' };
+      if (/\.exe$/i.test(f.name)) { u.state = 'err'; u.msg = 'Zoho does not accept .exe files.'; }
+      else if (f.size > MAX_BYTES) { u.state = 'err'; u.msg = 'Over 100 MB.'; }
+      else if (f.size === 0) { u.state = 'err'; u.msg = 'The file is empty.'; }
+      t.ups.push(u);
+    });
+    paint(st); runUploads(st, t);
+  }
+  function runUploads(st, t) {
+    if (t.uploading) return;
+    var next = (t.ups || []).filter(function (u) { return u.state === 'wait'; })[0];
+    if (!next) return;
+    t.uploading = true; next.state = 'busy'; paint(st);
+    API.attach(t.module, t.id, next.file).then(function () { next.state = 'ok'; }, function (e) { next.state = 'err'; next.msg = errText(e); })
+      .then(function () {
+        t.uploading = false; paint(st);
+        if ((t.ups || []).some(function (u) { return u.state === 'wait'; })) return runUploads(st, t);
+        loadAtts(st, t).then(function () { t.ups = (t.ups || []).filter(function (u) { return u.state === 'err'; }); paint(st); });
+      });
+  }
+
+  /* ---------- events (one set, on the document) ---------- */
+  function ctx(el) {
+    var root = el.closest && el.closest('.wb'); if (!root) return null;
+    var st = S[root.getAttribute('data-wbkey')]; if (!st) return null;
+    var pane = el.closest('[data-wbt]'), t = pane ? target(st, pane.getAttribute('data-wbt')) : st.targets[st.active];
+    return { st: st, t: t };
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-wb]'); if (!b || b.tagName === 'INPUT' && b.type !== 'checkbox') return;
+    var c = ctx(b); if (!c) return; var what = b.getAttribute('data-wb'), st = c.st, t = c.t;
+    if (what === 'toggle') { st.open = !st.open; if (st.open) begin(st); else paint(st); }
+    else if (what === 'tab') { st.active = +b.getAttribute('data-i'); paint(st); activate(st); }
+    else if (what === 'edit' && t) beginEdit(st, t);
+    else if (what === 'cancel' && t) { t.edit = false; t.msg = ''; t.bad = null; paint(st); }
+    else if (what === 'save' && t) saveEdit(st, t);
+    else if (what === 'retry' && t) { t.err = null; t.loaded = false; paint(st); loadTarget(st, t); }
+    else if (what === 'reatt' && t) { t.attErr = null; t.atts = null; paint(st); loadAtts(st, t); }
+    else if (what === 'dismiss' && t) { t.ups.splice(+b.getAttribute('data-i'), 1); paint(st); }
+  });
+  function onField(ev) {
+    var f = ev.target; if (!f.getAttribute || f.getAttribute('data-wb') !== 'field') return;
+    var c = ctx(f); if (!c || !c.t || !c.t.draft) return;
+    c.t.draft[f.getAttribute('data-wbf')] = f.type === 'checkbox' ? f.checked : f.value;
+  }
+  document.addEventListener('input', onField);
+  document.addEventListener('change', function (ev) {
+    onField(ev);
+    var f = ev.target; if (!f.getAttribute || f.getAttribute('data-wb') !== 'file') return;
+    var c = ctx(f); if (!c || !c.t) return;
+    var files = Array.prototype.slice.call(f.files || []); f.value = '';
+    if (files.length) enqueue(c.st, c.t, files);
+  });
+  document.addEventListener('dragover', function (ev) { var d = ev.target.closest && ev.target.closest('[data-wb-drop]'); if (!d) return; ev.preventDefault(); d.classList.add('over'); });
+  document.addEventListener('dragleave', function (ev) { var d = ev.target.closest && ev.target.closest('[data-wb-drop]'); if (d) d.classList.remove('over'); });
+  document.addEventListener('drop', function (ev) {
+    var d = ev.target.closest && ev.target.closest('[data-wb-drop]'); if (!d) return; ev.preventDefault(); d.classList.remove('over');
+    var c = ctx(d); if (c && c.t && ev.dataTransfer && ev.dataTransfer.files.length) enqueue(c.st, c.t, ev.dataTransfer.files);
+  });
+
+  /* ---------- mounting ---------- */
+  function mount(host, o, fresh) {
+    var st = S[o.key];
+    if (!st || fresh || (Date.now() - st.t0 > STALE_MS && !(st.targets.some(function (x) { return x.edit || x.uploading; })))) { if (st) st.gen++; st = S[o.key] = newState(o); }
+    st.host = host; host.className = (host.className + ' wb').replace(/\s+/g, ' ').trim(); host.setAttribute('data-wbkey', o.key);
+    if (st.open) begin(st); else paint(st);
+  }
+  function begin(st) { if (st.began) { paint(st); activate(st); return; } st.began = true; start(st); }
+  var KIND = { case: 'Cases', task: 'Tasks', email: 'Support_Emails' };
+  window.WorkBox = {
+    mountPeek: function (peek, kind, id) {
+      var module = KIND[kind], body = peek.querySelector('.pk-body'); if (!module || !body || !id) return;
+      var host = document.createElement('div'); host.className = 'pk-sec'; body.appendChild(host);
+      var panel = peek.querySelector('.peek-panel'); if (panel) panel.classList.add('wb-wide');
+      mount(host, { key: module + ':' + id, module: module, id: id, label: NAMES[module] }, true);
+    },
+    mountRP: function (el, type, module, rec) {
+      var left = el.querySelector('.rp-left'); if (!left || !rec || !rec.id || !module) return;
+      var host = document.createElement('div'); host.className = 'pk-sec'; left.appendChild(host);
+      mount(host, { key: module + ':' + rec.id, module: module, id: rec.id, label: NAMES[module] || module }, false);
+    },
+    _state: S, _fields: fieldsFor
+  };
 })();
 </script>
 </body>
