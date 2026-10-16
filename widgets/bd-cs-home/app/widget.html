@@ -2787,7 +2787,7 @@ function rpInit() {
 
 
 
-  var VERSION = 'BD + CS Home v4.13';
+  var VERSION = 'BD + CS Home v4.14';
   var POLL_S = 120;
   var ME = { id: null, name: '' };
   var TODAY = ymd(new Date());
@@ -4010,6 +4010,15 @@ function rpInit() {
     return d.body.innerHTML;
   }
   var smRow = function (id) { return SM.rows.filter(function (r) { return String(r.id) === String(id); })[0]; };
+  function smEditor(r) {
+    return '<div class="sm-ed">'
+          + (r.Detail ? '<div class="sm-fact">' + esc(r.Detail) + '</div>' : '')
+          + '<label>To (comma separated)<input type="text" data-sm="to" value="' + esc(r.Recipient_Emails || '') + '" autocomplete="off"></label>'
+          + '<label>Subject<input type="text" data-sm="subject" value="' + esc(r.Draft_Subject || '') + '" maxlength="250"></label>'
+          + '<label>Email<div class="sm-body" data-sm="body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Email body">' + smClean(String(r.Draft_Body || '').replace(/\{\{sender\}\}/g, esc(smWho()))) + '</div></label>'
+          + '<div class="sm-bar"><button type="button" class="btn primary" data-sm="approve">Approve &amp; send</button><button type="button" class="btn" data-sm="reject">Reject</button><button type="button" class="btn" data-sm="save">Save draft</button><span class="sp"></span><span class="sm-msg" data-sm="msg" role="status" aria-live="polite"></span></div>'
+          + '</div>';
+  }
   function smPaint() {
     var z = $('z-sm'); if (!z) return;
     var n = SM.rows.length;
@@ -4021,19 +4030,16 @@ function rpInit() {
     ul.innerHTML = !n ? '<li class="sm-empty">No stock emails are waiting for approval.</li>' : SM.rows.map(function (r) {
       var open = String(SM.open) === String(r.id), acct = r['Account.Account_Name'] || 'No account';
       var head = '<button type="button" class="sm-sum" data-sm="toggle" aria-expanded="' + open + '"><span class="acct">' + esc(acct) + '</span><span class="pill wait">' + esc(r.Alert_Type) + '</span><span class="subj">' + esc(r.Draft_Subject || '(no subject)') + '</span><span class="go">' + (open ? 'Close' : 'Review') + '</span></button>';
-      var ed = '';
-      if (open) {
-        ed = '<div class="sm-ed">'
-          + (r.Detail ? '<div class="sm-fact">' + esc(r.Detail) + '</div>' : '')
-          + '<label>To (comma separated)<input type="text" data-sm="to" value="' + esc(r.Recipient_Emails || '') + '" autocomplete="off"></label>'
-          + '<label>Subject<input type="text" data-sm="subject" value="' + esc(r.Draft_Subject || '') + '" maxlength="250"></label>'
-          + '<label>Email<div class="sm-body" data-sm="body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Email body">' + smClean(String(r.Draft_Body || '').replace(/\{\{sender\}\}/g, esc(smWho()))) + '</div></label>'
-          + '<div class="sm-bar"><button type="button" class="btn primary" data-sm="approve">Approve &amp; send</button><button type="button" class="btn" data-sm="reject">Reject</button><button type="button" class="btn" data-sm="save">Save draft</button><span class="sp"></span><span class="sm-msg" data-sm="msg" role="status" aria-live="polite"></span></div>'
-          + '</div>';
-      }
+      var ed = open ? smEditor(r) : '';
       return '<li class="sm-item' + (open ? ' open' : '') + '" data-id="' + esc(r.id) + '">' + head + ed + '</li>';
     }).join('');
     resize();
+  }
+  function peekStockHTML(r) {
+    var acct = r['Account.Account_Name'] || 'No account';
+    var head = '<span class="pk-id">Stock alert</span><span class="pill wait">Awaiting approval</span><span>' + esc(r.Alert_Type || '') + '</span>';
+    var body = '<h3 class="pk-title">' + esc(acct) + '</h3><p class="sm-note">Sent from <b>' + esc(SUPPORT_FROM) + '</b> and signed as <b>' + esc(smWho()) + '</b>. Edit anything before you approve.</p><div class="sm-item open" data-id="' + esc(r.id) + '">' + smEditor(r) + '</div>';
+    return frame(head, body, '<a class="pk-link" target="_top" href="' + esc(url.rec('EM_Stock_Alerts', r.id)) + '">Open the alert in CRM ↗</a>');
   }
   function loadStockApprovals() {
     return api.all("select id, Alert_Type, Draft_Subject, Draft_Body, Recipient_Emails, Detail, Created_Time, Account.Account_Name from EM_Stock_Alerts where Email_Status = 'Awaiting approval' and Status = 'Open'", 2).then(function (rows) {
@@ -4080,6 +4086,8 @@ function rpInit() {
       }
       SM.rows = SM.rows.filter(function (x) { return String(x.id) !== String(id); }); SM.open = null;
       smPaint(); toast((out && out.message) || (action === 'approve' ? 'Sent.' : 'Rejected.')); loadStockAlerts();
+      if (P.kind === 'stock' && String(P.id) === String(id)) closePeek(false);
+      if (typeof AG !== 'undefined' && AG.data) { AG.data.items = AG.data.items.filter(function (i) { return !(i.src === 'stock' && String(i.id) === String(id)); }); agRender(); }
     }).catch(function (e) {
       SM.busy = false; Array.prototype.forEach.call(li.querySelectorAll('button,input'), function (b) { b.disabled = false; });
       say(e && e.message ? e.message : 'That did not go through.', 'bad');
@@ -4100,6 +4108,12 @@ function rpInit() {
   }
   function initStockApprovals() {
     var tries = 0, tick = function () { if (!smNav() && tries++ < 20) setTimeout(tick, 250); }; tick();
+    var pk = $('peek');
+    if (pk) pk.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-sm]'); if (!b || P.kind !== 'stock') return;
+      var li = b.closest('.sm-item'), k = b.getAttribute('data-sm'); if (!li) return;
+      if (k === 'approve' || k === 'reject' || k === 'save') smDo(li, k, b);
+    });
     var ul = $('sm-list'); if (!ul) return;
     ul.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-sm]'); if (!b) return;
@@ -5547,6 +5561,7 @@ function rpInit() {
     setCur(li, false);
     P.key = key; P.kind = kind; P.id = id; P.li = li; P.emailBody = null; P.emailDetail = null; P.found = {}; P.reach = null; P.caseDetail = null; P.reachNamed = null;
     if (kind === 'case') { var r = findCase(id); if (!r) return; peek.innerHTML = peekCaseHTML(r); loadCaseDetail(id, seq); }
+    else if (kind === 'stock') { var sr = smRow(id); if (!sr) return; peek.innerHTML = peekStockHTML(sr); }
     else if (kind === 'task') { if (!Q.tasks[id]) return; peek.innerHTML = peekTaskHTML(Q.tasks[id]); loadTaskDetail(id, seq); }
     else { if (!Q.emails[id]) return; peek.innerHTML = peekEmailHTML(Q.emails[id]); loadEmailDetail(id, seq); if (!Q.emails[id]['Case.id']) renderFind(''); }
     try { if (window.WorkBox) WorkBox.mountPeek(peek, kind, id); } catch (e) { /* work-box */ }
@@ -6147,6 +6162,10 @@ function agOpen(k, crm) {
     var li = document.createElement('li'); li.setAttribute('data-kind', 'case'); li.setAttribute('data-id', x.id); li.setAttribute('data-key', 'ag:' + x.id);
     AG.refocus = k; openPeek(li);
     return;
+  }
+  if (x.src === 'stock' && !crm && smRow(x.id)) {
+    var sli = document.createElement('li'); sli.setAttribute('data-kind', 'stock'); sli.setAttribute('data-id', String(x.id)); sli.setAttribute('data-key', 'ag:stock:' + x.id);
+    AG.refocus = k; openPeek(sli); return;
   }
   if (PREVIEW) { toast('Would open ' + x.title + ' in CRM (preview)', { ms: 2500 }); return; }
   go(url.rec(x.module, x.id));
