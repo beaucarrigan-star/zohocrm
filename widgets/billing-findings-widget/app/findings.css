@@ -1,0 +1,17 @@
+/* Billing Findings: only what the shared kit does not cover. Tokens come from jpk.css. */
+#period{min-width:170px}
+.mx-btn{all:unset;cursor:pointer;display:inline-block;min-width:28px;padding:1px 6px;border-radius:4px;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mx-btn:hover,.mx-btn:focus-visible{background:var(--teal-soft);color:var(--teal)}
+.mx-btn:focus-visible{outline:2px solid var(--info);outline-offset:1px}
+.mx-btn[aria-pressed="true"]{background:var(--teal);color:var(--on-teal)}
+.mx-zero{color:var(--muted);padding:0 6px}
+td.vend{font-weight:600}
+.part{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+.dr-long{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;margin:0 0 14px}
+#recon.bad{background:var(--bad-soft)}
+#recon.good{background:var(--good-soft)}
+
+/* wave B2 */
+.dispute-box{margin:0 0 12px;padding:10px 14px;border:1px solid var(--line-strong);border-left:3px solid var(--accent);border-radius:var(--r);background:var(--surface2);color:var(--ink)}
+.dispute-box p{margin:0 0 8px}
+.dispute-box .row{gap:8px}
