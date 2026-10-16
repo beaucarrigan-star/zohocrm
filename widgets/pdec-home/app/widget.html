@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDEC Home</title>
+<!-- PDEC Home v1.1 (Oct 13 2026; v1.1 fixes the preview panel showing on load). Director page for Program Development, Evaluation and Compliance. Standalone widget (no home-kit includes).
+     Reads Deliverables, Compliance_Items, Program_Metrics and Solicitations with COQL; ?preview=1 runs on sample data. -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: sticky toolbar + jump bar, three zones (My work, Numbers, Reference), collapsible sections, peek panel for the view behind each number */
+:root{
+  --bg:light-dark(#F4F5F7,#121417); --surface:light-dark(#FFFFFF,#191C20); --fg:light-dark(#16191D,#E6E8EB);
+  --muted:light-dark(#5F6670,#9AA1AB); --line:light-dark(#DCE0E5,#2B3038);
+  --accent:light-dark(#2F55A4,#7F9FE0); --accent-soft:light-dark(#E6ECF8,#1E2A45);
+  --ok:light-dark(#1F6F45,#5EC58C); --ok-soft:light-dark(#E3F0E8,#163125);
+  --warn:light-dark(#8A6412,#E0B055); --warn-soft:light-dark(#F6EEDC,#3A2F14);
+  --bad:light-dark(#A33A33,#F08A82); --bad-soft:light-dark(#F7E4E3,#3F1F1D);
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; --head:"Archivo","Public Sans",system-ui,sans-serif;
+  --radius:4px; color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12191d;--surface:#1a2429;--fg:#e4ecef;--muted:#93a5ae;--line:#2c3a41;
+  --accent:#58c4c0;--accent-soft:#1a3a3a;
+  --ok:#6fcf97;--ok-soft:#183425;--warn:#f0b955;--warn-soft:#3a2e12;--bad:#ff8a80;--bad-soft:#3d1d1b;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12191d;--surface:#1a2429;--fg:#e4ecef;--muted:#93a5ae;--line:#2c3a41;
+  --accent:#58c4c0;--accent-soft:#1a3a3a;
+  --ok:#6fcf97;--ok-soft:#183425;--warn:#f0b955;--warn-soft:#3a2e12;--bad:#ff8a80;--bad-soft:#3d1d1b;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--sans)}
+*{box-sizing:border-box}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px}
+.bar .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+h1{font-size:20px;margin:0;font-weight:700}
+.who{color:var(--muted);font-size:14px}
+.sample{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;background:var(--warn-soft);color:var(--warn);padding:3px 8px;border-radius:4px}
+.jump{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+button,.btn{font:inherit;cursor:pointer}
+.jump a,.jump button{background:none;border:1px solid var(--line);color:var(--fg);padding:4px 10px;border-radius:6px;text-decoration:none;font-size:13px}
+.jump a:hover,.jump button:hover{border-color:var(--accent);color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.zone{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:28px 0 10px}
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+section.card>header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+section.card>header h2{font-size:16px;margin:0;font-weight:600}
+section.card>header .sub{color:var(--muted);font-size:13px}
+section.card>header .chev{margin-left:auto;color:var(--muted);transition:transform .15s}
+section.card.closed>header .chev{transform:rotate(-90deg)}
+section.card.closed>.body{display:none}
+.body{padding:0 14px 14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:none;color:var(--fg);border-radius:999px;padding:3px 11px;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.go{cursor:pointer}tr.go:hover td{background:var(--accent-soft)}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.p-bad{background:var(--bad-soft);color:var(--bad)}.p-warn{background:var(--warn-soft);color:var(--warn)}.p-ok{background:var(--ok-soft);color:var(--ok)}.p-n{background:var(--accent-soft);color:var(--accent)}
+.hard{font:500 10px var(--mono);letter-spacing:.05em;border:1px solid var(--bad);color:var(--bad);border-radius:3px;padding:0 4px;margin-left:6px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;text-align:left;color:var(--fg);display:flex;flex-direction:column;gap:2px}
+.tile:hover{border-color:var(--accent)}
+.tile .v{font:500 30px/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.tile .l{font-size:13px;color:var(--muted)}
+.tile.bad .v{color:var(--bad)}.tile.warn .v{color:var(--warn)}.tile.ok .v{color:var(--ok)}
+.meter{height:8px;border-radius:4px;background:var(--line);position:relative;min-width:90px}
+.meter i{position:absolute;inset:0 auto 0 0;border-radius:4px;background:var(--accent)}
+.meter.warn i{background:var(--warn)}.meter.bad i{background:var(--bad)}.meter.ok i{background:var(--ok)}
+.links{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;color:var(--fg);text-decoration:none;background:var(--surface)}
+.links a:hover{border-color:var(--accent)}.links small{display:block;color:var(--muted)}
+.empty{color:var(--muted);padding:10px 0}
+.qa{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.qa button{border:1px dashed var(--line);background:none;color:var(--muted);border-radius:6px;padding:4px 10px;font-size:13px}
+#peek{position:fixed;inset:0 0 0 auto;width:min(520px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.18);z-index:10;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+#peek[hidden]{display:none}
+#peek header{display:flex;align-items:center;gap:10px;padding:14px;border-bottom:1px solid var(--line)}
+#peek h3{margin:0;font-size:16px}
+#peek .x{margin-left:auto;background:none;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:3px 10px}
+#peek .pb{padding:14px;overflow:auto;flex:1}
+.view{font:500 12px var(--mono);color:var(--accent);background:var(--accent-soft);padding:6px 8px;border-radius:5px;margin-bottom:12px;overflow-wrap:anywhere}
+.th{background:none;border:1px solid var(--line);color:var(--fg);padding:4px 10px;border-radius:6px;font-size:13px}
+.disp{position:relative;display:inline-block}
+#dpanel{position:absolute;right:0;top:calc(100% + 6px);width:240px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:12px;display:flex;flex-direction:column;gap:6px;z-index:20}
+#dpanel[hidden]{display:none}
+#dpanel .dl{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;margin-top:6px}
+#dpanel .dl b{color:var(--fg);font-weight:500}
+#dpanel input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:flex}
+.seg button{flex:1;background:none;border:1px solid var(--line);color:var(--fg);padding:4px 6px;font-size:13px}
+.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}.seg button+button{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+#dpanel .th{margin-top:8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.mut{color:var(--muted)}.err{color:var(--bad);margin:6px 0}
+.jump button#refresh{border-color:var(--line)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px;z-index:30}
+h1,h2,h3{font-family:var(--head)}
+</style>
+<style id="work-today-css">
+/* Work today: scoped to #work-today so it cannot change the host page. Graphite + cobalt v3 tokens, redefined inside the scope with light-dark()
+   (the home pages already set color-scheme on :root and data-theme for the Light/Dark choice). */
+#work-today{
+  --surface:light-dark(#FFFFFF,#191C20);--surface2:light-dark(#F7F8FA,#1F2328);--ink:light-dark(#16191D,#E6E8EB);--muted:light-dark(#5F6670,#9AA1AB);
+  --line:light-dark(#DCE0E5,#2B3038);--line-strong:light-dark(#B8BEC7,#424955);--accent:light-dark(#2F55A4,#7F9FE0);--accent-ink:light-dark(#284A90,#9DB6EA);
+  --accent-soft:light-dark(#E6ECF8,#1E2A45);--on-accent:light-dark(#FFFFFF,#0C1424);--good:light-dark(#1F6F45,#5EC58C);--warn:light-dark(#8A6412,#E0B055);
+  --bad:light-dark(#A33A33,#F08A82);--info:light-dark(#4A6B8A,#8DAAC6);--font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--r:4px;
+  margin:0 0 16px;color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45
+}
+#work-today[hidden]{display:none}
+#work-today *{box-sizing:border-box}
+#work-today .wt-load,#work-today .wt-note{margin:0;padding:10px 14px;color:var(--muted);font-size:12.5px}
+#work-today .wt-note{border-left:3px solid var(--warn);background:var(--surface2);margin-top:8px;border-radius:var(--r)}
+#work-today .jp-wl{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);min-height:440px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+#work-today .jp-wl [hidden]{display:none!important}
+#work-today .jp-wl-list{border-right:1px solid var(--line);min-width:0}
+#work-today .jp-wl-hd{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+#work-today .jp-wl-hd h3{margin:0;font-size:18px}
+#work-today .jp-wl-hd p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+#work-today .jp-wl-gh{font:600 11px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 16px 6px;background:var(--surface2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+#work-today .jp-wi{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:10px;align-items:start;width:100%;text-align:left;padding:10px 16px;min-height:44px;border:0;border-bottom:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font:inherit}
+#work-today .jp-wi:hover{background:var(--surface2)}
+#work-today .jp-wi[aria-current="true"]{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+#work-today .jp-wi:focus-visible,#work-today .btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#work-today .jp-wi .dot{width:7px;height:7px;border-radius:99px;background:var(--line-strong);margin-top:6px}
+#work-today .jp-wi .dot.bad{background:var(--bad)}#work-today .jp-wi .dot.warn{background:var(--warn)}#work-today .jp-wi .dot.good{background:var(--good)}#work-today .jp-wi .dot.info{background:var(--info)}
+#work-today .jp-wi .tx{min-width:0}
+#work-today .jp-wi b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#work-today .jp-wi small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#work-today .jp-wi em{font-style:normal;font-size:12px;color:var(--muted);white-space:nowrap}
+#work-today .jp-wi em.soon{color:var(--warn);font-weight:600}
+#work-today .jp-wl-focus{padding:18px 22px;display:grid;gap:14px;align-content:start;min-width:0}
+#work-today .jp-wl-focus h3{margin:0;font-size:20px}
+#work-today .jp-wl .empty{padding:18px 16px;color:var(--muted)}
+#work-today .jp-wl .empty b{display:block;color:var(--ink);margin-bottom:2px}
+#work-today .jp-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r)}
+#work-today .jp-facts>div{padding:8px 12px;border-right:1px solid var(--line);min-width:0}
+#work-today .jp-facts>div:last-child{border-right:0}
+#work-today .jp-facts small{display:block;font:500 11.5px var(--font);color:var(--muted)}
+#work-today .jp-facts b{display:block;font-size:13px;overflow-wrap:anywhere}
+#work-today .jp-nextbox{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--r);padding:10px 14px;background:var(--surface)}
+#work-today .jp-nextbox small{font:600 11px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+#work-today .jp-nextbox p{margin:3px 0 10px}
+#work-today .btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:5px;padding:7px 12px;font:600 13px var(--font);cursor:pointer}
+#work-today .btn.pri{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+#work-today .jp-why{margin:0;display:grid;gap:6px;font-size:13px}
+#work-today .jp-why div{display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:10px}
+#work-today .jp-why dt{color:var(--muted)}
+#work-today .jp-why dd{margin:0}
+@media (max-width:820px){#work-today .jp-wl{grid-template-columns:1fr}#work-today .jp-wl-list{border-right:0;border-bottom:1px solid var(--line)}}
+@media (max-width:560px){#work-today .jp-facts{grid-template-columns:1fr 1fr}#work-today .jp-why div{grid-template-columns:1fr;gap:0}}
+@media (max-width:700px){#work-today .jp-wi{min-height:48px}#work-today .btn{min-height:44px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar"><div class="row">
+    <h1>PDEC Home</h1><span class="who" id="who">PDEC</span><span class="sample" id="src" hidden>Sample data</span><span class="who" id="asof"></span>
+    <nav class="jump" aria-label="Jump to">
+      <button id="refresh" type="button" title="Reload the numbers" aria-label="Reload the numbers">Refresh</button><a href="#z-work">My work</a><a href="#z-num">Numbers</a><a href="#z-perf">Program performance</a><a href="#z-dev">Program development</a><a href="#z-ref">Reference</a>
+      <span class="disp"><button id="theme" type="button" aria-expanded="false" aria-controls="dpanel">Display</button>
+        <div id="dpanel" hidden>
+          <div class="dl">Theme</div>
+          <div class="seg" id="seg" role="group" aria-label="Theme"><button type="button" data-t="system" aria-pressed="true">System</button><button type="button" data-t="light" aria-pressed="false">Light</button><button type="button" data-t="dark" aria-pressed="false">Dark</button></div>
+          <label class="dl" for="bri">Brightness <b id="bri-v">100%</b></label>
+          <input type="range" id="bri" min="70" max="130" step="5" value="100">
+          <label class="dl" for="con">Contrast <b id="con-v">100%</b></label>
+          <input type="range" id="con" min="80" max="140" step="5" value="100">
+          <button type="button" class="th" id="dreset">Reset</button>
+        </div></span>
+    </nav>
+  </div></div>
+
+  <div class="zone" id="z-work">My work</div>
+  <section id="work-today" aria-label="Your work today" data-teams="PDEC" data-queue-profiles="Administrator,System Support" hidden><div id="wt-mount"></div><p id="wt-note" class="wt-note" role="status" hidden></p></section>
+
+
+  <section class="card" id="s-del"><header tabindex="0" role="button"><h2>Deliverables</h2><span class="sub" id="del-sub"></span><span class="chev">▾</span></header>
+    <div class="body">
+      <div class="chips" id="del-chips" role="group" aria-label="Deliverable filter"></div>
+      <div class="tw"><table><thead><tr><th>Due</th><th>Deliverable</th><th>Contract / Funder</th><th>Program</th><th>Status</th></tr></thead><tbody id="del-rows"></tbody></table></div>
+      <div class="qa"><button type="button" disabled>Mark submitted</button><button type="button" disabled>Add deliverable</button><button type="button" disabled>Request proof</button><span class="who" style="align-self:center">Quick actions arrive in the team release.</span></div>
+    </div></section>
+
+  <section class="card" id="s-comp"><header tabindex="0" role="button"><h2>Compliance</h2><span class="sub" id="comp-sub"></span><span class="chev">▾</span></header>
+    <div class="body"><div class="tw"><table><thead><tr><th>Expires / review</th><th>Item</th><th>Category</th><th>Authority</th><th>Status</th></tr></thead><tbody id="comp-rows"></tbody></table></div></div></section>
+
+  <div class="zone" id="z-num">Numbers</div>
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card" id="z-perf" style="margin-top:14px"><header tabindex="0" role="button"><h2>Program performance</h2><span class="sub">Latest period, actual against target</span><span class="chev">▾</span></header>
+    <div class="body"><div class="tw"><table><thead><tr><th>Program</th><th>Metric</th><th>Period</th><th class="n">Target</th><th class="n">Actual</th><th>Progress</th><th>Status</th></tr></thead><tbody id="perf-rows"></tbody></table></div></div></section>
+
+  <section class="card" id="z-dev"><header tabindex="0" role="button"><h2>Program development</h2><span class="sub">Open solicitations and new-program opportunities</span><span class="chev">▾</span></header>
+    <div class="body"><div class="tw"><table><thead><tr><th>Proposal due</th><th>Solicitation</th><th>Stage</th><th>Go / no-go</th></tr></thead><tbody id="dev-rows"></tbody></table></div></div></section>
+
+  <div class="zone" id="z-ref">Reference</div>
+  <section class="card"><header tabindex="0" role="button"><h2>Reference</h2><span class="sub">Contracts, policies, templates</span><span class="chev">▾</span></header>
+    <div class="body"><div class="links" id="refs"></div></div></section>
+</div>
+
+<aside id="peek" hidden aria-label="Records behind this number">
+  <header><h3 id="pk-title"></h3><button class="x" id="pk-x" type="button">Close</button></header>
+  <div class="pb"><div class="view" id="pk-view"></div><div class="tw"><table><tbody id="pk-rows"></tbody></table></div>
+  <p class="who">Select a record to open it in CRM.</p></div>
+</aside>
+<div id="toast" role="status" hidden></div>
+<script id="pdec-page">
+(function(){
+'use strict';
+var PREVIEW=/[?&]preview=1/.test(location.search)||typeof ZOHO==='undefined';
+var $=function(s){return document.querySelector(s)};
+var day=864e5,t0=new Date();t0.setHours(0,0,0,0);
+function ymd(x){return x.getFullYear()+'-'+('0'+(x.getMonth()+1)).slice(-2)+'-'+('0'+x.getDate()).slice(-2)}
+function off(s){if(!s)return null;var p=String(s).slice(0,10).split('-');if(p.length<3)return null;return Math.round((new Date(+p[0],+p[1]-1,+p[2])-t0)/day)}
+function d(n){return new Date(t0.getTime()+n*day)}
+function fmt(x){return x.toLocaleDateString(undefined,{month:'short',day:'numeric'})}
+function rel(n){return n<0?Math.abs(n)+'d overdue':n===0?'Today':'in '+n+'d'}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function pick(v){return v&&v!=='-None-'?v:''}
+function look(l){return l&&l.name?l.name:''}
+
+/* ---------- data layer ---------- */
+var SOL_OPEN=['Identified','Reviewing','Scoring','Decision Pending','Go - In Progress','Submitted','Shortlisted / Orals'];
+var CLOSED_DEL={Submitted:1,Waived:1};
+var MODS={Deliverables:'Deliverables',Compliance:'Compliance_Items',Metrics:'Program_Metrics',Solicitations:'Solicitations'};
+var D={del:[],comp:[],met:[],dev:[]},ERR={},ME=null;
+
+function rowsOf(r){return (r&&(r.data||r.rows))||[]}
+function coql(q){return ZOHO.CRM.API.coql({select_query:q}).then(rowsOf)}
+function coqlSafe(name,full,plain){return coql(full).catch(function(){return plain?coql(plain):Promise.reject()}).catch(function(){ERR[name]=1;return []})}
+
+function sample(){
+  var a=function(n){return ymd(d(n))};
+  return {
+   del:[
+    {id:'d1',Name:'Quarterly participant outcomes report',Due_Date:a(-9),Deliverable_Status:'In Progress',Hard_Deadline:true,Program:'Treatment Court',Funder:'Wisconsin DHS','Contract.Name':'Sheboygan County HHS'},
+    {id:'d2',Name:'Monthly invoice with service log',Due_Date:a(-3),Deliverable_Status:'Not Started',Hard_Deadline:false,Program:'Electronic Monitoring',Funder:'County','Contract.Name':'Waushara County Jail'},
+    {id:'d3',Name:'Annual program narrative',Due_Date:a(2),Deliverable_Status:'In Progress',Hard_Deadline:false,Program:'Electronic Monitoring',Funder:'County','Contract.Name':'Taylor Co Sheriff'},
+    {id:'d4',Name:'Federal progress report SF-PPR',Due_Date:a(6),Deliverable_Status:'Not Started',Hard_Deadline:true,Program:'Re-entry',Funder:'BJA','Contract.Name':'JusticePoint Re-entry Grant'},
+    {id:'d5',Name:'Staff credential roster',Due_Date:a(12),Deliverable_Status:'Not Started',Hard_Deadline:false,Program:'Treatment Court',Funder:'Wisconsin DHS','Contract.Name':'Sheboygan County HHS'},
+    {id:'d6',Name:'Evaluation data submission',Due_Date:a(27),Deliverable_Status:'Not Started',Hard_Deadline:true,Program:'Re-entry',Funder:'BJA','Contract.Name':'JusticePoint Re-entry Grant'}],
+   comp:[
+    {id:'c1',Name:'State vendor registration renewal',Category:'License',Authority:'Wisconsin DOA',Expiry_or_Review_Date:a(-4),Compliance_Status:'Expired'},
+    {id:'c2',Name:'Business associate agreement review',Category:'Policy Review',Authority:'HIPAA',Expiry_or_Review_Date:a(21),Compliance_Status:'Due Soon'},
+    {id:'c3',Name:'Background check policy review',Category:'Policy Review',Authority:'Internal',Expiry_or_Review_Date:a(63),Compliance_Status:'Due Soon'},
+    {id:'c4',Name:'Data security attestation',Category:'Audit',Authority:'CJIS',Expiry_or_Review_Date:a(88),Compliance_Status:'Current'}],
+   met:[
+    {id:'m1',Program:'Treatment Court',Metric:'Participants enrolled',Period_End:a(-14),Target:120,Actual:96,Metric_Status:'At Risk'},
+    {id:'m2',Program:'Electronic Monitoring',Metric:'Active participants',Period_End:a(-14),Target:310,Actual:325,Metric_Status:'On Track'},
+    {id:'m3',Program:'Re-entry',Metric:'Employment placements',Period_End:a(-14),Target:40,Actual:19,Metric_Status:'Behind'}],
+   dev:[
+    {id:'s1',Name:'Charlotte CCPA EM Services',Status:'Reviewing',Bid_Decision:'Pending',Proposal_Due:a(5)},
+    {id:'s2',Name:'Taylor Co Sheriff EM Services',Status:'Submitted',Bid_Decision:'Prime',Proposal_Due:a(-6)},
+    {id:'s3',Name:'Fond du Lac Co HHS EM Services (anticipated)',Status:'Identified',Bid_Decision:null,Proposal_Due:null}]};
+}
+function loadAll(){
+  ERR={};
+  if(PREVIEW){var s=sample();D=s;return Promise.resolve()}
+  var f="Name, Due_Date, Deliverable_Status, Hard_Deadline, Program, Funder, Deliverable_Type, Recurrence, Submitted_Date";
+  return Promise.all([
+    coqlSafe('Deliverables',"select "+f+", Contract.Name, Account.Account_Name from Deliverables where id is not null order by Due_Date asc limit 200","select "+f+" from Deliverables where id is not null limit 200"),
+    coqlSafe('Compliance',"select Name, Category, Program, Authority, Expiry_or_Review_Date, Compliance_Status, Contract.Name from Compliance_Items where id is not null order by Expiry_or_Review_Date asc limit 200","select Name, Category, Program, Authority, Expiry_or_Review_Date, Compliance_Status from Compliance_Items where id is not null limit 200"),
+    coqlSafe('Metrics',"select Name, Program, Metric, Period_Start, Period_End, Target, Actual, Metric_Status, Contract.Name from Program_Metrics where id is not null order by Period_End desc limit 200","select Name, Program, Metric, Period_Start, Period_End, Target, Actual, Metric_Status from Program_Metrics where id is not null limit 200"),
+    coqlSafe('Solicitations',"select Name, Status, Bid_Decision, Proposal_Due from Solicitations where Status in ("+SOL_OPEN.map(function(s){return"'"+s+"'"}).join(',')+") limit 200")
+  ]).then(function(r){D={del:r[0],comp:r[1],met:r[2],dev:r[3]}});
+}
+
+/* ---------- derived rows ---------- */
+function delRows(){return D.del.map(function(r){
+  var n=off(r.Due_Date),st=pick(r.Deliverable_Status)||'Not Started',closed=!!CLOSED_DEL[st];
+  return {id:r.id,mod:'Deliverables',t:r.Name||'(untitled)',n:n,c:look(r.Contract)||r['Contract.Name']||look(r.Account)||r['Account.Account_Name']||'',f:r.Funder||'',p:pick(r.Program),s:st,h:!!r.Hard_Deadline,closed:closed,late:!closed&&n!==null&&n<0};
+}).sort(function(a,b){return (a.n===null)-(b.n===null)||a.n-b.n})}
+function compRows(){return D.comp.map(function(r){
+  var n=off(r.Expiry_or_Review_Date);return {id:r.id,mod:'Compliance_Items',t:r.Name||'(untitled)',c:pick(r.Category),a:r.Authority||'',n:n,s:pick(r.Compliance_Status)||'Current',na:r.Compliance_Status==='Not Applicable'};
+}).filter(function(r){return !r.na&&r.n!==null}).sort(function(a,b){return a.n-b.n})}
+function metRows(){
+  var latest={};
+  D.met.forEach(function(r){var k=(r.Program||'')+'|'+(r.Metric||'');var e=latest[k];if(!e||String(r.Period_End||'')>String(e.Period_End||''))latest[k]=r});
+  return Object.keys(latest).map(function(k){var r=latest[k];
+    return {id:r.id,mod:'Program_Metrics',p:pick(r.Program)||'No program',m:r.Metric||r.Name||'',per:r.Period_End?fmt(d(off(r.Period_End))):'',t:r.Target,a:r.Actual,s:pick(r.Metric_Status)||'On Track'};
+  }).sort(function(a,b){return String(a.p).localeCompare(b.p)||String(a.m).localeCompare(b.m)})}
+function devRows(){return D.dev.map(function(r){
+  return {id:r.id,mod:'Solicitations',t:r.Name||'(untitled)',n:off(r.Proposal_Due),st:r.Status||'',g:r.Bid_Decision||''};
+}).sort(function(a,b){return (a.n===null)-(b.n===null)||a.n-b.n})}
+
+function pill(c,t){return '<span class="pill p-'+c+'">'+esc(t)+'</span>'}
+function stCls(s){return /overdue|expired|behind/i.test(s)?'bad':/risk|due soon|review|progress/i.test(s)?'warn':/current|track|submitted|waived/i.test(s)?'ok':'n'}
+function note(name,msg){return ERR[name]?'<p class="err">'+msg+'</p>':''}
+
+/* ---------- render ---------- */
+var filt='all',TILES=[],DEL=[];
+function chips(){
+  var c=[['all','All'],['overdue','Overdue'],['30','Next 30 days'],['hard','Hard deadlines']];
+  $('#del-chips').innerHTML=c.map(function(x){return '<button type="button" class="chip" data-f="'+x[0]+'" aria-pressed="'+(filt===x[0])+'">'+x[1]+'</button>'}).join('');
+}
+function paintDel(){
+  var open=DEL.filter(function(r){return !r.closed});
+  var rows=DEL.filter(function(r){
+    if(filt==='overdue')return r.late;
+    if(filt==='30')return !r.closed&&r.n!==null&&r.n>=0&&r.n<=30;
+    if(filt==='hard')return r.h&&!r.closed;
+    return !r.closed;});
+  var over=open.filter(function(r){return r.late}).length,due30=open.filter(function(r){return r.n!==null&&r.n>=0&&r.n<=30}).length;
+  $('#del-sub').textContent=ERR.Deliverables?'':over+' overdue · '+due30+' due in the next 30 days';
+  var empty=D.del.length?'No deliverables match this filter.':'No deliverables yet. Add the first one from the Deliverables tab.';
+  $('#del-rows').innerHTML=ERR.Deliverables?'<tr><td colspan="5" class="empty">Deliverables are not shared with your profile yet. Ask an administrator to share the module.</td></tr>':rows.length?rows.map(function(r,i){
+    var nn=r.n===null;
+    return '<tr class="go" tabindex="0" data-k="del" data-i="'+DEL.indexOf(r)+'"><td class="n">'+(nn?'No date':fmt(d(r.n))+'<br><small class="mut">'+rel(r.n)+'</small>')+'</td><td>'+esc(r.t)+(r.h?'<span class="hard">HARD</span>':'')+'</td><td>'+esc(r.c||'—')+(r.f?'<br><small class="mut">'+esc(r.f)+'</small>':'')+'</td><td>'+esc(r.p||'—')+'</td><td>'+pill(r.late?'bad':stCls(r.s),r.late?'Overdue':r.s)+'</td></tr>'}).join(''):'<tr><td colspan="5" class="empty">'+empty+'</td></tr>';
+}
+var COMP=[],MET=[],DEV=[];
+function paint(){
+  DEL=delRows();COMP=compRows();MET=metRows();DEV=devRows();
+  var open=DEL.filter(function(r){return !r.closed});
+  var overdue=open.filter(function(r){return r.late}),due30=open.filter(function(r){return r.n!==null&&r.n>=0&&r.n<=30});
+  var comp90=COMP.filter(function(r){return r.n<=90});
+  var by=function(s){return MET.filter(function(r){return r.s===s})};
+  var behind=by('Behind'),risk=by('At Risk'),ok=by('On Track');
+  var sols=DEV.filter(function(r){return r.st!=='Submitted'});
+  var pend=DEV.filter(function(r){return r.st!=='Submitted'&&(!r.g||r.g==='Pending')});
+  var dl=function(r){return [r.t,r.c||r.f||'',r.n===null?'No date':rel(r.n),r]};
+  TILES=[
+   ['Overdue deliverables',overdue.length,'bad','Deliverables','Due_Date before today, not submitted',overdue.map(dl),'Deliverables'],
+   ['Due in 30 days',due30.length,'warn','Deliverables','Due_Date within 30 days, not submitted',due30.map(dl),'Deliverables'],
+   ['Compliance within 90 days',comp90.length,'warn','Compliance Items','Expiry_or_Review_Date within 90 days',comp90.map(function(r){return [r.t,r.a||r.c,rel(r.n),r]}),'Compliance'],
+   ['Metrics behind',behind.length,'bad','Program Metrics','Metric_Status = Behind, latest period',behind.map(function(r){return [r.m,r.p,r.a+' of '+r.t,r]}),'Metrics'],
+   ['Metrics at risk',risk.length,'warn','Program Metrics','Metric_Status = At Risk, latest period',risk.map(function(r){return [r.m,r.p,r.a+' of '+r.t,r]}),'Metrics'],
+   ['Metrics on track',ok.length,'ok','Program Metrics','Metric_Status = On Track, latest period',ok.map(function(r){return [r.m,r.p,r.a+' of '+r.t,r]}),'Metrics'],
+   ['Open solicitations',sols.length,'','Solicitations','Status in open stages',sols.map(function(r){return [r.t,r.st,r.g||'Not decided',r]}),'Solicitations'],
+   ['Go / no-go pending',pend.length,'warn','Solicitations','Bid_Decision pending or empty',pend.map(function(r){return [r.t,r.st,r.g||'Not decided',r]}),'Solicitations']];
+  $('#tiles').innerHTML=TILES.map(function(t,i){
+    var bad=ERR[t[6]];
+    return '<button type="button" class="tile '+(bad?'':t[2])+'" data-i="'+i+'"><span class="v">'+(bad?'—':t[1])+'</span><span class="l">'+t[0]+'</span></button>'}).join('');
+  chips();paintDel();
+
+  var cr=comp90.slice();
+  $('#comp-sub').textContent=ERR.Compliance?'':cr.length+' expiring or due for review within 90 days';
+  $('#comp-rows').innerHTML=ERR.Compliance?'<tr><td colspan="5" class="empty">Compliance Items are not shared with your profile yet.</td></tr>':cr.length?cr.map(function(r,i){
+    return '<tr class="go" tabindex="0" data-k="comp" data-i="'+COMP.indexOf(r)+'"><td class="n">'+fmt(d(r.n))+'<br><small class="mut">'+rel(r.n)+'</small></td><td>'+esc(r.t)+'</td><td>'+esc(r.c||'—')+'</td><td>'+esc(r.a||'—')+'</td><td>'+pill(r.n<0?'bad':stCls(r.s),r.n<0?'Expired':r.s)+'</td></tr>'}).join(''):'<tr><td colspan="5" class="empty">'+(D.comp.length?'Nothing expires or comes up for review in the next 90 days.':'No compliance items yet. Add the first one from the Compliance Items tab.')+'</td></tr>';
+
+  $('#perf-rows').innerHTML=ERR.Metrics?'<tr><td colspan="7" class="empty">Program Metrics are not shared with your profile yet.</td></tr>':MET.length?MET.map(function(r,i){
+    var has=typeof r.t==='number'&&r.t>0&&typeof r.a==='number',pct=has?Math.min(100,Math.round(r.a/r.t*100)):0,c=stCls(r.s);
+    return '<tr class="go" tabindex="0" data-k="met" data-i="'+i+'"><td>'+esc(r.p)+'</td><td>'+esc(r.m)+'</td><td>'+esc(r.per||'—')+'</td><td class="n">'+(r.t==null?'—':r.t)+'</td><td class="n">'+(r.a==null?'—':r.a)+'</td><td>'+(has?'<div class="meter '+c+'" role="img" aria-label="'+pct+' percent of target"><i style="width:'+pct+'%"></i></div>':'')+'</td><td>'+pill(c,r.s)+'</td></tr>'}).join(''):'<tr><td colspan="7" class="empty">No program metrics yet. Add the first one from the Program Metrics tab.</td></tr>';
+
+  $('#dev-rows').innerHTML=ERR.Solicitations?'<tr><td colspan="4" class="empty">Solicitations are not shared with your profile yet.</td></tr>':DEV.length?DEV.map(function(r,i){
+    return '<tr class="go" tabindex="0" data-k="dev" data-i="'+i+'"><td class="n">'+(r.n===null?'Not set':fmt(d(r.n))+'<br><small class="mut">'+rel(r.n)+'</small>')+'</td><td>'+esc(r.t)+'</td><td>'+pill('n',r.st)+'</td><td>'+pill(!r.g||r.g==='Pending'?'warn':'ok',r.g||'Not decided')+'</td></tr>'}).join(''):'<tr><td colspan="4" class="empty">No open solicitations right now.</td></tr>';
+}
+
+/* ---------- reference links (the module tabs) ---------- */
+var REFS=[['Deliverables','Every deliverable, all programs','Deliverables'],['Compliance Items','Registrations, policies, audits','Compliance_Items'],['Program Metrics','Targets and actuals by period','Program_Metrics'],['Solicitations','Bids and go/no-go','Solicitations'],['Contracts','Contract records and summaries','Contracts']];
+function tabUrl(m){return '/crm/org882980956/tab/'+m}
+$('#refs').innerHTML=REFS.map(function(r){return '<a href="'+tabUrl(r[2])+'" target="_top"><strong>'+r[0]+'</strong><small>'+r[1]+'</small></a>'}).join('');
+
+/* ---------- peek panel ---------- */
+function openRec(mod,id){
+  if(PREVIEW)return toast('Preview: would open the '+mod.replace(/_/g,' ')+' record.');
+  try{ZOHO.CRM.UI.Record.open({Entity:mod,RecordID:id})}catch(e){try{window.top.location.href='/crm/org882980956/tab/'+mod+'/'+id}catch(_){}}
+}
+function peek(title,view,rows,facts){
+  $('#pk-title').textContent=title;$('#pk-view').textContent=view;
+  var h='';
+  if(facts)h+=facts.map(function(f){return '<tr><td>'+esc(f[0])+'</td><td>'+esc(f[1])+'</td><td></td></tr>'}).join('');
+  if(rows)h+=rows.length?rows.map(function(r,i){return '<tr class="go" tabindex="0" data-rec="'+i+'"><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td><td class="n">'+esc(r[2])+'</td></tr>'}).join(''):'<tr><td class="empty">Nothing here.</td></tr>';
+  $('#pk-rows').innerHTML=h;PK_ROWS=rows||[];
+  $('#peek').hidden=false;$('#pk-x').focus();
+}
+var PK_ROWS=[],PK_REC=null;
+$('#tiles').addEventListener('click',function(e){var b=e.target.closest('.tile');if(!b)return;var t=TILES[b.dataset.i];PK_REC=null;peek(t[0],t[3]+' · '+t[4],t[5])});
+$('#pk-rows').addEventListener('click',function(e){var tr=e.target.closest('tr[data-rec]');if(!tr)return;var r=PK_ROWS[tr.dataset.rec];if(r&&r[3])openRec(r[3].mod,r[3].id)});
+function recPeek(list,i){
+  var r=list[i];if(!r)return;
+  var f=[];
+  if(r.mod==='Deliverables')f=[['Contract',r.c||'—'],['Funder',r.f||'—'],['Program',r.p||'—'],['Due',r.n===null?'No date':fmt(d(r.n))+' ('+rel(r.n)+')'],['Hard deadline',r.h?'Yes':'No'],['Status',r.s]];
+  else if(r.mod==='Compliance_Items')f=[['Category',r.c||'—'],['Authority',r.a||'—'],['Date',fmt(d(r.n))+' ('+rel(r.n)+')'],['Status',r.s]];
+  else if(r.mod==='Program_Metrics')f=[['Program',r.p],['Period ending',r.per||'—'],['Target',r.t==null?'—':r.t],['Actual',r.a==null?'—':r.a],['Status',r.s]];
+  else f=[['Stage',r.st],['Proposal due',r.n===null?'Not set':fmt(d(r.n))],['Go / no-go',r.g||'Not decided']];
+  PK_REC=r;peek(r.t||r.m||'Record',r.mod.replace(/_/g,' '),null,f.concat([['','']]));
+  var openRow=document.createElement('tr');openRow.innerHTML='<td colspan="3"><button type="button" class="th" id="pk-open">Open record in CRM</button></td>';$('#pk-rows').lastChild.replaceWith(openRow);
+  $('#pk-open').addEventListener('click',function(){openRec(r.mod,r.id)});
+}
+var LISTS={del:function(){return DEL},comp:function(){return COMP},met:function(){return MET},dev:function(){return DEV}};
+['#del-rows','#comp-rows','#perf-rows','#dev-rows'].forEach(function(s){
+  var h=function(e){var tr=e.target.closest('tr.go');if(!tr)return;recPeek(LISTS[tr.dataset.k](),+tr.dataset.i)};
+  $(s).addEventListener('click',h);
+  $(s).addEventListener('keydown',function(e){if(e.key==='Enter'){h(e)}});
+});
+$('#pk-x').addEventListener('click',function(){$('#peek').hidden=true});
+$('#del-chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;filt=b.dataset.f;chips();paintDel()});
+
+function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(function(){t.hidden=true},2600)}
+
+/* ---------- collapse ---------- */
+function toggle(h){h.parentNode.classList.toggle('closed');h.setAttribute('aria-expanded',String(!h.parentNode.classList.contains('closed')));try{var o=[].map.call(document.querySelectorAll('section.card.closed'),function(s){return s.id}).filter(Boolean);localStorage.setItem('pdec-closed',o.join())}catch(_){}}
+[].forEach.call(document.querySelectorAll('section.card>header'),function(h){h.setAttribute('aria-expanded','true');h.addEventListener('click',function(){toggle(h)});h.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(h)}})});
+try{(localStorage.getItem('pdec-closed')||'').split(',').forEach(function(id){var s=id&&document.getElementById(id);if(s){s.classList.add('closed');s.firstElementChild.setAttribute('aria-expanded','false')}})}catch(_){}
+
+/* ---------- display settings ---------- */
+var DS={t:'system',b:100,c:100};
+try{var sv=JSON.parse(localStorage.getItem('pdec-display')||'null');if(sv){DS.t=sv.t||'system';DS.b=+sv.b||100;DS.c=+sv.c||100}}catch(_){}
+function applyDS(save){
+  var r=document.documentElement;
+  if(DS.t==='system')r.removeAttribute('data-theme');else r.dataset.theme=DS.t;
+  r.style.filter=(DS.b===100&&DS.c===100)?'':'brightness('+DS.b+'%) contrast('+DS.c+'%)';
+  [].forEach.call(document.querySelectorAll('#seg button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.t===DS.t))});
+  $('#bri').value=DS.b;$('#con').value=DS.c;$('#bri-v').textContent=DS.b+'%';$('#con-v').textContent=DS.c+'%';
+  if(save)try{localStorage.setItem('pdec-display',JSON.stringify(DS))}catch(_){}
+}
+$('#seg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;DS.t=b.dataset.t;applyDS(true)});
+$('#bri').addEventListener('input',function(){DS.b=+this.value;applyDS(true)});
+$('#con').addEventListener('input',function(){DS.c=+this.value;applyDS(true)});
+$('#dreset').addEventListener('click',function(){DS={t:'system',b:100,c:100};applyDS(true)});
+$('#theme').addEventListener('click',function(e){e.stopPropagation();var p=$('#dpanel');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))});
+document.addEventListener('click',function(e){var p=$('#dpanel');if(!p.hidden&&!e.target.closest('.disp')){p.hidden=true;$('#theme').setAttribute('aria-expanded','false')}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){$('#dpanel').hidden=true;$('#peek').hidden=true;$('#theme').setAttribute('aria-expanded','false')}});
+applyDS(false);
+
+/* ---------- boot ---------- */
+function stamp(){$('#asof').textContent=(PREVIEW?'Sample data · ':'')+'Updated '+new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}
+function refresh(){$('#asof').textContent='Loading…';return loadAll().then(function(){paint();stamp()}).catch(function(){paint();stamp()})}
+$('#refresh').addEventListener('click',refresh);
+function start(){
+  if(PREVIEW){$('#src').hidden=false}
+  var go=function(){refresh()};
+  if(!PREVIEW)ZOHO.CRM.CONFIG.getCurrentUser().then(function(r){var u=r&&r.users&&r.users[0];if(u){ME=u;$('#who').textContent=(u.full_name||'')+(u.role&&u.role.name?' · '+u.role.name:'')}}).catch(function(){});
+  go();
+}
+if(PREVIEW)start();
+else{var booted=false;ZOHO.embeddedApp.on('PageLoad',function(){if(!booted){booted=true;start()}});ZOHO.embeddedApp.init();setTimeout(function(){if(!booted){booted=true;start()}},2500)}
+window.__pdec={D:function(){return D},paint:paint,delRows:delRows,compRows:compRows,metRows:metRows,devRows:devRows,off:off};
+})();
+
+</script>
+<script id="work-today-js">
+/* JusticePoint widget kit: jpk.js v1.2.1. One IIFE, exposes window.JPK. No dependencies, no network, no AI calls.
+   Works standalone in a browser; JPK.crm is guarded so the Zoho SDK is optional.
+   Changes from kit v1.0.0 (kit.js): JPK.zoho -> JPK.crm (fn -> run; coql added; coqlAll pages over coql),
+   JPK.nextStep -> JPK.next, JPK.about -> JPK.aboutButton. No aliases: an old call fails loudly.
+   Changes in v1.2.1: JPK.workList opens items from the unassigned group too (they were listed but did nothing when picked).
+   Changes in v1.2.0 (wave A patterns, all default off; load jpk-patterns-v3.css after jpk-theme-v3.css):
+   JPK.table gains options select, expand, cards; new JPK.workList, ownerStrip, roleList, taskList, checkAnswers, field,
+   errorSummary; pure logic is exposed as JPK.model so it can be tested without a browser. Nothing here writes to Zoho:
+   every action is a callback the widget supplies. */
+(function () {
+  'use strict';
+
+  /* In node (model tests) there is no DOM: a stub keeps the module-level listeners harmless. */
+  var doc = typeof document !== 'undefined' ? document : { addEventListener: function () {}, querySelector: function () { return null; } };
+  var uidN = 0;
+  function uid(p) { uidN += 1; return (p || 'jpk') + '-' + uidN; }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function el(target) {
+    if (!target) return null;
+    return typeof target === 'string' ? doc.querySelector(target) : target;
+  }
+  function reduced() {
+    try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+  }
+  function toNode(x) {
+    if (x && x.nodeType) return x;
+    var t = doc.createElement('template');
+    t.innerHTML = String(x == null ? '' : x);
+    return t.content;
+  }
+  var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  function focusables(root) {
+    return Array.prototype.slice.call(root.querySelectorAll(FOCUSABLE)).filter(function (n) {
+      return !n.hidden && n.offsetParent !== null || n === doc.activeElement;
+    });
+  }
+
+  /* ---------------- toast ---------------- */
+  var toastEl = null, toastT = null;
+  function toast(msg) {
+    if (!toastEl) {
+      toastEl = doc.createElement('div');
+      toastEl.id = 'jpk-toast';
+      toastEl.setAttribute('role', 'status');
+      toastEl.setAttribute('aria-live', 'polite');
+      doc.body.appendChild(toastEl);
+    }
+    toastEl.textContent = String(msg);
+    toastEl.classList.add('on');
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { toastEl.classList.remove('on'); }, 2800);
+  }
+
+  /* ---------------- drawer ---------------- */
+  var dr = null, lastFocus = null;
+  function buildDrawer() {
+    var root = doc.createElement('div');
+    root.className = 'jpk-dr';
+    root.hidden = true;
+    root.innerHTML = '<div class="scrim"></div>' +
+      '<aside role="dialog" aria-modal="true" aria-labelledby="jpk-dr-t" tabindex="-1">' +
+      '<header><h3 id="jpk-dr-t"></h3><button type="button" class="iconbtn" id="jpk-dr-x" aria-label="Close">&times;</button></header>' +
+      '<div class="jpk-dr-b"></div></aside>';
+    doc.body.appendChild(root);
+    dr = {
+      root: root,
+      aside: root.querySelector('aside'),
+      title: root.querySelector('#jpk-dr-t'),
+      body: root.querySelector('.jpk-dr-b'),
+      x: root.querySelector('#jpk-dr-x')
+    };
+    dr.x.addEventListener('click', closeDrawer);
+    root.querySelector('.scrim').addEventListener('click', closeDrawer);
+    doc.addEventListener('keydown', function (e) {
+      if (!dr || dr.root.hidden) return;
+      if (e.key === 'Escape') { e.preventDefault(); closeDrawer(); return; }
+      if (e.key === 'Tab') {
+        var f = focusables(dr.aside);
+        if (!f.length) { e.preventDefault(); return; }
+        var first = f[0], last = f[f.length - 1], a = doc.activeElement;
+        if (!dr.aside.contains(a)) { e.preventDefault(); first.focus(); }
+        else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+    doc.addEventListener('focusin', function (e) {
+      if (dr && !dr.root.hidden && !dr.aside.contains(e.target)) dr.x.focus();
+    });
+  }
+  function openDrawer(o) {
+    o = o || {};
+    if (!dr) buildDrawer();
+    if (dr.root.hidden) lastFocus = doc.activeElement;
+    dr.title.textContent = o.title || '';
+    dr.body.innerHTML = '';
+    if (o.node) dr.body.appendChild(o.node);
+    else dr.body.appendChild(toNode(o.html));
+    dr.root.hidden = false;
+    dr.aside.scrollTop = 0;
+    dr.x.focus();
+    if (typeof o.onMount === 'function') o.onMount(dr.body);
+    return dr.body;
+  }
+  function closeDrawer() {
+    if (!dr || dr.root.hidden) return;
+    dr.root.hidden = true;
+    dr.body.innerHTML = '';
+    var f = lastFocus; lastFocus = null;
+    if (f && f.focus && doc.contains(f)) { try { f.focus(); } catch (e) { /* ignore */ } }
+  }
+  var drawer = { open: openDrawer, close: closeDrawer, isOpen: function () { return !!dr && !dr.root.hidden; } };
+
+  /* ---------------- chip ---------------- */
+  var TONES = { good: 1, warn: 1, bad: 1, info: 1, neutral: 1 };
+  function chip(text, tone) {
+    var t = TONES[tone] && tone !== 'neutral' ? ' ' + tone : '';
+    return '<span class="chip' + t + '">' + esc(text) + '</span>';
+  }
+  chip.el = function (text, tone) {
+    var t = doc.createElement('template');
+    t.innerHTML = chip(text, tone);
+    return t.content.firstChild;
+  };
+
+  /* ---------------- flash ---------------- */
+  function flash(node) {
+    node = el(node);
+    if (!node || reduced()) return;
+    node.classList.remove('flash');
+    void node.offsetWidth;
+    node.classList.add('flash');
+  }
+
+  /* ---------------- table ---------------- */
+  function table(o) {
+    var mount = el(o.mount);
+    var cols = o.columns || [];
+    var filters = (o.filters || []).slice();
+    var hasAll = filters.some(function (f) { return f.key === 'all'; });
+    if (filters.length && !hasAll) filters.unshift({ key: 'all', label: 'All', test: function () { return true; } });
+    var state = { rows: (o.rows || []).slice(), sortKey: null, dir: 1, filter: o.filter || (filters.length ? filters[0].key : null) };
+    var empty = o.empty || { title: 'Nothing here', hint: '' };
+    /* v1.2.0 options, all off unless asked for. select.allowed must be true (the widget passes the Admin check). */
+    var sel = o.select && o.select.allowed ? o.select : null;
+    var exp = typeof o.expand === 'function' ? o.expand : null;
+    var picked = {}, opened = {}, lastList = [];
+    function keyOf(r, i) { return sel && sel.rowId ? String(sel.rowId(r)) : String(i); }
+    function narrow() { try { return !!(window.matchMedia && window.matchMedia('(max-width:700px)').matches); } catch (e) { return false; } }
+
+    mount.innerHTML = '';
+    var pills = null;
+    if (filters.length) {
+      pills = doc.createElement('div');
+      pills.className = 'row';
+      pills.style.marginBottom = '10px';
+      pills.setAttribute('role', 'group');
+      pills.setAttribute('aria-label', o.filterLabel || 'Filter');
+      mount.appendChild(pills);
+      pills.addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-f]');
+        if (b) setFilter(b.getAttribute('data-f'));
+      });
+    }
+    var bar = null;
+    if (sel) {
+      bar = doc.createElement('div'); bar.className = 'jp-batch'; bar.hidden = true;
+      bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Actions for selected rows');
+      bar.innerHTML = '<b class="jp-count" aria-live="polite"></b><span class="jp-sum"></span><span class="jp-acts"></span><button type="button" class="btn sm jp-cancel">Cancel</button>';
+      mount.appendChild(bar);
+      var acts = bar.querySelector('.jp-acts');
+      (sel.actions || []).forEach(function (a, ai) {
+        var b = doc.createElement('button'); b.type = 'button'; b.className = 'btn sm'; b.textContent = a.label; b.setAttribute('data-act', ai);
+        acts.appendChild(b);
+      });
+      bar.addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.classList.contains('jp-cancel')) { clearSel(); return; }
+        var ai = b.getAttribute('data-act');
+        if (ai != null && sel.actions[+ai] && typeof sel.actions[+ai].onClick === 'function') sel.actions[+ai].onClick(selectedRows(), api);
+      });
+    }
+    var tw = doc.createElement('div'); tw.className = 'tw'; mount.appendChild(tw);
+    var emptyEl = doc.createElement('div'); emptyEl.className = 'empty'; emptyEl.hidden = true; mount.appendChild(emptyEl);
+
+    var tbl = doc.createElement('table');
+    if (o.cards) tbl.className = 'jp-cards';
+    if (o.caption) { var cap = doc.createElement('caption'); cap.className = 'sr'; cap.textContent = o.caption; tbl.appendChild(cap); }
+    var thead = doc.createElement('thead'), tbody = doc.createElement('tbody');
+    tbl.appendChild(thead); tbl.appendChild(tbody); tw.appendChild(tbl);
+
+    var tr = doc.createElement('tr');
+    if (sel) {
+      var thc = doc.createElement('th'); thc.className = 'jp-cb'; thc.scope = 'col';
+      thc.innerHTML = '<label class="jp-ck"><input type="checkbox" class="ck jp-all" aria-label="Select all rows"><span class="jp-allt" aria-hidden="true">Select all</span></label>';
+      tr.appendChild(thc);
+    }
+    if (exp) {
+      var thx = doc.createElement('th'); thx.className = 'jp-cx'; thx.scope = 'col';
+      thx.innerHTML = '<span class="sr">Details</span>';
+      tr.appendChild(thx);
+    }
+    cols.forEach(function (c) {
+      var th = doc.createElement('th');
+      th.scope = 'col';
+      var cls = [];
+      if (c.align === 'right') cls.push('r'); else if (c.align === 'center') cls.push('c');
+      if (c.sortable) { cls.push('sort'); th.setAttribute('aria-sort', 'none'); }
+      th.className = cls.join(' ');
+      th.setAttribute('data-k', c.key);
+      if (c.sortable) {
+        var b = doc.createElement('button'); b.type = 'button'; b.textContent = c.label; th.appendChild(b);
+      } else th.textContent = c.label;
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    thead.addEventListener('change', function (e) {
+      if (!e.target.classList.contains('jp-all')) return;
+      lastList.forEach(function (x) { if (e.target.checked) picked[keyOf(x.r, x.i)] = true; else delete picked[keyOf(x.r, x.i)]; });
+      render();
+    });
+    thead.addEventListener('click', function (e) {
+      var th = e.target.closest('th.sort');
+      if (!th) return;
+      var k = th.getAttribute('data-k');
+      state.dir = state.sortKey === k ? -state.dir : 1;
+      state.sortKey = k;
+      render();
+      var again = thead.querySelector('th[data-k="' + k + '"] button');
+      if (again) again.focus();
+    });
+
+    function colFor(k) { for (var i = 0; i < cols.length; i++) if (cols[i].key === k) return cols[i]; return null; }
+    function val(c, row) { return c.sortValue ? c.sortValue(row) : row[c.key]; }
+    function visibleRows() {
+      var f = null;
+      for (var i = 0; i < filters.length; i++) if (filters[i].key === state.filter) f = filters[i];
+      var list = state.rows.map(function (r, i) { return { r: r, i: i }; });
+      if (f && f.test) list = list.filter(function (x) { return f.test(x.r); });
+      if (state.sortKey) {
+        var c = colFor(state.sortKey), d = state.dir;
+        list.sort(function (a, b) {
+          var x = val(c, a.r), y = val(c, b.r);
+          if (x == null && y == null) return 0;
+          if (x == null) return 1;
+          if (y == null) return -1;
+          if (typeof x === 'number' && typeof y === 'number') return d * (x - y);
+          return d * String(x).localeCompare(String(y), undefined, { numeric: true });
+        });
+      }
+      return list;
+    }
+    function cell(c, row) {
+      var td = doc.createElement('td');
+      var cls = [];
+      if (c.align === 'right') cls.push('r'); else if (c.align === 'center') cls.push('c');
+      if (c.num) cls.push('num');
+      td.className = cls.join(' ');
+      if (o.cards) { td.setAttribute('data-label', c.label); if (c.primary) td.className += ' jp-pri'; if (c.full) td.className += ' jp-full'; }
+      var v = c.render ? c.render(row) : esc(row[c.key]);
+      if (v && v.nodeType) td.appendChild(v); else td.innerHTML = v == null ? '' : String(v);
+      return td;
+    }
+    function render() {
+      var list = visibleRows();
+      tbody.innerHTML = '';
+      lastList = list;
+      var keep = {};
+      state.rows.forEach(function (r, i) { keep[keyOf(r, i)] = true; });
+      Object.keys(picked).forEach(function (k) { if (!keep[k]) delete picked[k]; });
+      list.forEach(function (x) {
+        var r = doc.createElement('tr'), key = keyOf(x.r, x.i);
+        r.setAttribute('data-i', x.i);
+        var rc = [];
+        if (o.onRowClick) { rc.push('click'); r.tabIndex = 0; }
+        if (sel || exp) rc.push('jp-row');
+        r.className = rc.join(' ');
+        if (sel) {
+          r.setAttribute('aria-selected', picked[key] ? 'true' : 'false');
+          var tdc = doc.createElement('td'); tdc.className = 'jp-cb';
+          tdc.innerHTML = '<label class="jp-ck"><input type="checkbox" class="ck rk"' + (picked[key] ? ' checked' : '') + ' aria-label="' + esc(sel.label ? sel.label(x.r) : 'Select row') + '"></label>';
+          r.appendChild(tdc);
+        }
+        if (exp) {
+          var tdx = doc.createElement('td'); tdx.className = 'jp-cx';
+          var did = uid('jpk-detail');
+          tdx.innerHTML = '<button type="button" class="jp-chev" aria-expanded="' + (!!opened[key]) + '" aria-controls="' + did + '" aria-label="' + esc(o.expandLabel ? o.expandLabel(x.r) : 'Show details') + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>';
+          r.appendChild(tdx);
+          r.setAttribute('data-detail', did);
+        }
+        cols.forEach(function (c) { r.appendChild(cell(c, x.r)); });
+        tbody.appendChild(r);
+        if (exp) {
+          var dr2 = doc.createElement('tr'); dr2.className = 'jp-detail'; dr2.id = r.getAttribute('data-detail'); dr2.hidden = !opened[key];
+          var dtd = doc.createElement('td'); dtd.colSpan = cols.length + (sel ? 1 : 0) + 1;
+          dr2.appendChild(dtd); tbody.appendChild(dr2);
+          if (opened[key]) fillDetail(dr2, x.r);
+        }
+      });
+      refreshSel();
+      var none = list.length === 0;
+      tw.hidden = none; emptyEl.hidden = !none;
+      emptyEl.innerHTML = '<b>' + esc(empty.title || 'Nothing here') + '</b>' + (empty.hint ? esc(empty.hint) : '');
+      Array.prototype.forEach.call(thead.querySelectorAll('th.sort'), function (th) {
+        var k = th.getAttribute('data-k');
+        th.setAttribute('aria-sort', k === state.sortKey ? (state.dir > 0 ? 'ascending' : 'descending') : 'none');
+      });
+      if (pills) {
+        pills.innerHTML = filters.map(function (f) {
+          return '<button type="button" class="pill" data-f="' + esc(f.key) + '" aria-pressed="' + (f.key === state.filter) + '">' + esc(f.label) + '</button>';
+        }).join('');
+      }
+    }
+    function fillDetail(dr2, row) {
+      var td = dr2.firstChild;
+      if (td.firstChild) return;
+      var v = exp(row);
+      if (v && v.nodeType) td.appendChild(v); else td.innerHTML = v == null ? '' : String(v);
+    }
+    function setOpen(trEl, on) {
+      var i = +trEl.getAttribute('data-i'), key = keyOf(state.rows[i], i);
+      var dr2 = doc.getElementById(trEl.getAttribute('data-detail')), b = trEl.querySelector('.jp-chev');
+      if (on) opened[key] = true; else delete opened[key];
+      if (b) b.setAttribute('aria-expanded', String(!!on));
+      if (dr2) { if (on) fillDetail(dr2, state.rows[i]); dr2.hidden = !on; }
+    }
+    function selectedRows() {
+      var out = [];
+      state.rows.forEach(function (r, i) { if (picked[keyOf(r, i)]) out.push(r); });
+      return out;
+    }
+    function refreshSel() {
+      if (!sel) return;
+      var rows = selectedRows(), m = model.selectionSummary(rows, sel.sum, sel.noun, sel.format);
+      bar.hidden = rows.length === 0;
+      bar.querySelector('.jp-count').textContent = rows.length ? m.text : '';
+      bar.querySelector('.jp-sum').textContent = rows.length && sel.sum ? (sel.sumLabel ? sel.sumLabel + ' ' : '') + m.sumText : '';
+      if (sel.toolbar) { var tb = el(sel.toolbar); if (tb) tb.hidden = rows.length > 0; }
+      var all = thead.querySelector('.jp-all');
+      if (all) {
+        var n = lastList.filter(function (x) { return picked[keyOf(x.r, x.i)]; }).length;
+        all.checked = lastList.length > 0 && n === lastList.length;
+        all.indeterminate = n > 0 && n < lastList.length;
+      }
+    }
+    function clearSel() { picked = {}; render(); }
+    if (sel || exp) {
+      tbody.addEventListener('change', function (e) {
+        if (!e.target.classList.contains('rk')) return;
+        var t = e.target.closest('tr[data-i]'), i = +t.getAttribute('data-i'), key = keyOf(state.rows[i], i);
+        if (e.target.checked) picked[key] = true; else delete picked[key];
+        t.setAttribute('aria-selected', e.target.checked ? 'true' : 'false');
+        refreshSel();
+      });
+      tbody.addEventListener('click', function (e) {
+        var ch = e.target.closest('.jp-chev');
+        var t = e.target.closest('tr.jp-row');
+        if (ch && t) { setOpen(t, ch.getAttribute('aria-expanded') !== 'true'); return; }
+        /* whole row opens on a phone */
+        if (exp && t && narrow() && !e.target.closest('a,button,input,select,textarea,label')) setOpen(t, !opened[keyOf(state.rows[+t.getAttribute('data-i')], +t.getAttribute('data-i'))]);
+      });
+    }
+    function activate(e, tr) {
+      var i = +tr.getAttribute('data-i');
+      o.onRowClick(state.rows[i], i, e);
+    }
+    if (o.onRowClick) {
+      tbody.addEventListener('click', function (e) {
+        var ctl = e.target.closest('a,button,input,select,textarea,label.jp-ck');
+        if (ctl && !ctl.hasAttribute('data-row')) return;
+        var t = e.target.closest('tr[data-i]'); if (t) activate(e, t);
+      });
+      tbody.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        var t = e.target.closest('tr[data-i]');
+        if (!t || e.target !== t) return;
+        e.preventDefault(); activate(e, t);
+      });
+    }
+    function setRows(rows) { state.rows = (rows || []).slice(); render(); }
+    function setFilter(k) { state.filter = k; render(); }
+    var api = {
+      setRows: setRows, setFilter: setFilter, el: tbl, getFilter: function () { return state.filter; },
+      getSelected: selectedRows, clearSelection: clearSel,
+      expand: function (i, on) { var t = tbody.querySelector('tr.jp-row[data-i="' + i + '"]'); if (t) setOpen(t, on !== false); },
+      isOpen: function (i) { return !!opened[keyOf(state.rows[i], i)]; }
+    };
+    render();
+    return api;
+  }
+
+  /* ---------------- chart ---------------- */
+  function niceNum(r) {
+    var e = Math.floor(Math.log(r) / Math.LN10), f = r / Math.pow(10, e);
+    var n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+    return n * Math.pow(10, e);
+  }
+  function chart(o) {
+    var mount = el(o.mount);
+    mount.classList.add('chartwrap');
+    var series = (o.series || []).slice();
+    var thr = o.threshold ? { value: o.threshold.value, label: o.threshold.label || '' } : null;
+    var yFormat = o.yFormat || function (v) { return String(Math.round(v * 10) / 10); };
+    var H = o.height || 180;
+    var COLORS = ['var(--s1)', 'var(--s2)', 'var(--s3)'];
+    var cur = null, W = 0, geo = null, ro = null;
+    var ids = { live: uid('jpk-live') };
+
+    function ptsOf(s) { return (s && s.points) || []; }
+    function base() { return ptsOf(series[0]); }
+    function labelOf(p) { return p.label != null ? p.label : String(p.x); }
+
+    function draw() {
+      var hadFocus = mount.querySelector('svg') && doc.activeElement === mount.querySelector('svg');
+      W = Math.floor(mount.clientWidth);
+      if (!W) return;
+      W = Math.max(240, W);
+      var pts0 = base(), n = pts0.length;
+      var all = [];
+      series.forEach(function (s) { ptsOf(s).forEach(function (p) { if (p.y != null && isFinite(p.y)) all.push(p.y); }); });
+      if (thr && isFinite(thr.value)) all.push(thr.value);
+      if (!all.length) { mount.innerHTML = '<div class="empty"><b>No data</b></div>'; return; }
+      var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+      if (o.yMin != null) lo = o.yMin; else if (lo >= 0 && lo < hi * 0.4) lo = 0; else lo -= (hi - lo) * 0.08;
+      if (o.yMax != null) hi = o.yMax;
+      if (hi <= lo) hi = lo + 1;
+      var step = niceNum((hi - lo) / 4);
+      var ymin = o.yMin != null ? lo : Math.floor(lo / step) * step;
+      var ymax = o.yMax != null ? hi : Math.ceil(hi / step) * step;
+      var ticks = []; for (var tv = ymin; tv <= ymax + step / 1000; tv += step) ticks.push(tv);
+      var maxLab = ticks.reduce(function (m, v) { return Math.max(m, String(yFormat(v)).length); }, 1);
+      var L = Math.min(80, Math.max(34, maxLab * 6 + 12)), R = 12, T = 14, B = 24;
+      var linear = n > 1 && pts0.every(function (p, i) { return typeof p.x === 'number' && isFinite(p.x) && (i === 0 || p.x > pts0[i - 1].x); });
+      var x0 = linear ? pts0[0].x : 0, x1 = linear ? pts0[n - 1].x : Math.max(1, n - 1);
+      function X(p, i) { if (n < 2) return L + (W - L - R) / 2; return L + (W - L - R) * ((linear ? p.x : i) - x0) / (x1 - x0); }
+      function Y(v) { return T + (H - T - B) * (1 - (v - ymin) / (ymax - ymin)); }
+      geo = { L: L, R: R, T: T, B: B, X: X, Y: Y, n: n };
+
+      var out = '';
+      ticks.forEach(function (v) {
+        var y = Y(v);
+        out += '<line class="grid-l" x1="' + L + '" x2="' + (W - R) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '"/><text x="' + (L - 6) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end">' + esc(yFormat(v)) + '</text>';
+      });
+      if (n) {
+        var tk = n === 1 ? [0] : [0, Math.round((n - 1) / 3), Math.round(2 * (n - 1) / 3), n - 1];
+        tk = tk.filter(function (v, i, a) { return a.indexOf(v) === i; });
+        tk.forEach(function (i, j) {
+          var anchor = j === 0 ? 'start' : (j === tk.length - 1 && tk.length > 1) ? 'end' : 'middle';
+          out += '<text x="' + X(pts0[i], i).toFixed(1) + '" y="' + (H - 7) + '" text-anchor="' + anchor + '">' + esc(labelOf(pts0[i])) + '</text>';
+        });
+      }
+      series.forEach(function (s, si) {
+        var col = s.color || COLORS[si % COLORS.length], p = ptsOf(s);
+        var segs = [], run = [];
+        p.forEach(function (q, i) { if (q.y == null || !isFinite(q.y)) { if (run.length) segs.push(run); run = []; } else run.push([X(q, i), Y(q.y)]); });
+        if (run.length) segs.push(run);
+        segs.forEach(function (sg) {
+          var d = sg.map(function (c, i) { return (i ? 'L' : 'M') + c[0].toFixed(1) + ' ' + c[1].toFixed(1); }).join(' ');
+          if (sg.length > 1) out += '<path d="' + d + ' L' + sg[sg.length - 1][0].toFixed(1) + ' ' + Y(ymin).toFixed(1) + ' L' + sg[0][0].toFixed(1) + ' ' + Y(ymin).toFixed(1) + ' Z" fill="' + col + '" opacity=".09"/>';
+          out += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round"/>';
+          var last = sg[sg.length - 1];
+          out += '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="4" fill="' + col + '"/>';
+        });
+      });
+      if (thr && isFinite(thr.value)) {
+        var hy = Y(thr.value);
+        out += '<line class="thr" x1="' + L + '" x2="' + (W - R) + '" y1="' + hy.toFixed(1) + '" y2="' + hy.toFixed(1) + '"/>' +
+          '<text class="thr-l" x="' + (W - R) + '" y="' + (hy - 4).toFixed(1) + '" text-anchor="end">' + esc(thr.label || '') + '</text>';
+      }
+      var name = o.ariaLabel || ('Line chart of ' + series.map(function (s) { return s.name; }).join(', '));
+      mount.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" tabindex="0" aria-label="' + esc(name + '. Use left and right arrow keys to read values.') + '" aria-describedby="' + ids.live + '">' + out +
+        '<line class="cross" y1="' + T + '" y2="' + (H - B) + '" x1="0" x2="0" style="display:none"/>' +
+        '<rect class="hit" x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - T - B) + '" fill="transparent" style="touch-action:pan-y"/></svg>' +
+        '<div class="tip" hidden></div><div class="sr" id="' + ids.live + '" aria-live="polite"></div>' +
+        (series.length > 1 ? '<div class="legend">' + series.map(function (s, si) { return '<span><i style="background:' + (s.color || COLORS[si % COLORS.length]) + '"></i>' + esc(s.name) + '</span>'; }).join('') + '</div>' : '');
+      wire();
+      if (cur != null && cur < n) show(cur, false);
+      if (hadFocus) { var sv = mount.querySelector('svg'); if (sv) sv.focus(); }
+    }
+
+    var svg, hit, cr, tip, live;
+    function wire() {
+      svg = mount.querySelector('svg'); hit = mount.querySelector('.hit'); cr = mount.querySelector('.cross');
+      tip = mount.querySelector('.tip'); live = mount.querySelector('.sr');
+      hit.addEventListener('pointermove', function (e) { show(idxAt(e.clientX), false); });
+      hit.addEventListener('pointerdown', function (e) { show(idxAt(e.clientX), false); });
+      hit.addEventListener('pointerleave', function () { if (doc.activeElement !== svg) hide(); });
+      svg.addEventListener('focus', function () { if (cur == null || cur >= geo.n) cur = geo.n - 1; show(cur, true); });
+      svg.addEventListener('blur', hide);
+      svg.addEventListener('keydown', function (e) {
+        var n = geo.n; if (!n) return;
+        var i = cur == null ? n - 1 : cur;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') i = Math.max(0, i - 1);
+        else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') i = Math.min(n - 1, i + 1);
+        else if (e.key === 'Home') i = 0;
+        else if (e.key === 'End') i = n - 1;
+        else if (e.key === 'Escape') { hide(); return; }
+        else return;
+        e.preventDefault(); show(i, true);
+      });
+    }
+    function idxAt(clientX) {
+      var r = hit.getBoundingClientRect(), n = geo.n, pts0 = base();
+      var px = clientX - r.left + geo.L, best = 0, bd = Infinity;
+      for (var i = 0; i < n; i++) { var d = Math.abs(geo.X(pts0[i], i) - px); if (d < bd) { bd = d; best = i; } }
+      return best;
+    }
+    function pointFor(s, idx) {
+      var p0 = base()[idx], ps = ptsOf(s);
+      if (ps[idx] && ps[idx].x === p0.x) return ps[idx];
+      var best = null, bd = Infinity;
+      ps.forEach(function (q) { var d = Math.abs((+q.x) - (+p0.x)); if (d < bd) { bd = d; best = q; } });
+      return best;
+    }
+    function show(idx, announce) {
+      if (!geo || !geo.n || !cr) return;
+      cur = idx;
+      var p0 = base()[idx], px = geo.X(p0, idx);
+      cr.setAttribute('x1', px); cr.setAttribute('x2', px); cr.style.display = '';
+      var parts = series.map(function (s) {
+        var p = pointFor(s, idx);
+        return esc(s.name) + ' ' + (p && p.y != null ? esc(yFormat(p.y)) : 'no data');
+      });
+      tip.innerHTML = '<b>' + esc(labelOf(p0)) + '</b> ' + parts.join(' &middot; ');
+      tip.hidden = false;
+      var tw = tip.offsetWidth, wd = mount.clientWidth;
+      tip.style.left = Math.max(0, Math.min(wd - tw, px - tw / 2)) + 'px';
+      if (announce) live.textContent = tip.textContent;
+    }
+    function hide() { if (cr) cr.style.display = 'none'; if (tip) tip.hidden = true; }
+
+    draw();
+    if (window.ResizeObserver) { ro = new ResizeObserver(function () { if (Math.floor(mount.clientWidth) !== W) draw(); }); ro.observe(mount); }
+    else window.addEventListener('resize', draw);
+
+    return {
+      setThreshold: function (v, label) {
+        if (thr) { thr.value = +v; if (label != null) thr.label = label; }
+        else thr = { value: +v, label: label || '' };
+        draw();
+      },
+      setSeries: function (s) { series = (s || []).slice(); cur = null; draw(); },
+      redraw: draw,
+      destroy: function () { if (ro) ro.disconnect(); else window.removeEventListener('resize', draw); mount.innerHTML = ''; }
+    };
+  }
+
+  /* ---------------- next (was nextStep) ---------------- */
+  function next(o) {
+    var mount = el(o.mount);
+    var cfg = o;
+    mount.classList.add('next');
+    function render() {
+      var b = cfg.button;
+      var html = '<div class="nt"><b>' + esc(cfg.title) + '</b>' + (cfg.sub ? '<span>' + esc(cfg.sub) + '</span>' : '');
+      if (cfg.progress != null) {
+        var pct = Math.max(0, Math.min(100, +cfg.progress));
+        html += '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(pct) + '" aria-label="Progress"><i style="width:' + pct + '%"></i></div>';
+      }
+      html += '</div>';
+      if (b) {
+        var why = b.disabled && b.why ? uid('jpk-why') : '';
+        html += '<div class="nx-act"><button type="button" class="btn pri" data-nx' + (b.disabled ? ' disabled' : '') + (why ? ' aria-describedby="' + why + '"' : '') + '>' + esc(b.label) + '</button>' +
+          (why ? '<span class="why-off" id="' + why + '">' + esc(b.why) + '</span>' : '') + '</div>';
+      }
+      mount.innerHTML = html;
+      var btn = mount.querySelector('[data-nx]');
+      if (btn && b && typeof b.onClick === 'function') btn.addEventListener('click', function () { if (!b.disabled) b.onClick(); });
+    }
+    render();
+    return { update: function (patch) { for (var k in patch) cfg[k] = patch[k]; render(); } };
+  }
+
+  /* ---------------- tabs ---------------- */
+  function tabs(o) {
+    var mount = el(o.mount), list = (o.tabs || []).map(function (t) { return { id: t.id, label: t.label, count: t.count || 0 }; });
+    var base = uid('jpk-tabs'), sel = o.selected || (list[0] && list[0].id);
+    mount.classList.add('ctabs');
+    mount.setAttribute('role', 'tablist');
+    if (o.label) mount.setAttribute('aria-label', o.label);
+    function tabId(id) { return base + '-t-' + id; }
+    function panelId(id) { return base + '-p-' + id; }
+    function panelFor(id) {
+      var p = o.panels && o.panels[id];
+      if (p) return el(p);
+      var scope = mount.parentNode || doc;
+      return scope.querySelector('[data-pane="' + id + '"]');
+    }
+    function render() {
+      mount.innerHTML = list.map(function (t) {
+        var on = t.id === sel;
+        return '<button type="button" role="tab" id="' + tabId(t.id) + '" data-id="' + esc(t.id) + '" aria-selected="' + on + '" aria-controls="' + panelId(t.id) + '" tabindex="' + (on ? 0 : -1) + '">' +
+          esc(t.label) + '<span class="cnt" data-cnt' + (t.count > 0 ? '' : ' hidden') + '>' + (t.count > 0 ? t.count : '') + '</span></button>';
+      }).join('');
+      list.forEach(function (t) {
+        var p = panelFor(t.id); if (!p) return;
+        p.id = panelId(t.id); p.setAttribute('role', 'tabpanel'); p.setAttribute('aria-labelledby', tabId(t.id));
+        p.classList.toggle('on', t.id === sel); p.hidden = t.id !== sel;
+      });
+    }
+    function select(id, focus, silent) {
+      if (!list.some(function (t) { return t.id === id; })) return;
+      var changed = id !== sel; sel = id; render();
+      if (focus) mount.querySelector('[role=tab][aria-selected=true]').focus();
+      if (changed && !silent && o.onChange) o.onChange(id);
+    }
+    mount.addEventListener('click', function (e) { var b = e.target.closest('[role=tab]'); if (b) select(b.getAttribute('data-id'), false); });
+    mount.addEventListener('keydown', function (e) {
+      var b = e.target.closest('[role=tab]'); if (!b) return;
+      var i = list.map(function (t) { return t.id; }).indexOf(b.getAttribute('data-id')), n = list.length, j = i;
+      if (e.key === 'ArrowRight') j = (i + 1) % n;
+      else if (e.key === 'ArrowLeft') j = (i - 1 + n) % n;
+      else if (e.key === 'Home') j = 0;
+      else if (e.key === 'End') j = n - 1;
+      else return;
+      e.preventDefault(); select(list[j].id, true);
+    });
+    render();
+    return {
+      select: function (id) { select(id, false); },
+      selected: function () { return sel; },
+      setCount: function (id, n) {
+        list.forEach(function (t) { if (t.id === id) t.count = +n || 0; });
+        var b = mount.querySelector('[data-id="' + id + '"] .cnt');
+        if (b) { b.textContent = n > 0 ? n : ''; b.hidden = !(n > 0); }
+      }
+    };
+  }
+
+  /* ---------------- menu ---------------- */
+  var openMenus = [];
+  doc.addEventListener('click', function (e) {
+    openMenus.slice().forEach(function (m) { if (!m.wrap.contains(e.target)) m.close(false); });
+  });
+  doc.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') openMenus.slice().forEach(function (m) { m.close(true); });
+  });
+  function menu(o) {
+    var btn = el(o.button), items = (o.items || []).slice();
+    var wrap = btn.parentNode;
+    if (!wrap.classList.contains('menu')) {
+      wrap = doc.createElement('div'); wrap.className = 'menu';
+      btn.parentNode.insertBefore(wrap, btn); wrap.appendChild(btn);
+    }
+    var ul = doc.createElement('ul'); ul.hidden = true; ul.setAttribute('role', 'menu');
+    var lid = uid('jpk-menu'); ul.id = lid;
+    wrap.appendChild(ul);
+    btn.setAttribute('aria-haspopup', 'menu'); btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', lid);
+    var api = { wrap: wrap, close: close, open: open };
+
+    function shown() { return items.filter(function (it) { return !(typeof it.hidden === 'function' ? it.hidden() : it.hidden); }); }
+    function build() {
+      ul.innerHTML = '';
+      shown().forEach(function (it) {
+        var li = doc.createElement('li'); li.setAttribute('role', 'none');
+        var b = doc.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.tabIndex = -1; b.textContent = it.label;
+        b.addEventListener('click', function () {
+          close(true);
+          if (typeof it.onClick === 'function') it.onClick();
+        });
+        li.appendChild(b); ul.appendChild(li);
+      });
+    }
+    function btns() { return Array.prototype.slice.call(ul.querySelectorAll('button')); }
+    function open() {
+      openMenus.slice().forEach(function (m) { if (m !== api) m.close(false); });
+      build();
+      if (!ul.children.length) return;
+      ul.hidden = false; btn.setAttribute('aria-expanded', 'true');
+      if (openMenus.indexOf(api) < 0) openMenus.push(api);
+      btns()[0].focus();
+    }
+    function close(refocus) {
+      if (ul.hidden) return;
+      ul.hidden = true; btn.setAttribute('aria-expanded', 'false');
+      var i = openMenus.indexOf(api); if (i >= 0) openMenus.splice(i, 1);
+      if (refocus) btn.focus();
+    }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); if (ul.hidden) open(); else close(false); });
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (ul.hidden) open(); }
+    });
+    ul.addEventListener('keydown', function (e) {
+      var b = btns(), i = b.indexOf(doc.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); b[(i + 1) % b.length].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); b[(i - 1 + b.length) % b.length].focus(); }
+      else if (e.key === 'Home') { e.preventDefault(); b[0].focus(); }
+      else if (e.key === 'End') { e.preventDefault(); b[b.length - 1].focus(); }
+      else if (e.key === 'Tab') close(false);
+    });
+    api.setItems = function (it) { items = (it || []).slice(); if (!ul.hidden) build(); };
+    return api;
+  }
+
+  /* ---------------- aboutButton (was about) ---------------- */
+  /* Wires a button to open the drawer with help text. Returns {setHtml} so a widget can update the text later. */
+  function aboutButton(o) {
+    var btn = el(o.button), cfg = { title: o.title || 'About this widget', html: o.html || '' };
+    if (!btn) return { setHtml: function () {} };
+    if (!btn.getAttribute('aria-label') && !btn.textContent.trim()) btn.setAttribute('aria-label', cfg.title);
+    btn.addEventListener('click', function () { openDrawer({ title: cfg.title, html: cfg.html }); });
+    return { setHtml: function (h) { cfg.html = h || ''; } };
+  }
+
+  /* ---------------- steps ---------------- */
+  var DEFAULT_STEPS = ['Add files', 'Read files', 'Review', 'Hand off'];
+  function steps(o) {
+    var mount = el(o.mount), labels = o.labels || DEFAULT_STEPS, cur = o.current || 0;
+    mount.classList.add('steps');
+    mount.setAttribute('role', 'list');
+    function render() {
+      mount.innerHTML = labels.map(function (l, i) {
+        var st = i < cur ? 'done' : i === cur ? 'cur' : '';
+        return '<div class="step ' + st + '" role="listitem"' + (st === 'cur' ? ' aria-current="step"' : '') + '>' + esc(l) +
+          (st === 'done' ? '<span class="sr"> (done)</span>' : st === 'cur' ? '<span class="sr"> (current step)</span>' : '') + '</div>';
+      }).join('');
+    }
+    render();
+    return { set: function (c) { cur = c; render(); }, get: function () { return cur; } };
+  }
+
+  /* ---------------- crm (was zoho) ---------------- */
+  var initP = null;
+  function hasZoho() { return typeof window.ZOHO !== 'undefined' && window.ZOHO && window.ZOHO.embeddedApp; }
+  function hasApi(part) { return hasZoho() && window.ZOHO.CRM && window.ZOHO.CRM[part]; }
+  function demoErr() { return new Error('Zoho SDK not available (demo mode)'); }
+  function zerr(e) {
+    var m = '';
+    if (e == null) m = 'Unknown error';
+    else if (typeof e === 'string') m = e;
+    else if (e.message) m = e.message;
+    else if (e.data && e.data[0] && e.data[0].message) m = e.data[0].message;
+    else if (e.details && e.details.output) m = String(e.details.output);
+    else if (e.code) m = String(e.code);
+    else { try { m = JSON.stringify(e); } catch (x) { m = 'Unknown error'; } }
+    var er = new Error(m); er.raw = e; return er;
+  }
+  function isNoContent(e) { return !e || e.status === 204 || e.code === 'NO_CONTENT' || e === ''; }
+  function stripLimit(q) {
+    return String(q).replace(/\s+limit\s+\d+(\s*(,|offset)\s*\d+)?\s*;?\s*$/i, '').replace(/;\s*$/, '');
+  }
+
+  var crm = {
+    available: function () { return !!hasZoho(); },
+    /* Resolves with the PageLoad data, or {demo:true} outside Zoho / on timeout. Safe to call more than once. */
+    init: function (opts) {
+      if (initP) return initP;
+      var timeout = (opts && opts.timeout) || 5000;
+      initP = new Promise(function (resolve) {
+        if (!hasZoho()) { resolve({ demo: true }); return; }
+        var done = false;
+        var t = setTimeout(function () { if (!done) { done = true; resolve({ demo: true, timeout: true }); } }, timeout);
+        try {
+          window.ZOHO.embeddedApp.on('PageLoad', function (data) {
+            if (done) return; done = true; clearTimeout(t); resolve(data || {});
+          });
+          window.ZOHO.embeddedApp.init();
+        } catch (e) { if (!done) { done = true; clearTimeout(t); resolve({ demo: true, error: String(e && e.message || e) }); } }
+      });
+      return initP;
+    },
+    /* One COQL call, query sent as given. Resolves {rows, more}. An empty result (204) is {rows:[], more:false}. */
+    coql: function (query) {
+      if (!hasApi('API')) return Promise.reject(demoErr());
+      return window.ZOHO.CRM.API.coql({ select_query: String(query) }).then(function (res) {
+        var rows = (res && res.data) || [];
+        return { rows: rows, more: !!(res && res.info && res.info.more_records) };
+      }, function (e) {
+        if (isNoContent(e)) return { rows: [], more: false };
+        throw zerr(e);
+      });
+    },
+    /* Paging helper over coql: pass the query WITHOUT a limit; pages of 200 are appended.
+       Count client-side (COQL count / group by do not work on this org). opts.maxPages default 50 (10,000 rows). */
+    coqlAll: function (query, opts) {
+      var PAGE = 200, maxPages = (opts && opts.maxPages) || 50, q = stripLimit(query), all = [];
+      function page(p) {
+        return crm.coql(q + ' limit ' + PAGE + ' offset ' + (p * PAGE)).then(function (r) {
+          all = all.concat(r.rows);
+          if (r.rows.length && (r.rows.length >= PAGE || r.more) && p + 1 < maxPages) return page(p + 1);
+          return all;
+        });
+      }
+      return page(0);
+    },
+    /* Run a standalone function (REST API enabled). Args go as JSON; output is JSON-parsed when it looks like JSON. */
+    run: function (name, args) {
+      if (!hasApi('FUNCTIONS')) return Promise.reject(demoErr());
+      return window.ZOHO.CRM.FUNCTIONS.execute(name, { arguments: JSON.stringify(args || {}) }).then(function (r) {
+        if (r && r.code && r.code !== 'success') throw zerr(r.message || r.details || r.code);
+        var out = r && r.details ? r.details.output : r;
+        if (typeof out === 'string') { try { return JSON.parse(out); } catch (e) { return out; } }
+        return out;
+      }, function (e) { throw zerr(e); });
+    },
+    error: zerr
+  };
+
+  /* =====================================================================
+     Wave A patterns (v1.2.0). Pure logic first (JPK.model, testable in node), then the DOM parts.
+     Nothing below writes to Zoho. Actions are callbacks the widget supplies.
+     ===================================================================== */
+  var model = (function () {
+    var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    function day(v) {
+      if (v == null || v === '') return null;
+      if (v instanceof Date) return isNaN(v) ? null : new Date(v.getFullYear(), v.getMonth(), v.getDate());
+      var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+      return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+    }
+    function diff(a, b) { return Math.round((a - b) / 86400000); }
+    function fmtDay(d) { return MONTHS[d.getMonth()] + ' ' + d.getDate(); }
+    function money(n, o) {
+      n = +n || 0; o = o || {};
+      var s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return (n < 0 ? '-' : (o.sign && n > 0 ? '+' : '')) + '$' + s;
+    }
+    function norm(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+    /* ---- permissions (client-side only: they hide controls, Zoho still enforces its own profiles) ---- */
+    function canBatch(profile) { var p = norm(profile); return p === 'admin' || p === 'administrator'; }
+    /* Decision 16 Oct: Admin only for now. To widen later, add 'emops' and 'bd' here (the plan's original group). */
+    function canEditRoles(profile) { var p = norm(profile); return p === 'admin' || p === 'administrator'; }
+
+    /* ---- case due date (decision 16 Oct): due 1 business day after it opened, unless the case is waiting on a vendor or an answer ---- */
+    function addBusinessDays(from, n) {
+      var d = day(from); if (!d) return null;
+      var step = n < 0 ? -1 : 1, left = Math.abs(n);
+      while (left > 0) { d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + step); var w = d.getDay(); if (w !== 0 && w !== 6) left--; }
+      return d;
+    }
+    var PAUSED = { vendor: 1, customer: 1, internal: 1 };
+    /* c: {opened, waitingOn:'Customer'|'Vendor'|'Internal'|'Nobody'|''}. Waiting cases have no due date (clock paused). Holidays are not modelled. */
+    function caseDue(c) {
+      c = c || {};
+      if (PAUSED[norm(c.waitingOn)]) return { due: null, paused: true, reason: 'Waiting on ' + String(c.waitingOn).toLowerCase() };
+      var d = addBusinessDays(c.opened, 1);
+      return { due: d, dueText: d ? d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2) : '', paused: false, reason: '' };
+    }
+
+    /* ---- selection ---- */
+    function selectionSummary(rows, sumFn, noun, fmt) {
+      var n = rows.length, nn = noun || 'line', sum = 0;
+      if (typeof sumFn === 'function') rows.forEach(function (r) { sum += +sumFn(r) || 0; });
+      return { count: n, sum: sum, text: n + ' ' + nn + (n === 1 ? '' : 's') + ' selected', sumText: (fmt || money)(sum) };
+    }
+
+    /* ---- work list ---- */
+    var GROUPS = [['overdue', 'Overdue'], ['today', 'Due today'], ['week', 'This week'], ['later', 'Later'], ['nodate', 'No due date'], ['waiting', 'Waiting on someone else']];
+    function bucket(item, now) {
+      if (item.waiting) return 'waiting';
+      var d = day(item.due), t = day(now);
+      if (!d) return 'nodate';
+      var n = diff(d, t);
+      return n < 0 ? 'overdue' : n === 0 ? 'today' : n <= 7 ? 'week' : 'later';
+    }
+    function dueLabel(item, now) {
+      var d = day(item.due), t = day(now);
+      if (item.waiting) return item.askedOn ? 'Asked ' + fmtDay(day(item.askedOn) || t) : '';
+      if (!d) return '';
+      var n = diff(d, t);
+      return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : fmtDay(d);
+    }
+    /* opts.unassigned: items nobody owns yet. Off by default (decision pending), so no group appears unless passed. */
+    function groupWork(items, now, opts) {
+      opts = opts || {};
+      var by = {};
+      (items || []).forEach(function (it) { var k = bucket(it, now); (by[k] = by[k] || []).push(it); });
+      var out = GROUPS.map(function (g) {
+        var list = (by[g[0]] || []).slice().sort(function (a, b) {
+          var x = day(a.due), y = day(b.due);
+          if (x && y && x - y) return x - y;
+          if (x && !y) return -1; if (!x && y) return 1;
+          return String(a.title).localeCompare(String(b.title));
+        });
+        return { key: g[0], label: g[1], items: list };
+      }).filter(function (g) { return g.items.length; });
+      if (opts.unassigned && opts.unassigned.length) out.push({ key: 'unassigned', label: 'Unassigned on my team', items: opts.unassigned.slice() });
+      return out;
+    }
+
+    /* ---- case strip ---- */
+    var CLOSED = { closed: 1, resolved: 1 }, KNOWN_OPEN = { new: 1, acknowledged: 1, inprogress: 1, escalated: 1, onhold: 1, open: 1 };
+    /* Acknowledged is not live yet: match by name, anything unknown is "Other open", never dropped. */
+    function caseBucket(status) {
+      var k = norm(status);
+      if (CLOSED[k]) return { open: false, label: String(status) };
+      if (KNOWN_OPEN[k]) return { open: true, label: String(status) };
+      return { open: true, label: 'Other open', raw: status };
+    }
+    function ownerState(c, now) {
+      c = c || {};
+      var assigned = !!(c.owner && (c.owner.name || c.owner.id));
+      var d = day(c.due), t = day(now), st = 'none', text = '';
+      if (d) { var n = diff(d, t); st = n < 0 ? 'overdue' : n <= 1 ? 'soon' : 'ok'; text = n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : (n < 0 ? 'Overdue ' : '') + fmtDay(d); }
+      return { assigned: assigned, dueState: st, dueText: text };
+    }
+    function initials(name) {
+      var p = String(name || '').trim().split(/\s+/).filter(Boolean);
+      if (!p.length) return '?';
+      return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+    }
+
+    /* ---- roles ---- */
+    function side(r) { var s = norm(r.side); return s === 'internal' || s === 'int' ? 'internal' : 'external'; }
+    function groupRoles(roles) {
+      var g = { external: [], internal: [] };
+      (roles || []).forEach(function (r) { g[side(r)].push(r); });
+      return [
+        { side: 'external', label: 'At the county', tag: 'External', rows: g.external, gaps: g.external.filter(function (r) { return !r.person; }).length },
+        { side: 'internal', label: 'At JusticePoint, Sirona or The Difference Principle', tag: 'Internal', rows: g.internal, gaps: g.internal.filter(function (r) { return !r.person; }).length }
+      ].filter(function (x) { return x.rows.length; });
+    }
+
+    /* ---- task list ---- */
+    function ranges(nums) {
+      if (nums.length === 1) return 'Step ' + nums[0] + ' must be complete first';
+      var consecutive = nums.length > 2 && nums.every(function (v, i) { return i === 0 || v === nums[i - 1] + 1; });
+      return 'Steps ' + (consecutive ? nums[0] + ' to ' + nums[nums.length - 1] : nums.slice(0, -1).join(', ') + ' and ' + nums[nums.length - 1]) + ' must be complete first';
+    }
+    /* step: {id,label,done,started,needs:[ids] | 'all-before'} */
+    function taskStatuses(steps) {
+      var byId = {}; steps.forEach(function (s, i) { byId[s.id] = { s: s, n: i + 1 }; });
+      var out = steps.map(function (s, i) {
+        var needs = s.needs === 'all-before' ? steps.slice(0, i).map(function (x) { return x.id; }) : (s.needs || []);
+        var open = needs.filter(function (id) { return byId[id] && !byId[id].s.done; });
+        var status = s.done ? 'Completed' : open.length ? 'Cannot start yet' : s.started ? 'In progress' : 'Not started';
+        return { id: s.id, n: i + 1, label: s.label, status: status, tone: status === 'Completed' ? 'good' : status === 'In progress' ? 'info' : 'neutral',
+          locked: status === 'Cannot start yet', reason: open.length ? ranges(open.map(function (id) { return byId[id].n; })) : '' };
+      });
+      var done = out.filter(function (x) { return x.status === 'Completed'; }).length;
+      return { steps: out, done: done, total: out.length, text: done + ' of ' + out.length + ' steps complete' };
+    }
+
+    /* ---- check answers ---- */
+    function checkRows(rows) {
+      var out = (rows || []).map(function (r) {
+        var missing = r.missing != null ? !!r.missing : (r.value == null || String(r.value).trim() === '');
+        return { id: r.id, label: r.label, value: missing ? (r.missingText || 'Not provided') : r.value, missing: missing, action: missing ? 'Add' : (r.changeText || 'Change') };
+      });
+      var miss = out.filter(function (r) { return r.missing; }).length;
+      return { rows: out, missing: miss, ready: miss === 0, text: miss ? miss + (miss === 1 ? ' answer is' : ' answers are') + ' missing' : 'All answers are complete' };
+    }
+
+    /* ---- field / error summary ---- */
+    function fieldState(f) { return f.error ? 'error' : f.ok ? 'ok' : 'default'; }
+    function errorList(fields) {
+      return (fields || []).filter(function (f) { return f && f.error; }).map(function (f) { return { id: f.id, message: f.error }; });
+    }
+
+    return { day: day, fmtDay: fmtDay, money: money, canBatch: canBatch, canEditRoles: canEditRoles, addBusinessDays: addBusinessDays, caseDue: caseDue, selectionSummary: selectionSummary,
+      groupWork: groupWork, dueLabel: dueLabel, caseBucket: caseBucket, ownerState: ownerState, initials: initials, groupRoles: groupRoles,
+      taskStatuses: taskStatuses, checkRows: checkRows, fieldState: fieldState, errorList: errorList };
+  })();
+
+  /* ---------------- workList ---------------- */
+  function workList(o) {
+    var mount = el(o.mount), items = (o.items || []).slice(), now = o.now || new Date(), openId = null, uopts = { unassigned: o.unassigned };
+    mount.classList.add('jp-wl');
+    var title = o.title || 'Your work today';
+    mount.innerHTML = '<div class="jp-wl-list"><div class="jp-wl-hd"><h3></h3><p></p></div><div class="jp-wl-items"></div></div><div class="jp-wl-focus" tabindex="-1" aria-live="polite"></div>';
+    var listEl = mount.querySelector('.jp-wl-items'), focusEl = mount.querySelector('.jp-wl-focus');
+    mount.querySelector('h3').textContent = title; mount.querySelector('.jp-wl-hd p').textContent = o.subtitle || '';
+    function all() { return Array.prototype.slice.call(listEl.querySelectorAll('.jp-wi')); }
+    function find(id) { var pools = [items, o.unassigned || []]; for (var p = 0; p < pools.length; p++) for (var i = 0; i < pools[p].length; i++) if (String(pools[p][i].id) === String(id)) return pools[p][i]; return null; }
+    function renderList() {
+      var groups = model.groupWork(items, now, uopts), html = '';
+      groups.forEach(function (g) {
+        html += '<div class="jp-wl-g" role="group" aria-label="' + esc(g.label) + '"><div class="jp-wl-gh"><span>' + esc(g.label) + '</span><span class="cnt">' + g.items.length + '</span></div>';
+        g.items.forEach(function (it) {
+          var due = model.dueLabel(it, now), soon = !it.waiting && (g.key === 'today' || g.key === 'overdue');
+          html += '<button type="button" class="jp-wi" data-id="' + esc(it.id) + '" tabindex="-1"' + (String(it.id) === String(openId) ? ' aria-current="true"' : '') + '><span class="dot ' + esc(it.tone || '') + '" aria-hidden="true"></span>' +
+            '<span class="tx"><b>' + esc(it.title) + '</b><small>' + esc(it.sub || '') + '</small></span><em' + (soon ? ' class="soon"' : '') + '>' + esc(due) + '</em></button>';
+        });
+        html += '</div>';
+      });
+      listEl.innerHTML = html || '<div class="empty"><b>Nothing assigned to you</b>New work shows here as it is assigned.</div>';
+      var bs = all(), cur = listEl.querySelector('[aria-current="true"]') || bs[0];
+      if (cur) cur.tabIndex = 0;
+    }
+    function renderFocus() {
+      var it = find(openId);
+      if (!it) { focusEl.innerHTML = '<div class="empty"><b>Pick an item</b>Its next step shows here.</div>'; return; }
+      if (typeof o.renderFocus === 'function') {
+        var v = o.renderFocus(it); focusEl.innerHTML = ''; if (v && v.nodeType) focusEl.appendChild(v); else focusEl.innerHTML = v == null ? '' : String(v); return;
+      }
+      var h = '<h3>' + esc(it.title) + '</h3>';
+      if (it.facts && it.facts.length) h += '<div class="jp-facts">' + it.facts.map(function (f) { return '<div><small>' + esc(f.k) + '</small><b>' + esc(f.v) + '</b></div>'; }).join('') + '</div>';
+      if (it.next) {
+        h += '<div class="jp-nextbox"><small>Next step</small><p>' + esc(it.next.text) + '</p>' + (it.next.button ? '<button type="button" class="btn pri" data-nx>' + esc(it.next.button) + '</button>' : '') + '</div>';
+      }
+      if (it.why || it.last) h += '<dl class="jp-why">' + (it.why ? '<div><dt>Why this is here</dt><dd>' + esc(it.why) + '</dd></div>' : '') + (it.last ? '<div><dt>Last activity</dt><dd>' + esc(it.last) + '</dd></div>' : '') + '</dl>';
+      focusEl.innerHTML = h;
+      var nb = focusEl.querySelector('[data-nx]');
+      if (nb && typeof it.next.onClick === 'function') nb.addEventListener('click', function () { it.next.onClick(it); });
+    }
+    function open(id, userInitiated) {
+      openId = id; renderList(); renderFocus();
+      if (userInitiated) {
+        var b = listEl.querySelector('[aria-current="true"]'); if (b) b.focus();
+        try { if (window.matchMedia('(max-width:820px)').matches && focusEl.scrollIntoView) focusEl.scrollIntoView({ block: 'nearest' }); } catch (e) { /* ignore */ }
+      }
+      if (typeof o.onOpen === 'function') o.onOpen(find(id));
+    }
+    listEl.addEventListener('click', function (e) { var b = e.target.closest('.jp-wi'); if (b) open(b.getAttribute('data-id'), true); });
+    listEl.addEventListener('keydown', function (e) {
+      var b = e.target.closest('.jp-wi'); if (!b) return;
+      var bs = all(), i = bs.indexOf(b), j = i;
+      if (e.key === 'ArrowDown') j = Math.min(bs.length - 1, i + 1);
+      else if (e.key === 'ArrowUp') j = Math.max(0, i - 1);
+      else if (e.key === 'Home') j = 0;
+      else if (e.key === 'End') j = bs.length - 1;
+      else return;
+      e.preventDefault();
+      bs.forEach(function (x) { x.tabIndex = -1; });
+      bs[j].tabIndex = 0; bs[j].focus();
+    });
+    renderList(); renderFocus();
+    if (o.openFirst !== false && items.length) {
+      var g = model.groupWork(items, now, uopts); if (g.length) open(g[0].items[0].id, false);
+    }
+    return {
+      setItems: function (it) { items = (it || []).slice(); if (openId != null && !find(openId)) openId = null; renderList(); renderFocus(); },
+      open: function (id) { open(id, true); }, getOpen: function () { return openId; }, el: mount
+    };
+  }
+
+  /* ---------------- ownerStrip ---------------- */
+  function ownerStrip(o) {
+    var mount = el(o.mount), d = o.data || {}, now = o.now || new Date();
+    mount.classList.add('jp-os');
+    function render() {
+      var st = model.ownerState(d, now), who = '';
+      if (st.assigned) {
+        who = '<div class="v"><span class="av" aria-hidden="true">' + esc(model.initials(d.owner.name)) + '</span><span class="t">' + esc(d.owner.name || 'Unknown user') + '</span></div>';
+      } else {
+        who = '<div class="v"><span class="un">Unassigned</span></div>' + (o.canAct !== false ? '<span class="jp-os-act"><button type="button" class="btn sm pri" data-act="take">Take case</button><button type="button" class="btn sm" data-act="assign">Assign</button></span>' : '');
+      }
+      var nx = d.next ? '<div class="v"><span class="t">' + esc(d.next.text) + '</span></div>' + (d.next.button ? '<span class="jp-os-act"><button type="button" class="btn sm pri" data-act="next">' + esc(d.next.button) + '</button></span>' : '') : '<div class="v"><span class="un">Not set</span></div>';
+      mount.innerHTML =
+        '<div><small>Owner</small>' + who + '</div>' +
+        '<div><small>Team</small><div class="v"><span class="t">' + esc(d.team || 'Not set') + '</span></div></div>' +
+        '<div><small>Due</small><div class="v' + (st.dueState === 'overdue' || st.dueState === 'soon' ? ' warn' : '') + '"><span class="t">' + esc(st.dueText || 'Not set') + '</span></div></div>' +
+        '<div><small>Waiting on</small><div class="v"><span class="t">' + esc(d.waitingOn || 'Nobody') + '</span></div></div>' +
+        '<div class="next"><small>Next action</small>' + nx + '</div>';
+    }
+    mount.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-act]'); if (!b) return;
+      var a = b.getAttribute('data-act');
+      if (a === 'take' && o.onTake) o.onTake(d); else if (a === 'assign' && o.onAssign) o.onAssign(d); else if (a === 'next' && d.next && d.next.onClick) d.next.onClick(d);
+    });
+    render();
+    return { update: function (patch) { for (var k in patch) d[k] = patch[k]; render(); }, el: mount };
+  }
+
+  /* ---------------- roleList ---------------- */
+  function roleList(o) {
+    var mount = el(o.mount), roles = (o.roles || []).slice(), canEdit = !!o.canEdit;
+    mount.classList.add('jp-rl');
+    function render() {
+      var h = '';
+      model.groupRoles(roles).forEach(function (g) {
+        h += '<div class="jp-rl-g"><span>' + esc(g.label) + '</span><span class="tag ' + (g.side === 'external' ? 'ext' : 'int') + '">' + esc(g.tag) + '</span></div><ul class="jp-rl-rows">';
+        g.rows.forEach(function (r) {
+          var gap = !r.person, id = esc(r.id || r.role);
+          h += '<li class="jp-rr' + (gap ? ' gap' : '') + '"><div class="role"><b>' + esc(r.role) + '</b><span>' + esc(r.desc || '') + '</span></div>' +
+            '<div class="who">' + (gap ? 'Not set' : '<span class="av" aria-hidden="true">' + esc(model.initials(r.person.name)) + '</span><div><b>' + esc(r.person.name) + '</b><small>' + esc(r.person.title || '') + '</small></div>') + '</div>' +
+            '<div class="touch">' + esc(gap ? 'Nobody named' : (r.touch || '')) + '</div>' +
+            '<div class="act">' + (canEdit ? '<button type="button" class="btn sm" data-role="' + id + '" data-kind="' + (gap ? 'add' : 'edit') + '" aria-label="' + (gap ? 'Add ' : 'Change ') + esc(r.role) + '">' + (gap ? 'Add' : 'Change') + '</button>' : '') + '</div></li>';
+        });
+        h += '</ul>';
+      });
+      mount.innerHTML = h || '<div class="empty"><b>No roles yet</b></div>';
+    }
+    mount.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-role]'); if (!b) return;
+      var id = b.getAttribute('data-role'), r = roles.filter(function (x) { return String(x.id || x.role) === id; })[0];
+      var fn = b.getAttribute('data-kind') === 'add' ? o.onAdd : o.onEdit;
+      if (r && typeof fn === 'function') fn(r);
+    });
+    render();
+    return { setRoles: function (r) { roles = (r || []).slice(); render(); }, el: mount };
+  }
+
+  /* ---------------- taskList ---------------- */
+  function taskList(o) {
+    var mount = el(o.mount), steps = (o.steps || []).slice();
+    mount.classList.add('jp-tl');
+    function render() {
+      var m = model.taskStatuses(steps), h = '<p class="jp-prog"><b>' + m.done + ' of ' + m.total + '</b> steps complete</p><ol class="jp-tl-list">';
+      m.steps.forEach(function (s) {
+        var why = s.locked ? uid('jpk-tlw') : '';
+        h += '<li><span class="n" aria-hidden="true">' + s.n + '</span><span class="tx"><button type="button" class="jp-tlb' + (s.locked ? ' dis' : '') + '" data-id="' + esc(s.id) + '"' + (s.locked ? ' aria-disabled="true" aria-describedby="' + why + '"' : '') + '>' + esc(s.label) + '</button>' +
+          (s.locked ? '<small id="' + why + '">' + esc(s.reason) + '</small>' : '') + '</span>' + chip(s.status, s.tone) + '</li>';
+      });
+      mount.innerHTML = h + '</ol>';
+    }
+    mount.addEventListener('click', function (e) {
+      var b = e.target.closest('.jp-tlb'); if (!b || b.getAttribute('aria-disabled') === 'true') return;
+      var id = b.getAttribute('data-id'); if (o.onOpen) o.onOpen(steps.filter(function (s) { return String(s.id) === id; })[0]);
+    });
+    render();
+    return { setSteps: function (s) { steps = (s || []).slice(); render(); }, statuses: function () { return model.taskStatuses(steps); }, el: mount };
+  }
+
+  /* ---------------- checkAnswers ---------------- */
+  function checkAnswers(o) {
+    var mount = el(o.mount), rows = (o.rows || []).slice();
+    mount.classList.add('jp-cya');
+    function render() {
+      var m = model.checkRows(rows);
+      mount.innerHTML = '<dl>' + m.rows.map(function (r) {
+        return '<div><dt>' + esc(r.label) + '</dt><dd class="v' + (r.missing ? ' miss' : '') + '">' + esc(r.value) + '</dd><dd><button type="button" class="jp-lnkb" data-id="' + esc(r.id) + '" aria-label="' + esc(r.action + ' ' + r.label.toLowerCase()) + '">' + esc(r.action) + '</button></dd></div>';
+      }).join('') + '</dl><p class="jp-cya-sum' + (m.ready ? '' : ' bad') + '" role="status">' + esc(m.text) + '</p>';
+    }
+    mount.addEventListener('click', function (e) {
+      var b = e.target.closest('.jp-lnkb'); if (!b || !o.onChange) return;
+      var id = b.getAttribute('data-id'); o.onChange(rows.filter(function (r) { return String(r.id) === id; })[0]);
+    });
+    render();
+    return { setRows: function (r) { rows = (r || []).slice(); render(); }, check: function () { return model.checkRows(rows); }, el: mount };
+  }
+
+  /* ---------------- field ---------------- */
+  function field(o) {
+    var id = o.id || uid('jpk-f'), hid = id + '-h', mid = id + '-m';
+    var wrap = doc.createElement('div'); wrap.className = 'jp-fld';
+    var tag = o.type === 'select' ? 'select' : o.type === 'textarea' ? 'textarea' : 'input';
+    var h = '<label for="' + id + '">' + esc(o.label) + (o.required ? '' : ' <span class="opt">(optional)</span>') + '</label>';
+    if (o.hint) h += '<span class="hint" id="' + hid + '">' + esc(o.hint) + '</span>';
+    h += '<span class="msg" id="' + mid + '" hidden></span>';
+    if (tag === 'select') h += '<select id="' + id + '">' + (o.options || []).map(function (op) { var v = typeof op === 'object' ? op.value : op, l = typeof op === 'object' ? op.label : op; return '<option value="' + esc(v) + '">' + esc(l) + '</option>'; }).join('') + '</select>';
+    else if (tag === 'textarea') h += '<textarea id="' + id + '" rows="3"></textarea>';
+    else h += '<input id="' + id + '" type="' + esc(o.type || 'text') + '"' + (o.inputmode ? ' inputmode="' + esc(o.inputmode) + '"' : '') + '>';
+    h += '<span class="okmsg" hidden></span>';
+    wrap.innerHTML = h;
+    var input = wrap.querySelector('#' + id), msg = wrap.querySelector('.msg'), ok = wrap.querySelector('.okmsg');
+    if (o.value != null) input.value = o.value;
+    var st = { id: id, error: '', ok: '' };
+    function describe() {
+      var ids = []; if (o.hint) ids.push(hid); if (st.error) ids.push(mid);
+      if (ids.length) input.setAttribute('aria-describedby', ids.join(' ')); else input.removeAttribute('aria-describedby');
+    }
+    function apply() {
+      wrap.classList.toggle('err', !!st.error); wrap.classList.toggle('ok', !st.error && !!st.ok);
+      msg.hidden = !st.error; msg.textContent = st.error ? 'Error: ' + st.error : '';
+      ok.hidden = !(st.ok && !st.error); ok.textContent = st.ok || '';
+      if (st.error) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
+      describe();
+    }
+    var api = {
+      id: id, el: wrap, input: input,
+      setError: function (m) { st.error = m || ''; st.ok = ''; apply(); return api; },
+      setOk: function (m) { st.ok = m || 'Looks good'; st.error = ''; apply(); return api; },
+      clear: function () { st.error = ''; st.ok = ''; apply(); return api; },
+      get error() { return st.error; },
+      value: function () { return input.value; }
+    };
+    if (o.error) api.setError(o.error); else if (o.ok) api.setOk(o.ok); else apply();
+    if (o.mount) el(o.mount).appendChild(wrap);
+    return api;
+  }
+
+  /* ---------------- errorSummary ---------------- */
+  function errorSummary(o) {
+    o = o || {};
+    var mount = el(o.mount), errs = (o.errors || []).slice();
+    mount.classList.add('jp-es');
+    function render() {
+      mount.hidden = !errs.length;
+      mount.innerHTML = errs.length ? '<b id="' + uid('jpk-es') + '">' + esc(o.title || 'There is a problem') + '</b>' + errs.map(function (e) { return '<a href="#' + esc(e.id) + '" data-for="' + esc(e.id) + '">' + esc(e.message) + '</a>'; }).join('') : '';
+      mount.setAttribute('role', 'alert'); mount.tabIndex = -1;
+    }
+    mount.addEventListener('click', function (e) {
+      var a = e.target.closest('a[data-for]'); if (!a) return;
+      e.preventDefault();
+      var f = doc.getElementById(a.getAttribute('data-for'));
+      if (f) { if (f.scrollIntoView) f.scrollIntoView({ block: 'center' }); f.focus(); }
+    });
+    render();
+    return {
+      set: function (list, focus) { errs = (list || []).slice(); render(); if (focus && errs.length) mount.focus(); },
+      fromFields: function (fields, focus) { this.set(model.errorList(fields), focus); },
+      clear: function () { errs = []; render(); }, count: function () { return errs.length; }, el: mount
+    };
+  }
+
+  var api = {
+    version: '1.2.1',
+    esc: esc, uid: uid,
+    toast: toast, drawer: drawer, chip: chip, table: table, chart: chart,
+    next: next, tabs: tabs, menu: menu, aboutButton: aboutButton, flash: flash, steps: steps, crm: crm,
+    workList: workList, ownerStrip: ownerStrip, roleList: roleList, taskList: taskList, checkAnswers: checkAnswers,
+    field: field, errorSummary: errorSummary, model: model
+  };
+  if (typeof window !== 'undefined') window.JPK = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})();
+
+/* Work today: pure logic (no DOM, no Zoho). Browser: window.WorkModel. Node: require.
+   Field API names read from the live org on 16 Oct 2026.
+   Cases: Case_Number, Subject, Status, Owner, Due_By, Waiting_On, Next_Action, Handling_Team, Created_Time, Modified_Time
+   Tasks: Subject, Status (Not Started | In Progress | Waiting on someone else | Completed | Cancelled | Deferred), Due_Date, Owner, What_Id, Next_Steps, Modified_Time
+   Billing_Findings: Subject, Name, Vendor, Severity, Dollars, Status (Open | Disputed with vendor | ...), Owner, Recommended_Action, Modified_Time
+   Support_Emails: Name, Sender_Name, Sender_Email, Received_At, Intake_Result ("Left for review" is what the intake leaves for a person), Owner (all four today are owned by the intake owner) */
+(function (root) {
+  'use strict';
+  var NONE = { '': 1, '-none-': 1, 'none': 1 };
+  function clean(v) { var s = v == null ? '' : String(v).trim(); return NONE[s.toLowerCase()] ? '' : s; }
+  function J() { var k = root.JPK || (typeof globalThis !== 'undefined' && globalThis.JPK); return k && k.model; }
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function fmtDay(v) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ''); return m ? (+m[3]) + ' ' + MONTHS[+m[2] - 1] + ' ' + m[1] : ''; }
+  function day(v) { return v ? String(v).slice(0, 10) : ''; }
+  function money(v) { var n = Number(v); return isFinite(n) && v != null && v !== '' ? '$' + Math.round(n).toLocaleString('en-US') : ''; }
+  function ownerId(r) { return r && r.Owner && r.Owner.id ? String(r.Owner.id) : ''; }
+  function ownerName(r, users) { if (r && r.Owner && r.Owner.name) return r.Owner.name; var f = (users || []).filter(function (u) { return u.id === ownerId(r); })[0]; return f ? f.name : ''; }
+  function tone(due, now) { var m = J(); if (!m || !due) return ''; var st = m.ownerState({ due: due, owner: { id: 'x' } }, now).dueState; return st === 'overdue' ? 'bad' : st === 'soon' ? 'warn' : st === 'ok' ? 'info' : ''; }
+
+  /* ---- queries. ids are digits only; anything else is refused so it can never alter a query. ---- */
+  function qid(id) { var s = String(id || ''); if (!/^\d+$/.test(s)) throw new Error('User id is not valid'); return s; }
+  var Q = {
+    cases: function (me) { return "select id, Case_Number, Subject, Status, Owner, Due_By, Waiting_On, Next_Action, Handling_Team, Created_Time, Modified_Time from Cases where (Owner = '" + qid(me) + "' and Status not in ('Closed','Resolved'))"; },
+    teamCases: function (me) { return "select id, Case_Number, Subject, Status, Owner, Due_By, Waiting_On, Next_Action, Handling_Team, Created_Time, Modified_Time from Cases where (Owner != '" + qid(me) + "' and Status not in ('Closed','Resolved'))"; },
+    tasks: function (me) { return "select id, Subject, Status, Due_Date, Owner, What_Id, Next_Steps, Modified_Time from Tasks where (Owner = '" + qid(me) + "' and Status not in ('Completed','Cancelled','Deferred'))"; },
+    findings: function (me) { return "select id, Name, Subject, Vendor, Severity, Dollars, Status, Owner, Recommended_Action, Modified_Time from Billing_Findings where (Owner = '" + qid(me) + "' and Status in ('Open','Disputed with vendor'))"; },
+    emails: function (me) { qid(me); return "select id, Name, Sender_Name, Sender_Email, Received_At, Intake_Result, Owner, Modified_Time from Support_Emails where Intake_Result = 'Left for review'"; }
+  };
+
+  /* ---- items for JPK.workList ---- */
+  function caseItem(r, ctx) {
+    ctx = ctx || {}; var m = J(), now = ctx.now || new Date();
+    var b = m.caseBucket(r.Status || ''), waiting = clean(r.Waiting_On) || 'Nobody', paused = /^(vendor|customer|internal)$/i.test(waiting);
+    var due = '';
+    if (!paused) { var d = day(r.Due_By); if (d) due = d; else if (r.Created_Time) { var c = m.caseDue({ opened: r.Created_Time, waitingOn: waiting }); if (c && c.due) due = c.dueText; } }
+    var team = clean(r.Handling_Team), who = ownerName(r, ctx.users);
+    var next = clean(r.Next_Action);
+    var it = {
+      id: 'case:' + r.id, kind: 'Cases', recordId: String(r.id),
+      title: (r.Case_Number ? r.Case_Number + ' · ' : '') + (r.Subject || 'Case'),
+      sub: 'Case · ' + (b.open ? b.label : r.Status) + (paused ? ' · waiting on ' + waiting.toLowerCase() : ''),
+      due: due || null, waiting: paused, askedOn: paused ? day(r.Modified_Time) || undefined : undefined, tone: paused ? 'info' : tone(due, now),
+      facts: [{ k: 'Status', v: b.label }, { k: 'Waiting on', v: waiting }, { k: 'Team', v: team || 'Not set' }],
+      next: { text: next || 'No next action is written. Open the case and add one.', button: 'Open case' },
+      why: ctx.unassigned ? 'Nobody on your team owns this case' + (who ? '. It belongs to ' + who + '.' : '.') : 'You own this case.',
+      last: day(r.Modified_Time) ? 'Updated ' + fmtDay(r.Modified_Time) : ''
+    };
+    if (b.label === 'Other open') it.sub += ' (' + r.Status + ')';
+    return it;
+  }
+  function taskItem(r, ctx) {
+    ctx = ctx || {}; var now = ctx.now || new Date(), waiting = /waiting on someone else/i.test(r.Status || ''), due = day(r.Due_Date);
+    var what = r.What_Id && r.What_Id.name ? r.What_Id.name : '';
+    return {
+      id: 'task:' + r.id, kind: 'Tasks', recordId: String(r.id), title: r.Subject || 'Task',
+      sub: 'Task · ' + (clean(r.Status) || 'Not Started') + (what ? ' · ' + what : ''),
+      due: due || null, waiting: waiting, askedOn: waiting ? day(r.Modified_Time) || undefined : undefined, tone: waiting ? 'info' : tone(due, now),
+      facts: [{ k: 'Status', v: clean(r.Status) || 'Not Started' }, { k: 'Related to', v: what || 'Nothing' }, { k: 'Due', v: due ? fmtDay(due) : 'No date' }],
+      next: { text: clean(r.Next_Steps) || 'Open the task to see what is needed.', button: 'Open task' },
+      why: 'This task is assigned to you.', last: day(r.Modified_Time) ? 'Updated ' + fmtDay(r.Modified_Time) : ''
+    };
+  }
+  function findingItem(r) {
+    var disputed = /disputed/i.test(r.Status || ''), sev = clean(r.Severity), amt = money(r.Dollars);
+    return {
+      id: 'finding:' + r.id, kind: 'Billing_Findings', recordId: String(r.id), title: r.Subject || r.Name || 'Billing finding',
+      sub: 'Billing finding' + (clean(r.Vendor) ? ' · ' + r.Vendor : '') + (sev ? ' · ' + sev.charAt(0) + sev.slice(1).toLowerCase() : ''),
+      due: null, waiting: disputed, askedOn: disputed ? day(r.Modified_Time) || undefined : undefined, tone: /^(critical|high)$/i.test(sev) ? 'bad' : /^medium$/i.test(sev) ? 'warn' : '',
+      facts: [{ k: 'Vendor', v: clean(r.Vendor) || 'Not set' }, { k: 'Severity', v: sev || 'Not set' }, { k: 'Amount', v: amt || 'None' }],
+      next: { text: clean(r.Recommended_Action) || (disputed ? 'Waiting on the vendor. Open the finding to see the dispute.' : 'Open the finding and decide what to do.'), button: 'Open finding' },
+      why: 'This billing finding is assigned to you.', last: day(r.Modified_Time) ? 'Updated ' + fmtDay(r.Modified_Time) : ''
+    };
+  }
+  function emailItem(r) {
+    var from = clean(r.Sender_Name) || clean(r.Sender_Email);
+    return {
+      id: 'email:' + r.id, kind: 'Support_Emails', recordId: String(r.id), title: r.Name || 'Support email', sub: 'Support email' + (from ? ' · from ' + from : ''),
+      due: null, waiting: false, tone: '', facts: [{ k: 'From', v: from || 'Unknown' }, { k: 'Received', v: day(r.Received_At) ? fmtDay(r.Received_At) : 'Unknown' }, { k: 'Intake result', v: clean(r.Intake_Result) || 'Not set' }],
+      next: { text: 'Read it, then reply or create a case.', button: 'Open email' },
+      why: 'The email intake left this for a person to review.', last: day(r.Received_At) ? 'Received ' + fmtDay(r.Received_At) : ''
+    };
+  }
+
+  /* A case is "unassigned on my team" when it is open, is not mine, nobody on a team is working it, and it is for my team.
+     Zoho always gives a record an owner, and new cases land on the intake owner (an Administrator today), so "nobody" means the owner
+     is one of the queue users: opts.queueIds, the active users whose profile is listed in data-queue-profiles (default Administrator, System Support).
+     "For my team" means its Handling Team is one of mine (opts.teams), or it has none and this home treats team-less cases as its own (opts.defaultTeam). */
+  function isUnassigned(r, opts) {
+    var b = J().caseBucket(r.Status || ''); if (!b.open) return false;
+    var oid = ownerId(r); if (oid && oid === String(opts.meId)) return false;
+    if (oid && (opts.queueIds || []).indexOf(oid) < 0) return false;
+    var team = clean(r.Handling_Team);
+    if (team) return (opts.teams || []).indexOf(team) > -1;
+    return !!opts.defaultTeam;
+  }
+
+  /* results: {cases, teamCases, tasks, findings, emails}: arrays of raw rows, or null when that source could not be read. */
+  var LABEL = { cases: 'Cases', teamCases: 'Team cases', tasks: 'Tasks', findings: 'Billing findings', emails: 'Support emails' };
+  function build(results, ctx) {
+    ctx = ctx || {}; var items = [], unassigned = [], skipped = [];
+    (results.cases || []).forEach(function (r) { items.push(caseItem(r, ctx)); });
+    (results.tasks || []).forEach(function (r) { items.push(taskItem(r, ctx)); });
+    (results.findings || []).forEach(function (r) { items.push(findingItem(r, ctx)); });
+    /* Emails the intake left for review are owned by the intake owner, so they are mine to look at when I own them or a queue user does. */
+    (results.emails || []).filter(function (r) { var o = ownerId(r); return !o || o === String(ctx.meId) || (ctx.queueIds || []).indexOf(o) > -1; }).forEach(function (r) { items.push(emailItem(r, ctx)); });
+    (results.teamCases || []).filter(function (r) { return isUnassigned(r, ctx); }).forEach(function (r) { unassigned.push(caseItem(r, Object.assign({}, ctx, { unassigned: true }))); });
+    Object.keys(LABEL).forEach(function (k) { if (results[k] === null) skipped.push(LABEL[k]); });
+    var n = items.length;
+    return { items: items, unassigned: unassigned, skipped: skipped, text: n + (n === 1 ? ' item' : ' items') + ' assigned to you' + (unassigned.length ? ', ' + unassigned.length + ' unassigned on your team' : ''), note: skipped.length ? 'Not shown (could not be read): ' + skipped.join(', ') + '.' : '' };
+  }
+  var api = { clean: clean, fmtDay: fmtDay, money: money, Q: Q, qid: qid, caseItem: caseItem, taskItem: taskItem, findingItem: findingItem, emailItem: emailItem, isUnassigned: isUnassigned, build: build, ownerId: ownerId };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.WorkModel = api;
+})(typeof window !== 'undefined' ? window : this);
+
+/* Demo data for the work list (no Zoho). Used only with ?wtdemo=1. Synthetic. */
+(function (root) {
+  'use strict';
+  function d(n) { var x = new Date(); x.setDate(x.getDate() + n); var p = function (v) { return (v < 10 ? '0' : '') + v; }; return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate()); }
+  function dt(n) { return d(n) + 'T09:00:00-05:00'; }
+  var USERS = [{ id: '1', name: 'Beau Carrigan', profile: 'Administrator' }, { id: '2', name: 'Stacey Loosen', profile: 'EM Support' }, { id: '3', name: 'Brittany Mueller', profile: 'EM Support' }];
+  root.WORK_DEMO = {
+    users: USERS, me: '2', queueIds: ['1'],
+    results: function () {
+      return {
+        cases: [
+          { id: '101', Case_Number: 'EM-1081', Subject: 'Strap order did not arrive at Marinette County', Status: 'In Progress', Owner: { id: '2' }, Due_By: dt(-1), Waiting_On: 'Nobody', Next_Action: 'Call the county to confirm the ship-to address', Handling_Team: 'EM Support', Created_Time: dt(-3), Modified_Time: dt(-1) },
+          { id: '102', Case_Number: 'EM-1090', Subject: 'Device offline since Tuesday', Status: 'New', Owner: { id: '2' }, Due_By: dt(0), Waiting_On: 'Nobody', Next_Action: null, Handling_Team: '-None-', Created_Time: dt(-1), Modified_Time: dt(0) },
+          { id: '103', Case_Number: 'EM-1077', Subject: 'Replacement charger back-ordered', Status: 'Acknowledged', Owner: { id: '2' }, Due_By: null, Waiting_On: 'Vendor', Next_Action: 'Ask the vendor for the new ship date', Handling_Team: 'EM Support', Created_Time: dt(-6), Modified_Time: dt(-4) },
+          { id: '104', Case_Number: 'EM-1070', Subject: 'Billing question from county clerk', Status: 'Pending Legal', Owner: { id: '2' }, Due_By: dt(3), Waiting_On: 'Nobody', Next_Action: 'Send the September statement', Handling_Team: 'EM Support', Created_Time: dt(-2), Modified_Time: dt(-1) }
+        ],
+        tasks: [
+          { id: '201', Subject: 'Call Dane County about renewal', Status: 'Not Started', Due_Date: d(0), Owner: { id: '2' }, What_Id: { name: 'Dane County Pretrial' }, Next_Steps: 'Ask who signs the renewal this year.', Modified_Time: dt(-2) },
+          { id: '202', Subject: 'Send training schedule', Status: 'Waiting on someone else', Due_Date: d(4), Owner: { id: '2' }, What_Id: null, Next_Steps: null, Modified_Time: dt(-3) },
+          { id: '203', Subject: 'Update the onboarding checklist', Status: 'In Progress', Due_Date: d(5), Owner: { id: '2' }, What_Id: { name: 'Racine County' }, Modified_Time: dt(-1) }
+        ],
+        findings: [
+          { id: '301', Name: 'F-301', Subject: 'Rate on invoice is above the contract rate', Vendor: 'Allied', Severity: 'HIGH', Dollars: 1840, Status: 'Open', Owner: { id: '2' }, Recommended_Action: 'Ask Allied for a credit of the difference.', Modified_Time: dt(-2) },
+          { id: '302', Name: 'F-302', Subject: 'Duplicate unit charge', Vendor: 'SecureAlert', Severity: 'MEDIUM', Dollars: 220, Status: 'Disputed with vendor', Owner: { id: '2' }, Recommended_Action: null, Modified_Time: dt(-5) }
+        ],
+        emails: [{ id: '401', Name: 'Re: tablet will not charge', Sender_Name: 'Marcia Lund', Sender_Email: 'mlund@example.org', Received_At: dt(-1), Intake_Result: 'Left for review', Owner: { id: '2' }, Modified_Time: dt(-1) }],
+        teamCases: [
+          { id: '501', Case_Number: 'EM-1093', Subject: 'Participant cannot reach the monitoring line', Status: 'New', Owner: { id: '1', name: 'Beau Carrigan' }, Due_By: dt(1), Waiting_On: 'Nobody', Handling_Team: '-None-', Created_Time: dt(0), Modified_Time: dt(0) },
+          { id: '502', Case_Number: 'EM-1092', Subject: 'Strap size question', Status: 'New', Owner: { id: '1', name: 'Beau Carrigan' }, Due_By: null, Waiting_On: 'Nobody', Handling_Team: 'EM Support', Created_Time: dt(-1), Modified_Time: dt(-1) },
+          { id: '503', Case_Number: 'BD-77', Subject: 'Pricing question', Status: 'New', Owner: { id: '1', name: 'Beau Carrigan' }, Due_By: null, Waiting_On: 'Nobody', Handling_Team: 'Business Development', Created_Time: dt(-1), Modified_Time: dt(-1) },
+          { id: '504', Case_Number: 'EM-1060', Subject: 'Already with a teammate', Status: 'In Progress', Owner: { id: '3', name: 'Brittany Mueller' }, Due_By: dt(2), Waiting_On: 'Nobody', Handling_Team: 'EM Support', Created_Time: dt(-2), Modified_Time: dt(-1) },
+          { id: '505', Case_Number: 'EM-1040', Subject: 'Closed long ago', Status: 'Closed', Owner: { id: '1', name: 'Beau Carrigan' }, Due_By: null, Waiting_On: 'Nobody', Handling_Team: 'EM Support', Created_Time: dt(-20), Modified_Time: dt(-10) }
+        ]
+      };
+    }
+  };
+})(typeof window !== 'undefined' ? window : this);
+
+/* Work today. A "Your work today" list at the top of a home page (CRM UI Pattern Rollout Plan, wave C).
+   Needs window.JPK (kit v1.2.1+) and window.WorkModel. The host page gives a <section id="work-today"> with:
+     data-teams="EM Support"       Handling Team values that are "my team" (comma separated)
+     data-default-team="1"         optional: open cases with no Handling Team count as this team's
+     data-queue-profiles="Administrator,System Support"   optional: profiles whose cases count as "nobody is working this" 
+     data-title="Your work today"  optional
+   Read-only. It runs read-only COQL queries, reads the user list and the signed-in user, and the only action is
+   "Open", which opens the record in Zoho. It writes nothing. Outside Zoho it stays hidden unless the address has ?wtdemo=1. */
+(function () {
+  'use strict';
+  var root = document.getElementById('work-today');
+  if (!root || root.getAttribute('data-ready')) return;
+  root.setAttribute('data-ready', '1');
+  var M = window.WorkModel, W = window.WORK_DEMO;
+  var cfg = { teams: (root.getAttribute('data-teams') || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean), defaultTeam: root.getAttribute('data-default-team') === '1', queueProfiles: (root.getAttribute('data-queue-profiles') || 'Administrator,System Support').split(',').map(function (s) { return s.trim(); }).filter(Boolean), title: root.getAttribute('data-title') || 'Your work today' };
+  var mount = root.querySelector('#wt-mount'), note = root.querySelector('#wt-note');
+  var demo = /[?&]wtdemo=1\b/.test(location.search);
+  var list = null;
+
+  function setNote(t) { note.textContent = t || ''; note.hidden = !t; }
+  function open(item) {
+    if (demo) { setNote('Demo mode: the ' + ({ Cases: 'case', Tasks: 'task', Billing_Findings: 'billing finding', Support_Emails: 'support email' }[item.kind] || 'record') + ' would open in Zoho.'); return; }
+    try { ZOHO.CRM.UI.Record.open({ Entity: item.kind, RecordID: item.recordId, Target: '_blank' }); } catch (e) { setNote('Could not open the record: ' + (e && e.message || e)); }
+  }
+  function withOpen(items) { return items.map(function (it) { it.next = Object.assign({}, it.next, { onClick: function () { open(it); } }); return it; }); }
+  function show(res, now) {
+    root.hidden = false; root.removeAttribute('aria-busy');
+    var items = withOpen(res.items), un = withOpen(res.unassigned);
+    list = JPK.workList({ mount: mount, items: items, unassigned: un, now: now, title: cfg.title, subtitle: res.text });
+    setNote(res.note);
+  }
+
+  /* ---------- live ---------- */
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timed out')); }, ms); })]); }
+  function ready(tries) {
+    if (window.ZOHO && ZOHO.CRM && ZOHO.CRM.CONFIG && ZOHO.CRM.API) {
+      return withTimeout(ZOHO.CRM.CONFIG.getCurrentUser(), 6000).then(function (r) { var u = r && r.users && r.users[0]; if (!u) throw new Error('no user'); return u; });
+    }
+    return Promise.reject(new Error('no zoho'));
+  }
+  function retry(n) { return ready().catch(function (e) { if (n <= 0) throw e; return wait(1500).then(function () { return retry(n - 1); }); }); }
+  function query(q) {
+    return JPK.crm.coqlAll(q, { maxPages: 5 }).catch(function () { return null; });
+  }
+  function live() {
+    if (!(window.ZOHO)) { root.hidden = true; return; }
+    retry(6).then(function (u) {
+      var me = String(u.id);
+      return withTimeout(ZOHO.CRM.API.getAllUsers({ Type: 'ActiveUsers' }), 8000).then(function (r) { return (r && r.users) || []; }, function () { return []; }).then(function (users) {
+        users = users.filter(function (x) { return x.status == null || /^active$/i.test(x.status); }).map(function (x) { return { id: String(x.id), name: x.full_name || x.email || '', profile: (x.profile && x.profile.name) || '' }; });
+        var queueIds = users.filter(function (x) { return cfg.queueProfiles.indexOf(x.profile) > -1; }).map(function (x) { return x.id; });
+        return Promise.all([query(M.Q.cases(me)), query(M.Q.tasks(me)), query(M.Q.findings(me)), query(M.Q.emails(me)), query(M.Q.teamCases(me))]).then(function (r) {
+          var res = M.build({ cases: r[0], tasks: r[1], findings: r[2], emails: r[3], teamCases: r[4] }, { users: users, now: new Date(), meId: me, queueIds: queueIds, teams: cfg.teams, defaultTeam: cfg.defaultTeam });
+          show(res, new Date());
+        });
+      });
+    }).catch(function () { root.hidden = true; });
+  }
+
+  /* ---------- demo ---------- */
+  function runDemo() {
+    var now = new Date(), results = W.results(now), f = /[?&]wtskip=([a-z,]+)/.exec(location.search);
+    if (f) f[1].split(',').forEach(function (k) { results[k] = null; });
+    show(M.build(results, { users: W.users, now: now, meId: W.me, queueIds: W.queueIds, teams: cfg.teams.length ? cfg.teams : ['EM Support'], defaultTeam: cfg.defaultTeam || !cfg.teams.length }), now);
+  }
+
+  root.hidden = false; root.setAttribute('aria-busy', 'true'); mount.innerHTML = '<p class="wt-load">Loading your work…</p>';
+  if (demo && W) runDemo(); else live();
+})();
+
+</script>
+</body>
+</html>
