@@ -816,6 +816,8 @@
 
   /* stock emails to approve (v4.13) */
   .sm-card { padding: var(--sp-3) var(--sp-4); }
+  .sm-empty { color: var(--muted); font-size: var(--fs-base); padding: var(--sp-2) 0; }
+  .hl-nav button .sm-n { margin-left: 4px; background: var(--jp-tint); color: var(--jp-ink); border-radius: var(--radius-pill); padding: 0 6px; font-size: var(--fs-xs); font-weight: 700; }
   .sm-note { margin: 0 0 var(--sp-2); color: var(--muted); font-size: var(--fs-sm); }
   .sm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
   .sm-item { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
@@ -3981,7 +3983,7 @@ function rpInit() {
      call STOCK_FN, which sends from emsupport@ and signs the email as the logged-in user ({{sender}} is filled in here so the
      editor shows exactly what goes out). */
   var SM_TYPES = ['Customer spare floor', 'Excess spares'];
-  var SM = { rows: [], open: null, busy: false };
+  var SM = { rows: [], open: null, busy: false, shown: false };
   var smWho = function () { var u = currentUser || {}; return u.full_name || u.name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || 'JusticePoint EM Support'; };
   var smSplit = function (s) { return String(s || '').split(/[;,\s]+/).map(function (x) { return x.trim(); }).filter(Boolean); };
   var smBad = function (list) { return list.filter(function (x) { return !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(x); }); };
@@ -3999,11 +4001,12 @@ function rpInit() {
   function smPaint() {
     var z = $('z-sm'); if (!z) return;
     var n = SM.rows.length;
-    z.hidden = n === 0;
+    z.hidden = !SM.shown;
+    var nb = $('sm-nav-n'); if (nb) { nb.textContent = n ? String(n) : ''; nb.hidden = !n; }
     setText('sm-meta', n ? n + (n === 1 ? ' email waiting' : ' emails waiting') : '');
     setText('sm-who', smWho());
     var ul = $('sm-list');
-    ul.innerHTML = SM.rows.map(function (r) {
+    ul.innerHTML = !n ? '<li class="sm-empty">No stock emails are waiting for approval.</li>' : SM.rows.map(function (r) {
       var open = String(SM.open) === String(r.id), acct = r['Account.Account_Name'] || 'No account';
       var head = '<button type="button" class="sm-sum" data-sm="toggle" aria-expanded="' + open + '"><span class="acct">' + esc(acct) + '</span><span class="pill wait">' + esc(r.Alert_Type) + '</span><span class="subj">' + esc(r.Draft_Subject || '(no subject)') + '</span><span class="go">' + (open ? 'Close' : 'Review') + '</span></button>';
       var ed = '';
@@ -4070,7 +4073,21 @@ function rpInit() {
       say(e && e.message ? e.message : 'That did not go through.', 'bad');
     });
   }
+  function smNav() {
+    var nav = document.querySelector('.hl-nav'), all = document.querySelector('.hl-all');
+    if (!nav) return false;
+    if ($('sm-nav')) return true;
+    var b = document.createElement('button'); b.type = 'button'; b.id = 'sm-nav'; b.setAttribute('aria-pressed', 'false'); b.title = 'Approve the automatic stock alert emails';
+    b.innerHTML = 'Stock emails<b class="sm-n" id="sm-nav-n" hidden></b>';
+    b.addEventListener('click', function () {
+      SM.shown = !SM.shown; b.setAttribute('aria-pressed', String(SM.shown)); smPaint();
+      if (SM.shown) { var z = $('z-sm'); if (z && z.scrollIntoView) z.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+    if (all && all.parentNode === nav) nav.insertBefore(b, all); else nav.appendChild(b);
+    smPaint(); return true;
+  }
   function initStockApprovals() {
+    var tries = 0, tick = function () { if (!smNav() && tries++ < 20) setTimeout(tick, 250); }; tick();
     var ul = $('sm-list'); if (!ul) return;
     ul.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-sm]'); if (!b) return;
