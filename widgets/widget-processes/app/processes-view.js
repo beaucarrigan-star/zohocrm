@@ -75,7 +75,7 @@
       h += lanePills(stage.lanes.map(function (id) { return m.lanes[id]; }), lane.id, 'ln');
       if (lane.hint) h += '<p class="mut" style="padding:8px 24px 0;font-size:12px">' + esc(lane.hint) + '</p>';
       if (!lane.items.length) h += '<div class="empty"><b>Nothing here</b></div>';
-      else h += X.tableHtml([{ k: 'title', label: lane.kind === 'finding' ? 'Finding' : 'Month', main: 1 }, { k: 'sub', label: 'Detail' }, { k: 'accountName', label: 'Vendor' }, { k: 'state', label: 'State', pill: 1 }, { k: 'amt', label: 'Amount', r: 1, num: 1 }, { k: 'ageText', label: 'Timing' }],
+      else h += X.tableHtml([{ k: 'title', label: lane.kind === 'finding' ? 'Finding' : 'Month', main: 1 }, { k: 'sub', label: 'Detail' }, { k: 'accountName', label: 'Vendor' }, { k: 'state', label: 'State', pill: 1 }, { k: 'amt', label: 'Amount', r: 1 }, { k: 'ageText', label: 'Timing' }],
         lane.items.slice(0, 300).map(function (i) { return { title: i.title, sub: i.sub, accountName: i.accountName, state: i.state, amt: money(i.amount), ageText: i.ageText }; }), true);
       var cur = FS.sel != null && lane.items[FS.sel];
       if (cur) h += '<div class="cards"><section class="card" id="det"><h3>' + esc(cur.title) + '</h3><dl><dt>Detail</dt><dd>' + esc(cur.sub) + '</dd><dt>Vendor</dt><dd>' + esc(cur.accountName || 'None') + '</dd><dt>Amount</dt><dd>' + esc(money(cur.amount) || 'None') + '</dd></dl>' +
@@ -137,7 +137,7 @@
         mx.vendors.map(function (v) { return '<tr><td class="main"><a href="#" data-v="' + esc(v.vendor) + '" data-c="" style="color:inherit">' + esc(v.vendor) + '</a></td>' + mx.categories.map(function (c) { var x = v.cells[c]; return '<td class="r">' + (x ? '<a href="#" data-v="' + esc(v.vendor) + '" data-c="' + esc(c) + '" style="color:var(--acc)">' + x.open + '/' + x.total + '</a>' : '') + '</td>'; }).join('') + '<td class="r">' + v.open + '/' + v.total + '</td></tr>'; }).join('') + '</tbody></table></div><p class="mut" style="padding:6px 24px 0;font-size:12px">Cells show open / total. Click one to filter.</p>';
       var fed = ADM ? { pl: { status: fstatPl || FSTAT }, admin: true, title: function (r) { return r.participant || 'finding'; } } : null;
       if (fed && per0 && /Reconciled|Frozen/.test(String(per0.Period_Status || ''))) h += '<div class="attn" style="background:var(--s1);border-color:var(--line);color:var(--ink)">' + esc(BF.monthLabel(GS.period)) + ' is ' + esc(per0.Period_Status) + '. Changing a decision here un-reconciles the month; run Reconcile again afterwards.</div>';
-      h += list.length ? X.tableHtml([{ k: 'participant', label: 'Subject', main: 1 }, { k: 'vendor', label: 'Vendor' }, { k: 'category', label: 'Type' }, { k: 'checkId', label: 'Check' }, { k: 'severity', label: 'Severity', pill: 1 }, { k: 'status', label: 'Decision', pill: 1, ed: 'pick', opts: FSTAT }, { k: 'dollars', label: 'Dollars', r: 1, num: 1 }],
+      h += list.length ? X.tableHtml([{ k: 'participant', label: 'Subject', main: 1 }, { k: 'vendor', label: 'Vendor' }, { k: 'category', label: 'Type' }, { k: 'checkId', label: 'Check' }, { k: 'severity', label: 'Severity', pill: 1 }, { k: 'status', label: 'Decision', pill: 1, ed: 'pick', opts: FSTAT }, { k: 'dollars', label: 'Dollars', r: 1 }],
         list.slice(0, 300).map(function (r) { return { participant: r.participant, vendor: r.vendor, category: r.category, checkId: r.checkId, severity: r.severity, status: r.status, dollars: r.dollars ? money(r.dollars) : '' }; }), true, fed) +
         (fed ? '<p class="mut edhint">Decision (✎) saves to the finding at once, with Undo, and is read back on the next Reconcile. Administrators only.</p>' : '') : '<div class="empty"><b>No findings match</b></div>';
     }
@@ -228,7 +228,7 @@
       { id: 'done', label: 'Ingested', kpi: 'good', test: function (r) { return s(r.Ingest_Status) === 'Ingested'; } },
       { id: 'all', label: 'All contracts', test: function () { return true; } }
     ],
-    cols: [{ k: 'Name', label: 'Contract', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Contract_Status', label: 'Status', pill: 1 }, { k: 'Ingest_Status', label: 'Ingest', pill: 1 }, { k: 'Reconciliation_Status', label: 'Reconciliation', pill: 1 }, { k: 'Days_to_Final_End', label: 'Days left', t: 'num', r: 1, num: 1 }],
+    cols: [{ k: 'Name', label: 'Contract', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Contract_Status', label: 'Status', pill: 1 }, { k: 'Ingest_Status', label: 'Ingest', pill: 1 }, { k: 'Reconciliation_Status', label: 'Reconciliation', pill: 1 }, { k: 'Days_to_Final_End', label: 'Days left', t: 'num', r: 1 }],
     detail: [['Account', 'Account'], ['Contract_Status', 'Contract status'], ['Ingest_Status', 'Ingest'], ['Needs_Cleanup', 'Needs cleanup'], ['Reconciliation_Status', 'Reconciliation'], ['Renewal_Band', 'Renewal band'], ['Days_to_Final_End', 'Days left', 'num']]
   });
   RM.p_solicit = laneView({
@@ -244,7 +244,7 @@
       { id: 'dec', label: 'Decided', kpi: 'good', test: function (r) { return !!s(r.Bid_Decision); } },
       { id: 'all', label: 'All solicitations', test: function () { return true; } }
     ],
-    cols: [{ k: 'Name', label: 'Solicitation', main: 1 }, { k: 'Issuing_Agency', label: 'Agency' }, { k: 'Status', label: 'Status', pill: 1 }, { k: 'Proposal_Due', label: 'Due', t: 'date' }, { k: 'Days_To_Deadline', label: 'Days', t: 'num', r: 1, num: 1 }, { k: 'Bid_Decision', label: 'Decision', pill: 1 }, { k: 'Best_Score', label: 'Score', t: 'num', r: 1, num: 1 }],
+    cols: [{ k: 'Name', label: 'Solicitation', main: 1 }, { k: 'Issuing_Agency', label: 'Agency' }, { k: 'Status', label: 'Status', pill: 1 }, { k: 'Proposal_Due', label: 'Due', t: 'date' }, { k: 'Days_To_Deadline', label: 'Days', t: 'num', r: 1 }, { k: 'Bid_Decision', label: 'Decision', pill: 1 }, { k: 'Best_Score', label: 'Score', t: 'num', r: 1 }],
     detail: [['Issuing_Agency', 'Agency'], ['Status', 'Status'], ['Proposal_Due', 'Proposal due', 'date'], ['Bid_Decision', 'Bid decision'], ['Best_Score', 'Best score', 'num'], ['Unmet_Mandatory_Count', 'Unmet mandatory', 'num']]
   });
 
