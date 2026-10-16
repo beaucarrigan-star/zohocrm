@@ -7843,29 +7843,34 @@ if (typeof LEAD_PREVIEW !== 'undefined') LEAD_PREVIEW.nh = (function () {
   /* ---------- live ---------- */
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timed out')); }, ms); })]); }
+  var stage = 'start';
   function ready(tries) {
-    if (window.ZOHO && ZOHO.CRM && ZOHO.CRM.CONFIG && ZOHO.CRM.API) {
+    return Promise.resolve().then(function () {
+      if (!(window.ZOHO && ZOHO.CRM && ZOHO.CRM.CONFIG && ZOHO.CRM.API)) throw new Error('no zoho');
+      stage = 'getCurrentUser';
       return withTimeout(ZOHO.CRM.CONFIG.getCurrentUser(), 6000).then(function (r) { var u = r && r.users && r.users[0]; if (!u) throw new Error('no user'); return u; });
-    }
-    return Promise.reject(new Error('no zoho'));
+    });
   }
   function retry(n) { return ready().catch(function (e) { if (n <= 0) throw e; return wait(1500).then(function () { return retry(n - 1); }); }); }
   function query(q) {
-    return JPK.crm.coqlAll(q, { maxPages: 5 }).catch(function () { return null; });
+    return withTimeout(JPK.crm.coqlAll(q, { maxPages: 5 }), 25000).catch(function (e) { stage = 'query failed: ' + (e && e.message || e); return null; });
   }
   function live() {
     if (!(window.ZOHO)) { root.hidden = true; return; }
+    var dog = setTimeout(function () { if (root.getAttribute('aria-busy') === 'true') { mount.innerHTML = '<p class="wt-load">Your work list could not load (' + stage + '). Reload the page; if it persists, tell Beau.</p>'; } }, 60000);
     retry(6).then(function (u) {
+      stage = 'getAllUsers';
       var me = String(u.id);
       return withTimeout(ZOHO.CRM.API.getAllUsers({ Type: 'ActiveUsers' }), 8000).then(function (r) { return (r && r.users) || []; }, function () { return []; }).then(function (users) {
         users = users.filter(function (x) { return x.status == null || /^active$/i.test(x.status); }).map(function (x) { return { id: String(x.id), name: x.full_name || x.email || '', profile: (x.profile && x.profile.name) || '' }; });
         var queueIds = users.filter(function (x) { return cfg.queueProfiles.indexOf(x.profile) > -1; }).map(function (x) { return x.id; });
+        stage = 'queries';
         return Promise.all([query(M.Q.cases(me)), query(M.Q.tasks(me)), query(M.Q.findings(me)), query(M.Q.emails(me)), query(M.Q.teamCases(me))]).then(function (r) {
           var res = M.build({ cases: r[0], tasks: r[1], findings: r[2], emails: r[3], teamCases: r[4] }, { users: users, now: new Date(), meId: me, queueIds: queueIds, teams: cfg.teams, defaultTeam: cfg.defaultTeam });
-          show(res, new Date());
+          stage = 'show'; clearTimeout(dog); show(res, new Date());
         });
       });
-    }).catch(function () { root.hidden = true; });
+    }).catch(function (e) { clearTimeout(dog); root.hidden = true; });
   }
 
   /* ---------- demo ---------- */
