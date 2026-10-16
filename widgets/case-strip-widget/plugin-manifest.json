@@ -1,0 +1,19 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": [],
+    "font-src": []
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Case Strip", "location": "crm.detailview.relatedlist", "url": "/app/case-strip.html" },
+      { "name": "Case Strip Button", "location": "crm.button", "url": "/app/case-strip.html" }
+    ]
+  }
+}

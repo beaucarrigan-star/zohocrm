@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case strip</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-patterns-v3.css">
+<link rel="stylesheet" href="case-strip.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow" id="eyebrow">Case</div>
+      <h1 id="title">Loading case...</h1>
+      <div class="muted sm" id="ctx"></div>
+    </div>
+    <div class="actions" id="status-chip"></div>
+  </header>
+
+  <div id="demo-note" class="next" hidden>
+    <div class="nt"><b>Demo data</b><span>Not connected to Zoho. Nothing you do here is saved. Try ?case=unassigned, waiting, other or overdue.</span></div>
+  </div>
+  <div id="err" class="err" role="alert" hidden></div>
+
+  <section class="card" style="margin-top:12px" aria-label="Who has this case">
+    <div id="strip"></div>
+    <p id="strip-note" class="muted sm strip-note" hidden></p>
+    <p id="msg" class="cs-msg" role="status" aria-live="polite" hidden></p>
+    <div class="cs-actions" id="actions" hidden></div>
+    <div id="panel" class="cs-panel" hidden></div>
+  </section>
+</div>
+
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="strip-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="case-strip.js"></script>
+<script src="jpk-intro.js"
+  data-what="Who has this case, which team, when it is due, what it is waiting on and the next action, at the top of the case."
+  data-fed="Cases (Owner, Handling Team, Due By, Waiting On, Next Action) and the list of active users."
+  data-feeds="Take case and Assign change the case owner. Hand off changes the owner and adds a Note saying why. Nothing else is written."></script>
+</body>
+</html>

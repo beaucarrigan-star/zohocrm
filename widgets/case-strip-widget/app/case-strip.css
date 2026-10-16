@@ -1,0 +1,11 @@
+/* Case strip: only what the shared kit does not cover. Tokens come from jpk.css / jpk-theme-v3.css. */
+.strip-note{margin:8px 0 0}
+.cs-msg{margin:10px 0 0;padding:8px 12px;border-left:3px solid var(--accent);background:var(--surface2);border-radius:var(--r)}
+.cs-msg.bad{border-left-color:var(--bad)}
+.cs-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.cs-panel{margin-top:12px;padding:14px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface2);display:grid;gap:12px;max-width:560px}
+.cs-panel h2{margin:0;font-size:15px}
+.cs-panel .row{display:flex;gap:8px;flex-wrap:wrap}
+.cs-panel .jp-fld select,.cs-panel .jp-fld textarea{width:100%}
+.cs-panel .count{font-size:12px;color:var(--muted);text-align:right}
+@media (max-width:600px){.cs-actions .btn{flex:1 1 100%}}
