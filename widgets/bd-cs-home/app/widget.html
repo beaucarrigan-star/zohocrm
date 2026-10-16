@@ -9092,11 +9092,13 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
 })();
 </script>
 <script id="work-box-js">
-/* work-box v1 (16 Oct 2026). One "Work box" for any record you can open from the home page: the record's own
+/* work-box v1.1 (16 Oct 2026). One "Work box" for any record you can open from the home page: the record's own
    fields (editable), the record it points at (a renewal task opens its contract), the files already attached, and
    a way to add more. It talks to Zoho directly (getRecord, updateRecord, getRelatedRecords Attachments, attachFile),
    so it does not depend on anything else in the page. Entry points: WorkBox.mountPeek (Queue peek) and
-   WorkBox.mountRP (board peek). ?preview=1 runs it on demo data; &deny=1 makes every save and upload fail. */
+   WorkBox.mountRP (board peek). ?preview=1 runs it on demo data; &deny=1 makes every save and upload fail.
+   v1.1: Contracts show Original End Date, Renewals Allowed and End After 1 Renewal; changing Original End Date,
+   Renewals Allowed or Months per renewal recomputes End After 1 Renewal and Final End Date in the same save. */
 (function () {
   'use strict';
   if (window.WorkBox) return;
@@ -9134,6 +9136,30 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   };
   var isEmptyList = function (e) { try { return e && (e.status === 204 || /204|no content|no_content/i.test(JSON.stringify(e))); } catch (x) { return false; } };
 
+  /* ---------- term dates (same rule as the contract worker and the Contract Review widget) ----------
+     A month-end date stays a month-end date: 28 Feb 2027 + 12 months = 29 Feb 2028; other days clamp to the month. */
+  function addTermMonths(iso, months) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); if (!m || isNaN(months)) return '';
+    var y0 = +m[1], mo0 = +m[2] - 1, d0 = +m[3];
+    var idx = mo0 + months, y = y0 + Math.floor(idx / 12), mo = ((idx % 12) + 12) % 12;
+    var last = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+    var onLast = d0 === new Date(Date.UTC(y0, mo0 + 1, 0)).getUTCDate();
+    var d = onLast ? last : Math.min(d0, last);
+    return y + '-' + ('0' + (mo + 1)).slice(-2) + '-' + ('0' + d).slice(-2);
+  }
+  /* {after1, final} as ISO strings; '' when an input is missing (never guess). allowed 0: no renewal, Final = Original. */
+  function deriveTermDates(orig, allowed, months) {
+    var o = { after1: '', final: '' };
+    if (!orig || allowed == null || allowed === '' || isNaN(allowed)) return o;
+    allowed = Number(allowed);
+    if (allowed === 0) { o.final = orig; return o; }
+    if (months == null || months === '' || isNaN(months) || Number(months) <= 0) return o;
+    months = Number(months);
+    o.after1 = addTermMonths(orig, months);
+    o.final = addTermMonths(orig, months * allowed);
+    return o;
+  }
+
   /* ---------- the fields shown per module ----------
      k: API name. Only fields the record actually returns are shown. t: pick | date | int | num | text | area | bool | ro.
      admin: only the Administrator profile (or Beau) may change it; everyone else sees it with a lock. Picklist choices and
@@ -9143,10 +9169,16 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     Contracts: [
       { k: 'Contract_Status', t: 'pick', o: CONTRACT_STATUS, admin: true },
       { k: 'Renewal_Status', t: 'pick', o: ['Not started', 'In discussion', 'Amendment sent', 'Signed', 'Not renewing'] },
-      { k: 'Contract_Start_Date', t: 'date' }, { k: 'Contract_End_Date', t: 'date' }, { k: 'Final_End_Date', t: 'date' },
+      { k: 'Contract_Start_Date', t: 'date' },
+      { k: 'Original_End_Date', t: 'date', l: 'Original End Date' },
+      { k: 'Contract_End_Date', t: 'date', l: 'Current Term End' },
+      { k: 'Renewals_Allowed', t: 'int', l: 'Renewals Allowed' },
+      { k: 'Renewal_Option_Length_Mo', t: 'int', l: 'Months per Renewal' },
+      { k: 'Renewal_Options_Left', t: 'int', l: 'Renewals Left' },
+      { k: 'End_After_1_Renewal', t: 'date', l: 'End After 1 Renewal' },
+      { k: 'Final_End_Date', t: 'date', l: 'End With All Renewals' },
       { k: 'Auto_Renews', t: 'pick', o: ['Yes', 'No', 'Not stated'] },
       { k: 'Notice_Period_Days', t: 'int' }, { k: 'Renewal_Reminder_Date', t: 'date' },
-      { k: 'Renewal_Options_Left', t: 'int' }, { k: 'Renewal_Option_Length_Mo', t: 'int' },
       { k: 'Account', t: 'ro' }, { k: 'Alert_Stage', t: 'ro' }, { k: 'Days_To_Expiry', t: 'ro' }, { k: 'Notice_Deadline', t: 'ro' }, { k: 'Notice_Passed', t: 'ro' },
       { k: 'Renewal_Notes', t: 'area' }, { k: 'Contract_Notes', t: 'area' }
     ],
@@ -9182,7 +9214,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
       { id: 'a2', File_Name: 'Amendment 2 (2025).pdf', Size: 188416, Created_Time: '2025-11-18T09:02:00-06:00', Owner: { name: 'Beau Carrigan' } }] };
     var rec = {
       'Tasks:t1': { id: 't1', Subject: 'Contract renewal - 90 day notice: Rock Co Pretrial Program', Status: 'Not Started', Priority: 'High', Due_Date: '2026-10-05', Next_Steps: null, Description: 'Rock County Pretrial Program - contract (with all extensions) ends Dec 31, 2026 (90 days). Renewal status: Not started.', What_Id: { id: 'ct1', name: 'Rock Co Pretrial Program' }, $se_module: 'Contracts' },
-      'Contracts:ct1': { id: 'ct1', Name: 'Rock Co Pretrial Program', Contract_Status: 'Active/Complete', Renewal_Status: 'Not started', Contract_Start_Date: '2023-01-01', Contract_End_Date: '2026-12-31', Final_End_Date: '2026-12-31', Auto_Renews: 'No', Notice_Period_Days: 90, Renewal_Reminder_Date: null, Renewal_Options_Left: 0, Renewal_Option_Length_Mo: 12, Account: { id: 'ac1', name: 'Rock County' }, Alert_Stage: '90 day notice', Days_To_Expiry: 76, Notice_Deadline: '2026-10-02', Notice_Passed: true, Renewal_Notes: null, Contract_Notes: 'Rates per Article 4.' },
+      'Contracts:ct1': { id: 'ct1', Name: 'Rock Co Pretrial Program', Contract_Status: 'Active/Complete', Renewal_Status: 'Not started', Contract_Start_Date: '2023-01-01', Original_End_Date: '2023-12-31', Contract_End_Date: '2026-12-31', Renewals_Allowed: 3, Renewal_Options_Left: 0, Renewal_Option_Length_Mo: 12, End_After_1_Renewal: '2024-12-31', Final_End_Date: '2026-12-31', Auto_Renews: 'No', Notice_Period_Days: 90, Renewal_Reminder_Date: null, Account: { id: 'ac1', name: 'Rock County' }, Alert_Stage: '90 day notice', Days_To_Expiry: 76, Notice_Deadline: '2026-10-02', Notice_Passed: true, Renewal_Notes: null, Contract_Notes: 'Rates per Article 4.' },
       'Cases:c3': { id: 'c3', Subject: 'Strap replacement', Priority: 'High', Description: 'Customer needs a replacement strap.', Account_Name: { id: 'ac1', name: 'Rock County' } },
       'Accounts:ac1': { id: 'ac1', Account_Name: 'Rock County', Phone: '(608) 555-0100', Website: 'https://example.org', Account_Type: 'Customer', Description: null },
       'Support_Emails:e1': { id: 'e1', Name: 'Re: device alert' },
@@ -9319,6 +9351,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
       else h += '<div class="wb-f' + wide + '"><span class="k">' + esc(f.l) + (lk ? '<span class="lock" title="Only an administrator can change this">🔒 admins only</span>' : '') + '</span><div class="v">' + show(f, rec[f.k]) + '</div></div>';
     });
     h += '</div>';
+    if (edit && t.module === 'Contracts') h += '<p class="wb-msg">Changing Original End Date, Renewals Allowed or Months per Renewal recalculates End After 1 Renewal and End With All Renewals when you save.</p>';
     if (edit) h += '<div class="wb-actions"><button type="button" class="btn primary" data-wb="save"' + (t.saving ? ' disabled' : '') + '>' + (t.saving ? 'Saving…' : 'Save changes') + '</button><button type="button" class="btn" data-wb="cancel"' + (t.saving ? ' disabled' : '') + '>Cancel</button><span class="wb-msg' + (t.msgBad ? ' bad' : '') + '" role="status" aria-live="polite">' + esc(t.msg || '') + '</span></div>';
     else if (t.msg) h += '<div class="wb-actions"><span class="wb-msg' + (t.msgBad ? ' bad' : ' ok') + '" role="status" aria-live="polite">' + esc(t.msg) + '</span></div>';
     return h + '</div>';
@@ -9378,25 +9411,39 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     if (f.t === 'num') return Number(v);
     return v;
   }
+  var TERM_INPUTS = ['Original_End_Date', 'Renewals_Allowed', 'Renewal_Option_Length_Mo'];
   function saveEdit(st, t) {
-    var fs = fieldsFor(t), ch = {}, bad = {}, msg = '', n = 0;
+    var fs = fieldsFor(t), ch = {}, bad = {}, msg = '', n = 0, recomputed = false;
     fs.forEach(function (f) {
       if (locked(f)) return;
       var now = t.draft[f.k], was = cur(f, (t.rec || {})[f.k]);
       if (String(now) === String(was)) return;
       var v = toApi(f, now);
       if ((f.t === 'int' || f.t === 'num') && v != null && isNaN(v)) { bad[f.k] = 1; msg = f.l + ' must be a number.'; return; }
+      if ((f.k === 'Renewals_Allowed' || f.k === 'Renewal_Option_Length_Mo') && v != null && v < 0) { bad[f.k] = 1; msg = f.l + ' cannot be negative.'; return; }
       ch[f.k] = v; n++;
     });
-    var s = ch.Contract_Start_Date !== undefined ? ch.Contract_Start_Date : (t.rec || {}).Contract_Start_Date, e = ch.Contract_End_Date !== undefined ? ch.Contract_End_Date : (t.rec || {}).Contract_End_Date;
+    var rec = t.rec || {}, eff = function (k) { return ch[k] !== undefined ? ch[k] : rec[k]; };
+    var s = eff('Contract_Start_Date'), e = eff('Contract_End_Date'), o = eff('Original_End_Date');
     if (t.module === 'Contracts' && s && e && e < s) { bad.Contract_End_Date = 1; msg = 'The end date is before the start date.'; }
+    if (t.module === 'Contracts' && s && o && o < s) { bad.Original_End_Date = 1; msg = 'The original end date is before the start date.'; }
+    /* a changed term input recomputes both end dates in the same save (only when every input is known) */
+    if (t.module === 'Contracts' && !Object.keys(bad).length && TERM_INPUTS.some(function (k) { return ch[k] !== undefined; })) {
+      var d = deriveTermDates(o, eff('Renewals_Allowed'), eff('Renewal_Option_Length_Mo'));
+      [['End_After_1_Renewal', d.after1], ['Final_End_Date', d.final]].forEach(function (p) {
+        if (!(p[0] in rec) || !p[1]) return;
+        if ((rec[p[0]] || '') === p[1] && ch[p[0]] === undefined) return;
+        if (ch[p[0]] === undefined) n++;
+        ch[p[0]] = p[1]; recomputed = true;
+      });
+    }
     if (Object.keys(bad).length) { t.bad = bad; t.msg = msg; t.msgBad = true; paint(st); return; }
     if (!n) { t.edit = false; t.msg = 'Nothing was changed.'; t.msgBad = false; paint(st); return; }
     t.saving = true; t.msg = ''; paint(st);
     var payload = { id: t.id }; Object.keys(ch).forEach(function (k) { payload[k] = ch[k]; });
     API.update(t.module, payload).then(function () {
       Object.keys(ch).forEach(function (k) { t.rec[k] = ch[k]; });
-      t.saving = false; t.edit = false; t.msg = 'Saved ' + n + (n === 1 ? ' change.' : ' changes.'); t.msgBad = false; paint(st);
+      t.saving = false; t.edit = false; t.msg = 'Saved ' + n + (n === 1 ? ' change.' : ' changes.') + (recomputed ? ' End dates recalculated.' : ''); t.msgBad = false; paint(st);
       try { document.dispatchEvent(new CustomEvent('workbox:saved', { detail: { module: t.module, id: t.id, changes: ch } })); } catch (x) {}
     }, function (er) { t.saving = false; t.msg = 'Not saved. ' + errText(er); t.msgBad = true; paint(st); });
   }
@@ -9486,7 +9533,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
       var host = document.createElement('div'); host.className = 'pk-sec'; left.appendChild(host);
       mount(host, { key: module + ':' + rec.id, module: module, id: rec.id, label: NAMES[module] || module }, false);
     },
-    _state: S, _fields: fieldsFor
+    _state: S, _fields: fieldsFor, _derive: deriveTermDates, _addTermMonths: addTermMonths
   };
 })();
 </script>
