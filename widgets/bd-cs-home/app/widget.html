@@ -1082,6 +1082,10 @@
   .hl-band { position: absolute; left: 0; width: 100%; height: 256px; }
   .page > .hl-bar-ph { margin-inline: 0; }
   .hl-anchor { scroll-margin-top: 64px; }
+  #to-top { right: 20px; z-index: var(--z-sticky, 20); display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: 600 var(--fs-md, 12.5px)/1 var(--font-ui, system-ui); box-shadow: var(--shadow-pop); cursor: pointer; }
+  #to-top[hidden] { display: none; }
+  #to-top:hover { background: var(--surface-2); }
+  #to-top:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   @media (min-width: 861px) {
     .page > .quick-actions.hl-pinned {
       position: absolute; top: var(--hl-bar-top, 0px); left: 0; right: 0; margin: 0; z-index: var(--z-sticky);
@@ -3994,7 +3998,7 @@ function rpInit() {
      Email_Status is "Awaiting approval". Each one opens into an editable To / Subject / body; Approve & send, Reject and Save draft
      call STOCK_FN, which sends from emsupport@ and signs the email as the logged-in user ({{sender}} is filled in here so the
      editor shows exactly what goes out). */
-  var SM_TYPES = ['Customer spare floor', 'Excess spares'];
+  var SM_TYPES = ['Customer spare floor', 'Excess spares', 'Program growth'];
   var SM = { rows: [], open: null, busy: false, shown: false };
   var smWho = function () { var u = currentUser || {}; return u.full_name || u.name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || 'JusticePoint EM Support'; };
   var smSplit = function (s) { return String(s || '').split(/[;,\s]+/).map(function (x) { return x.trim(); }).filter(Boolean); };
@@ -7149,8 +7153,27 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
 
   /* ---------------- view ---------------- */
   function tone(t) { return t && t !== 'neutral' && t !== 'info' ? ' ' + t : ''; }
+  var boxWired = false;
+  function closeBox() { var el = document.getElementById('peek'); if (el && el.getAttribute('data-bx')) { el.hidden = true; el.innerHTML = ''; el.removeAttribute('data-bx'); try { window.dispatchEvent(new Event('resize')); } catch (e) {} } }
+  function openBox(it) {
+    var el = document.getElementById('peek'); if (!el) return false;
+    var href = TAB + (SLUG.Contracts || 'Contracts') + '/' + it.id;
+    el.innerHTML = '<div class="peek-panel" role="dialog" aria-label="Contract"><div class="pk-head"><span class="pk-id">Contract</span><span class="pk-title">' + esc(it.title) + '</span><span class="rp-sub">' + esc(it.sub || '') + '</span>'
+      + (PREVIEW ? '' : '<a class="pk-link" target="_top" href="' + esc(href) + '">Open ↗</a>') + '<button type="button" class="pk-x" data-bx="close" aria-label="Close" title="Close (Esc)">✕</button></div>'
+      + '<div class="pk-body"></div><div class="pk-foot"><span class="fine">Esc close</span></div></div>';
+    el.setAttribute('data-bx', '1'); el.hidden = false;
+    try { window.WorkBox.mountPeek(el, 'contract', String(it.id)); } catch (e) {}
+    if (!boxWired) {
+      boxWired = true;
+      el.addEventListener('click', function (ev) { if (el.getAttribute('data-bx') && ev.target.closest('[data-bx="close"]')) closeBox(); });
+      document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && el.getAttribute('data-bx') && !el.hidden) { ev.stopPropagation(); closeBox(); } }, true);
+    }
+    try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+    return true;
+  }
   function openRec(it) {
     var mod = { account: 'Accounts', deal: 'Deals', contract: 'Contracts' }[it.kind]; if (!mod) return;
+    if (it.kind === 'contract' && window.WorkBox && openBox(it)) return;
     if (PREVIEW) { window.__bdcsRelOpened = mod + '/' + it.id; try { if (typeof toast === 'function') toast('Would open ' + it.title + ' in CRM (preview)', { ms: 2500 }); } catch (e) {} return; }
     try { window.top.location.href = TAB + (SLUG[mod] || mod) + '/' + it.id; } catch (e) { window.open(TAB + (SLUG[mod] || mod) + '/' + it.id, '_blank'); }
   }
@@ -7507,6 +7530,30 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   }
   if (document.readyState === 'loading' && !(document.body && document.getElementById('page'))) document.addEventListener('DOMContentLoaded', boot);
   else boot();
+})();
+</script>
+<script id="to-top-js">
+(function () {
+  /* Back to top (16 Oct 2026). The widget iframe is as tall as the page, so "scroll" belongs to Zoho's page: the visible slice comes from
+     hlViewport (viewport-js). The button rides at the bottom right of that slice once it is more than 300px below the top, and scrolls the top of the page back into view. */
+  var b = document.createElement('button'); b.type = 'button'; b.id = 'to-top'; b.hidden = true; b.setAttribute('aria-label', 'Back to the top of the page'); b.title = 'Back to top';
+  b.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10 8 5.5 12.5 10"/></svg><span>Top</span>';
+  document.body.appendChild(b);
+  function place(v) {
+    var known = v && v.known && document.documentElement.scrollHeight <= window.innerHeight + 16, top = known ? v.top : (window.scrollY || 0), h = known ? v.h : window.innerHeight;
+    b.hidden = top < 300;
+    b.style.position = known ? 'absolute' : 'fixed';
+    b.style.top = known ? Math.max(0, top + h - 56) + 'px' : 'auto';
+    b.style.bottom = known ? 'auto' : '16px';
+  }
+  if (window.hlOnViewport) window.hlOnViewport(place);
+  window.addEventListener('scroll', function () { place(window.hlViewport ? window.hlViewport() : null); }, { passive: true });
+  b.addEventListener('click', function () {
+    var top = document.querySelector('.mast') || document.getElementById('page') || document.body;
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
+    try { top.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    try { b.blur(); } catch (e) {}
+  });
 })();
 </script>
 <script id="dialog-js">/* kit-owned: dialog-js v2 — edited in the kit after extract (window.HL_DIALOGS). */
@@ -9426,7 +9473,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     if (st.open) begin(st); else paint(st);
   }
   function begin(st) { if (st.began) { paint(st); activate(st); return; } st.began = true; start(st); }
-  var KIND = { case: 'Cases', task: 'Tasks', email: 'Support_Emails' };
+  var KIND = { case: 'Cases', task: 'Tasks', email: 'Support_Emails', contract: 'Contracts' };
   window.WorkBox = {
     mountPeek: function (peek, kind, id) {
       var module = KIND[kind], body = peek.querySelector('.pk-body'); if (!module || !body || !id) return;
