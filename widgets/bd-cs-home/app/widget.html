@@ -813,6 +813,30 @@
   .btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-size: var(--fs-md); font-weight: 600; cursor: pointer; }
   .btn:hover { border-color: var(--focus); }
   .btn.primary { background: var(--focus); border-color: var(--focus); color: var(--surface); }
+
+  /* stock emails to approve (v4.13) */
+  .sm-card { padding: var(--sp-3) var(--sp-4); }
+  .sm-note { margin: 0 0 var(--sp-2); color: var(--muted); font-size: var(--fs-sm); }
+  .sm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+  .sm-item { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  .sm-item.open { border-color: var(--line-strong); box-shadow: var(--shadow); }
+  .sm-sum { display: flex; align-items: center; gap: var(--sp-3); width: 100%; background: none; border: 0; padding: var(--sp-2) var(--sp-3); text-align: left; cursor: pointer; color: var(--ink); font: inherit; font-size: var(--fs-base); }
+  .sm-sum .acct { font-weight: 600; white-space: nowrap; }
+  .sm-sum .subj { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+  .sm-sum .go { color: var(--focus); font-weight: 600; white-space: nowrap; }
+  .sm-ed { padding: 0 var(--sp-3) var(--sp-3); display: grid; gap: var(--sp-2); }
+  .sm-ed label { display: grid; gap: 2px; font-size: var(--fs-sm); color: var(--muted); }
+  .sm-ed input { font: inherit; font-size: var(--fs-base); color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 6px 8px; }
+  .sm-body { min-height: 140px; max-height: 340px; overflow: auto; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: var(--sp-3); background: var(--surface); color: var(--ink); font-size: var(--fs-base); line-height: 1.5; }
+  .sm-body p { margin: 0 0 .7em; }
+  .sm-fact { font-size: var(--fs-sm); color: var(--muted); }
+  .sm-bar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .sm-bar .sp { flex: 1; }
+  .sm-msg { font-size: var(--fs-sm); }
+  .sm-msg.bad { color: var(--bad); }
+  .sm-msg.good { color: var(--good); }
+  .btn.sm-armed { background: var(--bad); border-color: var(--bad); color: var(--surface); }
+  .btn.primary.sm-armed { background: var(--good); border-color: var(--good); }
   .btn.primary kbd.k { background: transparent; color: inherit; border-color: currentColor; opacity: .8; font-size: var(--fs-xs); }
   .btn[disabled] { opacity: .55; cursor: default; }
   .pk-sec h4 { margin: 0 0 var(--sp-1); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
@@ -1759,6 +1783,13 @@
   </section>
 
   <!-- ===================== Zone 1: My work — Queue + waiting emails | Follow-ups ===================== -->
+  <div class="bz" id="z-sm" hidden>
+      <div class="band"><h2>Stock emails to approve</h2><span class="meta" id="sm-meta"></span></div>
+      <section class="card sm-card" aria-label="Stock alert emails waiting for approval">
+        <p class="sm-note">Sent from <b>emsupport@justicepoint.org</b> and signed as <b id="sm-who">you</b>. Edit anything below before you approve.</p>
+        <ul class="sm-list" id="sm-list"></ul>
+      </section>
+  </div>
   <div class="hl-zone hl-zone-work hl-two hk-pair-1200" data-zone="work" id="z-work">
   <section class="card queue" id="queue-card" aria-label="Queue">
       <div class="head">
@@ -2455,7 +2486,8 @@ function rpInit() {
      ========================================================================= */
   var REPLY_FN = 'em_case_reply';                       /* standalone Deluge function, see claude/em_case_reply.dg */
   var VENDOR_MAIL_FN = 'em_vendor_email';               /* standalone Deluge function, see claude/em_vendor_email.dg */
-  var SUPPORT_FROM = 'emsupport@justicepoint.org';      /* replies go out as the shared mailbox so the customer's answer comes back through intake */
+  var SUPPORT_FROM = 'emsupport@justicepoint.org';
+  var STOCK_FN = 'stock_alert_decide_as';   /* approve / save / reject a stock alert email; sends from SUPPORT_FROM as the logged-in user */      /* replies go out as the shared mailbox so the customer's answer comes back through intake */
   var RESOLUTION_CATEGORIES = ['Device Replaced', 'Device(s) Ordered', 'Accessories Ordered', 'Customer Educated', 'Configuration Change', 'Vendor Resolved', 'Billing Adjusted', 'No Action Needed', 'Duplicate', 'Other'];
   var STALE_DAYS = 3;       /* a case older than this, or High priority, gets the red rule (BD's own 180-day renewal cap is BD_STALE_DAYS) */
   var ANNOUNCE_VAR = 'HOME_ANNOUNCEMENT';
@@ -2665,12 +2697,17 @@ function rpInit() {
   /* ?preview=1&slow=4000 delays every sample response by that many ms, to see the loading states */
   var SLOW = (function () { var m = location.search.match(/[?&]slow=(\d+)/); return m ? Number(m[1]) : 0; })();
   var delayed = function (v) { return SLOW ? new Promise(function (r) { setTimeout(function () { r(v); }, SLOW); }) : Promise.resolve(v); };
+  MOCK.stockEmails = [
+    { id: 's1', Alert_Type: 'Customer spare floor', 'Account.Account_Name': 'Columbia County Treatment Court', Detail: 'Spares on hand 2, floor 4', Recipient_Emails: 'mlopez@columbiacountywi.gov, tbrandt@rockcounty.org', Draft_Subject: 'Spare GPS units running low: Columbia County', Draft_Body: '<p>Hi Maria,</p><p>Columbia County is down to <b>2 spare units</b>, below the agreed floor of 4. To keep new enrollments moving, we suggest ordering <b>3 more units</b> this week.</p><p>Reply here and we will place the order.</p><p>Thank you,<br>{{sender}}<br>JusticePoint Electronic Monitoring</p>', Created_Time: new Date(Date.now() - 4 * 3600000).toISOString() },
+    { id: 's2', Alert_Type: 'Excess spares', 'Account.Account_Name': 'Sauk County Sheriff', Detail: 'Spares on hand 14, assigned 20', Recipient_Emails: 'aruiz@saukcountywi.gov', Draft_Subject: 'Spare units we can take back: Sauk County', Draft_Body: '<p>Hi Ana,</p><p>Sauk County holds <b>14 spare units</b> against 20 assigned. We suggest returning <b>6 units</b> so they can serve other counties.</p><p>Let us know and we will send a prepaid label.</p><p>Thank you,<br>{{sender}}</p>', Created_Time: new Date(Date.now() - 30 * 3600000).toISOString() }
+  ];
   var mock = {
     pick: function (q) {
       var d = function (k) { return delayed(MOCK[k].slice()); };
       if (/'EM Customer'/.test(q)) return d('emCust');
       if (/'Operated Program'/.test(q)) return d('ops');
       if (/from Cases where Owner/.test(q)) return d('myCases');
+      if (/Draft_Subject/.test(q)) return delayed(MOCK.stockEmails.slice());
       if (/from EM_Stock_Alerts where Status = 'Open' and Alert_Type/.test(q) === false && /Email_Status/.test(q) && /from EM_Stock_Alerts/.test(q)) return delayed([{ Alert_Type: 'Program growth', Email_Status: 'Awaiting approval' }, { Alert_Type: 'Customer spare floor', Email_Status: 'Awaiting approval' }, { Alert_Type: 'House stock', Email_Status: 'Not applicable' }, { Alert_Type: 'Excess spares', Email_Status: 'Sent' }]);
       if (/from Accessory_Order_Recommendations/.test(q)) return delayed([{ Status: 'Overdue' }, { Status: 'Overdue' }, { Status: 'Due' }, { Status: 'Due' }, { Status: 'Due' }]);
       if (/from EM_Stock_Alerts/.test(q)) return d('excess');
@@ -2708,7 +2745,7 @@ function rpInit() {
   mock.remove = function (m, id) { return mockWrite({ id: id }); };
   /* the reply function: the preview answers as the live one would (see claude/em_case_reply.dg) */
   /* ?preview=1&refuse=1 answers like a Blueprint that refuses the transition */
-  mock.fn = function (name, args) { if (/[?&]refuse=1/.test(location.search) && (args.targetStatus || args.transition)) return mockWrite({ ok: true, sent: !!args.to, transitionOk: false, transitionError: "'" + (args.targetStatus || args.transition) + "' is not available from the case's current state (New)." }); return mockWrite({ ok: true, sent: !!args.to, from: SUPPORT_FROM, transition: args.transition || args.targetStatus || '', status: args.targetStatus || (args.transition === 'Ask Customer' ? 'Waiting on Customer' : args.transition === 'Resolve' ? 'Resolved' : ''), log: 'preview', solutionId: /_makeSolution/.test(args.data || '') ? 'preview-sol' : undefined }); };
+  mock.fn = function (name, args) { if (name === STOCK_FN) return mockWrite({ ok: true, message: args.action === 'approve' ? 'Sent from ' + SUPPORT_FROM + ' as ' + args.senderName + '.' : args.action === 'reject' ? 'Rejected. Nothing was sent.' : 'Draft saved.', emailStatus: args.action === 'approve' ? 'Sent' : args.action === 'reject' ? 'Rejected' : 'Awaiting approval' }); if (/[?&]refuse=1/.test(location.search) && (args.targetStatus || args.transition)) return mockWrite({ ok: true, sent: !!args.to, transitionOk: false, transitionError: "'" + (args.targetStatus || args.transition) + "' is not available from the case's current state (New)." }); return mockWrite({ ok: true, sent: !!args.to, from: SUPPORT_FROM, transition: args.transition || args.targetStatus || '', status: args.targetStatus || (args.transition === 'Ask Customer' ? 'Waiting on Customer' : args.transition === 'Resolve' ? 'Resolved' : ''), log: 'preview', solutionId: /_makeSolution/.test(args.data || '') ? 'preview-sol' : undefined }); };
   live.record = function (m, id) { return throttle(function () { return withTimeout(ZOHO.CRM.API.getRecord({ Entity: m, RecordID: id }), 10000, 'record'); }).then(function (r) { return rowsOf(r)[0] || {}; }); };
   live.notes = function (m, id) { return throttle(function () { return withTimeout(ZOHO.CRM.API.getRelatedRecords({ Entity: m, RecordID: id, RelatedList: 'Notes', page: 1, per_page: 10 }), 10000, 'notes'); }).then(rowsOf); };
   /* live.fn: EM Home's version (repeats the call with flat arguments when em_case_reply answers "No case id.") */
@@ -2736,7 +2773,7 @@ function rpInit() {
 
 
 
-  var VERSION = 'BD + CS Home v4.12';
+  var VERSION = 'BD + CS Home v4.13';
   var POLL_S = 120;
   var ME = { id: null, name: '' };
   var TODAY = ymd(new Date());
@@ -3936,6 +3973,111 @@ function rpInit() {
       $('k-stock').classList.toggle('watch', rows.length > 0);
       $('k-stock').classList.toggle('zero', rows.length === 0);
     }).catch(function (e) { fail('k-stock-v', 'Unavailable', loadStockAlerts); setText('k-stock-c', e.message); }).then(resize);
+  }
+
+  /* ---------- stock emails to approve (v4.13) ----------
+     Spare floor and Excess spares alerts hold a drafted customer email (Draft_Subject / Draft_Body / Recipient_Emails) while
+     Email_Status is "Awaiting approval". Each one opens into an editable To / Subject / body; Approve & send, Reject and Save draft
+     call STOCK_FN, which sends from emsupport@ and signs the email as the logged-in user ({{sender}} is filled in here so the
+     editor shows exactly what goes out). */
+  var SM_TYPES = ['Customer spare floor', 'Excess spares'];
+  var SM = { rows: [], open: null, busy: false };
+  var smWho = function () { var u = currentUser || {}; return u.full_name || u.name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || 'JusticePoint EM Support'; };
+  var smSplit = function (s) { return String(s || '').split(/[;,\s]+/).map(function (x) { return x.trim(); }).filter(Boolean); };
+  var smBad = function (list) { return list.filter(function (x) { return !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(x); }); };
+  function smClean(html) {
+    var d; try { d = new DOMParser().parseFromString('<body>' + String(html || '') + '</body>', 'text/html'); } catch (e) { return '<p>' + esc(plain(html)) + '</p>'; }
+    Array.prototype.forEach.call(d.body.querySelectorAll('script,style,iframe,object,embed,link,meta,form'), function (n) { n.remove(); });
+    Array.prototype.forEach.call(d.body.querySelectorAll('*'), function (n) {
+      Array.prototype.slice.call(n.attributes).forEach(function (a) {
+        if (/^on/i.test(a.name) || ((a.name === 'href' || a.name === 'src') && /^\s*javascript:/i.test(a.value))) n.removeAttribute(a.name);
+      });
+    });
+    return d.body.innerHTML;
+  }
+  var smRow = function (id) { return SM.rows.filter(function (r) { return String(r.id) === String(id); })[0]; };
+  function smPaint() {
+    var z = $('z-sm'); if (!z) return;
+    var n = SM.rows.length;
+    z.hidden = n === 0;
+    setText('sm-meta', n ? n + (n === 1 ? ' email waiting' : ' emails waiting') : '');
+    setText('sm-who', smWho());
+    var ul = $('sm-list');
+    ul.innerHTML = SM.rows.map(function (r) {
+      var open = String(SM.open) === String(r.id), acct = r['Account.Account_Name'] || 'No account';
+      var head = '<button type="button" class="sm-sum" data-sm="toggle" aria-expanded="' + open + '"><span class="acct">' + esc(acct) + '</span><span class="pill wait">' + esc(r.Alert_Type) + '</span><span class="subj">' + esc(r.Draft_Subject || '(no subject)') + '</span><span class="go">' + (open ? 'Close' : 'Review') + '</span></button>';
+      var ed = '';
+      if (open) {
+        ed = '<div class="sm-ed">'
+          + (r.Detail ? '<div class="sm-fact">' + esc(r.Detail) + '</div>' : '')
+          + '<label>To (comma separated)<input type="text" data-sm="to" value="' + esc(r.Recipient_Emails || '') + '" autocomplete="off"></label>'
+          + '<label>Subject<input type="text" data-sm="subject" value="' + esc(r.Draft_Subject || '') + '" maxlength="250"></label>'
+          + '<label>Email<div class="sm-body" data-sm="body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Email body">' + smClean(String(r.Draft_Body || '').replace(/\{\{sender\}\}/g, esc(smWho()))) + '</div></label>'
+          + '<div class="sm-bar"><button type="button" class="btn primary" data-sm="approve">Approve &amp; send</button><button type="button" class="btn" data-sm="reject">Reject</button><button type="button" class="btn" data-sm="save">Save draft</button><span class="sp"></span><span class="sm-msg" data-sm="msg" role="status" aria-live="polite"></span></div>'
+          + '</div>';
+      }
+      return '<li class="sm-item' + (open ? ' open' : '') + '" data-id="' + esc(r.id) + '">' + head + ed + '</li>';
+    }).join('');
+    resize();
+  }
+  function loadStockApprovals() {
+    return api.all("select id, Alert_Type, Draft_Subject, Draft_Body, Recipient_Emails, Detail, Created_Time, Account.Account_Name from EM_Stock_Alerts where Email_Status = 'Awaiting approval' and Status = 'Open'", 2).then(function (rows) {
+      SM.rows = rows.filter(function (r) { return SM_TYPES.indexOf(r.Alert_Type) >= 0; });
+      if (SM.open && !smRow(SM.open)) SM.open = null;
+      smPaint();
+    }).catch(function () { SM.rows = []; smPaint(); });
+  }
+  function smCollect(li) {
+    var to = smSplit(li.querySelector('[data-sm="to"]').value), subject = li.querySelector('[data-sm="subject"]').value.trim(), bodyEl = li.querySelector('[data-sm="body"]');
+    return { to: to, subject: subject, html: smClean(bodyEl.innerHTML), text: (bodyEl.textContent || '').trim() };
+  }
+  var smArm = {};
+  function smDo(li, action, btn) {
+    if (SM.busy) return;
+    var id = li.getAttribute('data-id'), msg = li.querySelector('[data-sm="msg"]');
+    var say = function (t, cls) { msg.textContent = t; msg.className = 'sm-msg' + (cls ? ' ' + cls : ''); };
+    var d = smCollect(li);
+    if (action !== 'reject') {
+      var bad = smBad(d.to);
+      if (!d.to.length) return say('Add at least one recipient.', 'bad');
+      if (bad.length) return say('Not an email address: ' + bad[0], 'bad');
+      if (!d.subject) return say('The email needs a subject.', 'bad');
+      if (!d.text) return say('The email body is empty.', 'bad');
+    }
+    if (action !== 'save' && smArm.k !== id + action) {          /* armed two-click confirm, resets after 4 s */
+      Array.prototype.forEach.call(li.querySelectorAll('.btn.sm-armed'), function (b) { b.classList.remove('sm-armed'); b.textContent = b.getAttribute('data-was') || b.textContent; });
+      btn.setAttribute('data-was', btn.textContent); btn.classList.add('sm-armed');
+      btn.textContent = action === 'approve' ? 'Click again to send to ' + d.to.length + (d.to.length === 1 ? ' person' : ' people') : 'Click again to reject';
+      smArm.k = id + action; clearTimeout(smArm.t);
+      smArm.t = setTimeout(function () { smArm.k = null; if (btn.isConnected) { btn.classList.remove('sm-armed'); btn.textContent = btn.getAttribute('data-was'); } }, 4000);
+      return;
+    }
+    smArm.k = null; clearTimeout(smArm.t);
+    SM.busy = true; Array.prototype.forEach.call(li.querySelectorAll('button,input'), function (b) { b.disabled = true; });
+    say(action === 'approve' ? 'Sending…' : action === 'reject' ? 'Rejecting…' : 'Saving…');
+    var u = currentUser || {};
+    api.fn(STOCK_FN, { alertId: String(id), action: action, subject: d.subject, body: d.html, recipients: d.to.join(', '), senderName: smWho(), senderEmail: u.email || '' }).then(function (out) {
+      SM.busy = false;
+      if (action === 'save') {
+        var r = smRow(id); if (r) { r.Draft_Subject = d.subject; r.Draft_Body = d.html; r.Recipient_Emails = d.to.join(', '); }
+        Array.prototype.forEach.call(li.querySelectorAll('button,input'), function (b) { b.disabled = false; });
+        say((out && out.message) || 'Draft saved.', 'good'); return;
+      }
+      SM.rows = SM.rows.filter(function (x) { return String(x.id) !== String(id); }); SM.open = null;
+      smPaint(); toast((out && out.message) || (action === 'approve' ? 'Sent.' : 'Rejected.')); loadStockAlerts();
+    }).catch(function (e) {
+      SM.busy = false; Array.prototype.forEach.call(li.querySelectorAll('button,input'), function (b) { b.disabled = false; });
+      say(e && e.message ? e.message : 'That did not go through.', 'bad');
+    });
+  }
+  function initStockApprovals() {
+    var ul = $('sm-list'); if (!ul) return;
+    ul.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-sm]'); if (!b) return;
+      var li = b.closest('.sm-item'), k = b.getAttribute('data-sm');
+      if (k === 'toggle') { SM.open = String(SM.open) === li.getAttribute('data-id') ? null : li.getAttribute('data-id'); smArm.k = null; smPaint(); var inp = SM.open && ul.querySelector('[data-sm="subject"]'); if (inp) inp.focus(); return; }
+      if (k === 'approve' || k === 'reject' || k === 'save') smDo(li, k, b);
+    });
   }
   function loadAccessoryOrders() {
     watch('k-acc-v', 'k-acc-c');
@@ -6422,6 +6564,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
       W.run(2, loadDeviceTile('units')).catch(ok),
       W.run(2, loadDeviceTile('excess')).catch(ok),
       W.run(2, loadStockAlerts).catch(ok),
+      W.run(2, loadStockApprovals).catch(ok),
       W.run(2, loadAccessoryOrders).catch(ok),
       W.run(2, function () { return loadAgendaCard(user); }).catch(ok),
       W.run(3, loadVendors).catch(ok)
@@ -6433,7 +6576,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     return csLoadAll(currentUser).then(off, off);
   }
   function csStart() {
-    initNoteModal(); initVendorMail(); initQueue(); initAgenda(); initQueueTabs(QT_CFG); initPeekPush(PUSH_CFG); initAgUndated();   /* initKeys (cs-queue#controller) is replaced by the page's one key map, initPageKeys */
+    initNoteModal(); initVendorMail(); initStockApprovals(); initQueue(); initAgenda(); initQueueTabs(QT_CFG); initPeekPush(PUSH_CFG); initAgUndated();   /* initKeys (cs-queue#controller) is replaced by the page's one key map, initPageKeys */
     applyViewLinks();
     $('tasks-all').href = url.tab('Tasks');
     $('k-units').href = url.tab('Daily_Unit_Counts');
