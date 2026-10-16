@@ -6172,7 +6172,7 @@ function agOpen(k, crm) {
     AG.refocus = k; openPeek(sli); return;
   }
   if (PREVIEW) { toast('Would open ' + x.title + ' in CRM (preview)', { ms: 2500 }); return; }
-  go(url.rec(x.module, x.id));
+  go(/^\d+$/.test(String(x.id)) ? url.rec(x.module, x.id) : url.tab(x.module));   /* a made-up row (report-missing) has no record: open the module list */
 }
 function agSetTab(t, focus) { AG.tab = t; AG.cur = null; AG.push = null; agRender(); if (focus) { var b = $('ag-tab-' + t); if (b) b.focus(); } }
 function agPushSave(k) {
@@ -7541,7 +7541,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   document.body.appendChild(b);
   function place(v) {
     var known = v && v.known && document.documentElement.scrollHeight <= window.innerHeight + 16, top = known ? v.top : (window.scrollY || 0), h = known ? v.h : window.innerHeight;
-    b.hidden = top < 300;
+    b.hidden = top < 40;
     b.style.position = known ? 'absolute' : 'fixed';
     b.style.top = known ? Math.max(0, top + h - 56) + 'px' : 'auto';
     b.style.bottom = known ? 'auto' : '16px';
