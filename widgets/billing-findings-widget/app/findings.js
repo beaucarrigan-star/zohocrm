@@ -1,4 +1,4 @@
-/* Billing Findings widget. Reads only, except one Administrator-only action: 'Dispute with vendor' sets Status on selected Open findings. Uses the shared JPK kit (jpk v1.1.0) and FindingsModel (pure logic).
+/* Billing Findings widget. Reads only, except two Administrator-only actions: 'Dispute with vendor' sets Status on selected Open findings, and 'Assign' sets Owner on selected findings. Uses the shared JPK kit (jpk v1.1.0) and FindingsModel (pure logic).
    Participant column = Billing_Findings.Subject (initials + device id written by the pipeline). No new field. */
 (function () {
   'use strict';
@@ -143,6 +143,51 @@
     });
   }
 
+  /* ---------- wave B3: Assign (Administrator only). Sets Owner on the selected findings, nothing else. ---------- */
+  var DEMO_USERS = [{ id: 'u1', name: 'Beau Carrigan' }, { id: 'u2', name: 'Stacey Loosen' }, { id: 'u3', name: 'Brittany Mueller' }];
+  function loadUsers() {
+    if (S.demo) return Promise.resolve(DEMO_USERS);
+    return ZOHO.CRM.API.getAllUsers({ Type: 'ActiveUsers' }).then(function (r) {
+      return ((r && r.users) || []).filter(function (u) { return u.id && (u.status == null || /^active$/i.test(u.status)); }).map(function (u) { return { id: String(u.id), name: u.full_name || u.email || 'Unknown user' }; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    });
+  }
+  function askAssign(rows) {
+    if (!rows.length) return;
+    if (rows.length > MAX_BATCH) { say('<p>Select ' + MAX_BATCH + ' findings or fewer at a time. You selected ' + rows.length + '.</p><div class="row"><button type="button" class="btn sm" id="as-no">Close</button></div>', '#as-no'); wireAssign(rows, []); return; }
+    say('<p>Loading people...</p>');
+    loadUsers().then(function (users) {
+      say('<p><b>Assign ' + rows.length + ' finding' + (rows.length === 1 ? '' : 's') + ' to someone.</b> This changes Owner in Zoho on each record; nothing else.' + (S.demo ? ' <i>Demo mode: nothing is saved.</i>' : '') + '</p>' +
+        '<div class="jp-fld"><label for="as-to">Assign to</label><select id="as-to"><option value="">Choose a person</option>' + users.map(function (u) { return '<option value="' + esc(u.id) + '">' + esc(u.name) + '</option>'; }).join('') + '</select><span class="msg" id="as-err" role="alert" hidden></span></div>' +
+        '<div class="row"><button type="button" class="btn pri sm" id="as-go">Assign</button><button type="button" class="btn sm" id="as-no">Back</button></div>', '#as-to');
+      wireAssign(rows, users);
+    }, function () { say('<p>Could not load the list of people. Try again.</p><div class="row"><button type="button" class="btn sm" id="as-no">Close</button></div>', '#as-no'); wireAssign(rows, []); });
+  }
+  function wireAssign(rows, users) {
+    var b = boxEl(), no = b.querySelector('#as-no'), go = b.querySelector('#as-go');
+    if (no) no.addEventListener('click', function () { say(''); });
+    if (go) go.addEventListener('click', function () {
+      var sel = b.querySelector('#as-to'), to = sel.value, err = b.querySelector('#as-err');
+      if (!to) { err.hidden = false; err.textContent = 'Error: Choose who to assign the findings to.'; sel.setAttribute('aria-invalid', 'true'); sel.focus(); return; }
+      runAssign(rows, to, (users.filter(function (u) { return u.id === to; })[0] || {}).name || 'that person');
+    });
+  }
+  function assignOne(r, to) {
+    if (S.demo) return Promise.resolve(true);
+    return ZOHO.CRM.API.updateRecord({ Entity: 'Billing_Findings', APIData: { id: r.id, Owner: { id: to } }, Trigger: [] }).then(function (res) {
+      var d = res && res.data && res.data[0]; return !!(d && String(d.code).toUpperCase() === 'SUCCESS');
+    }, function () { return false; });
+  }
+  function runAssign(rows, to, name) {
+    var go = boxEl().querySelector('#as-go'); if (go) go.disabled = true;
+    say('<p>Saving ' + rows.length + ' finding' + (rows.length === 1 ? '' : 's') + '...</p>');
+    var done = [], failed = [];
+    rows.reduce(function (p, r) { return p.then(function () { return assignOne(r, to).then(function (okk) { (okk ? done : failed).push(r); }); }); }, Promise.resolve()).then(function () {
+      if (S.detailTbl) S.detailTbl.clearSelection();
+      say('<p><b>' + done.length + ' assigned to ' + esc(name) + '.</b>' + (failed.length ? ' ' + failed.length + ' could not be saved: ' + failed.map(function (r) { return esc(r.participant || r.checkId); }).join(', ') + '. Check the record and try again.' : '') + (S.demo ? ' Demo mode: nothing was saved.' : '') + '</p><div class="row"><button type="button" class="btn sm" id="as-no">Close</button></div>', '#as-no');
+      wireAssign([], []);
+    });
+  }
+
   function renderDetail() {
     var list = M.detail(S.rows, S.filter);
     var cols = [
@@ -158,7 +203,7 @@
     if (!S.detailTbl) {
       S.detailTbl = JPK.table({ mount: '#detail', columns: cols, rows: list, caption: 'Billing findings', cards: true, expand: evidenceFor,
         select: S.canBatch ? { allowed: true, rowId: function (r) { return r.id; }, noun: 'finding', sum: function (r) { return r.dollars; }, sumLabel: 'Dollars',
-          actions: [{ label: 'Dispute with vendor', onClick: function (rows) { askDispute(rows); } }] } : undefined,
+          actions: [{ label: 'Dispute with vendor', onClick: function (rows) { askDispute(rows); } }, { label: 'Assign', onClick: function (rows) { askAssign(rows); } }] } : undefined,
         expandLabel: function (r) { return 'Show evidence for ' + (r.participant || r.checkId); },
         empty: { title: 'Nothing matches', hint: 'Clear the filter or untick Open only.' } });
     } else S.detailTbl.setRows(list);
