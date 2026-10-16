@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Briefing steps</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-patterns-v3.css">
+<link rel="stylesheet" href="briefing-steps.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Solicitation briefing</div>
+      <h1 id="title">Loading solicitation...</h1>
+      <div class="muted sm" id="ctx"></div>
+    </div>
+    <div class="actions" id="status-chip"></div>
+  </header>
+  <div id="demo-note" class="next" hidden>
+    <div class="nt"><b>Demo data</b><span>Not connected to Zoho. Nothing you do here is saved. Try ?sol=new, drafted, reviewed, ready or briefed.</span></div>
+  </div>
+  <div id="err" class="err" role="alert" hidden></div>
+
+  <section class="card" style="margin-top:12px" aria-label="Steps">
+    <div id="steps"></div>
+    <p id="msg" class="bs-msg" role="status" aria-live="polite" hidden></p>
+    <div id="panel" class="bs-panel" hidden></div>
+  </section>
+
+  <section class="card bs-sec" style="margin-top:12px" aria-label="Check your answers">
+    <h2>Check answers</h2>
+    <div id="submit-err"></div>
+    <div id="cya"></div>
+    <div class="bs-submit"><button type="button" class="btn pri" id="b-submit">Submit for leadership briefing</button></div>
+    <p class="muted sm" id="submit-note" style="margin:8px 0 0"></p>
+  </section>
+</div>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="brief-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="briefing-steps.js"></script>
+<script src="jpk-intro.js"
+  data-what="Five steps from a solicitation packet to a bid decision and an owner, with a final check of the answers before it goes to leadership."
+  data-fed="The Solicitation record (agency, dates, Briefing Status, decision, owner), its attachments, and the list of active users."
+  data-feeds="Upload runs the existing packet reader. Each step saves only its own fields on the Solicitation. Submit sets Briefing Status to Briefed to leadership."></script>
+</body>
+</html>
