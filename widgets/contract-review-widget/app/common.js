@@ -62,9 +62,12 @@
 
   /* Contract fields the ingest writes, in reading order, with their editor kind */
   H.FIELDS = [
-    ['Contract_Start_Date', 'Start date', 'date'], ['Contract_End_Date', 'End date', 'date'],
-    ['Auto_Renews', 'Auto-renews', 'pick'], ['Renewal_Options_Left', 'Renewal options left', 'int'],
-    ['Renewal_Option_Length_Mo', 'Renewal option length', 'int', 'months'], ['Notice_Period_Days', 'Renewal notice', 'int', 'days'],
+    ['Contract_Start_Date', 'Start date', 'date'], ['Original_End_Date', 'Original end date', 'date'],
+    ['Contract_End_Date', 'Current term end', 'date'],
+    ['Renewals_Allowed', 'Renewals allowed', 'int'], ['Renewal_Option_Length_Mo', 'Months per renewal', 'int', 'months'],
+    ['Renewal_Options_Left', 'Renewals left', 'int'],
+    ['End_After_1_Renewal', 'End after 1 renewal', 'date'], ['Final_End_Date', 'End with all renewals used', 'date'],
+    ['Auto_Renews', 'Auto-renews', 'pick'], ['Notice_Period_Days', 'Renewal notice', 'int', 'days'],
     ['Termination_Convenience_Days', 'Termination for convenience', 'int', 'days'],
     ['Payment_Terms_Days', 'Payment terms', 'int', 'days'], ['Invoice_Cadence', 'Invoice cadence', 'pick'],
     ['Rate_Basis', 'Rate basis', 'pick'], ['Admin_Rate_Pct', 'Admin rate', 'pct'],
@@ -113,6 +116,26 @@
   };
 
   /* ---------- review JSON on Contracts.Ingest_Review (see con_worker/review_payload.py) ---------- */
+  /* Same arithmetic as con_worker text_norm.add_term_months: a month-end date stays at month-end
+     (28 Feb 2027 + 12 months = 29 Feb 2028); other days clamp to the month's length. Dates are 'YYYY-MM-DD'. */
+  H.addTermMonths = function (iso, months) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); if (!m) return null;
+    var y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+    var dim = function (yy, mm) { return new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate(); };
+    var onLast = d === dim(y, mo), idx = mo + months, ny = y + Math.floor(idx / 12), nm = ((idx % 12) + 12) % 12, last = dim(ny, nm);
+    var nd = onLast ? last : Math.min(d, last);
+    return ny + '-' + ('0' + (nm + 1)).slice(-2) + '-' + ('0' + nd).slice(-2);
+  };
+  /* The two computed dates from Original_End_Date, Renewals_Allowed, months per renewal. Blank in, nothing out. */
+  H.deriveTermDates = function (orig, allowed, months) {
+    var out = {}; allowed = H.blank(allowed) ? null : Number(allowed); months = H.blank(months) ? null : Number(months);
+    if (!orig || allowed == null || isNaN(allowed)) return out;
+    if (allowed === 0) { out.Final_End_Date = orig; return out; }
+    if (!months || isNaN(months)) return out;
+    out.End_After_1_Renewal = H.addTermMonths(orig, months);
+    out.Final_End_Date = H.addTermMonths(orig, months * allowed);
+    return out;
+  };
   H.parseReview = function (raw) {
     var d = null; try { d = raw ? JSON.parse(raw) : null; } catch (e) { d = null; }
     d = d && typeof d === 'object' ? d : { v: 1, fields: [], rates: [] };

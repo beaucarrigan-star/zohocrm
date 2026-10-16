@@ -386,12 +386,27 @@
     return p.then(function () { S.busy = false; S.edit = null; render(); if (BAND && BAND.onChange) BAND.onChange(S); if (label) H.toast(label); })
       .catch(function (e) { S.busy = false; render(); H.toast('Not saved: ' + H.errText(e), true); });
   }
-  function saveDecision(fld, dec, fieldValue, setField) {
-    var rv = H.parseReview(S.c.Ingest_Review);
-    if (dec) rv.decisions.fields[fld] = Object.assign({ s: dec.s, v: dec.v }, stamp()); else delete rv.decisions.fields[fld];
-    var data = { Ingest_Review: JSON.stringify(rv) };
-    if (setField) data[fld] = fieldValue;
+  function saveDecisions(list) {   /* several fields, one save: [{fld, dec, value, set}] */
+    var rv = H.parseReview(S.c.Ingest_Review), data = {};
+    list.forEach(function (it) {
+      if (it.dec) rv.decisions.fields[it.fld] = Object.assign({ s: it.dec.s, v: it.dec.v }, stamp()); else delete rv.decisions.fields[it.fld];
+      if (it.set) data[it.fld] = it.value;
+    });
+    data.Ingest_Review = JSON.stringify(rv);
     return api.updateContract(data).then(reloadContract);
+  }
+  function saveDecision(fld, dec, fieldValue, setField) { return saveDecisions([{ fld: fld, dec: dec, value: fieldValue, set: setField }]); }
+  /* Changing Original_End_Date, Renewals_Allowed or Months per renewal recomputes End after 1 renewal and
+     End with all renewals used in the same save (marked edited, so a re-ingest leaves them alone). */
+  var DATE_INPUTS = ['Original_End_Date', 'Renewals_Allowed', 'Renewal_Option_Length_Mo'];
+  function saveTerm(fld, dec, value) {
+    var list = [{ fld: fld, dec: dec, value: value, set: true }];
+    if (DATE_INPUTS.indexOf(fld) >= 0) {
+      var cur = function (k) { return k === fld ? value : S.c[k]; };
+      var d = H.deriveTermDates(cur('Original_End_Date'), cur('Renewals_Allowed'), cur('Renewal_Option_Length_Mo'));
+      Object.keys(d).forEach(function (k) { if (d[k]) list.push({ fld: k, dec: { s: 'edited', v: d[k] }, value: d[k], set: true }); });
+    }
+    return saveDecisions(list);
   }
   function termByKey(k) { var f = k.slice(2); return termRows().filter(function (x) { return x.f.f === f; })[0]; }
   function rateUpdate(changes) {   /* changes: {rowId: {...}}; every existing row id is sent back, or Zoho deletes it */
@@ -414,7 +429,7 @@
       case 'r-filter': S.rf = k; render(); break;
       case 't-confirm': x = termByKey(k); run('Confirmed', saveDecision(x.f.f, { s: 'confirmed', v: x.crm })); break;
       case 't-keep': x = termByKey(k); run('Kept as is', saveDecision(x.f.f, { s: 'confirmed', v: x.crm })); break;
-      case 't-apply': x = termByKey(k); run('Written to the Contract', saveDecision(x.f.f, { s: 'edited', v: x.f.v }, x.f.v, true)); break;
+      case 't-apply': x = termByKey(k); run('Written to the Contract', saveTerm(x.f.f, { s: 'edited', v: x.f.v }, x.f.v)); break;
       case 't-reject': x = termByKey(k); run('Rejected — field cleared', saveDecision(x.f.f, { s: 'rejected', v: null }, null, true)); break;
       case 't-undo': x = termByKey(k); run('Back to review', saveDecision(x.f.f, null)); break;
       case 'terms-all':
@@ -475,7 +490,7 @@
     var f = e.target, kind = f.getAttribute('data-form'), k = f.getAttribute('data-k'), v = function (n) { return f.elements[n] ? f.elements[n].value : ''; };
     if (kind === 't') {
       var x = termByKey(k), val = coerce(x.info, v('v'));
-      run('Saved', saveDecision(x.f.f, { s: 'edited', v: val }, val, true));
+      run(DATE_INPUTS.indexOf(x.f.f) >= 0 ? 'Saved, end dates recomputed' : 'Saved', saveTerm(x.f.f, { s: 'edited', v: val }, val));
     } else if (kind === 'r') {
       var num = function (n) { return v(n) === '' ? null : Number(v(n)); };
       run('Line saved and verified', rateUpdate(obj(k.slice(2), Object.assign({ Rate_Daily_Amount: num('amt'), Tier_Min_Units: num('tmin'), Tier_Max_Units: num('tmax'), Effective_Date: v('eff') || null }, H.statusFields('Verified')))));

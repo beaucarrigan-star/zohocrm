@@ -35,9 +35,18 @@
     contract: {
       id: 'c-cust', Name: 'Ramsey County EM Agreement', Counterparty_Type: 'Customer', Ingest_Status: 'Needs Review', Ingested_On: '2026-10-09',
       Rate_Basis: 'Tiered', Admin_Rate_Pct: 8, Payment_Terms_Days: 35, Invoice_Cadence: 'Monthly',
+      Contract_Start_Date: '2024-09-17', Original_End_Date: '2026-09-30', Contract_End_Date: '2026-09-30', Renewals_Allowed: 2,
+      Renewal_Option_Length_Mo: 12, Renewal_Options_Left: 2, End_After_1_Renewal: '2027-09-30', Final_End_Date: '2028-09-30', Auto_Renews: 'Yes',
       Rate_Lines: [crate('b1', 'GPS', 3.15, 1, 50, '2025-12-03', { Line_Status: 'Verified', Line_Verified: true }), crate('b2', 'GPS', 3.05, 51, 0, '2025-12-03'),
         crate('b3', 'GPS', 2.92, 51, 0, '2025-06-01', { Superseded_By: 'b2', Line_Status: 'Superseded' }), crate('b4', 'CAM', 8.53, 0, 0, '2025-12-03', { Superseded_By: 'Rejected in review', Line_Status: 'Rejected' })],
-      Ingest_Review: JSON.stringify({ v: 1, packet: 'Ramsey.zip', fields: [], rates: [], decisions: { fields: {} } })
+      Ingest_Review: JSON.stringify({ v: 1, packet: 'Ramsey.zip', fields: [
+        { f: 'Contract_Start_Date', v: '2024-09-17', w: true, c: 'High', src: 'Ramsey.zip > Ramsey.pdf, p.1', ev: 'This Agreement commences on September 17, 2024.', rule: 'commences on' },
+        { f: 'Original_End_Date', v: '2026-09-30', w: true, c: 'High', src: 'Ramsey.zip > Ramsey.pdf, p.1', ev: 'The initial term ends on September 30, 2026.', rule: 'expires on' },
+        { f: 'Renewals_Allowed', v: 2, w: true, c: 'High', src: 'Ramsey.zip > Ramsey.pdf, p.1', ev: 'The County has the option for two, 1-year extensions.', rule: 'N, M-year extensions' },
+        { f: 'Renewal_Option_Length_Mo', v: 12, w: true, c: 'High', src: 'Ramsey.zip > Ramsey.pdf, p.1', ev: 'The County has the option for two, 1-year extensions.', rule: 'length of each extension' },
+        { f: 'End_After_1_Renewal', v: '2027-09-30', w: true, c: 'Medium', src: 'Computed from Original_End_Date, Renewals_Allowed and Renewal_Option_Length_Mo', ev: '', rule: 'Original_End_Date + 12 months' },
+        { f: 'Final_End_Date', v: '2028-09-30', w: true, c: 'Medium', src: 'Computed from Original_End_Date, Renewals_Allowed and Renewal_Option_Length_Mo', ev: '', rule: 'Original_End_Date + 2 renewal(s) x 12 months' }
+      ], rates: [], decisions: { fields: {} } })
     },
     clauses: [{ id: 'k1', Name: 'Monthly report', Title: 'Monthly report', Clause_Type: 'Reporting', Clause_Text: 'Send a monthly report.', Source_Ref: 'Ramsey.pdf, p.4', Status: 'Confirmed', Confidence: 'High' }],
     docs: [], products: []

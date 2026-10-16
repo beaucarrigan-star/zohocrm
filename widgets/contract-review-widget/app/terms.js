@@ -59,7 +59,10 @@
       '<div class="term" aria-hidden="true"><div class="done" style="width:' + pct + '%"></div><div class="now" style="left:calc(' + pct + '% - 1px)"></div></div>' +
       '<div class="term-lbl num"><span>' + esc(H.date(start) || '?') + '</span><span>' + esc(H.date(end) || '?') + '</span></div>' : '<div class="none">No term dates</div>') +
       '<dl class="kv">' +
-      kv('Auto-renews', c.Auto_Renews) + kv('Renewal options left', c.Renewal_Options_Left) +
+      kv('Auto-renews', c.Auto_Renews) + kv('Original end', H.date(c.Original_End_Date)) +
+      kv('Renewals allowed', H.blank(c.Renewals_Allowed) ? '' : c.Renewals_Allowed + (H.blank(c.Renewal_Option_Length_Mo) ? '' : ' x ' + c.Renewal_Option_Length_Mo + ' months')) +
+      kv('Renewals left', c.Renewal_Options_Left) + kv('End after 1 renewal', H.date(c.End_After_1_Renewal)) +
+      kv('End with all renewals', H.date(c.Final_End_Date)) +
       kv('Notice', H.blank(c.Notice_Period_Days) ? '' : c.Notice_Period_Days + ' days' + (c.Notice_Deadline ? ' · by ' + H.date(c.Notice_Deadline) : '')) +
       kv('Last verified', H.date(c.Last_Verified)) + '</dl>';
 
