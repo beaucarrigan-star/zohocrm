@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account roles</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-patterns-v3.css">
+<link rel="stylesheet" href="account-roles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Account</div>
+      <h1 id="title">Account roles</h1>
+      <div class="muted sm" id="ctx">Who holds each role at the county and on our side.</div>
+    </div>
+  </header>
+  <div id="demo-note" class="next" hidden>
+    <div class="nt"><b>Demo data</b><span>Not connected to Zoho. Try ?account=full, empty or many, and ?profile=Standard to see the view without buttons.</span></div>
+  </div>
+  <div id="err" class="err" role="alert" hidden></div>
+  <section class="card" style="margin-top:12px" aria-label="Account roles">
+    <p id="sum" class="ar-sum" role="status"></p>
+    <div id="roles"></div>
+    <p id="msg" class="ar-msg" role="status" aria-live="polite" hidden></p>
+    <p id="readonly" class="ar-note" hidden>Only an Administrator can add or change roles. Ask one if something is out of date.</p>
+  </section>
+</div>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="roles-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="account-roles.js"></script>
+<script src="jpk-intro.js"
+  data-what="Who holds each role for this account, at the county and on our side, and which roles have nobody named."
+  data-fed="Account Roles records for this account."
+  data-feeds="Administrators can add or change a role; this opens Zoho's own form. The widget itself writes nothing."></script>
+</body>
+</html>
