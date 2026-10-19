@@ -1,18 +1,32 @@
 {
-  "locale": ["en"],
+  "locale": [
+    "en"
+  ],
   "service": "CRM",
   "storage": false,
   "config": [],
   "usedConnections": [],
   "cspDomains": {
-    "connect-src": [],
-    "script-src": ["live.zwidgets.com"],
-    "style-src": [],
-    "font-src": []
+    "connect-src": [
+      "https://crm.zoho.com"
+    ],
+    "script-src": [
+      "live.zwidgets.com"
+    ],
+    "style-src": [
+      "fonts.googleapis.com"
+    ],
+    "font-src": [
+      "fonts.gstatic.com"
+    ]
   },
   "modules": {
     "widgets": [
-      { "name": "Lost Devices", "location": "crm.webtab", "url": "/app/lost.html" }
+      {
+        "name": "Lost Devices",
+        "location": "crm.webtab",
+        "url": "/app/lost.html"
+      }
     ]
   }
 }
