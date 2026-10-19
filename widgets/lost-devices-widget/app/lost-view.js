@@ -108,7 +108,7 @@
       var n = M.normalize(r), c = M.classify(n);
       return {
         id: n.id, serial: n.serial, customerId: n.customerId, customer: n.customer || M.NO_CUSTOMER,
-        manufacturer: n.manufacturer || '', deviceType: n.deviceType || '', status: n.status || 'No status',
+        manufacturer: n.manufacturer || '', model: n.model || '', deviceType: n.deviceType || '', status: n.status || 'No status',
         date: n.date || '', month: n.month, amount: n.amount,
         amountMissing: c.amountMissing === 1, duplicate: !!dups[n.serialKey],
         open: c.deviceLost === 1, recovered: c.recovered === 1, vendorCredited: n.vendorCredited,
@@ -124,7 +124,29 @@
     return f;
   }
 
+  /* Equipment filters. '' = all; NONE = records with nothing set. */
+  var NONE = '__none';
+  function filterEquipment(records, f) {
+    f = f || {};
+    return (records || []).filter(function (r) {
+      var n = M.normalize(r);
+      if (f.manufacturer && (f.manufacturer === NONE ? n.manufacturer : n.manufacturer !== f.manufacturer)) return false;
+      if (f.model && (f.model === NONE ? n.model : n.model !== f.model)) return false;
+      return true;
+    });
+  }
+  /* Options for a menu: [{value,label,count}] sorted by name, with a No-value entry when some records lack it.
+     `records` should already be narrowed by the other filters you want the counts to respect. */
+  function facetOptions(records, key) {
+    var c = {}, none = 0;
+    (records || []).forEach(function (r) { var v = M.normalize(r)[key]; if (v) c[v] = (c[v] || 0) + 1; else none++; });
+    var out = Object.keys(c).sort(function (a, b) { return a.localeCompare(b); }).map(function (k) { return { value: k, label: k, count: c[k] }; });
+    if (none) out.push({ value: NONE, label: key === 'model' ? 'No model' : 'No manufacturer', count: none });
+    return out;
+  }
+
   var api = {
+    NONE: NONE, filterEquipment: filterEquipment, facetOptions: facetOptions,
     BRANDS: BRANDS, brandKeyOf: brandKeyOf, scopeByBrand: scopeByBrand, brandCounts: brandCounts,
     yearOptions: yearOptions, filterYear: filterYear, monthLabel: monthLabel, trend: trend, tiles: tiles,
     deviceRows: deviceRows, flagLabels: flagLabels, fmtMoney: fmtMoney, fmtMoneyShort: fmtMoneyShort

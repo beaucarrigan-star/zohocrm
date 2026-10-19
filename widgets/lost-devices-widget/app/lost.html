@@ -21,6 +21,9 @@
     <div class="tools">
       <label class="sr" for="year">Year</label>
       <select id="year" aria-label="Year"></select>
+      <label class="sr" for="theme">Theme</label>
+      <select id="theme" aria-label="Theme"><option value="auto">Theme: Auto</option><option value="light">Theme: Light</option><option value="dark">Theme: Dark</option></select>
+      <button type="button" class="btn primary" id="add" hidden>Add lost device</button>
       <button type="button" class="btn" id="help">About</button>
     </div>
   </header>
@@ -29,6 +32,11 @@
   <div id="err" class="err" role="alert" hidden style="padding:10px 16px"></div>
 
   <div id="brands" class="ld-brands" aria-label="Brand"></div>
+
+  <div class="ld-equip" role="group" aria-label="Equipment filters">
+    <label for="f-mfr">Manufacturer</label><select id="f-mfr"><option value="">All manufacturers</option></select>
+    <label for="f-model">Device model</label><select id="f-model"><option value="">All models</option></select>
+  </div>
 
   <section class="sum ld-sum" id="sum1" aria-label="Loss totals"></section>
   <section class="sum ld-sum second" id="sum2" aria-label="More totals"></section>
@@ -58,6 +66,8 @@
 <script src="jpk.js"></script>
 <script src="lost-model.js"></script>
 <script src="lost-view.js"></script>
+<script src="lost-edit-model.js"></script>
+<script src="lost-form.js"></script>
 <script src="demo-data.js"></script>
 <script src="lost.js"></script>
 </body>

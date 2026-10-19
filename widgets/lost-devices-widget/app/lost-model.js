@@ -82,6 +82,7 @@ function normalize(rec) {
     customerId: lookupId(rec, 'Customer'),
     customer: lookupName(rec, 'Customer', 'Account_Name'),
     manufacturer: lookupName(rec, 'Manufacturer', 'Vendor_Name'),
+    model: lookupName(rec, 'Device_Model', 'Name'),
     deviceType: rec.Device_Type || null,
     status: rec.Loss_Status || null,
     date: date,

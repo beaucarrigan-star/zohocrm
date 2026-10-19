@@ -18,3 +18,11 @@
 .ld-note{padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
 .ld-filter{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
 .ld-chartnote{font-size:12.5px;color:var(--muted);margin-top:6px}
+.ld-st{font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:inherit}
+.ld-form .ld-fields{display:grid;gap:12px;margin:12px 0}
+.ld-actions{display:flex;gap:8px;margin-top:8px}
+.ld-saveerr{margin-top:10px}
+.ld-es{margin-bottom:8px}
+.ld-equip{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.ld-equip select{font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);max-width:100%}
+.ld-equip label+select{margin-right:10px}
