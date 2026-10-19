@@ -9092,13 +9092,15 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
 })();
 </script>
 <script id="work-box-js">
-/* work-box v1.1 (16 Oct 2026). One "Work box" for any record you can open from the home page: the record's own
+/* work-box v1.2 (19 Oct 2026). One "Work box" for any record you can open from the home page: the record's own
    fields (editable), the record it points at (a renewal task opens its contract), the files already attached, and
    a way to add more. It talks to Zoho directly (getRecord, updateRecord, getRelatedRecords Attachments, attachFile),
    so it does not depend on anything else in the page. Entry points: WorkBox.mountPeek (Queue peek) and
    WorkBox.mountRP (board peek). ?preview=1 runs it on demo data; &deny=1 makes every save and upload fail.
    v1.1: Contracts show Original End Date, Renewals Allowed and End After 1 Renewal; changing Original End Date,
-   Renewals Allowed or Months per renewal recomputes End After 1 Renewal and Final End Date in the same save. */
+   Renewals Allowed or Months per renewal recomputes End After 1 Renewal and Final End Date in the same save.
+   v1.2: Renewal Status choices follow the 18 Oct 2026 rename (Not started / Outreach / Terms agreed / Sent for signature /
+   Needs decision / Renewed / Not renewing); Contract Status adds Renewed. Upload only after the picklists are renamed in Zoho. */
 (function () {
   'use strict';
   if (window.WorkBox) return;
@@ -9164,11 +9166,12 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
      k: API name. Only fields the record actually returns are shown. t: pick | date | int | num | text | area | bool | ro.
      admin: only the Administrator profile (or Beau) may change it; everyone else sees it with a lock. Picklist choices and
      any field type not given here come from Zoho's field list for the module. */
-  var CONTRACT_STATUS = ['Active/Complete', 'Sent for Signature', 'Awaiting Countersigned', 'In Progress', 'New Contract Needed', 'Ending - No Renewal', 'Ended'];
+  var CONTRACT_STATUS = ['Active/Complete', 'Sent for Signature', 'Awaiting Countersigned', 'In Progress', 'New Contract Needed', 'Renewed', 'Ending - No Renewal', 'Ended'];
+  var RENEWAL_STATUS = ['Not started', 'Outreach', 'Terms agreed', 'Sent for signature', 'Needs decision', 'Renewed', 'Not renewing'];
   var FIELDS = {
     Contracts: [
       { k: 'Contract_Status', t: 'pick', o: CONTRACT_STATUS, admin: true },
-      { k: 'Renewal_Status', t: 'pick', o: ['Not started', 'In discussion', 'Amendment sent', 'Signed', 'Not renewing'] },
+      { k: 'Renewal_Status', t: 'pick', o: RENEWAL_STATUS },
       { k: 'Contract_Start_Date', t: 'date' },
       { k: 'Original_End_Date', t: 'date', l: 'Original End Date' },
       { k: 'Contract_End_Date', t: 'date', l: 'Current Term End' },
