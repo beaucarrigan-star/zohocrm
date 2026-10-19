@@ -22,11 +22,11 @@
       ct('c9', 'Eastgate Municipal', { Ingest_Status: 'Failed', Ingested_On: iso(-2) }),
       ct('c10', 'Polk Co Sheriff', { Final_End_Date: day(-30), Margin_Cost_Check: 'Missing vendor cost' }),
       ct('c11', 'Vernon Co Sheriff Dept', { Final_End_Date: day(60), Notice_Deadline: day(-5) }),
-      ct('c12', 'Van Buren County', { Final_End_Date: day(200), Renewal_Status: 'In discussion' }),
+      ct('c12', 'Van Buren County', { Final_End_Date: day(200), Renewal_Status: 'Outreach' }),
       ct('c13', 'Bayview Drug Court', { Final_End_Date: null }),
       ct('c14', 'Old Mill Probation (ended)', { Contract_Status: 'Ended', Final_End_Date: day(-100) }),
       ct('c15', 'Allied - vendor pricing', { Counterparty_Type: 'Vendor', Account: null, Ingest_Status: 'Ingested', Ingested_On: iso(-9), Last_Verified: day(-8), Margin_Cost_Check: null, Final_End_Date: day(500), Renewal_Status: null }),
-      ct('c16', 'Summit County Pretrial', { Final_End_Date: day(10), Renewal_Status: 'Amendment sent' })
+      ct('c16', 'Summit County Pretrial', { Final_End_Date: day(10), Renewal_Status: 'Terms agreed' })
     ];
     function doc(id, c, name, over) { return Object.assign({ id: id, Name: name, Contract: c ? { id: c, name: '' } : null, Parse_Status: null, Created_Time: iso(-30) }, over || {}); }
     var docs = [doc('d1', 'c1', 'Riverbend Agreement.pdf'), doc('d2', 'c1', 'Riverbend Addendum 1.pdf'), doc('d3', 'c3', 'Northfield scan.pdf', { Parse_Status: 'Failed' }), doc('d4', 'c9', 'Eastgate Agreement.pdf'), doc('d9', null, 'Unsorted rate sheet.pdf')];

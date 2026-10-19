@@ -4,6 +4,7 @@
    Field names read live 12 Oct 2026: Contracts (Ingest_Status Backlog / Not Ingested / Needs Review / Ingested / Failed, Margin_Cost_Check
    Costs match contracts / Cost differs / Missing vendor cost / blank, Reconciliation_Status, Renewal_Status, Notice_Deadline, Final_End_Date),
    Contract_Documents (Contract, Parse_Status), Contract_Clauses (Contract, Status Proposed / Confirmed / Rejected), Rate_Lines (Parent_Id = Contract, Line_Status).
+   Renewal_Status values (renamed 18 Oct 2026): Not started / Outreach / Terms agreed / Sent for signature / Needs decision / Renewed / Not renewing.
    The line-status rule is the same as contract-review-widget/app/line-status.js H.lineStatus. Change together. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -14,7 +15,8 @@
   var DAY = 86400000;
   var REVIEW_LIMIT_DAYS = 14;     /* days a contract may sit in Needs Review before it counts as stuck (not yet decided by Beau: adjustable on the page) */
   var ENDED = ['Ended', 'Ending - No Renewal'];
-  var SETTLED = ['Signed', 'Renewed', 'Not renewing'];   /* Renewal_Status values that mean nothing more to chase */
+  var SETTLED = ['Renewed', 'Not renewing'];   /* Renewal_Status values that mean nothing more to chase ("Sent for signature" is still open: the signature has not come back) */
+  var UNDER_WAY = ['Outreach', 'Terms agreed', 'Sent for signature', 'Needs decision'];   /* renewal started, not finished */
   var SCOPES = [{ id: 'all', label: 'All contracts' }, { id: 'Customer', label: 'Customers' }, { id: 'Vendor', label: 'Vendors' }];
 
   function pickVal(v) { return v && v !== '-None-' ? String(v) : ''; }
@@ -195,14 +197,14 @@
     var in90 = f(open, function (c) { return c.days != null && c.days > 30 && c.days <= 90; });
     var noDate = f(cust, function (c) { return c.days == null; });
     var noticePast = f(open, function (c) { return c.days != null && c.days >= 0 && c.noticeDays != null && c.noticeDays < 0 && c.renewal === 'Not started'; });
-    var inTalks = f(open, function (c) { return c.renewal === 'In discussion' || c.renewal === 'Amendment sent'; });
+    var inTalks = f(open, function (c) { return UNDER_WAY.indexOf(c.renewal) >= 0; });
     var okRen = f(cust, function (c) { return SETTLED.indexOf(c.renewal) >= 0 || (c.days != null && c.days > 90); });
     var rt = function (c) { return c.renewal || 'No status'; };
     lane('n-expired', 5, 'Past the end date, not renewed', it(expired, rt, 'bad', function (c) { return 'Ended ' + plural(-c.days, 'day') + ' ago and the contract is still live with renewal ' + (c.renewal ? c.renewal.toLowerCase() : 'not recorded') + '.'; }, null, daysText).sort(sortEnd), 'bad', none(expired), 'contract');
     lane('n-30', 5, 'Ends within 30 days', it(in30, rt, function (c) { return c.renewal === 'Not started' ? 'bad' : 'warn'; }, function (c) { return c.renewal === 'Not started' ? 'Renewal has not started.' : ''; }, null, daysText).sort(sortEnd), 'warn', none(in30), 'contract');
     lane('n-90', 5, 'Ends in 31 to 90 days', it(in90, rt, function (c) { return c.renewal === 'Not started' ? 'info' : 'neutral'; }, null, null, daysText).sort(sortEnd), 'neutral', '', 'contract');
     lane('n-notice', 5, 'Notice date passed, renewal not started', it(noticePast, rt, 'warn', function (c) { return 'Notice deadline passed ' + plural(-c.noticeDays, 'day') + ' ago.'; }, null, daysText).sort(sortEnd), 'warn', none(noticePast), 'contract');
-    lane('n-talks', 5, 'Renewal under way', it(inTalks, rt, 'info', null, null, daysText).sort(sortEnd), 'neutral', 'in discussion or amendment sent', 'contract');
+    lane('n-talks', 5, 'Renewal under way', it(inTalks, rt, 'info', null, null, daysText).sort(sortEnd), 'neutral', 'outreach, terms agreed, sent for signature or needs decision', 'contract');
     lane('n-nodate', 5, 'No end date', it(noDate, rt, 'warn', function () { return 'Final end date is blank, so no renewal date can be tracked.'; }, null, daysText), 'warn', none(noDate), 'contract');
     lane('n-ok', 5, 'On track', it(okRen, rt, 'good', null, null, daysText).sort(sortEnd), 'good', 'over 90 days or settled', 'contract');
 
