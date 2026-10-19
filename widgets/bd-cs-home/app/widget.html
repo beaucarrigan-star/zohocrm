@@ -1710,6 +1710,12 @@
 @keyframes wb-pulse { 50% { opacity: .3; } }
 @media (max-width: 560px) { .wb-grid { grid-template-columns: 1fr; } }
 </style>
+<style id="sync-status-css">
+#sync-status{--ss-ink:light-dark(#16191D,#E6E8EB);--ss-muted:light-dark(#5F6670,#9AA1AB);--ss-line:light-dark(#DCE0E5,#2B3038);--ss-surface:light-dark(#FFFFFF,#191C20);--ss-ok:light-dark(#2E6B3F,#7BC48F);--ss-warn:light-dark(#8A6412,#E0B055);--ss-bad:light-dark(#A33A33,#F08A82);display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:0 0 16px;padding:8px 14px;background:var(--ss-surface);border:1px solid var(--ss-line);border-left:4px solid var(--ss-muted);border-radius:4px;color:var(--ss-ink);font:13px/1.4 'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+#sync-status[hidden]{display:none}#sync-status b{font-weight:600}#sync-status .ss-sub{color:var(--ss-muted)}
+#sync-status.ok{border-left-color:var(--ss-ok)}#sync-status.warn{border-left-color:var(--ss-warn)}#sync-status.bad{border-left-color:var(--ss-bad)}
+#sync-status.warn .ss-state{color:var(--ss-warn)}#sync-status.bad .ss-state{color:var(--ss-bad)}
+</style>
 </head>
 <body>
 
@@ -1766,6 +1772,7 @@
     </div>
   </header>
   <section id="work-tiles" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
+  <section id="sync-status" aria-label="Last touch sync" role="status" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -2791,7 +2798,7 @@ function rpInit() {
 
 
 
-  var VERSION = 'BD + CS Home v4.14';
+  var VERSION = 'BD + CS Home v4.17';
   var POLL_S = 120;
   var ME = { id: null, name: '' };
   var TODAY = ymd(new Date());
@@ -9538,6 +9545,46 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     },
     _state: S, _fields: fieldsFor, _derive: deriveTermDates, _addTermMonths: addTermMonths
   };
+})();
+</script>
+<script id="sync-status-js">
+(function () {
+  'use strict';
+  var root = document.getElementById('sync-status');
+  if (!root || root.getAttribute('data-ready')) return;
+  root.setAttribute('data-ready', '1');
+  var VAR = 'LAST_TOUCH_SYNC_STATUS', STALE_H = 36;
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function when(ms) {
+    var d = new Date(ms), n = new Date(), t = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    var same = d.toDateString() === n.toDateString(), y = new Date(n.getTime() - 864e5).toDateString() === d.toDateString();
+    return (same ? 'today ' : y ? 'yesterday ' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ') + t;
+  }
+  function draw(tone, state, main, sub) {
+    root.className = tone; root.hidden = false;
+    root.innerHTML = '<b>Last touch sync</b><span class="ss-state"><b>' + esc(state) + '</b></span><span>' + esc(main) + '</span>' + (sub ? '<span class="ss-sub">' + esc(sub) + '</span>' : '');
+  }
+  function show(raw) {
+    var s = null;
+    try { s = raw ? JSON.parse(raw) : null; } catch (e) { s = null; }
+    if (!s || !s.epoch) { draw('warn', 'Not run yet', 'No result saved yet. It runs daily at 6:30 AM.', ''); return; }
+    var ms = Number(s.epoch), ageH = (Date.now() - ms) / 36e5, moved = Number(s.moved) || 0, failed = Number(s.failed) || 0;
+    var line = moved + (moved === 1 ? ' account' : ' accounts') + ' updated from emails' + (failed ? ', ' + failed + ' failed' : ', no errors');
+    var sub = 'Ran ' + when(ms) + ' (last ' + (s.days_back || 2) + ' days, ' + (Number(s.emails_counted) || 0) + ' emails counted)';
+    if (s.ok === false || failed) draw('bad', 'Problem', line, sub + '. Tell Beau.');
+    else if (ageH > STALE_H) draw('warn', 'Late', 'It has not run since ' + when(ms) + '.', 'Expected daily at 6:30 AM. Tell Beau.');
+    else draw('ok', 'OK', line, sub);
+  }
+  function go(tries) {
+    var api = window.ZOHO && window.ZOHO.CRM && window.ZOHO.CRM.API;
+    if (!api || !api.getOrgVariable) { if (tries > 0) setTimeout(function () { go(tries - 1); }, 500); return; }
+    api.getOrgVariable(VAR).then(function (r) {
+      var v = r && r.Success && r.Success.Content; if (v == null && r && r.Content) v = r.Content; show(v || '');
+    }).catch(function () { root.hidden = true; });
+  }
+  var demo = /[?&]ssdemo=(\w+)\b/.exec(location.search);
+  if (demo) { var now = Date.now(); var D = { ok: { epoch: now - 3e6, ok: true, days_back: 2, emails_counted: 5, moved: 3, failed: 0 }, bad: { epoch: now - 3e6, ok: false, days_back: 2, emails_counted: 5, moved: 1, failed: 2 }, late: { epoch: now - 1.4e8, ok: true, days_back: 2, emails_counted: 5, moved: 0, failed: 0 }, none: null }; show(D[demo[1]] ? JSON.stringify(D[demo[1]]) : ''); return; }
+  go(30);
 })();
 </script>
 </body>
