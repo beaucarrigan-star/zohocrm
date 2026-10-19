@@ -218,7 +218,7 @@
   RM.p_contract = laneView({
     key: 'p_contract', title: 'Contract ingest', swLabel: 'Pipeline', group: 'Contract', entity: 'Contracts', demo: 'contracts', noun: 'contract', nameKey: 'Name', acct: 'Account',
     sub: 'Where each contract is in ingest, cleanup and reconciliation. Upload new packets under Ingest.',
-    select: 'Name, Account, Contract_Status, Ingest_Status, Needs_Cleanup, Reconciliation_Status, Days_to_Final_End, Renewal_Band',
+    select: 'Name, Account, Contract_Status, Ingest_Status, Needs_Cleanup, Reconciliation_Status, Final_End_Date, Days_to_Final_End, Renewal_Band',
     foot: 'Read only. Reconciliation compares each contract with the billing system. Packets are uploaded under Ingest.',
     lanes: [
       { id: 'review', label: 'Needs review', kpi: 'warn', test: function (r) { return s(r.Ingest_Status) === 'Needs Review'; } },

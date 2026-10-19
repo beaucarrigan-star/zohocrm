@@ -31,6 +31,14 @@
   function label(f) { return String(f).replace(/_/g, ' ').replace(/\bs\b/g, "'s").trim(); }
   function qstr(s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/%/g, ''); }
   function cleanId(id) { return String(id || '').replace(/[^0-9]/g, ''); }
+  /* Zoho's Days to Final End formula stores 0 when Final End Date is blank, which reads as 'ends today'.
+     Clear the number on any row that carries both fields and has no date. Rows without Final_End_Date are left alone. */
+  function blankNoEnd(rows) {
+    (rows || []).forEach(function (r) {
+      if (r && typeof r === 'object' && 'Days_to_Final_End' in r && 'Final_End_Date' in r && (r.Final_End_Date == null || r.Final_End_Date === '')) r.Days_to_Final_End = null;
+    });
+    return rows;
+  }
   function fieldName(f) { return typeof f === 'string' ? f : f.f; }
   /* Build the list query. cfg = module list config; opts = {search, filter(where string), offset}. */
   function listQuery(entity, cfg, opts) {
@@ -67,5 +75,5 @@
     if (WORDS.info.test(s)) return 'info';
     return 'grey';
   }
-  return { plain: plain, lookupId: lookupId, esc: esc, parseDate: parseDate, fmtDate: fmtDate, fmtMoney: fmtMoney, fmtNum: fmtNum, fmtPct: fmtPct, fmt: fmt, label: label, trunc: trunc, qstr: qstr, cleanId: cleanId, fieldName: fieldName, listQuery: listQuery, recordQuery: recordQuery, relatedQuery: relatedQuery, dayTone: dayTone, tone: tone };
+  return { plain: plain, lookupId: lookupId, esc: esc, parseDate: parseDate, fmtDate: fmtDate, fmtMoney: fmtMoney, fmtNum: fmtNum, fmtPct: fmtPct, fmt: fmt, label: label, trunc: trunc, qstr: qstr, cleanId: cleanId, fieldName: fieldName, blankNoEnd: blankNoEnd, listQuery: listQuery, recordQuery: recordQuery, relatedQuery: relatedQuery, dayTone: dayTone, tone: tone };
 });
