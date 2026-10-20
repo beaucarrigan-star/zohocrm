@@ -55,6 +55,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
 .foot a:hover{text-decoration:underline}
 .foot .off{color:var(--muted)}
 .trust{font-size:11px;font-weight:700;border-radius:3px;padding:2px 7px;border:1px solid var(--line-strong);color:var(--muted);background:var(--surface2)}
+.why{margin:6px 0 0;font-size:12px;color:var(--muted)}
 .trust.ok{color:var(--good);border-color:var(--ok-line);background:var(--ok-tint)}
 .bars{display:flex;flex-direction:column;gap:6px;font-size:12.5px;margin:2px 0}
 .bar{display:grid;grid-template-columns:minmax(80px,120px) 1fr 44px;gap:8px;align-items:center}
@@ -83,7 +84,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
     </div>
   </div>
   <ul class="grid" id="grid" aria-live="polite"></ul>
-  <div class="note">Every number is counted the same way as a native report in the <b>Leadership measures</b> folder. A measure shows "Not yet reliable" until its inputs pass the weekly data check, so the page never shows a number the CRM can't back up. <span id="stamp" class="status"></span></div>
+  <div class="note">Every number is counted the same way as a native report in the <b>Leadership measures</b> folder. A measure shows "Not yet reliable" until its inputs pass the weekly data check (Mondays), so the page never shows a number the CRM can't back up. <span id="stamp" class="status"></span></div>
 </div>
 <script id="jpk-nav-js">
 /* jpk-nav.js v1.0.0 (19 Oct 2026): JPK.navBar, "Back to [tab]" + "Home" buttons for widgets on record pages.
@@ -163,13 +164,15 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
 <script id="leadership-js">
 (function () {
   'use strict';
-  var BUILD = 'Leadership Home v44.1 · 20 Oct 2026';
+  var BUILD = 'Leadership Home v44.2 · 20 Oct 2026';
   var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
   /* Native reports in the "Leadership measures" folder (S15). Links stay off until S15 is confirmed final. */
   var REPORTS_LIVE = true;
   var REPORTS = { renewalsAtRisk: '6715134000009404853', renewalRate: '6715134000009467002', health: '6715134000009467005',
     cases1bd: '6715134000009467023', findings: '6715134000009467011', overdueCases: '6715134000009467014', overdueTasks: '6715134000009467020' };
-  /* Trust labels (Beau, 20 Oct). S21's weekly data check will replace these. */
+  /* Trust labels: built-in fallback. Since S21 (v44.2) the weekly data check writes org variable LEADERSHIP_MEASURE_TRUST
+     ({at, epoch, measures:{id:{trust, why}}}); when it can be read, its labels replace these. */
+  var TRUST_VAR = 'LEADERSHIP_MEASURE_TRUST', TRUST = null;
   var MEASURES = [
     { id: 'renewalsAtRisk', kind: 'Leading · renewals', title: 'Renewals at risk', trust: 'Reliable', report: 'renewalsAtRisk' },
     { id: 'renewalRate', kind: 'Outcome · retention', title: 'Renewal rate this quarter', trust: 'Not yet reliable', report: 'renewalRate' },
@@ -280,17 +283,30 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
     return '';
   }
   function card(m, d) {
-    var trustCls = m.trust === 'Reliable' ? 'trust ok' : 'trust';
+    var tr = trustOf(m), trustCls = tr.trust === 'Reliable' ? 'trust ok' : 'trust';
     var link = REPORTS_LIVE && REPORTS[m.report] ? '<a href="' + ORG + 'Reports/' + REPORTS[m.report] + '" target="_top">Open the report →</a>' : '<span class="off">Report link turns on when the reports are final</span>';
     return '<li><article class="m" aria-labelledby="h-' + m.id + '"><span class="kind">' + esc(m.kind) + '</span><h2 id="h-' + m.id + '">' + esc(m.title) + '</h2>' +
       (d ? body(m, d) : '<span class="val mute" aria-hidden="true">…</span><span class="def">Counting…</span>') +
-      '<div class="foot"><span class="' + trustCls + '">' + esc(m.trust) + '</span>' + link + '</div></article></li>';
+      '<div class="foot"><span class="' + trustCls + '"' + (tr.why ? ' title="' + esc(tr.why) + '"' : '') + '>' + esc(tr.trust) + '</span>' + link + '</div>' +
+      (tr.why && tr.trust !== 'Reliable' ? '<p class="why">' + esc(tr.why) + '</p>' : '') + '</article></li>';
   }
+  function readTrust() {
+    if (DEMO || !(window.ZOHO && ZOHO.CRM && ZOHO.CRM.API && ZOHO.CRM.API.getOrgVariable)) return Promise.resolve(null);
+    return withTimeout(ZOHO.CRM.API.getOrgVariable(TRUST_VAR), 10000).then(function (r) {
+      var v = r && r.Success && r.Success.Content; if (v == null && r && r.Content) v = r.Content;
+      var t = v ? JSON.parse(v) : null; return t && t.measures ? t : null;
+    }).catch(function () { return null; });
+  }
+  function trustOf(m) { var t = TRUST && TRUST.measures && TRUST.measures[m.id]; return t && t.trust ? t : { trust: m.trust, why: '' }; }
   function paint() { $('#grid').innerHTML = MEASURES.map(function (m) { return card(m, DATA); }).join(''); }
   function refresh() {
     DATA = null; paint(); $('#stamp').textContent = 'Counting…';
     var p = DEMO || !(window.ZOHO && ZOHO.CRM) ? Promise.resolve(demoData()) : load();
-    return p.then(function (d) { DATA = d; paint(); $('#stamp').textContent = (d.demo ? 'Sample numbers (demo) · ' : 'Updated ' + new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + ' · ') + BUILD; });
+    return Promise.all([p, readTrust()]).then(function (r) {
+      var d = r[0]; TRUST = r[1]; DATA = d; paint();
+      var chk = TRUST && TRUST.epoch ? ' · Data check ' + new Date(Number(TRUST.epoch)).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ' · Data check not run yet (built-in labels)';
+      $('#stamp').textContent = (d.demo ? 'Sample numbers (demo) · ' : 'Updated ' + new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + ' · ') + BUILD + chk;
+    });
   }
 
   /* ---------- controls ---------- */
@@ -315,7 +331,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
   /* ---------- boot ---------- */
   if (DEMO || !(window.ZOHO && ZOHO.embeddedApp)) refresh();
   else { var booted = false; ZOHO.embeddedApp.on('PageLoad', function () { if (!booted) { booted = true; refresh(); } }); ZOHO.embeddedApp.init(); setTimeout(function () { if (!booted) { booted = true; refresh(); } }, 3000); }
-  window.__lead = { MEASURES: MEASURES, REPORTS: REPORTS, refresh: refresh };
+  window.__lead = { MEASURES: MEASURES, REPORTS: REPORTS, refresh: refresh, trust: function () { return TRUST; } };
 })();
 </script>
 </body>
