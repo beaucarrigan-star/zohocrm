@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.2 (v5.1 + Boards from BD Home v5.1, 20 Oct 2026) -->
+<!-- Beau CS Home v5.1 (v5.0 + tiles v1.0.1 retry fix, 20 Oct 2026) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1475,21 +1475,6 @@
   /* 3. Numbers: the even grid (.numgrid) now lives in the kit: css/numgrid.css (v4.3) */
   /* 2. Queue tabs, 1. Push to… / Today tag, 4. grouped tabs: kit css/tabs-group.css */
 </style>
-<style id="s21-bd-boards">
-.pchips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
-/* close out */
-.rp .touch [hidden], #co-bulk-btn[hidden], .co-bulk[hidden] { display: none !important; }
-.rp .touch .w2 { grid-column: span 2; }
-.rp .touch p.w { margin: 0; }
-.co-bulk { flex: 1 1 100%; padding-top: var(--sp-2); border-top: 1px solid var(--line); }
-.co-bulk .touch { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
-.co-bulk .touch label { display: grid; gap: 2px; font-size: var(--fs-sm); color: var(--ink-2); }
-.co-bulk .touch .w { grid-column: 1 / -1; } .co-bulk .touch .w2 { grid-column: span 2; }
-.co-bulk .touch input, .co-bulk .touch select { font: inherit; padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); }
-.co-bulk .touch .row3 { grid-column: 1 / -1; display: flex; gap: var(--sp-2); justify-content: flex-end; align-items: center; }
-.co-bulk .touch [hidden] { display: none !important; }
-@media (max-width: 700px) { .co-bulk .touch { grid-template-columns: minmax(0, 1fr); } .co-bulk .touch .w2 { grid-column: 1 / -1; } }
-</style>
 <style id="tabs-sep">  .btabs .btabs-sep { margin-left: auto; align-self: center; padding: 0 8px 0 16px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-left: 1px solid var(--line); }
   @media (max-width: 700px) { .btabs .btabs-sep { margin-left: 0; } }</style>
 <style id="queue-tabs">  #queue-card .qtabs { display: flex; gap: var(--sp-1); padding: 0 var(--sp-4); border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -1824,7 +1809,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.2 (BD + CS Home v4.16 + BD boards + tiles v1.0.1, 20 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.1 (BD + CS Home v4.16 + tiles v1.0.1, 20 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -1966,16 +1951,16 @@
   <div class="bz hl-zone hl-zone-work" data-zone="boards" id="z-boards">
     <div class="band"><h2>Boards</h2><span class="meta" id="boards-meta"></span></div>
     <div class="btabs" role="tablist" aria-label="Board" id="btabs">
-      <button type="button" role="tab" id="tab-jpem" data-board="jpem" aria-selected="true" aria-controls="board" aria-keyshortcuts="1" title="JusticePoint EM accounts and opportunities (key 1)">JusticePoint EM<span class="n" data-n="jpem"></span></button>
-      <button type="button" role="tab" id="tab-jpprog" data-board="jpprog" aria-selected="false" aria-controls="board" aria-keyshortcuts="2" title="JusticePoint Programs accounts and opportunities (key 2)" tabindex="-1">JusticePoint Programs<span class="n" data-n="jpprog"></span></button>
-      <button type="button" role="tab" id="tab-sirona" data-board="sirona" aria-selected="false" aria-controls="board" aria-keyshortcuts="3" title="Sirona Recovery accounts and opportunities (key 3)" tabindex="-1">Sirona Recovery<span class="n" data-n="sirona"></span></button>
-      <button type="button" role="tab" id="tab-tdp" data-board="tdp" aria-selected="false" aria-controls="board" aria-keyshortcuts="4" title="The Difference Principle accounts and opportunities (key 4)" tabindex="-1">The Difference Principle<span class="n" data-n="tdp"></span></button>
-      <button type="button" role="tab" id="tab-deals" data-board="deals" aria-selected="false" aria-controls="board" aria-keyshortcuts="5" title="All opportunities, every pipeline (key 5)" tabindex="-1">All Opportunities<span class="n" data-n="deals"></span></button>
-      <button type="button" role="tab" id="tab-campaigns" data-board="campaigns" aria-selected="false" aria-controls="board" aria-keyshortcuts="6" title="Campaigns (key 6)" tabindex="-1">Campaigns<span class="n" data-n="campaigns"></span></button>
-      <button type="button" role="tab" id="tab-vendors" data-board="vendors" aria-selected="false" aria-controls="board" aria-keyshortcuts="7" title="Vendors and products (key 7)" tabindex="-1">Vendors &amp; Products<span class="n" data-n="vendors"></span></button>
+      <button type="button" role="tab" id="tab-accounts" data-board="accounts" aria-selected="true" aria-controls="board" aria-keyshortcuts="1" title="Accounts (key 1)">Accounts<span class="n" data-n="accounts"></span></button>
+      <button type="button" role="tab" id="tab-deals" data-board="deals" aria-selected="false" aria-controls="board" aria-keyshortcuts="2" title="Opportunities (key 2)" tabindex="-1">Opportunities<span class="n" data-n="deals"></span></button>
+      <button type="button" role="tab" id="tab-vendors" data-board="vendors" aria-selected="false" aria-controls="board" aria-keyshortcuts="3" title="Vendors and products (key 3)" tabindex="-1">Vendors &amp; Products<span class="n" data-n="vendors"></span></button>
+      <button type="button" role="tab" id="tab-campaigns" data-board="campaigns" aria-selected="false" aria-controls="board" aria-keyshortcuts="4" title="Campaigns (key 4)" tabindex="-1">Campaigns<span class="n" data-n="campaigns"></span></button>
+      <span class="btabs-sep" aria-hidden="true">Brands</span>
+      <button type="button" role="tab" id="tab-sirona" data-board="sirona" aria-selected="false" aria-controls="board" tabindex="-1" aria-keyshortcuts="5" title="Sirona Recovery accounts and pipeline (key 5)">Sirona Recovery<span class="n" data-n="sirona"></span></button>
+      <button type="button" role="tab" id="tab-tdp" data-board="tdp" aria-selected="false" aria-controls="board" tabindex="-1" aria-keyshortcuts="6" title="The Difference Principle accounts and pipeline (key 6)">The Difference Principle<span class="n" data-n="tdp"></span></button>
     </div>
-    <div class="nums" id="bnums" role="group" aria-label="Board numbers"></div>
-    <section class="card" id="board" role="tabpanel" aria-labelledby="tab-jpem">
+    <div class="nums" id="bnums" role="group" aria-label="Board numbers" hidden></div>
+    <section class="card" id="board" role="tabpanel" aria-labelledby="tab-accounts">
       <div class="bfilt" id="bfilt"></div>
       <div class="bulkbar" id="bd-bulkbar" role="region" aria-label="Selected rows" hidden>
         <b id="bd-bulk-n">0 selected</b>
@@ -2906,7 +2891,7 @@ function rpInit() {
   /* COQL takes two conditions per group: a or b or c must be written ((a or b) or c) */
   var orAll = function (xs) { return xs.reduce(function (acc, x) { return acc ? '(' + acc + ' or ' + x + ')' : x; }, ''); };
   var ACC_SELECT = 'Account_Name, Record_Classes, Brand, State, County, Customer_Health, Health_Score, Health_Tier, Health_Override, Touch_Status, Last_Touch, Days_Since_Touch, '
-    + 'Renewal_Date, Renewal_Amount, Device_s_Used, Former_Customer, Close_Out, Close_Out_Date, Close_Out_Reason, Current_Vendor, Open_Cases, EM_Total_Units, Contact_Email, Key_Personnel, Phone, Owner, Owner.first_name, Owner.last_name, Modified_Time';
+    + 'Renewal_Date, Renewal_Amount, Device_s_Used, Former_Customer, Current_Vendor, Open_Cases, EM_Total_Units, Contact_Email, Key_Personnel, Phone, Owner, Owner.first_name, Owner.last_name, Modified_Time';
   var BQ = {
     /* v4 brand tabs: the same field list, one brand at a time (Brand is a formula field; COQL filters on it, as Network Home does) */
     brandAccounts: function (brand) { return api.all('select ' + ACC_SELECT + " from Accounts where Brand = '" + qstr(brand) + "' order by Account_Name asc", 5); },
@@ -2945,7 +2930,7 @@ function rpInit() {
     return { id: String(r.id), Account_Name: r.Account_Name || '', Record_Classes: arr(r.Record_Classes), Brand: r.Brand || '', State: r.State || '', County: r.County || '',
       Customer_Health: r.Customer_Health || '', Health_Score: r.Health_Score, Health_Tier: r.Health_Tier || '', Health_Override: !!r.Health_Override,
       Touch_Status: r.Touch_Status || '', Last_Touch: r.Last_Touch || null, Days_Since_Touch: r.Days_Since_Touch, Renewal_Date: r.Renewal_Date || null, Renewal_Amount: r.Renewal_Amount,
-      Device_s_Used: arr(r.Device_s_Used), Former_Customer: !!r.Former_Customer, Close_Out: r.Close_Out || null, Close_Out_Date: r.Close_Out_Date || null, Close_Out_Reason: r.Close_Out_Reason || '', Current_Vendor: lk(r, 'Current_Vendor', 'Vendor_Name'), Open_Cases: r.Open_Cases, EM_Total_Units: r.EM_Total_Units,
+      Device_s_Used: arr(r.Device_s_Used), Former_Customer: !!r.Former_Customer, Current_Vendor: lk(r, 'Current_Vendor', 'Vendor_Name'), Open_Cases: r.Open_Cases, EM_Total_Units: r.EM_Total_Units,
       Contact_Email: r.Contact_Email || '', Key_Personnel: r.Key_Personnel || '', Phone: r.Phone || '', Owner: ownerOf(r), Modified_Time: r.Modified_Time };
   };
   var mapContract = function (r) { var c = { id: String(r.id), Name: r.Name || '', AccountId: idOf(r.Account), RenewalOwnerId: idOf(r.Renewal_Owner), Counterparty_Type: r.Counterparty_Type || '', Contract_Status: r.Contract_Status || '', Final_End_Date: r.Final_End_Date || null, Renewal_Status: r.Renewal_Status || '',
@@ -2995,7 +2980,7 @@ function rpInit() {
   var BD_STALE_DAYS = 180;
   var renewsIn90 = function (c) { var d = daysFrom(c.Final_End_Date); return c.Counterparty_Type !== 'Vendor' && c.Contract_Status !== 'Ended' && renewalOpen(c) && d != null && d >= -BD_STALE_DAYS && d <= 90; };
   var staleRenewal = function (c) { var d = daysFrom(c.Final_End_Date); return c.Counterparty_Type !== 'Vendor' && c.Contract_Status !== 'Ended' && renewalOpen(c) && d != null && d < -BD_STALE_DAYS; };
-  var needsTouch = function (a) { return !a.Former_Customer && !a.Close_Out && /^(cold|no logged touch)$/i.test(a.Touch_Status); };
+  var needsTouch = function (a) { return !a.Former_Customer && /^(cold|no logged touch)$/i.test(a.Touch_Status); };
   var dealOpen = function (d) { var g = stageGroup(d.Stage, d.Stage_Group); return g !== 'Won' && g !== 'Lost or Dead'; };
 
   /* ---------- preview data ---------- */
@@ -3157,32 +3142,13 @@ function rpInit() {
   }
 
   /* ---------- board state ---------- */
-  var BOARDS = ['jpem', 'jpprog', 'sirona', 'tdp', 'deals', 'campaigns', 'vendors'];   /* the tab strip; B.tab below is the board each one shows */
+  var BOARDS = ['accounts', 'deals', 'vendors', 'campaigns', 'sirona', 'tdp'];
   var MODULE_OF = { accounts: 'Accounts', deals: 'Deals', vendors: 'Vendors', campaigns: 'Campaigns', sirona: 'Accounts', tdp: 'Accounts' };
   var TYPE_OF = { accounts: 'account', deals: 'deal', vendors: 'vendor', campaigns: 'campaign', sirona: 'account', tdp: 'account' };
   var readJSON = function (k, d) { try { return JSON.parse(store.get(PREF + k) || 'null') || d; } catch (e) { return d; } };
-  var B = { allJP: false, tab: 'accounts', top: store.get(PREF + 'tab') || 'jpem', sub: {}, lockBrand: '', lockPipe: '', cur: {}, xp: {}, sel: { accounts: {}, deals: {}, vendors: {}, campaigns: {}, sirona: {}, tdp: {} }, tile: {}, sort: readJSON('sort', {}), all: {},
+  var B = { tab: store.get(PREF + 'tab') || 'accounts', cur: {}, xp: {}, sel: { accounts: {}, deals: {}, vendors: {}, campaigns: {}, sirona: {}, tdp: {} }, tile: {}, sort: readJSON('sort', {}), all: {},
     f: readJSON('filters', { accounts: { cls: ACC_CLASSES.slice(), tier: [], state: '', brand: '', q: '' }, deals: { view: 'list', grp: 'open', pipe: '', q: '' }, vendors: { jp: false, st: '', q: '' }, campaigns: { st: [], type: '', q: '' }, sirona: { cls: [], state: '', q: '' }, tdp: { cls: [], state: '', q: '' } }) };
-  /* v2.5: the tabs are JusticePoint EM, JusticePoint Programs, Sirona Recovery, The Difference Principle (each with an Accounts | Opportunities switch),
-     then All Opportunities, Campaigns, Vendors & Products. B.top is the tab; B.tab is the board it renders (accounts, a brand's own accounts, or deals). */
-  var SCOPE = { jpem: { brand: 'JusticePoint EM', re: /^justicepoint em/i, dflt: 'JusticePoint EM' }, jpprog: { brand: 'JusticePoint Programs', re: /^justicepoint prog/i, dflt: 'JusticePoint Programs' }, sirona: { b: 'sirona' }, tdp: { b: 'tdp' } };
-  if (B.top === 'accounts') B.top = 'jpem'; if (BOARDS.indexOf(B.top) < 0) B.top = 'jpem';
-  B.sub = readJSON('sub', {});
-  var scopePipe = function (t) { var S = SCOPE[t]; if (!S) return ''; if (S.b) return brandPipe(S.b); var list = (typeof PICK !== 'undefined' && PICK.pipeline) || []; return list.filter(function (v) { return S.re.test(v); })[0] || S.dflt; };
-  var scopeAccs = function (t) { var S = SCOPE[t], xs = !S ? D.accounts : S.b ? D[S.b] : D.accounts.filter(function (a) { return lc(a.Brand) === lc(S.brand); }); return B.showClosed ? xs : xs.filter(function (a) { return !a.Close_Out; }); };
-  var scopeDeals = function (t) { var pv = lc(scopePipe(t)); return pv ? D.deals.filter(function (d) { return lc(d.Pipeline) === pv; }) : D.deals; };
-  var ACCS = function () { var base = B.lockBrand ? D.accounts.filter(function (a) { return lc(a.Brand) === lc(B.lockBrand); }) : D.accounts; return B.showClosed ? base : base.filter(function (a) { return !a.Close_Out; }); };
-  var DEALS = function () { return B.lockPipe ? scopeDealsBy(B.lockPipe) : D.deals; };
-  var scopeDealsBy = function (pv) { pv = lc(pv); return D.deals.filter(function (d) { return lc(d.Pipeline) === pv; }); };
-  function syncEff() {
-    var t = B.top, S = SCOPE[t]; B.lockBrand = ''; B.lockPipe = '';
-    if (!S) { B.tab = t; return; }
-    if ((B.sub[t] || 'accounts') === 'deals') { B.tab = 'deals'; B.lockPipe = scopePipe(t); }
-    else if (S.b) B.tab = S.b; else { B.tab = 'accounts'; B.lockBrand = B.allJP ? '' : S.brand; }
-  }
-  syncEff();
-  var acctTop = function (a) { var b = lc(a && a.Brand); return /sirona/.test(b) ? 'sirona' : /difference|tdp/.test(b) ? 'tdp' : /program/.test(b) ? 'jpprog' : 'jpem'; };
-  syncEff();
+  if (BOARDS.indexOf(B.tab) < 0) B.tab = 'accounts';
   ['sirona', 'tdp'].forEach(function (k) { if (!B.f[k] || !Array.isArray(B.f[k].cls)) B.f[k] = { cls: [], state: '', q: '' }; });   /* filters saved before the brand tabs existed */
   var saveF = function () { store.set(PREF + 'filters', JSON.stringify(B.f)); store.set(PREF + 'sort', JSON.stringify(B.sort)); };
   var textHit = function (q, vals) { q = String(q || '').trim().toLowerCase(); return !q || vals.some(function (v) { return String(v == null ? '' : v).toLowerCase().indexOf(q) >= 0; }); };
@@ -3194,13 +3160,13 @@ function rpInit() {
     var vt = function (name, n) { return { n: n, view: VIEWS[name] || null }; };
     if (board === 'accounts') {
       /* UX v3: four action tiles and one health bar (the three tier tiles live on as the bar's segments) */
-      var em = ACCS().filter(function (a) { return a.Record_Classes.indexOf('EM Customer') >= 0 && !a.Former_Customer && !a.Close_Out; });
-      ['Green', 'Yellow', 'Red'].forEach(function (t) { T.push({ key: 'tier-' + t, seg: true, label: t, value: em.filter(function (a) { return a.Health_Tier === t; }).length, cls: t === 'Red' ? 'bad' : t === 'Yellow' ? 'warn' : 'good', pred: function (a) { return a.Health_Tier === t && a.Record_Classes.indexOf('EM Customer') >= 0 && !a.Former_Customer && !a.Close_Out; } }); });
-      var nt = vt('BD - Needs a touch', ACCS().filter(needsTouch).length);
+      var em = D.accounts.filter(function (a) { return a.Record_Classes.indexOf('EM Customer') >= 0 && !a.Former_Customer; });
+      ['Green', 'Yellow', 'Red'].forEach(function (t) { T.push({ key: 'tier-' + t, seg: true, label: t, value: em.filter(function (a) { return a.Health_Tier === t; }).length, cls: t === 'Red' ? 'bad' : t === 'Yellow' ? 'warn' : 'good', pred: function (a) { return a.Health_Tier === t && a.Record_Classes.indexOf('EM Customer') >= 0 && !a.Former_Customer; } }); });
+      var nt = vt('BD - Needs a touch', D.accounts.filter(needsTouch).length);
       T.push({ key: 'touch', label: 'Needs a touch', value: nt.n, view: nt.view, cls: 'warn', ctx: 'cold or never touched', pred: needsTouch });
-      var accIds = {}; ACCS().forEach(function (a) { accIds[a.id] = 1; }); var ren = D.contracts.filter(function (c) { return renewsIn90(c) && (!B.lockBrand || accIds[c.AccountId]); }), amt = ren.reduce(function (s, c) { var a = accById(c.AccountId); return s + (a && a.Renewal_Amount ? Number(a.Renewal_Amount) : 0); }, 0), over = ren.filter(function (c) { return daysFrom(c.Final_End_Date) < 0; }).length;
+      var ren = D.contracts.filter(renewsIn90), amt = ren.reduce(function (s, c) { var a = accById(c.AccountId); return s + (a && a.Renewal_Amount ? Number(a.Renewal_Amount) : 0); }, 0), over = ren.filter(function (c) { return daysFrom(c.Final_End_Date) < 0; }).length;
       T.push({ key: 'renew', label: 'Renewals · 90 days', value: ren.length, cls: over ? 'bad' : '', ctx: (over ? over + ' overdue · ' : '') + (amt ? fmtMoney(amt) + ' on file' : 'contracts ending'), pred: function (a) { return D.contracts.some(function (c) { return c.AccountId === a.id && renewsIn90(c); }); } });
-      var dopen = DEALS().filter(dealOpen), dpast = dopen.filter(function (d) { var n = daysFrom(d.Closing_Date); return n != null && n < 0; }), dsum = function (xs) { return xs.reduce(function (s, d) { return s + (Number(d.Total_Opportunity_Revenue) || 0); }, 0); };
+      var dopen = D.deals.filter(dealOpen), dpast = dopen.filter(function (d) { var n = daysFrom(d.Closing_Date); return n != null && n < 0; }), dsum = function (xs) { return xs.reduce(function (s, d) { return s + (Number(d.Total_Opportunity_Revenue) || 0); }, 0); };
       T.push({ key: 'dpast', label: 'Deals past close', value: dpast.length, cls: dpast.length ? 'bad' : 'good', ctx: dpast.length ? fmtMoney(dsum(dpast)) + ' still open' : 'none overdue', go: { tab: 'deals', tile: 'past' } });
       T.push({ key: 'dopen', label: 'Open pipeline', value: fmtMoney(dsum(dopen)), ctx: dopen.length + ' open deal' + (dopen.length === 1 ? '' : 's'), go: { tab: 'deals', tile: 'open' } });
       T.push({ key: 'health', bar: true, label: 'EM customer health', value: em.length, ctx: 'click a colour to filter' });
@@ -3221,7 +3187,7 @@ function rpInit() {
         T.push({ key: 'far', label: 'Furthest stage', value: far ? far.s : '—', txt: true, ctx: far ? farN + ' open deal' + (farN === 1 ? '' : 's') + ' there' : 'no open deals', pred: function (a) { return !!farIds[a.id]; } });
       }
     } else if (board === 'deals') {
-      var open = DEALS().filter(dealOpen), sum = open.reduce(function (s, d) { return s + (Number(d.Total_Opportunity_Revenue) || 0); }, 0), byPipe = {};
+      var open = D.deals.filter(dealOpen), sum = open.reduce(function (s, d) { return s + (Number(d.Total_Opportunity_Revenue) || 0); }, 0), byPipe = {};
       open.forEach(function (d) { byPipe[d.Pipeline || '—'] = (byPipe[d.Pipeline || '—'] || 0) + (Number(d.Total_Opportunity_Revenue) || 0); });
       T.push({ key: 'open', label: 'Open pipeline', value: fmtMoney(sum), ctx: open.length + ' deals · ' + Object.keys(byPipe).sort(function (a, b) { return byPipe[b] - byPipe[a]; }).slice(0, 2).map(function (p) { return p.replace('JusticePoint ', 'JP ') + ' ' + fmtMoney(byPipe[p]); }).join(' · '), pred: dealOpen });
       var c60 = open.filter(function (d) { var n = daysFrom(d.Closing_Date); return n != null && n >= 0 && n <= 60; });
@@ -3229,7 +3195,7 @@ function rpInit() {
       var past = open.filter(function (d) { var n = daysFrom(d.Closing_Date); return n != null && n < 0; });
       T.push({ key: 'past', label: 'Past close date', value: past.length, cls: past.length ? 'bad' : '', ctx: 'still open', pred: function (d) { var n = daysFrom(d.Closing_Date); return dealOpen(d) && n != null && n < 0; } });
       var yr = function (d) { var n = daysFrom(d.Closing_Date); return n != null && n <= 0 && n >= -365; };
-      var won = DEALS().filter(function (d) { return stageGroup(d.Stage, d.Stage_Group) === 'Won' && yr(d); }), lost = DEALS().filter(function (d) { return stageGroup(d.Stage, d.Stage_Group) === 'Lost or Dead' && yr(d); });
+      var won = D.deals.filter(function (d) { return stageGroup(d.Stage, d.Stage_Group) === 'Won' && yr(d); }), lost = D.deals.filter(function (d) { return stageGroup(d.Stage, d.Stage_Group) === 'Lost or Dead' && yr(d); });
       T.push({ key: 'wl', label: 'Won / lost · 12 months', value: won.length + ' / ' + lost.length, ctx: fmtMoney(won.reduce(function (s, d) { return s + (Number(d.Total_Opportunity_Revenue) || 0); }, 0)) + ' won', pred: function (d) { return yr(d) && !dealOpen(d); }, widen: true });
       var comp = {}; lost.forEach(function (d) { if (d.Lost_To && d.Lost_To.name) comp[d.Lost_To.name] = (comp[d.Lost_To.name] || 0) + 1; });
       var top = Object.keys(comp).sort(function (a, b) { return comp[b] - comp[a]; })[0];
@@ -3267,16 +3233,15 @@ function rpInit() {
           + '<span class="hb-track" aria-hidden="true">' + segs.map(function (x) { return x.value ? '<span class="hb-seg ' + x.cls + '" style="flex-grow:' + x.value + '"></span>' : ''; }).join('') + '</span>'
           + '<span class="hb-keys">' + segs.map(function (x) { return '<button type="button" class="hb-key ' + x.cls + '" data-tile="' + esc(x.key) + '" aria-pressed="' + (on === x.key) + '" title="Show the ' + esc(x.label) + ' EM customers (' + Math.round(100 * x.value / tot) + '%)"><span class="dot ' + esc(x.label) + '" aria-hidden="true"></span>' + esc(x.label) + ' <span class="value num">' + esc(x.value) + '</span></button>'; }).join('') + '</span></div>';
       }
-      var body = '<span class="label">' + esc(t.label) + (t.view || t.go ? '<span class="go" aria-hidden="true">' + (t.go ? 'open ›' : 'view ↗') + '</span>' : '') + '</span><span class="value num' + (t.txt ? ' txt' : '') + '">' + esc(t.value) + '</span><span class="ctx">' + esc(t.ctx || '') + '</span>';
+      var body = '<span class="label">' + esc(t.label) + '<span class="go" aria-hidden="true">' + (t.go ? 'open ›' : t.view ? 'view ↗' : 'show ↓') + '</span>' + '</span><span class="value num' + (t.txt ? ' txt' : '') + '">' + esc(t.value) + '</span><span class="ctx">' + esc(t.ctx || '') + '</span>';
       if (t.view && !PREVIEW) return '<a class="kpi ' + (t.cls || '') + '" target="_top" href="' + esc(url.view(t.view.module, t.view.id)) + '" title="' + esc(t.viewTitle || 'Open the ' + nameOfView(t.view) + ' view (the same count)') + '">' + body + '</a>';
       return '<button type="button" class="kpi ' + (t.cls || '') + '" data-tile="' + esc(t.key) + '" aria-pressed="' + (on === t.key) + '" title="' + (t.go ? 'Open these on the Opportunities board' : 'Show these rows on the board') + '">' + body + '</button>';
     }).join('');
   }
   /* BD + CS Home: Numbers zone = the account action tiles + health bar, always; the active board's own strip sits under the tabs (not repeated for Accounts) */
   function renderNums() {
-    var lb = B.lockBrand, lp = B.lockPipe, sc = B.showClosed; B.lockBrand = ''; B.lockPipe = ''; B.showClosed = false;
-    try { $('nums').innerHTML = numsHTML('accounts'); } finally { B.lockBrand = lb; B.lockPipe = lp; B.showClosed = sc; }
-    var bn = $('bnums'); if (bn) { bn.hidden = false; bn.innerHTML = numsHTML(B.tab); }
+    $('nums').innerHTML = numsHTML('accounts');
+    var bn = $('bnums'); if (bn) { bn.hidden = B.tab === 'accounts'; bn.innerHTML = B.tab === 'accounts' ? '' : numsHTML(B.tab); }
   }
   var nameOfView = function (v) { return Object.keys(VIEWS).filter(function (k) { return VIEWS[k] === v; })[0] || 'CRM'; };
   var accById = function (id) { return D.accounts.filter(function (a) { return a.id === id; })[0]; };
@@ -3285,18 +3250,16 @@ function rpInit() {
   /* ---------- filters ---------- */
   function filterBar() {
     var f = B.f[B.tab], h = '', chips = function (key, vals, cur, labels, counts) { return '<span class="fchips" role="group" aria-label="' + esc(key) + '">' + vals.map(function (v, i) { return '<button type="button" class="fchip" data-fk="' + key + '" data-fv="' + esc(v) + '" aria-pressed="' + (cur.indexOf(v) >= 0) + '">' + (cur.indexOf(v) >= 0 ? '<span class="ck" aria-hidden="true">✓</span>' : '') + esc(labels ? labels[i] : v) + (counts ? ' <span class="num">' + counts[i] + '</span>' : '') + '</button>'; }).join('') + '</span>'; };
-    var live_ = ACCS().filter(function (a) { return !a.Former_Customer && !a.Close_Out; });
+    var live_ = D.accounts.filter(function (a) { return !a.Former_Customer; });
     var sel = function (key, label, vals, cur) { return '<label><span class="sr-only">' + esc(label) + '</span><select data-fk="' + key + '" aria-label="' + esc(label) + '"><option value="">' + esc(label) + ': all</option>' + vals.map(function (v) { return '<option' + (v === cur ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') + '</select></label>'; };
     var uniq = function (xs) { return xs.filter(function (x, i) { return x && xs.indexOf(x) === i; }).sort(); };
     if (B.tab === 'accounts') {
       h += chips('cls', ACC_CLASSES, f.cls, null, ACC_CLASSES.map(function (c) { return live_.filter(function (a) { return a.Record_Classes.indexOf(c) >= 0; }).length; }))
         + chips('tier', ['Green', 'Yellow', 'Red', 'none'], f.tier, ['Green', 'Yellow', 'Red', 'No tier'], ['Green', 'Yellow', 'Red', ''].map(function (t) { return live_.filter(function (a) { return (a.Health_Tier || '') === t; }).length; }))
-        + sel('state', 'State', uniq(ACCS().map(function (a) { return a.State; })), f.state);
+        + sel('state', 'State', uniq(D.accounts.map(function (a) { return a.State; })), f.state) + sel('brand', 'Brand', uniq(D.accounts.map(function (a) { return a.Brand; })), f.brand);
     } else if (B.tab === 'deals') {
       h += '<span class="seg" role="group" aria-label="Layout"><button type="button" data-fk="view" data-fv="list" aria-pressed="' + (f.view === 'list') + '">List</button><button type="button" data-fk="view" data-fv="kanban" aria-pressed="' + (f.view === 'kanban') + '">Kanban</button></span>'
-        + chips('grp', ['open', 'won', 'lost', 'all'], [f.grp], ['Open', 'Won', 'Lost', 'All']) + (function () { if (B.lockPipe) return ''; var pl = ['JusticePoint EM', 'JusticePoint Programs', 'Sirona Programs', 'TDP Pipeline'].concat(D.deals.map(function (d) { return d.Pipeline; }).filter(function (x) { return x && !/ or /i.test(x); })), seen = {}; pl = pl.filter(function (x) { var k = x.toLowerCase(); return !seen[k] && (seen[k] = 1); }); pl.unshift('');
-        var ct = function (v) { return D.deals.filter(function (d) { return dealOpen(d) && (!v || d.Pipeline === v); }).length; };
-        return '<span class="fchips pchips" role="group" aria-label="Pipeline">' + pl.map(function (v) { var on = (f.pipe || '') === v; return '<button type="button" class="fchip" data-fk="pipe" data-fv="' + esc(v) + '" aria-pressed="' + on + '">' + (on ? '<span class="ck" aria-hidden="true">✓</span>' : '') + esc(v ? v.replace('JusticePoint ', 'JP ').replace(' Pipeline', '').replace(' Programs', '') + (v === 'JusticePoint Programs' ? ' Programs' : v === 'Sirona Programs' ? ' Programs' : '') : 'All pipelines') + ' <span class="num">' + ct(v) + '</span></button>'; }).join('') + '</span>'; })();
+        + chips('grp', ['open', 'won', 'lost', 'all'], [f.grp], ['Open', 'Won', 'Lost', 'All']) + sel('pipe', 'Pipeline', uniq(PICK.pipeline.concat(D.deals.map(function (d) { return d.Pipeline; }))), f.pipe);
     } else if (B.tab === 'vendors') {
       h += chips('jp', ['1'], f.jp ? ['1'] : [], ['JusticePoint vendors only']) + sel('st', 'Status', PICK.relStatus.concat(['(none)']), f.st);
     } else if (isBrand(B.tab)) {
@@ -3311,31 +3274,23 @@ function rpInit() {
     h += filtersOn(B.tab) ? '<button type="button" class="linkish" data-fk="clear">Clear filters</button>' : '';
     h += '<span class="sp"></span><span class="bcount" id="bcount"></span><input type="search" data-fk="q" value="' + esc(f.q || '') + '" placeholder="Filter this board…" aria-label="Filter this board">'
       + '<span class="colwrap"><button type="button" class="btn" data-fk="cols" aria-expanded="' + !!B.colsOpen + '" aria-controls="col-pop">Columns</button>' + (B.colsOpen ? colPop(B.tab, rowsFor(B.tab)) : '') + '</span>';
-    if (B.allJP && B.tab === 'accounts') h += '<span class="ftag">All JusticePoint brands<button type="button" data-fk="alljp-clear" aria-label="Back to this brand only">✕</button></span>';
-    var SC = SCOPE[B.top];
-    if (SC) {
-      var nA = scopeAccs(B.top).length, nD = scopeDeals(B.top).filter(dealOpen).length, subOn = B.sub[B.top] || 'accounts';
-      h = '<span class="seg" role="group" aria-label="Show for ' + esc($('tab-' + B.top).firstChild.textContent) + '"><button type="button" data-fk="sub" data-fv="accounts" aria-pressed="' + (subOn === 'accounts') + '">Accounts <b class="num">' + nA + '</b></button><button type="button" data-fk="sub" data-fv="deals" aria-pressed="' + (subOn === 'deals') + '">Opportunities <b class="num">' + nD + '</b></button></span>' + h;
-    }
     $('bfilt').innerHTML = h;
   }
   function rowsFor(board) {
     var f = B.f[board], tile = B.tile[board] && tilesFor(board).filter(function (t) { return t.key === B.tile[board]; })[0], rows;
-    if (board === 'accounts') rows = ACCS().filter(function (a) {
-      if (B.showClosed) return !!a.Close_Out && textHit(f.q, [a.Account_Name, a.County, a.State, a.Key_Personnel, a.Contact_Email]);
+    if (board === 'accounts') rows = D.accounts.filter(function (a) {
       if (tile) return tile.pred(a) && textHit(f.q, [a.Account_Name, a.County, a.State, a.Key_Personnel, a.Contact_Email]);
       var cls = f.cls.length ? a.Record_Classes.some(function (c) { return f.cls.indexOf(c) >= 0; }) : true;
       var tier = !f.tier.length || f.tier.indexOf(a.Health_Tier || 'none') >= 0;
-      return cls && tier && !a.Former_Customer && !a.Close_Out && (!f.state || a.State === f.state) && textHit(f.q, [a.Account_Name, a.County, a.State, a.Key_Personnel, a.Contact_Email]);
+      return cls && tier && !a.Former_Customer && (!f.state || a.State === f.state) && (!f.brand || a.Brand === f.brand) && textHit(f.q, [a.Account_Name, a.County, a.State, a.Key_Personnel, a.Contact_Email]);
     });
-    else if (board === 'deals') rows = DEALS().filter(function (d) {
+    else if (board === 'deals') rows = D.deals.filter(function (d) {
       var g = stageGroup(d.Stage, d.Stage_Group), q = textHit(f.q, [d.Deal_Name, d.Account_Name && d.Account_Name.name, d.Next_Step, d.Stage]);
-      if (tile) return tile.pred(d) && (!f.pipe || B.lockPipe || d.Pipeline === f.pipe) && q;
+      if (tile) return tile.pred(d) && (!f.pipe || d.Pipeline === f.pipe) && q;
       var grp = f.grp === 'all' || (f.grp === 'open' ? dealOpen(d) : f.grp === 'won' ? g === 'Won' : g === 'Lost or Dead');
-      return grp && (!f.pipe || B.lockPipe || d.Pipeline === f.pipe) && q;
+      return grp && (!f.pipe || d.Pipeline === f.pipe) && q;
     });
     else if (isBrand(board)) rows = D[board].filter(function (a) {
-      if (!!a.Close_Out !== !!B.showClosed) return false;
       var q = textHit(f.q, [a.Account_Name, a.County, a.State, a.Key_Personnel, a.Contact_Email]);
       if (tile) return tile.pred(a) && q;
       var cls = !f.cls.length || (a.Record_Classes.length ? a.Record_Classes.some(function (c) { return f.cls.indexOf(c) >= 0; }) : f.cls.indexOf('none') >= 0);
@@ -3400,14 +3355,14 @@ function rpInit() {
   var COLS = {
     accounts: [
       { k: 'name', t: 'Account', sort: function (a) { return a.Account_Name.toLowerCase(); }, td: function (a) { return '<td class="nm"><a href="#" data-open>' + esc(a.Account_Name) + '</a><span class="s">' + esc([a.Record_Classes.join(', '), a.Brand ? a.Brand.replace('JusticePoint ', 'JP ') : ''].filter(Boolean).join(' · ')) + '</span></td>'; } },
-      { k: 'place', t: 'State / county', cls: 'hide-sm', sort: function (a) { return (a.State + a.County).toLowerCase(); }, td: function (a) { return '<td class="hide-sm">' + esc(a.State || '—') + '<span class="s">' + esc(a.County || '') + '</span></td>'; } },
+      { k: 'place', t: 'State / county', cls: 'hide-sm', off: true, sort: function (a) { return (a.State + a.County).toLowerCase(); }, td: function (a) { return '<td class="hide-sm">' + esc(a.State || '—') + '<span class="s">' + esc(a.County || '') + '</span></td>'; } },
       { k: 'health', t: 'Health', empty: function (a) { return !a.Health_Tier && !a.Customer_Health && !a.Touch_Status && !a.Last_Touch; }, sort: function (a) { return a.Health_Score == null ? null : Number(a.Health_Score); }, td: function (a) { var tip = [a.Health_Score != null ? 'Score ' + a.Health_Score : '', a.Customer_Health ? 'Customer health: ' + a.Customer_Health : '', a.Health_Override ? 'set by hand' : ''].filter(Boolean).join(' · ');
         return '<td title="' + esc(tip) + '"><span class="dot ' + esc(a.Health_Tier) + '" aria-hidden="true"></span>' + esc(a.Health_Tier || (a.Customer_Health ? a.Customer_Health : 'No tier')) + (a.Health_Override ? ' <span class="mute" aria-label="set by hand">✎</span>' : '')
         + '<span class="s">' + (a.Touch_Status ? '<span class="tchip ' + touchCls(a.Touch_Status) + '">' + esc(a.Touch_Status) + '</span>' : '') + (a.Last_Touch ? esc(ageText(a.Last_Touch + 'T12:00:00')) : '') + '</span></td>'; } },
-      { k: 'dev', t: 'Devices', cls: 'hide-md', empty: function (a) { return !a.Device_s_Used.length; }, sort: function (a) { return a.Device_s_Used.join(','); }, td: function (a) { return '<td class="hide-md">' + (a.Device_s_Used.length ? a.Device_s_Used.map(function (d) { return '<span class="tchip">' + esc(d) + '</span>'; }).join('') : '<span class="mute">—</span>') + '</td>'; } },
+      { k: 'dev', t: 'Devices', cls: 'hide-md', off: true, empty: function (a) { return !a.Device_s_Used.length; }, sort: function (a) { return a.Device_s_Used.join(','); }, td: function (a) { return '<td class="hide-md">' + (a.Device_s_Used.length ? a.Device_s_Used.map(function (d) { return '<span class="tchip">' + esc(d) + '</span>'; }).join('') : '<span class="mute">—</span>') + '</td>'; } },
       { k: 'units', t: 'Units', cls: 'num', empty: function (a) { return a.EM_Total_Units == null; }, sort: function (a) { return a.EM_Total_Units == null ? null : Number(a.EM_Total_Units); }, td: function (a) { return '<td class="num">' + (a.EM_Total_Units == null ? '<span class="mute">—</span>' : fmtNum(a.EM_Total_Units)) + '</td>'; } },
       { k: 'renew', t: 'Renewal', empty: function (a) { return !contractOf(a.id) && !a.Renewal_Date; }, sort: function (a) { var c = contractOf(a.id); return c && c.Final_End_Date ? c.Final_End_Date : null; }, td: renewalCell },
-      { k: 'price', t: 'Pricing', cls: 'hide-md', empty: function (a) { return !pricingLine(contractOf(a.id)); }, sort: function (a) { var c = contractOf(a.id); if (!c) return null; var g = linesOf(c.id).filter(function (l) { return l.dev === 'GPS'; })[0]; return g ? Number(g.amt) : c.GPS_Rate_Allied != null ? Number(c.GPS_Rate_Allied) : null; }, td: function (a) { var c = contractOf(a.id), s = pricingLine(c); return '<td class="hide-md rates clip" title="' + esc(c ? c.Name + '\n' + pricingLine(c, true) + (c.Escalator_Pct != null ? '\nEscalator ' + c.Escalator_Pct + '%' : '') + (c.Margin_Tier ? '\nMargin ' + c.Margin_Tier : '') : 'No open customer contract') + '">' + (s ? esc(s) : '<span class="mute">—</span>') + '</td>'; } },
+      { k: 'price', t: 'Pricing', cls: 'hide-md', off: true, empty: function (a) { return !pricingLine(contractOf(a.id)); }, sort: function (a) { var c = contractOf(a.id); if (!c) return null; var g = linesOf(c.id).filter(function (l) { return l.dev === 'GPS'; })[0]; return g ? Number(g.amt) : c.GPS_Rate_Allied != null ? Number(c.GPS_Rate_Allied) : null; }, td: function (a) { var c = contractOf(a.id), s = pricingLine(c); return '<td class="hide-md rates clip" title="' + esc(c ? c.Name + '\n' + pricingLine(c, true) + (c.Escalator_Pct != null ? '\nEscalator ' + c.Escalator_Pct + '%' : '') + (c.Margin_Tier ? '\nMargin ' + c.Margin_Tier : '') : 'No open customer contract') + '">' + (s ? esc(s) : '<span class="mute">—</span>') + '</td>'; } },
       { k: 'contact', t: 'Contact', cls: 'hide-sm', sort: function (a) { return (a.Key_Personnel || a.Contact_Email || '').toLowerCase() || null; }, td: function (a) {
         return '<td class="hide-sm reach clip">' + esc(a.Key_Personnel || '') + (a.Key_Personnel ? '<br>' : '') + (isEmail(a.Contact_Email) ? '<a href="mailto:' + esc(a.Contact_Email) + '" title="Send email to ' + esc(a.Contact_Email) + '">✉ ' + esc(a.Contact_Email) + '</a>' : '')
           + (telHref(a.Phone) ? '<a href="' + esc(telHref(a.Phone)) + '" title="Call ' + esc(a.Phone) + '">☎ ' + esc(a.Phone) + '</a>' : '') + (!a.Key_Personnel && !a.Contact_Email && !a.Phone ? '<span class="mute">—</span>' : '') + '</td>'; } },
@@ -3487,44 +3442,32 @@ function rpInit() {
     } else {
       var shown = B.all[board] ? rows : rows.slice(0, MAX_ROWS);
       var loading = isBrand(board) ? !PREVIEW && !BRANDS[board].settled : !PREVIEW && !LOADED.at;
-      $('bwrap').innerHTML = note + '<table class="bt" aria-label="' + esc($('tab-' + B.top).firstChild.textContent) + '"><thead><tr><th class="c-sel"><input type="checkbox" data-selall aria-label="Select all shown"' + (shown.length && shown.every(function (r) { return sel[r.id]; }) ? ' checked' : '') + '></th>'
+      $('bwrap').innerHTML = note + '<table class="bt" aria-label="' + esc($('tab-' + board).firstChild.textContent) + '"><thead><tr><th class="c-sel"><input type="checkbox" data-selall aria-label="Select all shown"' + (shown.length && shown.every(function (r) { return sel[r.id]; }) ? ' checked' : '') + '></th>'
         + cols.map(function (c) { return '<th class="' + (c.cls || '') + '" scope="col"' + (c.sort ? ' aria-sort="' + (s.k === c.k ? (s.d === 'asc' ? 'ascending' : 'descending') : 'none') + '"' : '') + '>' + (c.sort ? '<button type="button" data-sort="' + c.k + '"' + (s.k === c.k ? ' data-dir="' + (s.d === 'asc' ? '▲' : '▼') + '"' : '') + '>' + esc(c.t) + '</button>' : esc(c.t)) + '</th>'; }).join('') + '<th class="ra" scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>'
-        + (loading ? '<tr class="empty"><td colspan="' + (cols.length + 2) + '">' + skeletonRows(4, 'Loading ' + $('tab-' + B.top).firstChild.textContent) + '</td></tr>' : shown.map(function (r) {
+        + (loading ? '<tr class="empty"><td colspan="' + (cols.length + 2) + '">' + skeletonRows(4, 'Loading ' + $('tab-' + board).firstChild.textContent) + '</td></tr>' : shown.map(function (r) {
           return '<tr data-id="' + esc(r.id) + '" tabindex="-1" class="' + (cur === r.id ? 'cur' : '') + (sel[r.id] ? ' selected' : '') + '"><td class="c-sel"><input type="checkbox" data-sel="' + esc(r.id) + '"' + (sel[r.id] ? ' checked' : '') + ' aria-label="Select ' + esc(titleOf(board, r)) + '"></td>' + cols.map(function (c) { return c.td(r); }).join('') + rowActs(board) + '</tr>' + (board === 'vendors' && B.xp[r.id] ? catalogRow(r, cols.length + 2) : ''); }).join('')
           || '<tr class="empty"><td colspan="' + (cols.length + 2) + '">' + (isBrand(board) && !D[board].length ? (ERR[board] ? 'These accounts did not load.' : 'No accounts under this brand yet.') : 'No results match these filters. <button type="button" class="linkish" data-fk="clear">Clear them</button>') + '</td></tr>')
         + (rows.length > shown.length ? '<tr class="more"><td colspan="' + (cols.length + 2) + '"><button type="button" class="btn" data-showall>Show all ' + rows.length + '</button></td></tr>' : '') + '</tbody></table>';
     }
     var c = $('bcount'); if (c) c.textContent = rows.length + ' shown';
-    BOARDS.forEach(function (t) { var n = document.querySelector('[data-n="' + t + '"]'); if (!n) return; var S = SCOPE[t], none = S && S.b ? !(PREVIEW || BRANDS[S.b].settled) || (ERR[S.b] && !D[S.b].length) : (!PREVIEW && !LOADED.at); n.textContent = none ? '' : S ? scopeAccs(t).length + ' · ' + scopeDeals(t).filter(dealOpen).length : D[t].length; n.title = S ? 'accounts · open opportunities' : ''; });
+    BOARDS.forEach(function (b) { var n = document.querySelector('[data-n="' + b + '"]'); if (n) n.textContent = (isBrand(b) ? !(PREVIEW || BRANDS[b].settled) || (ERR[b] && !D[b].length) : (!PREVIEW && !LOADED.at)) ? '' : D[b].length; });
     syncBulk(); resize();
   }
   var VIS = [];
   var titleOf = function (board, r) { return r.Account_Name && typeof r.Account_Name === 'string' ? r.Account_Name : r.Deal_Name || r.Vendor_Name || r.Campaign_Name || r.Account_Name || ''; };
   function renderTabs() {
-    document.querySelectorAll('#btabs [data-board]').forEach(function (b) { var on = b.getAttribute('data-board') === B.top; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
-    $('board').setAttribute('aria-labelledby', 'tab-' + B.top);
-    document.querySelectorAll('[data-brandchip]').forEach(function (a) { var on = a.getAttribute('data-brandchip') === B.top; if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+    document.querySelectorAll('#btabs [data-board]').forEach(function (b) { var on = b.getAttribute('data-board') === B.tab; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+    $('board').setAttribute('aria-labelledby', 'tab-' + B.tab);
   }
   function renderAll() {
     renderTabs(); renderNums(); filterBar(); renderBoard(); renderFU(); stamp();
-    var em = D.accounts.filter(function (a) { return a.Record_Classes.indexOf('EM Customer') >= 0 && !a.Former_Customer && !a.Close_Out; }).length, open = D.deals.filter(dealOpen).length;
+    var em = D.accounts.filter(function (a) { return a.Record_Classes.indexOf('EM Customer') >= 0 && !a.Former_Customer; }).length, open = D.deals.filter(dealOpen).length;
     $('boards-meta').textContent = (PREVIEW || LOADED.at) ? D.accounts.length + ' accounts (' + em + ' EM customers) · ' + D.deals.length + ' opportunities (' + open + ' open) · ' + D.vendors.length + ' vendors · ' + D.campaigns.length + ' campaigns' : '';
     if (RP.rec && !$('peek').hidden && !Object.keys(RP.dirty).length) { var fresh = findRec(RP.type, RP.rec.id); if (fresh && fresh !== RP.rec) { RP.rec = fresh; rpRender(); } }
   }
-  /* roll the page down to the boards (tab strip at the top of the view) after a header chip or a "open ›" tile switches tab */
-  function rollToBoard() {
-    setTimeout(function () {
-      var el = $('btabs'); if (!el) return; var calm = false; try { calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
-      try { el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' }); } catch (e) { el.scrollIntoView(); }
-    }, 60);
-  }
-  function setTab(b, focus, keep) { KB.zone = 'board';
-    if (BOARDS.indexOf(b) < 0) return; B.top = b; B.allJP = false; syncEff(); if (!keep) B.tile[B.tab] = null; store.set(PREF + 'tab', b); ensureBrand(SCOPE[b] && SCOPE[b].b || b); renderAll();
+  function setTab(b, focus) { KB.zone = 'board';
+    if (BOARDS.indexOf(b) < 0) return; B.tab = b; store.set(PREF + 'tab', b); ensureBrand(b); renderAll();
     if (focus) $('tab-' + b).focus();
-  }
-  /* the Accounts | Opportunities switch inside a brand tab; a tile may arrive with it (Open pipeline, Deals past close) */
-  function setSub(t, sub, tile) {
-    B.sub[t] = sub; store.set(PREF + 'sub', JSON.stringify(B.sub)); B.top = t; B.allJP = false; syncEff(); B.tile[B.tab] = tile || null; B.all[B.tab] = false; ensureBrand(SCOPE[t] && SCOPE[t].b || t); renderAll();
   }
 
 
@@ -3801,241 +3744,6 @@ function rpInit() {
     click: function (e) { var g = e.target.closest('[data-goto]'); if (g) { var p = g.getAttribute('data-goto').split(':'), r = findRec(p[0], p[1]); if (r) rpOpen(p[0], r, { reload: true }); } }
   };
 
-  /* ================= Close out: accounts (3 outcomes) and opportunities (Won / Lost) =================
-     Row hover action, record peek (single), bulk bar (many). Writes Accounts.Close_Out / Close_Out_Date / Close_Out_Reason,
-     or Deals.Stage / Closing_Date / Lost_To / Reason_For_Loss__s. A note is saved on each record; Undo reverses both.
-     A closed-out account leaves the active boards, tiles and follow-ups; the "Show closed out" chip brings them back for Reopen. */
-  var CO_OUTCOMES = ['Former Customer', 'Not Applicable to Business', 'Inactive / Archived'];
-  var coType = function () { return TYPE_OF[B.tab]; };
-  var coModule = function (type) { return type === 'account' ? 'Accounts' : 'Deals'; };
-  var coStages = function (d) { return (typeof stagesFor === 'function' && stagesFor(d.Pipeline)) || PICK.stage; };
-  var coDisp = function (v) { return (typeof STAGE_DISP !== 'undefined' && STAGE_DISP[v]) || v; };
-  var coInternalStage = function (d) { return coStages(d).filter(function (v) { return v === d.Stage || coDisp(v) === d.Stage; })[0] || d.Stage; };
-  function coStageFor(d, kind, withComp) {
-    var list = coStages(d), pick = function (re) { return list.filter(function (s) { return re.test(String(coDisp(s))); })[0]; };
-    if (kind === 'won') return pick(/^closed won$/i) || 'Closed Won';
-    if (withComp) return pick(/lost to competition/i) || pick(/^closed lost$/i) || 'Closed Lost';
-    return pick(/^closed lost$/i) || pick(/lost to competition/i) || 'Closed Lost';
-  }
-  var coDateOk = function (s) { return /^\d{4}-\d{2}-\d{2}$/.test(s || '') && s <= TODAY; };
-
-  /* the write + note + undo, for one record or many */
-  function coRun(type, recs, mk, noteFor, doneText, after) {
-    var module = coModule(type), T = RP_TYPES[type], fieldsBy = {}, before = {};
-    recs.forEach(function (r) {
-      var f = mk(r); fieldsBy[r.id] = f;
-      var b = {}; Object.keys(f).forEach(function (k) { b[k] = k === 'Stage' ? coInternalStage(r) : r[k]; });
-      b.__group = r.Stage_Group; before[r.id] = b;
-    });
-    var okIds = [], failN = 0, firstErr = '', chunks = []; for (var i = 0; i < recs.length; i += 100) chunks.push(recs.slice(i, i + 100));
-    POLL.busy++;
-    var apply = function (r, f) { if (type === 'account') { applyFields(r, f); syncTwins(r); } else T.apply(r, f); };
-    return chunks.reduce(function (p, ch) { return p.then(function () {
-      if (PREVIEW) { ch.forEach(function (r) { okIds.push(r.id); }); return null; }
-      return live.batch('update', module, ch.map(function (r) { var o = { id: String(r.id) }; Object.keys(fieldsBy[r.id]).forEach(function (k) { o[k] = fieldsBy[r.id][k]; }); return o; })).then(function (res) {
-        res.forEach(function (x, k) { if (x.ok) okIds.push(ch[k].id); else { failN++; firstErr = firstErr || x.error || ''; } });
-      });
-    }); }, Promise.resolve()).then(function () {
-      var okRecs = recs.filter(function (r) { return okIds.indexOf(r.id) >= 0; }), notes = {};
-      okRecs.forEach(function (r) { apply(r, fieldsBy[r.id]); });
-      var rows = okRecs.map(function (r) { var n = noteFor(r, before[r.id]); return { Note_Title: n.title.slice(0, 120), Note_Content: n.body || n.title, Parent_Id: String(r.id), se_module: module }; });
-      var noteP;
-      if (!rows.length) noteP = Promise.resolve();
-      else if (PREVIEW) noteP = Promise.all(okRecs.map(function (r, k) { return rpInsertNote(module, r.id, rows[k].Note_Title, rows[k].Note_Content).then(function (n) { notes[r.id] = n; D.lastNote[r.id] = n; }); }));
-      else noteP = live.batch('insert', 'Notes', rows).then(function (res) { res.forEach(function (x, k) { if (x.ok) { var n = { id: String(x.id), title: rows[k].Note_Title, body: rows[k].Note_Content, author: ME.name, at: new Date().toISOString() }; notes[okRecs[k].id] = n; D.lastNote[okRecs[k].id] = n; } }); }, function () {});
-      return noteP.then(function () { return { okRecs: okRecs, notes: notes }; });
-    }).then(function (o) {
-      POLL.busy--;
-      o.okRecs.forEach(function (r) { if (RP.notes && RP.rec && RP.rec.id === r.id && o.notes[r.id]) RP.notes.unshift(o.notes[r.id]); });
-      if (after) after(o.okRecs);
-      if (o.okRecs.length) { RP_HOOKS.afterSave(type, o.okRecs[0], null); filterBar(); }
-      if (RP.rec && !$('peek').hidden) rpRender();
-      var bad = failN ? ' · ' + failN + ' not saved' + (/BLUEPRINT/i.test(firstErr) ? ' (a Blueprint owns Stage; use the record page)' : firstErr ? ' (' + firstErr + ')' : '') : '';
-      if (!o.okRecs.length) { toast('Nothing saved' + bad.replace(/^ · /, ' · '), { bad: true, ms: 9000 }); return o; }
-      toast(doneText(o.okRecs) + bad, { bad: !!failN, ms: 12000, undo: function () {
-        var back = function (r) { var b = {}; Object.keys(fieldsBy[r.id]).forEach(function (k) { b[k] = rpCrmVal(before[r.id][k]); }); return b; };
-        var p = PREVIEW ? Promise.resolve() : live.batch('update', module, o.okRecs.map(function (r) { var b = back(r); b.id = String(r.id); return b; })).then(function () {});
-        p.then(function () {
-          o.okRecs.forEach(function (r) { var b = before[r.id]; Object.keys(fieldsBy[r.id]).forEach(function (k) { r[k] = b[k]; }); if (type === 'deal') r.Stage_Group = b.__group; if (type === 'account') syncTwins(r); });
-          return Promise.all(o.okRecs.map(function (r) { var n = o.notes[r.id]; return n ? rpDeleteNote(n.id, r.id).then(function () { if (RP.notes && RP.rec && RP.rec.id === r.id) RP.notes = RP.notes.filter(function (x) { return x.id !== n.id; }); }, function () {}) : null; }));
-        }).then(function () { RP_HOOKS.afterSave(type, o.okRecs[0], null); filterBar(); if (RP.rec && !$('peek').hidden) rpRender(); toast('Undone', { ms: 2500 }); }, function (e) { toast('Could not undo · ' + e.message, { bad: true, ms: 9000 }); });
-      } });
-      return o;
-    }, function (e) { POLL.busy--; toast('Not saved · ' + e.message, { bad: true, ms: 9000 }); });
-  }
-
-  /* account fields / notes */
-  var coAcctFields = function (outcome, when, reason) { return function () { return { Close_Out: outcome, Close_Out_Date: when, Close_Out_Reason: reason || null }; }; };
-  var coAcctNote = function (outcome, reason) { return function (r) { return { title: 'Closed out: ' + outcome, body: (reason ? reason + '\n' : '') + 'Closed out from the CS home.' }; }; };
-  function coReopen(recs) {
-    recs = recs.filter(function (r) { return r.Close_Out; }); if (!recs.length) return;
-    coRun('account', recs, function () { return { Close_Out: null, Close_Out_Date: null, Close_Out_Reason: null }; },
-      function (r, b) { return { title: 'Reopened (was ' + b.Close_Out + ')', body: 'Reopened from the CS home.' }; },
-      function (ok) { return ok.length === 1 ? ok[0].Account_Name + ' reopened' : ok.length + ' accounts reopened'; },
-      function () { if (!recs.some(function (r) { return r.Close_Out; })) { /* all reopened */ } });
-  }
-  /* deal fields / notes */
-  var coDealFields = function (kind, when, lostTo, why) { return function (d) {
-    var withComp = kind === 'lost' && lostTo && lostTo !== '__none', f = { Stage: coStageFor(d, kind, withComp), Closing_Date: when };
-    if (kind === 'won') { if (d.Lost_To) f.Lost_To = null; if (d.Reason_For_Loss__s) f.Reason_For_Loss__s = null; }
-    else { f.Lost_To = withComp ? { id: String(lostTo) } : null; f.Reason_For_Loss__s = why; }
-    return f; }; };
-  var coDealNote = function (kind, lostTo, why, reason) { return function (d) {
-    var cn = lostTo && lostTo !== '__none' ? compName(lostTo) : '';
-    var t = kind === 'won' ? 'Closed won' : 'Closed lost' + (cn ? ' to ' + cn : '') + (why ? ' · ' + why : '');
-    return { title: t, body: (reason ? reason + '\n' : '') + 'Closed out from the CS home (stage ' + (kind === 'won' ? 'Closed Won' : 'Closed Lost') + ').' }; }; };
-
-  /* form markup shared by the peek (one record) and the bulk bar (many) */
-  var coSel = function (f, list, cur, ph) { return '<select data-co-f="' + f + '">' + (ph ? '<option value="">' + esc(ph) + '</option>' : '') + list.map(function (o) { var v = o.v == null ? o : o.v, t = o.t == null ? v : o.t; return '<option value="' + esc(v) + '"' + (String(v) === String(cur) ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>'; };
-  function coForm(type, kindAttr, v, openN) {
-    v = v || {};
-    var comps = [{ v: '', t: 'Choose…' }, { v: '__none', t: 'No competitor (not lost to one)' }].concat((D.competitors || []).map(function (c) { return { v: String(c.id), t: c.Name }; }));
-    var h = '<form class="touch co" data-co="' + kindAttr + '">';
-    if (type === 'account') {
-      h += '<label class="w2">Close out as' + coSel('outcome', CO_OUTCOMES, v.outcome || '', 'Choose an outcome…') + '</label>'
-        + '<label>Closed on<input type="date" data-co-f="when" max="' + TODAY + '" value="' + esc(v.when || TODAY) + '"></label>'
-        + '<label class="w"><span>Reason <span class="fine">(optional)</span></span><input data-co-f="reason" maxlength="255" value="' + esc(v.reason || '') + '" placeholder="e.g. contract ended, county moved to another vendor"></label>'
-        + (openN ? '<p class="fine w">' + openN + ' open opportunit' + (openN === 1 ? 'y' : 'ies') + ' stay open; close them separately.</p>' : '');
-    } else {
-      var lost = v.outcome === 'lost';
-      h += '<label>Outcome' + coSel('outcome', [{ v: 'won', t: 'Won' }, { v: 'lost', t: 'Lost' }], v.outcome || '', 'Choose…') + '</label>'
-        + '<label>Closed on<input type="date" data-co-f="when" max="' + TODAY + '" value="' + esc(v.when || TODAY) + '"></label>'
-        + '<label data-co-lost' + (lost ? '' : ' hidden') + '>Lost to' + coSel('lostto', comps, v.lostto || '') + '</label>'
-        + '<label data-co-lost' + (lost ? '' : ' hidden') + '>Reason for loss' + coSel('why', opts(PICK.reason), v.why || '', 'Choose…') + '</label>'
-        + '<label class="w"><span>Note <span class="fine">(optional, saved on the record)</span></span><input data-co-f="reason" maxlength="240" value="' + esc(v.reason || '') + '" placeholder="e.g. went with the incumbent after the budget vote"></label>';
-    }
-    return h + '<div class="row3"><span class="rp-msg" data-co-f="msg"></span><button type="button" class="btn" data-co-b="cancel">Cancel</button><button type="button" class="btn primary" data-co-b="save">' + (type === 'account' ? 'Close out' : 'Close deal') + '</button></div></form>';
-  }
-  var coRead = function (root) { var o = {}; Array.prototype.forEach.call(root.querySelectorAll('[data-co-f]'), function (el) { o[el.getAttribute('data-co-f')] = el.value; }); return o; };
-  var coCheck = function (type, o) {
-    if (!o.outcome) return 'Choose an outcome.';
-    if (!coDateOk(o.when)) return 'Closed on needs a date, today or earlier.';
-    if (type === 'deal' && o.outcome === 'lost') { if (!o.lostto) return 'A lost deal needs Lost to: pick the competitor, or “No competitor”.'; if (!o.why) return 'A lost deal needs a Reason for loss.'; }
-    return '';
-  };
-  var coMsg = function (root, t, bad) { var m = root.querySelector('[data-co-f="msg"]'); if (m) { m.textContent = t; m.className = 'rp-msg' + (bad ? ' bad' : ''); } };
-  var coLostToggle = function (form) { var o = form.querySelector('[data-co-f="outcome"]'); if (!o) return; var lost = o.value === 'lost'; Array.prototype.forEach.call(form.querySelectorAll('[data-co-lost]'), function (l) { l.hidden = !lost; }); };
-  function coSubmit(type, form, recs, clear) {
-    var o = coRead(form), bad = coCheck(type, o); if (bad) { coMsg(form, bad, true); return; }
-    var btn = form.querySelector('[data-co-b="save"]'); if (btn) btn.disabled = true; coMsg(form, 'Saving…');
-    var n = recs.length, run;
-    if (type === 'account') run = coRun('account', recs, coAcctFields(o.outcome, o.when, o.reason.trim()), coAcctNote(o.outcome, o.reason.trim()),
-      function (ok) { return ok.length === 1 ? ok[0].Account_Name + ' · closed out as ' + o.outcome : ok.length + ' accounts closed out as ' + o.outcome; });
-    else run = coRun('deal', recs, coDealFields(o.outcome, o.when, o.lostto, o.why), coDealNote(o.outcome, o.lostto, o.why, o.reason.trim()),
-      function (ok) { return ok.length === 1 ? ok[0].Deal_Name + ' · closed ' + (o.outcome === 'won' ? 'won' : 'lost') : ok.length + ' opportunities closed ' + (o.outcome === 'won' ? 'won' : 'lost'); });
-    run.then(function (r) { if (btn) btn.disabled = false; if (r && r.okRecs && r.okRecs.length) { clear(); } else coMsg(form, 'Not saved. See the message above.', true); });
-  }
-
-  /* peek: one record */
-  function coOpenPeek(type, rec) {
-    if (type === 'account' && rec.Close_Out) return;
-    if (type === 'deal' && !dealOpen(rec)) return;
-    var openN = type === 'account' ? D.deals.filter(function (d) { return d.Account_Name && d.Account_Name.id === rec.id && dealOpen(d); }).length : 0;
-    RP.panel = coForm(type, type, {}, openN); rpRender();
-    var f = $('peek').querySelector('[data-co-f="outcome"]'); if (f) f.focus();
-    if (type === 'deal' && !D.competitors) Promise.resolve(RP_TYPES.deal.load()).then(function () {
-      var form = $('peek').querySelector('form[data-co="deal"]'); if (!form || RP.rec !== rec) return;
-      RP.panel = coForm('deal', 'deal', coRead(form), 0); rpRender();
-    });
-  }
-  function coPeekClick(e, rec) {
-    var b = e.target.closest('[data-co-b]'); if (!b) return false;
-    var type = RP.type, form = $('peek').querySelector('form[data-co]');
-    if (b.getAttribute('data-co-b') === 'cancel') { RP.panel = null; rpRender(); return true; }
-    if (form) coSubmit(type, form, [rec], function () { RP.panel = null; if (RP.rec) rpRender(); });
-    return true;
-  }
-  var A_ = RP_TYPES.account, D_ = RP_TYPES.deal, oa_ = A_.actions, oact_ = A_.act, okey_ = A_.key, oclick_ = A_.click;
-  A_.keys = (A_.keys ? A_.keys + ' · ' : '') + 'C close out';
-  A_.actions = function (a) { var xs = oa_ ? oa_.apply(this, arguments) : []; return xs.concat([a.Close_Out ? { id: 'reopen', label: 'Reopen', title: 'Put this account back on the active boards' } : { id: 'close', label: 'Close out…', title: 'Former customer, not applicable, or inactive / archived (C)' }]); };
-  A_.act = function (id, rec) { if (id === 'close') coOpenPeek('account', rec); else if (id === 'reopen') coReopen([rec]); else if (oact_) return oact_.apply(this, arguments); };
-  A_.key = function (e, a) { if ((e.key === 'c' || e.key === 'C') && !a.Close_Out) { e.preventDefault(); coOpenPeek('account', a); } else if (okey_) return okey_.apply(this, arguments); };
-  A_.click = function (e, a) { if (coPeekClick(e, a)) return; if (oclick_) return oclick_.apply(this, arguments); };
-  var ochip_ = A_.chip, ofacts_ = A_.facts;
-  A_.chip = function (a) { return a.Close_Out ? { text: 'Closed out', cls: '' } : ochip_.apply(this, arguments); };
-  A_.facts = function (a) { var rows = ofacts_.apply(this, arguments); if (a.Close_Out) rows = [['Closed out', '<b>' + esc(a.Close_Out) + '</b>' + (a.Close_Out_Date ? ' · ' + esc(fmtDate(a.Close_Out_Date, true)) : '') + (a.Close_Out_Reason ? '<br><span class="fine">' + esc(a.Close_Out_Reason) + '</span>' : '')]].concat(rows); return rows; };
-  var okey2_ = D_.key, oclick2_ = D_.click;
-  D_.keys = (D_.keys ? D_.keys + ' · ' : '') + 'C close out';
-  D_.actions = function (d) { return dealOpen(d) ? [{ id: 'close', label: 'Close out…', title: 'Mark this opportunity Won or Lost (C)' }] : []; };
-  D_.act = function (id, rec) { if (id === 'close') coOpenPeek('deal', rec); };
-  D_.key = function (e, d) { if ((e.key === 'c' || e.key === 'C') && dealOpen(d)) { e.preventDefault(); coOpenPeek('deal', d); } else if (okey2_) return okey2_.apply(this, arguments); };
-  D_.click = function (e, d) { if (coPeekClick(e, d)) return; if (oclick2_) return oclick2_.apply(this, arguments); };
-
-  /* row hover action */
-  var rowActs0_ = rowActs;
-  rowActs = function (board) {
-    var h = rowActs0_(board); if (board !== 'deals' && !isAcc(board)) return h;
-    var lbl = isAcc(board) && B.showClosed ? 'Reopen' : 'Close out';
-    return h.replace('<button type="button" class="act ghost"', '<button type="button" class="act" data-ract="close" title="' + (lbl === 'Reopen' ? 'Put this account back on the active boards' : isAcc(board) ? 'Close out this account' : 'Close out this opportunity: won or lost') + '">' + lbl + '</button><button type="button" class="act ghost"');
-  };
-  var bw_ = $('bwrap');
-  if (bw_) bw_.addEventListener('click', function (e) {
-    var ra = e.target.closest('[data-ract="close"]'); if (!ra) return;
-    e.preventDefault(); e.stopImmediatePropagation();
-    var tr = ra.closest('[data-id]'), type = coType(), r = tr && findRec(type, tr.getAttribute('data-id')); if (!r) return;
-    if (type === 'account' && B.showClosed) { coReopen([r]); return; }
-    if (type === 'deal' && !dealOpen(r)) { toast(r.Deal_Name + ' is already closed. Change its stage in the peek if that was a mistake.', { ms: 6000 }); return; }
-    openRow(r.id); if (type === 'account' && r.Close_Out) return; coOpenPeek(type, r);
-  }, true);
-
-  /* "Show closed out" chip */
-  var filterBar0_ = filterBar;
-  filterBar = function () {
-    filterBar0_.apply(this, arguments);
-    if (!isAcc(B.tab)) return; var el = $('bfilt'); if (!el) return;
-    var pool = isBrand(B.tab) ? D[B.tab] : (B.lockBrand ? D.accounts.filter(function (a) { return lc(a.Brand) === lc(B.lockBrand); }) : D.accounts), n = pool.filter(function (a) { return a.Close_Out; }).length;
-    if (!n && !B.showClosed) return;
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'fchip'; b.setAttribute('data-co-show', '1'); b.setAttribute('aria-pressed', String(!!B.showClosed));
-    b.textContent = (B.showClosed ? '✓ ' : '') + 'Show closed out · ' + n; el.appendChild(b);
-  };
-  var bf_ = $('bfilt');
-  if (bf_) bf_.addEventListener('click', function (e) {
-    if (!e.target.closest('[data-co-show]')) return; e.preventDefault(); e.stopImmediatePropagation();
-    B.showClosed = !B.showClosed; B.sel[B.tab] = {}; filterBar(); renderBoard(); syncBulk();
-  }, true);
-
-  /* bulk bar */
-  var bb_ = $('bd-bulkbar');
-  if (bb_) {
-    var coBtn = document.createElement('button'); coBtn.type = 'button'; coBtn.className = 'btn'; coBtn.setAttribute('data-bulk-co', 'open'); coBtn.id = 'co-bulk-btn'; coBtn.textContent = 'Close out…';
-    var coBox = document.createElement('div'); coBox.className = 'co-bulk rp'; coBox.id = 'co-bulk'; coBox.hidden = true;
-    var clr = bb_.querySelector('[data-bulk="clear"]'); bb_.insertBefore(coBtn, clr); bb_.appendChild(coBox);
-    var coBulkRecs = function () { var type = coType(); return Object.keys(B.sel[B.tab] || {}).map(function (id) { return findRec(type, id); }).filter(Boolean); };
-    syncBulk0_ = syncBulk;
-    syncBulk = function () {
-      syncBulk0_.apply(this, arguments);
-      var type = coType(), ok = type === 'account' || type === 'deal'; coBtn.hidden = !ok;
-      coBtn.textContent = type === 'account' && B.showClosed ? 'Reopen' : 'Close out…';
-      if (!Object.keys(B.sel[B.tab] || {}).length || (coBox.getAttribute('data-type') && coBox.getAttribute('data-type') !== type)) { coBox.hidden = true; coBox.innerHTML = ''; coBox.removeAttribute('data-type'); }
-    };
-    var coBoxOpen = function (type, vals) {
-      coBox.setAttribute('data-type', type); coBox.innerHTML = coForm(type, 'bulk-' + type, vals, 0); coBox.hidden = false;
-      var f = coBox.querySelector('[data-co-f="outcome"]'); if (f) f.focus();
-    };
-    bb_.addEventListener('click', function (e) {
-      var o = e.target.closest('[data-bulk-co]'), b = e.target.closest('[data-co-b]');
-      if (o) {
-        e.stopPropagation(); var type = coType(); if (type !== 'account' && type !== 'deal') return;
-        if (type === 'account' && B.showClosed) { coReopen(coBulkRecs()); B.sel[B.tab] = {}; renderBoard(); return; }
-        if (!coBox.hidden) { coBox.hidden = true; coBox.innerHTML = ''; coBox.removeAttribute('data-type'); return; }
-        coBoxOpen(type);
-        if (type === 'deal' && !D.competitors) Promise.resolve(D_.load()).then(function () { if (!coBox.hidden && coBox.getAttribute('data-type') === 'deal') { var fm = coBox.querySelector('form'); coBoxOpen('deal', fm ? coRead(fm) : {}); } });
-        return;
-      }
-      if (b) {
-        e.stopPropagation(); var type2 = coBox.getAttribute('data-type'), form = coBox.querySelector('form');
-        if (b.getAttribute('data-co-b') === 'cancel') { coBox.hidden = true; coBox.innerHTML = ''; coBox.removeAttribute('data-type'); return; }
-        var recs = coBulkRecs().filter(function (r) { return type2 === 'account' ? !r.Close_Out : dealOpen(r); });
-        if (!recs.length) { coMsg(form, 'Nothing selected can be closed out (already closed).', true); return; }
-        coSubmit(type2, form, recs, function () { B.sel[B.tab] = {}; coBox.hidden = true; coBox.innerHTML = ''; coBox.removeAttribute('data-type'); renderBoard(); syncBulk(); });
-      }
-    }, true);
-  }
-  /* the form's own plumbing, wherever it sits */
-  document.addEventListener('change', function (e) { var f = e.target.closest && e.target.closest('form[data-co]'); if (f && e.target.getAttribute('data-co-f') === 'outcome') coLostToggle(f); });
-  document.addEventListener('submit', function (e) { if (e.target.closest && e.target.closest('form[data-co]')) e.preventDefault(); });
-  var syncBulk0_;
-
   RP_TYPES.vendor = {
     module: 'Vendors',
     title: function (v) { return v.Vendor_Name; },
@@ -4135,8 +3843,7 @@ function rpInit() {
       FU.from = null;
       if (h.type === 'case') { KB.zone = 'queue'; openPeek(caseLi(h.r.id)); return; }
       var board = h.board || { account: 'accounts', deal: 'deals', vendor: 'vendors', campaign: 'campaigns' }[h.type];
-      var top = board === 'accounts' ? acctTop(h.r) : board; if (top === 'sirona' || top === 'tdp') board = top;
-      if (B.top !== top || B.tab !== board || (board === 'deals' && B.lockPipe)) setTab(board === 'deals' ? 'deals' : top); KB.zone = 'board'; B.cur[board] = h.r.id; renderBoard(); RP.opener = box; rpOpen(h.type, h.r, { reload: true });
+      if (B.tab !== board) setTab(board); KB.zone = 'board'; B.cur[board] = h.r.id; renderBoard(); RP.opener = box; rpOpen(h.type, h.r, { reload: true });
     };
     var remote = function (q, seq) {
       var J = [{ module: 'Accounts', field: 'Account_Name', sub: 'County', kind: 'Account' }, { module: 'Cases', field: 'Subject', sub: 'Case_ID', kind: 'Case' }];
@@ -5853,12 +5560,23 @@ function rpInit() {
     var jobs = p.fresh.map(function (id) { return { id: id, r: findCase(id) }; });
     var done = [], failed = [], i = 0, total = jobs.length;
     nacBulkBusy = true; bulkBusy = true; btn.disabled = true; $('bulk-go').disabled = true;
-    (function next() {
-      if (i >= jobs.length) return rules();
-      var j = jobs[i++]; toast('Not a Case ' + i + ' of ' + total + ' · ' + caseName(j.r) + '…', { ms: 120000 });
-      nacClose(j.id, solution, 'bulk').then(function () { j.r.Status = 'Closed'; delete Q.sel[j.id]; done.push(j); renderQueue(); })
-        .catch(function (e) { failed.push({ j: j, e: e, msg: nacMissingStep(e) ? 'no Not a Case step from New' : e.message }); })
-        .then(next);
+    /* Parallel Not a Case (20 Oct 2026): up to 4 cases at once instead of one after another. */
+    var NAC_CONC = 4, nacRunning = 0, nacFinished = 0;
+    (function nacPump() {
+      if (!jobs.length) return rules();
+      while (nacRunning < NAC_CONC && i < jobs.length) {
+        (function (j) {
+          nacRunning++;
+          nacClose(j.id, solution, 'bulk').then(function () { j.r.Status = 'Closed'; delete Q.sel[j.id]; done.push(j); renderQueue(); })
+            .catch(function (e) { failed.push({ j: j, e: e, msg: nacMissingStep(e) ? 'no Not a Case step from New' : e.message }); })
+            .then(function () {
+              nacRunning--; nacFinished++;
+              if (nacFinished >= jobs.length) return rules();
+              toast('Not a Case ' + nacFinished + ' of ' + total + '…', { ms: 120000 });
+              nacPump();
+            });
+        })(jobs[i++]);
+      }
     })();
     function rules() {
       if (!wantRule || !done.length) return finish({ added: 0, already: 0, none: 0, failed: [] });
@@ -6145,12 +5863,29 @@ function rpInit() {
     var done = [], failed = [], i = 0; bulkBusy = true; $('bulk-go').disabled = true;
     var note = 'Status changed from the home page (mass update)';
     var apply = function (r, c) { if (c.owner) setOwnerLocal(r, c.owner); if (c.status) r.Status = c.status; flipPersonal(r, c); };
-    (function next() {
-      if (i >= jobs.length) return finish();
-      var j = jobs[i++]; toast('Updating ' + i + ' of ' + jobs.length + ' · ' + caseName(j.r) + '…', { ms: 120000 });
-      saveOne(j.id, j.c, note, resExtra).then(function () { apply(j.r, j.c); delete Q.sel[j.id]; done.push(j); renderQueue(); })
-        .catch(function (e) { failed.push({ j: j, msg: e.message === 'RECORD_IN_BLUEPRINT' ? 'the Blueprint refused it' : e.message }); })
-        .then(next);
+    /* Parallel bulk (20 Oct 2026): up to 4 cases at once instead of one after another; one retry on a rate-limit style error. */
+    var BULK_CONC = 4, running = 0, finished = 0;
+    var runOne = function (j, tries) {
+      return saveOne(j.id, j.c, note, resExtra).catch(function (e) {
+        if (tries < 1 && /too many|rate|limit|concurren|timed? ?out/i.test(String((e && e.message) || ''))) return new Promise(function (r) { setTimeout(r, 2500); }).then(function () { return runOne(j, tries + 1); });
+        throw e;
+      });
+    };
+    toast('Updating ' + jobs.length + ' case' + (jobs.length === 1 ? '' : 's') + '…', { ms: 120000 });
+    (function pump() {
+      while (running < BULK_CONC && i < jobs.length) {
+        (function (j) {
+          running++;
+          runOne(j, 0).then(function () { apply(j.r, j.c); delete Q.sel[j.id]; done.push(j); renderQueue(); })
+            .catch(function (e) { failed.push({ j: j, msg: e.message === 'RECORD_IN_BLUEPRINT' ? 'the Blueprint refused it' : e.message }); })
+            .then(function () {
+              running--; finished++;
+              if (finished >= jobs.length) return finish();
+              toast('Updating ' + finished + ' of ' + jobs.length + '…', { ms: 120000 });
+              pump();
+            });
+        })(jobs[i++]);
+      }
     })();
     function finish() {
       bulkBusy = false; $('bulk-go').disabled = false; renderQueue();
@@ -6780,7 +6515,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     }
     if (k === '/') return act('search', function () { $('jump').focus(); try { $('jump').select(); } catch (x) {} });
     if (k === '?') return act('keys', function () { $('keys-btn').click(); });
-    if (k >= '1' && k <= '7') return act('tab:' + k, function () { setTab(BOARDS[+k - 1]); });
+    if (k >= '1' && k <= '6') return act('tab:' + k, function () { setTab(BOARDS[+k - 1]); });
     if (k === 'n') return act('new-case', newCase);
     if (k === 'Escape') { if (FU.menu) act('fu:menu-close', function () { FU.menu = null; renderFU(); }); return; }
 
@@ -6984,27 +6719,18 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     $('source').textContent = PREVIEW ? VERSION + ' · preview data' : VERSION + ' · live · Accounts, Contracts, Opportunities, Vendors, Products, Campaigns, Notes';
     $('chip-bd').href = PREVIEW ? '#' : url.tab('Accounts');
     $('btabs').addEventListener('click', function (e) { var b = e.target.closest('[data-board]'); if (b) setTab(b.getAttribute('data-board')); });
-    $('btabs').addEventListener('keydown', function (e) { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); var i = BOARDS.indexOf(B.top) + (e.key === 'ArrowRight' ? 1 : -1); setTab(BOARDS[(i + BOARDS.length) % BOARDS.length], true); });
-    /* Numbers zone (all brands): a filter tile shows its rows on JusticePoint EM with "All JusticePoint brands"; a deals tile opens All Opportunities */
-    $('nums').addEventListener('click', function (e) { var t = e.target.closest('[data-tile]'); if (!t) return; var k = t.getAttribute('data-tile');
-      var lb = B.lockBrand, lp = B.lockPipe; B.lockBrand = ''; B.lockPipe = ''; var def = tilesFor('accounts').filter(function (x) { return x.key === k; })[0]; B.lockBrand = lb; B.lockPipe = lp;
-      if (def && def.go) { B.tile[def.go.tab] = def.go.tile; B.all[def.go.tab] = false; if (def.go.tab === 'deals') { B.f.deals.pipe = ''; saveF(); } setTab('deals', false, true); rollToBoard(); return; }
-      B.top = 'jpem'; B.sub.jpem = 'accounts'; store.set(PREF + 'tab', 'jpem'); store.set(PREF + 'sub', JSON.stringify(B.sub)); B.allJP = true; B.showClosed = false; syncEff(); B.tile.accounts = k; B.all.accounts = false; renderAll(); rollToBoard(); });
-    /* the strip under the tabs: BD Home's rules */
-    $('bnums').addEventListener('click', function (e) { var t = e.target.closest('[data-tile]'); if (!t) return; var k = t.getAttribute('data-tile'), def = tilesFor(B.tab).filter(function (x) { return x.key === k; })[0];
-      if (def && def.go && SCOPE[B.top]) { setSub(B.top, 'deals', def.go.tile); rollToBoard(); return; }
-      if (def && def.go) { B.tile[def.go.tab] = def.go.tile; B.all[def.go.tab] = false; if (def.go.tab === 'deals') { B.f.deals.pipe = def.go.pipe || ''; saveF(); } setTab(def.go.tab, false, true); rollToBoard(); return; }
-      if (B.tab === 'deals') B.f.deals.pipe = ''; B.tile[B.tab] = B.tile[B.tab] === k ? null : k; B.all[B.tab] = false; renderNums(); filterBar(); renderBoard(); });
+    $('btabs').addEventListener('keydown', function (e) { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); var i = BOARDS.indexOf(B.tab) + (e.key === 'ArrowRight' ? 1 : -1); setTab(BOARDS[(i + BOARDS.length) % BOARDS.length], true); });
+    var numClick = function (getBoard) { return function (e) { var t = e.target.closest('[data-tile]'); if (!t) return; var board = getBoard(), k = t.getAttribute('data-tile'), def = tilesFor(board).filter(function (x) { return x.key === k; })[0];
+      if (def && def.go) { B.tile[def.go.tab] = def.go.tile; B.all[def.go.tab] = false; if (def.go.tab === 'deals') { B.f.deals.pipe = def.go.pipe || ''; saveF(); } setTab(def.go.tab); return; }
+      if (board === 'deals') B.f.deals.pipe = ''; B.tile[board] = B.tile[board] === k ? null : k; B.all[board] = false; if (B.tab !== board) { setTab(board); return; } renderNums(); filterBar(); renderBoard(); }; };
+    $('nums').addEventListener('click', numClick(function () { return 'accounts'; })); $('bnums').addEventListener('click', numClick(function () { return B.tab; }));
     $('bfilt').addEventListener('click', function (e) {
       var t = e.target.closest('[data-fk]'); if (!t || t.tagName === 'SELECT' || t.tagName === 'INPUT') return;
       var k = t.getAttribute('data-fk'), v = t.getAttribute('data-fv'), f = B.f[B.tab];
-      if (k === 'sub') { setSub(B.top, v); return; }
-      if (k === 'alljp-clear' || k === 'tile-clear') { B.allJP = false; syncEff(); if (k === 'alljp-clear') { B.tile[B.tab] = null; renderAll(); return; } }
       if (k === 'cols') { B.colsOpen = !B.colsOpen; filterBar(); var c0 = document.querySelector('#col-pop input'); if (c0) c0.focus(); return; }
       if (k === 'clear') { var q0 = B.f[B.tab].q; B.f[B.tab] = DEFAULT_F()[B.tab]; B.f[B.tab].view = f.view || B.f[B.tab].view; B.tile[B.tab] = null; saveF(); renderNums(); filterBar(); renderBoard(); return; }
       if (k === 'tile-clear') B.tile[B.tab] = null;
       else if (k === 'view' || k === 'grp') f[k] = v;
-      else if (k === 'pipe') f.pipe = f.pipe === v ? '' : v;
       else if (k === 'jp') f.jp = !f.jp;
       else { var a = f[k]; var i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); }
       if (k !== 'tile-clear' && k !== 'view') B.tile[B.tab] = null;
