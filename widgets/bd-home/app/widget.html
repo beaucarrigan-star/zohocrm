@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BD Home v5.0 (v4.7 waveC3 + tiles v1.0.0, 20 Oct 2026) -->
+<!-- BD Home v5.1 (v5.0 + tiles v1.0.1 retry fix, 20 Oct 2026) -->
 <!-- home-kit: src=bd-home.src.html kit=39cbad46 out=a894d14e -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1548,7 +1548,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="BD" data-build="BD Home v5.0 (v4.7 waveC3 + tiles v1.0.0, 20 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="BD" data-build="BD Home v5.1 (v5.0 + tiles v1.0.1 retry fix, 20 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -5344,7 +5344,7 @@ function rpInit() {
   if (typeof module !== 'undefined' && module.exports) module.exports = { resolve: resolve, TABS: TABS, HOME: HOME };
 })(typeof window !== 'undefined' ? window : this);
 
-/* needs-today.js v1.0.0 (S17, 20 Oct 2026). "Needs you today" tiles for the CS, EM, BD and PDEC home pages.
+/* needs-today.js v1.0.1 (S20 retry fix; v1.0.0 S17, 20 Oct 2026). "Needs you today" tiles for the CS, EM, BD and PDEC home pages.
    Host page gives: <div id="nt-nav"></div><section id="needs-today" data-home="CS|EM|BD|PDEC" data-build="..."></section>
    Each tile shows a count, what the count means and the age of the oldest item, and opens a native Zoho list view
    in the same window (a plain <a target="_top">). An empty tile says what empty means.
@@ -5584,10 +5584,11 @@ function rpInit() {
     if (/permission|not_allowed|no_permission|NOT_SUPPORTED|INVALID_MODULE/i.test(JSON.stringify(e || m))) return 'Your profile cannot read this module';
     return String(m).slice(0, 80);
   }
+  function safe(fn) { return new Promise(function (ok, no) { try { ok(fn()); } catch (e) { no(e); } }); }
   function user() {
-    return withTimeout(root.ZOHO.CRM.CONFIG.getCurrentUser(), 6000).then(function (r) { var u = r && r.users && r.users[0]; if (!u) throw new Error('no user'); return u; });
+    return safe(function () { return withTimeout(root.ZOHO.CRM.CONFIG.getCurrentUser(), 6000); }).then(function (r) { var u = r && r.users && r.users[0]; if (!u) throw new Error('no user'); return u; });
   }
-  function retry(fn, n) { return fn().catch(function (e) { if (n <= 0) throw e; return wait(1500).then(function () { return retry(fn, n - 1); }); }); }
+  function retry(fn, n) { return safe(fn).catch(function (e) { if (n <= 0) throw e; return wait(1500).then(function () { return retry(fn, n - 1); }); }); }
   function queueIds() {
     return withTimeout(root.ZOHO.CRM.API.getAllUsers({ Type: 'ActiveUsers' }), 8000).then(function (r) {
       return ((r && r.users) || []).filter(function (u) { var p = u.profile && u.profile.name; return p === 'Administrator' || p === 'System Support'; }).map(function (u) { return String(u.id); });
@@ -5617,7 +5618,8 @@ function rpInit() {
     }
     if (!(root.ZOHO && root.ZOHO.CRM && root.ZOHO.CRM.API)) { sec.hidden = true; if (nav) nav.hidden = true; return; }
     stamp('Counting…');
-    retry(user, 6).then(function (u) {
+    setTimeout(function () { var late = false; home.tiles.forEach(function (k) { if (!res[k]) { res[k] = { error: 'Could not count, reload the page' }; late = true; } }); if (late) { paint(); stamp('Reload the page to try again'); } }, 60000);
+    retry(user, 12).then(function (u) {
       return queueIds().then(function (q) {
         var ctx = { me: String(u.id), queue: q, now: new Date() };
         return Promise.all(home.tiles.map(function (k) {
