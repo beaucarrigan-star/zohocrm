@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Leadership Home v44 (S17, 20 Oct 2026). Replaces Network Home v43.1 waveC3 (rollback: Network-Home-v43.1-v3theme-waveC3-tiles.zip).
+     Read-only page for the Leadership profile: six measures, each built on the same rule as a native report in the
+     "Leadership measures" folder. Each measure carries a trust label (Reliable / Not yet reliable / Paused while rebuilt).
+     Labels are set in MEASURES below until the weekly data check (S21) writes them. Report links stay off until
+     REPORTS_LIVE is true (Beau, 20 Oct: build now, do not send reports yet). ?demo=1 shows sample numbers. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leadership Home</title>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:light dark;
+  --bg:light-dark(#F4F5F7,#121417);--surface:light-dark(#FFFFFF,#191C20);--surface2:light-dark(#F7F8FA,#1F2328);
+  --ink:light-dark(#1F2328,#E6E8EB);--ink2:light-dark(#3A424B,#C9CED4);--muted:light-dark(#5B6470,#9AA1AB);
+  --line:light-dark(#DDE1E6,#2B3038);--line-strong:light-dark(#B8BEC7,#424955);
+  --accent:light-dark(#2F55A4,#7F9FE0);--accent-ink:light-dark(#284A90,#9DB6EA);
+  --bad:light-dark(#B42318,#F08A82);--warn:light-dark(#8A5300,#E0B055);--good:light-dark(#1E7A46,#5EC58C);
+  --bar:light-dark(#2F55A4,#7F9FE0);--bar-w:light-dark(#C98A1A,#E0B055);--bar-r:light-dark(#B42318,#F08A82);
+  --ok-tint:light-dark(#EEF8F2,#163125);--ok-line:light-dark(#9CCDB0,#2E6B4A);
+  --font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--head:Archivo,'Public Sans',system-ui,sans-serif}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font)}
+.wrap{max-width:1440px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:18px}
+@media (min-width:900px){.wrap{padding:16px 28px 40px}}
+.navrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#nav .jpk-nav{padding:0;background:transparent}
+.tools{display:flex;gap:6px}
+.icon{min-height:36px;min-width:36px;padding:0 10px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink);font:500 13px var(--font);cursor:pointer}
+.icon:focus-visible,.brand:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end}
+.crumb{font-size:13px;color:var(--muted)}
+h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
+.brands{display:flex;flex-wrap:wrap;gap:6px}
+.brand{min-height:36px;padding:0 14px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:4px;font:500 13px var(--font);cursor:pointer}
+.brand[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0;padding:0;list-style:none}
+@media (max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+.m{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-height:220px;height:100%}
+.m h2{margin:0;font:600 15px/1.3 var(--font)}
+.kind{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.val{font:700 38px/1 var(--head);font-variant-numeric:tabular-nums}
+.val.sm{font-size:20px;line-height:1.25}
+.val.bad{color:var(--bad)}.val.mute{color:var(--muted)}
+.def{font-size:12.5px;color:var(--muted)}
+.foot{margin-top:auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;font-size:12.5px;border-top:1px solid var(--line);padding-top:8px}
+.foot a{color:var(--accent-ink);font-weight:600;text-decoration:none}
+.foot a:hover{text-decoration:underline}
+.foot .off{color:var(--muted)}
+.trust{font-size:11px;font-weight:700;border-radius:3px;padding:2px 7px;border:1px solid var(--line-strong);color:var(--muted);background:var(--surface2)}
+.trust.ok{color:var(--good);border-color:var(--ok-line);background:var(--ok-tint)}
+.bars{display:flex;flex-direction:column;gap:6px;font-size:12.5px;margin:2px 0}
+.bar{display:grid;grid-template-columns:minmax(80px,120px) 1fr 44px;gap:8px;align-items:center}
+.bar .track{height:10px;border-radius:2px;background:var(--surface2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:2px;background:var(--bar)}
+.bar i.w{background:var(--bar-w)}.bar i.r{background:var(--bar-r)}
+.bar b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:14px 18px;font-size:13px;color:var(--ink2)}
+.status{font-size:12px;color:var(--muted)}
+.err{color:var(--bad);font-size:12.5px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="navrow"><div id="nav"></div>
+    <div class="tools"><button class="icon" id="refresh" type="button" aria-label="Reload the numbers" title="Reload">↻</button>
+      <button class="icon" id="theme" type="button" aria-label="Theme: follow system" title="Theme">Auto</button></div></div>
+  <div class="top">
+    <div><div class="crumb">Home · Leadership · read-only</div><h1>How the business is doing</h1></div>
+    <div class="brands" role="group" aria-label="Brand" id="brands">
+      <button class="brand" type="button" data-b="all" aria-pressed="true">All brands</button>
+      <button class="brand" type="button" data-b="jp" aria-pressed="false">JusticePoint</button>
+      <button class="brand" type="button" data-b="sirona" aria-pressed="false">Sirona Recovery</button>
+      <button class="brand" type="button" data-b="tdp" aria-pressed="false">The Difference Principle</button>
+    </div>
+  </div>
+  <ul class="grid" id="grid" aria-live="polite"></ul>
+  <div class="note">Every number is counted the same way as a native report in the <b>Leadership measures</b> folder. A measure shows "Not yet reliable" until its inputs pass the weekly data check, so the page never shows a number the CRM can't back up. <span id="stamp" class="status"></span></div>
+</div>
+<script id="jpk-nav-js">
+/* jpk-nav.js v1.0.0 (19 Oct 2026): JPK.navBar, "Back to [tab]" + "Home" buttons for widgets on record pages.
+   Standalone kit file (load after jpk.js if you use it; it does not need jpk.js).
+   One module-to-tab map below. Edit only the map when a tab or module changes.
+   Same-window navigation: a plain <a target="_top"> link to the CRM tab URL (tested 19 Oct 2026 from a
+   widget on a Canvas record page: opens in the same window; the SDK has no tab-navigation call). */
+(function (root) {
+  'use strict';
+  var JPK = root.JPK = root.JPK || {};
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+
+  /* ---- the one map: tab label -> web tab, and which modules belong to which tab ---- */
+  var TABS = {
+    'Records':         { url: ORG + 'WebTab25', modules: ['Accounts', 'Deals', 'Contracts', 'Customer_Onboarding', 'Vendors'] },
+    'Support Process': { url: ORG + 'WebTab26', modules: ['Cases', 'Support_Emails'] },
+    'Processes':       { url: ORG + 'WebTab24', modules: ['Billing_Periods', 'Billing_Findings', 'Solicitations', 'Contract_Ingest_Tab'] }
+  };
+  var HOME = { label: 'Home', url: ORG + 'Home/begin' };
+  /* friendly names, used for ?module= in demo mode and matching */
+  var ALIAS = { 'opportunities': 'Deals', 'customer onboarding': 'Customer_Onboarding', 'support emails': 'Support_Emails',
+    'billing periods': 'Billing_Periods', 'billing findings': 'Billing_Findings', 'contract ingest': 'Contract_Ingest_Tab' };
+
+  function resolve(entity) {
+    var e = String(entity || '').trim();
+    if (ALIAS[e.toLowerCase()]) e = ALIAS[e.toLowerCase()];
+    var low = e.toLowerCase();
+    for (var label in TABS) {
+      if (!Object.prototype.hasOwnProperty.call(TABS, label)) continue;
+      var m = TABS[label].modules;
+      for (var i = 0; i < m.length; i++) if (m[i].toLowerCase() === low) return { label: label, url: TABS[label].url, home: HOME.url, module: m[i] };
+    }
+    return null; /* unmapped module: caller shows Home only */
+  }
+
+  var CSS = '.jpk-nav{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin:0;padding:6px 8px;' +
+    'font:500 13px var(--font,"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif);background:var(--surface,#fff);color:var(--ink,#16191D)}' +
+    '.jpk-nav a{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line-strong,#B8BEC7);' +
+    'border-radius:var(--r-sm,3px);background:var(--surface,#fff);color:var(--ink,#16191D);text-decoration:none;font:inherit;white-space:nowrap;cursor:pointer}' +
+    '.jpk-nav a:hover{background:var(--surface2,#F7F8FA)}' +
+    '.jpk-nav a.back{color:var(--accent-ink,#284A90);font-weight:600;border-color:var(--accent,#2F55A4)}' +
+    '.jpk-nav a:focus-visible{outline:2px solid var(--accent,#2F55A4);outline-offset:2px}' +
+    '.jpk-nav svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}' +
+    '@media (max-width:640px){.jpk-nav{padding:6px 8px}.jpk-nav a{height:36px;padding:0 10px}}' +
+    '@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .jpk-nav{background:var(--surface,#191C20);color:var(--ink,#E6E8EB)}' +
+    ':root:not([data-theme="light"]) .jpk-nav a{background:var(--surface,#191C20);color:var(--ink,#E6E8EB);border-color:var(--line-strong,#424955)}' +
+    ':root:not([data-theme="light"]) .jpk-nav a:hover{background:var(--surface2,#1F2328)}' +
+    ':root:not([data-theme="light"]) .jpk-nav a.back{color:var(--accent-ink,#9DB6EA);border-color:var(--accent,#7F9FE0)}}';
+
+  function el(tag, attrs, html) {
+    var n = document.createElement(tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (html) n.innerHTML = html;
+    return n;
+  }
+  var ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>';
+  var HOMEI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>';
+
+  /* JPK.navBar(mount, entity) -> the resolved tab (or null). Draws "Back to <tab>" (if the module is mapped) and "Home". */
+  function navBar(mount, entity) {
+    if (!document.getElementById('jpk-nav-css')) {
+      var st = el('style', { id: 'jpk-nav-css' }); st.textContent = CSS; document.head.appendChild(st);
+    }
+    var r = resolve(entity);
+    var nav = el('nav', { 'class': 'jpk-nav', 'aria-label': 'Navigate' });
+    if (r) nav.appendChild(el('a', { 'class': 'back', href: r.url, target: '_top', rel: 'noopener', title: 'Back to ' + r.label }, ARROW + '<span>Back to ' + r.label + '</span>'));
+    nav.appendChild(el('a', { 'class': 'home', href: HOME.url, target: '_top', rel: 'noopener', title: 'Home' }, HOMEI + '<span>Home</span>'));
+    mount.innerHTML = ''; mount.appendChild(nav);
+    return r;
+  }
+
+  JPK.navBar = navBar; JPK.navResolve = resolve; JPK.navMap = { tabs: TABS, home: HOME };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { resolve: resolve, TABS: TABS, HOME: HOME };
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script id="leadership-js">
+(function () {
+  'use strict';
+  var BUILD = 'Leadership Home v44 · 20 Oct 2026';
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+  /* Native reports in the "Leadership measures" folder (S15). Links stay off until S15 is confirmed final. */
+  var REPORTS_LIVE = false;
+  var REPORTS = { renewalsAtRisk: '6715134000009404853', renewalRate: '6715134000009467002', health: '6715134000009467005',
+    cases1bd: '6715134000009467023', findings: '6715134000009467011', overdueCases: '6715134000009467014', overdueTasks: '6715134000009467020' };
+  /* Trust labels (Beau, 20 Oct). S21's weekly data check will replace these. */
+  var MEASURES = [
+    { id: 'renewalsAtRisk', kind: 'Leading · renewals', title: 'Renewals at risk', trust: 'Reliable', report: 'renewalsAtRisk' },
+    { id: 'renewalRate', kind: 'Outcome · retention', title: 'Renewal rate this quarter', trust: 'Not yet reliable', report: 'renewalRate' },
+    { id: 'health', kind: 'Leading · customers', title: 'Customer health', trust: 'Paused while rebuilt', report: 'health' },
+    { id: 'cases1bd', kind: 'Leading · service', title: 'Cases handled within 1 business day', trust: 'Not yet reliable', report: 'cases1bd' },
+    { id: 'findings', kind: 'Financial · actual', title: 'Open vendor billing findings', trust: 'Reliable', report: 'findings' },
+    { id: 'overdue', kind: 'Leading · workload', title: 'Overdue work by team', trust: 'Not yet reliable', report: 'overdueCases' }
+  ];
+  var BRANDS = { all: null, jp: ['JusticePoint EM', 'JusticePoint Programs'], sirona: ['Sirona Recovery'], tdp: ['The Difference Principle'] };
+  var DEMO = /[?&](demo|ntdemo)=1/.test(location.search);
+  var brand = 'all', DATA = null, ERR = {};
+
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+  function tz(d) { var o = -d.getTimezoneOffset(), s = o >= 0 ? '+' : '-'; o = Math.abs(o); return s + pad(Math.floor(o / 60)) + ':' + pad(o % 60); }
+  function stampOf(d) { return ymd(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00' + tz(d); }
+  function quarter(d) { var q = Math.floor(d.getMonth() / 3); return { from: new Date(d.getFullYear(), q * 3, 1), to: new Date(d.getFullYear(), q * 3 + 3, 0), label: 'Q' + (q + 1) + ' ' + d.getFullYear() }; }
+  function addBD(d, n) { var x = new Date(d.getTime()); while (n > 0) { x.setDate(x.getDate() + 1); var w = x.getDay(); if (w !== 0 && w !== 6) n--; } return x; }
+  function inBrand(b) { var set = BRANDS[brand]; return !set || set.indexOf(b) > -1; }
+
+  /* ---------- read-only data (COQL selects) ---------- */
+  function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timed out')); }, ms); })]); }
+  function coqlAll(q) {
+    var all = [];
+    function page(p) {
+      return withTimeout(ZOHO.CRM.API.coql({ select_query: q + ' limit 200 offset ' + (p * 200) }), 20000).then(function (r) {
+        var rows = (r && r.data) || []; all = all.concat(rows); return rows.length === 200 && p < 9 ? page(p + 1) : all;
+      }, function (e) { if (!e || e.status === 204 || e.code === 'NO_CONTENT' || e === '') return all; throw e; });
+    }
+    return page(0);
+  }
+  function load() {
+    var now = new Date(), qtr = quarter(now), d30 = addDays(now, -30);
+    var Q = {
+      risk: "select id, Final_End_Date, Account.Brand from Contracts where ((Counterparty_Type = 'Customer' and Renewal_Status = 'Not started') and (Final_End_Date >= '" + ymd(now) + "' and Final_End_Date <= '" + ymd(addDays(now, 120)) + "'))",
+      rate: "select id, Renewal_Status, Account.Brand from Contracts where ((Counterparty_Type = 'Customer' and Renewal_Status in ('Renewed','Not renewing')) and (Final_End_Date >= '" + ymd(qtr.from) + "' and Final_End_Date <= '" + ymd(qtr.to) + "'))",
+      cases: "select id, Status, Created_Time, Modified_Time, Waiting_On, Account_Name.Brand from Cases where Created_Time >= '" + stampOf(d30) + "'",
+      findings: "select id, Vendor, Age_days, Created_Time from Billing_Findings where Status in ('Open','Disputed with vendor')",
+      odCases: "select id, Handling_Team, Account_Name.Brand from Cases where (Status not in ('Closed','Resolved') and Due_By < '" + stampOf(now) + "')",
+      odTasks: "select id from Tasks where (Status not in ('Completed','Cancelled','Deferred') and Due_Date < '" + ymd(now) + "')"
+    };
+    var keys = Object.keys(Q); ERR = {};
+    return Promise.all(keys.map(function (k) { return coqlAll(Q[k]).catch(function (e) { ERR[k] = (e && (e.message || e.code)) || 'could not read'; return null; }); }))
+      .then(function (r) { var d = { qtr: qtr.label, now: now }; keys.forEach(function (k, i) { d[k] = r[i]; }); return d; });
+  }
+  function demoData() {
+    var now = new Date(), B = ['JusticePoint EM', 'JusticePoint EM', 'Sirona Recovery', 'The Difference Principle'];
+    function many(n, f) { var a = []; for (var i = 0; i < n; i++) a.push(f(i)); return a; }
+    return { demo: true, qtr: quarter(now).label, now: now,
+      risk: many(22, function (i) { return { 'Account.Brand': B[i % 4] }; }), rate: [],
+      cases: many(40, function (i) { var c = addDays(now, -(i % 28) - 1); return { Status: i % 5 ? 'Closed' : 'New', Created_Time: c.toISOString(), Modified_Time: addDays(c, i % 3).toISOString(), 'Account_Name.Brand': B[i % 4] }; }),
+      findings: many(185, function (i) { return { Vendor: i % 4 ? 'Allied Universal' : 'SuperCom', Age_days: i % 40 }; }),
+      odCases: many(9, function (i) { return { Handling_Team: i < 7 ? 'EM Support' : 'Customer Success', 'Account_Name.Brand': B[i % 4] }; }), odTasks: many(25, function () { return {}; }) };
+  }
+
+  /* ---------- measures ---------- */
+  function bars(list, max, label) {
+    max = Math.max(max, 1);
+    return '<div class="bars" role="img" aria-label="' + esc(label + ': ' + list.map(function (b) { return b[0] + ' ' + b[1]; }).join(', ')) + '">' + list.map(function (b) {
+      return '<div class="bar" aria-hidden="true"><span>' + esc(b[0]) + '</span><span class="track"><i class="' + (b[2] || '') + '" style="width:' + Math.round(b[1] / max * 100) + '%"></i></span><b>' + b[1] + '</b></div>';
+    }).join('') + '</div>';
+  }
+  function body(m, d) {
+    function miss(k) { return d[k] === null ? '<p class="err">Could not read this from Zoho (' + esc(ERR[k] || '') + ').</p>' : ''; }
+    if (m.id === 'renewalsAtRisk') {
+      if (d.risk === null) return miss('risk');
+      var n = d.risk.filter(function (r) { return inBrand(r['Account.Brand']); }).length;
+      return '<span class="val' + (n ? ' bad' : '') + '">' + n + '</span><span class="def">Customer contracts ending in 120 days with the renewal not started. Target 0.</span>';
+    }
+    if (m.id === 'renewalRate') {
+      if (d.rate === null) return miss('rate');
+      var rows = d.rate.filter(function (r) { return inBrand(r['Account.Brand']); });
+      var ren = rows.filter(function (r) { return r.Renewal_Status === 'Renewed'; }).length, den = rows.length;
+      return den ? '<span class="val">' + Math.round(ren / den * 100) + '%</span><span class="def">' + ren + ' renewed of ' + den + ' decided, contracts ending in ' + esc(d.qtr) + '. Needs a full quarter of Renewed data before it can be trusted.</span>'
+        : '<span class="val sm mute">Not yet measurable</span><span class="def">Renewed ÷ (Renewed + Not renewing) for contracts ending in ' + esc(d.qtr) + '. None decided yet.</span>';
+    }
+    if (m.id === 'health') return '<span class="val sm mute">Paused while rebuilt</span><span class="def">Shown as two signals, service and engagement, once they pass a blind test with one leader. The old single score is not shown.</span>';
+    if (m.id === 'cases1bd') {
+      if (d.cases === null) return miss('cases');
+      var cs = d.cases.filter(function (r) { return inBrand(r['Account_Name.Brand']); });
+      var ok = cs.filter(function (r) {
+        var c = new Date(r.Created_Time), mod = new Date(r.Modified_Time), done = /^(closed|resolved)$/i.test(r.Status || '') || /^(customer|vendor|internal)$/i.test(r.Waiting_On || '');
+        return done && mod <= addBD(c, 1);
+      }).length;
+      return cs.length ? '<span class="val">' + Math.round(ok / cs.length * 100) + '%</span><span class="def">' + ok + ' of ' + cs.length + ' cases opened in the last 30 days were resolved or handed to a customer or vendor within one business day. Target 90%.' + (brand !== 'all' ? ' Cases with no linked account count under All brands only.' : '') + '</span>'
+        : '<span class="val sm mute">No cases yet</span><span class="def">No cases opened in the last 30 days for this brand.</span>';
+    }
+    if (m.id === 'findings') {
+      if (d.findings === null) return miss('findings');
+      var a = [0, 0, 0], v = {};
+      d.findings.forEach(function (r) { var g = +r.Age_days || 0; a[g <= 30 ? 0 : g <= 60 ? 1 : 2]++; var k = r.Vendor || 'No vendor'; v[k] = (v[k] || 0) + 1; });
+      var top = Object.keys(v).sort(function (x, y) { return v[y] - v[x]; })[0];
+      return '<span class="val">' + d.findings.length + '</span>' + bars([['0–30 days', a[0]], ['31–60 days', a[1], 'w'], ['Over 60 days', a[2], 'r']], Math.max(a[0], a[1], a[2]), 'Open findings by age') +
+        '<span class="def">Open or disputed with the vendor' + (top ? '; most are ' + esc(top) : '') + '. Findings carry no account, so the brand filter does not apply here.</span>';
+    }
+    if (m.id === 'overdue') {
+      if (d.odCases === null) return miss('odCases');
+      var t = {};
+      d.odCases.filter(function (r) { return inBrand(r['Account_Name.Brand']); }).forEach(function (r) { var k = r.Handling_Team || 'No team'; t[k] = (t[k] || 0) + 1; });
+      var list = Object.keys(t).sort(function (x, y) { return t[y] - t[x]; }).map(function (k) { return [k, t[k], 'r']; });
+      var tasks = d.odTasks === null ? null : d.odTasks.length;
+      return (list.length ? bars(list, list[0][1], 'Overdue open cases by Handling Team') : '<span class="val sm mute">No overdue cases</span>') +
+        '<span class="def">Open cases past their Due By, by Handling Team.' + (tasks === null ? '' : ' Plus ' + tasks + ' overdue tasks (tasks have no team; the report groups them by owner).') + ' Meaningful once work is owned by more than one person.</span>';
+    }
+    return '';
+  }
+  function card(m, d) {
+    var trustCls = m.trust === 'Reliable' ? 'trust ok' : 'trust';
+    var link = REPORTS_LIVE && REPORTS[m.report] ? '<a href="' + ORG + 'Reports/' + REPORTS[m.report] + '" target="_top">Open the report →</a>' : '<span class="off">Report link turns on when the reports are final</span>';
+    return '<li><article class="m" aria-labelledby="h-' + m.id + '"><span class="kind">' + esc(m.kind) + '</span><h2 id="h-' + m.id + '">' + esc(m.title) + '</h2>' +
+      (d ? body(m, d) : '<span class="val mute" aria-hidden="true">…</span><span class="def">Counting…</span>') +
+      '<div class="foot"><span class="' + trustCls + '">' + esc(m.trust) + '</span>' + link + '</div></article></li>';
+  }
+  function paint() { $('#grid').innerHTML = MEASURES.map(function (m) { return card(m, DATA); }).join(''); }
+  function refresh() {
+    DATA = null; paint(); $('#stamp').textContent = 'Counting…';
+    var p = DEMO || !(window.ZOHO && ZOHO.CRM) ? Promise.resolve(demoData()) : load();
+    return p.then(function (d) { DATA = d; paint(); $('#stamp').textContent = (d.demo ? 'Sample numbers (demo) · ' : 'Updated ' + new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + ' · ') + BUILD; });
+  }
+
+  /* ---------- controls ---------- */
+  $('#brands').addEventListener('click', function (e) {
+    var b = e.target.closest('.brand'); if (!b) return; brand = b.getAttribute('data-b');
+    [].forEach.call(document.querySelectorAll('.brand'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (DATA) paint();
+  });
+  $('#refresh').addEventListener('click', refresh);
+  var THEMES = ['auto', 'light', 'dark'], theme = 'auto';
+  try { theme = localStorage.getItem('lead-theme') || 'auto'; } catch (e) { /* no storage */ }
+  function applyTheme() {
+    var r = document.documentElement; if (theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', theme);
+    var t = $('#theme'); t.textContent = theme === 'auto' ? 'Auto' : theme === 'light' ? 'Light' : 'Dark';
+    t.setAttribute('aria-label', 'Theme: ' + (theme === 'auto' ? 'follow system' : theme) + '. Click to change.');
+  }
+  $('#theme').addEventListener('click', function () { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; try { localStorage.setItem('lead-theme', theme); } catch (e) { /* no storage */ } applyTheme(); });
+  var m = /[?&]theme=(light|dark)/.exec(location.search); if (m) theme = m[1];
+  applyTheme();
+  if (window.JPK && JPK.navBar) JPK.navBar($('#nav'), null);
+
+  /* ---------- boot ---------- */
+  if (DEMO || !(window.ZOHO && ZOHO.embeddedApp)) refresh();
+  else { var booted = false; ZOHO.embeddedApp.on('PageLoad', function () { if (!booted) { booted = true; refresh(); } }); ZOHO.embeddedApp.init(); setTimeout(function () { if (!booted) { booted = true; refresh(); } }, 3000); }
+  window.__lead = { MEASURES: MEASURES, REPORTS: REPORTS, refresh: refresh };
+})();
+</script>
+</body>
+</html>
