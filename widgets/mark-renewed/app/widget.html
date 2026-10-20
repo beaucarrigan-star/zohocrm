@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Mark renewed v1.0 (S21, 20 Oct 2026). Contracts detail-page button widget. Asks for the new term dates, then calls
+     standalone function contract_mark_renewed(contractId, newStart, newEnd), which creates the next contract linked by
+     Renewed_From and sets this one to Renewed. Administrator only (Contract Status is admin-only). ?demo=1 = sample data. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mark renewed</title>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:light dark;
+  --bg:light-dark(#F4F5F7,#121417);--surface:light-dark(#FFFFFF,#191C20);--surface2:light-dark(#F7F8FA,#1F2328);
+  --ink:light-dark(#1F2328,#E6E8EB);--ink2:light-dark(#3A424B,#C9CED4);--muted:light-dark(#5B6470,#9AA1AB);
+  --line:light-dark(#DDE1E6,#2B3038);--line-strong:light-dark(#B8BEC7,#424955);
+  --accent:light-dark(#2F55A4,#7F9FE0);--accent-ink:light-dark(#FFFFFF,#0F1A33);--accent-hover:light-dark(#284A90,#9DB6EA);
+  --bad:light-dark(#B42318,#F08A82);--bad-tint:light-dark(#FDF0EE,#3A1C1A);--good:light-dark(#1E7A46,#5EC58C);--good-tint:light-dark(#EEF8F2,#163125);
+  --focus:light-dark(#2F55A4,#9DB6EA);
+  --font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--head:Archivo,'Public Sans',system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font)}
+.wrap{max-width:560px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+h1{font:700 18px/1.25 var(--head);margin:0}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:14px 16px}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin:0}
+.facts div{min-width:0}
+.facts dt{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.facts dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+input[type=date]{width:100%;min-height:38px;padding:6px 10px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink);font:inherit}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+.what{margin:0;padding-left:18px;color:var(--ink2);font-size:13px}
+.what li{margin:3px 0}
+.actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+button{min-height:38px;padding:0 16px;border-radius:4px;font:600 14px var(--font);cursor:pointer;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+button:disabled{opacity:.55;cursor:not-allowed}
+.msg{border-radius:4px;padding:10px 12px;font-size:13.5px;border:1px solid var(--line)}
+.msg.bad{background:var(--bad-tint);border-color:var(--bad);color:var(--ink)}
+.msg.good{background:var(--good-tint);border-color:var(--good);color:var(--ink)}
+.msg b{font-weight:700}
+.msg a{color:var(--accent);font-weight:600}
+[hidden]{display:none!important}
+.ver{font-size:11px;color:var(--muted);text-align:right}
+@media (max-width:420px){.row,.facts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header><h1>Mark renewed</h1><div class="sub" id="who">Loading the contract…</div></header>
+  <section class="card" aria-label="Current contract">
+    <dl class="facts" id="facts"></dl>
+  </section>
+  <form class="card" id="form" novalidate>
+    <div class="row">
+      <div><label for="ns">New start date</label><input type="date" id="ns" required></div>
+      <div><label for="ne">New end date</label><input type="date" id="ne" required></div>
+    </div>
+    <p class="hint" id="hint">Start is the day after the current end. End is one renewal term later.</p>
+    <ul class="what" id="what">
+      <li>Creates the next contract with the same account, owner, terms and rates, linked back to this one.</li>
+      <li>Copies the rate lines as Proposed, so they get checked against the new contract.</li>
+      <li>Sets this contract to Renewed, so it leaves the renewal board.</li>
+    </ul>
+  </form>
+  <div id="msg" class="msg" role="status" aria-live="polite" hidden></div>
+  <div class="actions">
+    <button type="button" id="cancel">Cancel</button>
+    <button type="button" class="primary" id="go" disabled>Mark renewed</button>
+  </div>
+  <div class="ver" id="ver"></div>
+</main>
+<script>
+(function () {
+  'use strict';
+  var VERSION = 'Mark renewed v1.0 · 20 Oct 2026';
+  var FN = 'contract_mark_renewed';
+  var DEMO = /[?&]demo=1/.test(location.search) || !(window.ZOHO && ZOHO.embeddedApp);
+  var DENY = /[?&]deny=1/.test(location.search);
+  var C = null, ID = null, busy = false, done = false;
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function parse(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; }
+  function iso(d) { return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
+  function addDays(d, n) { var x = new Date(d.getTime()); x.setUTCDate(x.getUTCDate() + n); return x; }
+  function dim(y, m) { return new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); }
+  function addMonths(d, n) {   /* month-end aware: 31 Jan + 1 month = 28/29 Feb */
+    var y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate(), last = day === dim(y, m), idx = m + n;
+    var ny = y + Math.floor(idx / 12), nm = ((idx % 12) + 12) % 12, nd = last ? dim(ny, nm) : Math.min(day, dim(ny, nm));
+    return new Date(Date.UTC(ny, nm, nd));
+  }
+  function nice(isoS) { var d = parse(isoS); return d ? d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'; }
+  function show(kind, html) { var m = $('#msg'); m.className = 'msg ' + (kind || ''); m.innerHTML = html; m.hidden = false; }
+  function friendly(e) { if (!e) return 'Zoho did not answer.'; if (typeof e === 'string') return e; return e.message || e.code || JSON.stringify(e).slice(0, 200); }
+  /* Default dates: start = day after current end (or today); end = start + term months - 1 day. */
+  function defaults(c) {
+    var end = parse(c.Final_End_Date || c.Contract_End_Date), start = end ? addDays(end, 1) : parse(iso(new Date()));
+    var months = +c.Renewal_Option_Length_Mo > 0 ? +c.Renewal_Option_Length_Mo : 12;
+    return { ns: iso(start), ne: iso(addDays(addMonths(start, months), -1)), months: months };
+  }
+  function check() {
+    var a = $('#ns').value, b = $('#ne').value, ok = !!(a && b && b > a);
+    $('#go').disabled = busy || done || !ok || !C || C.__blocked;
+    if (a && b && b <= a) show('bad', 'The new end date must be after the new start date.'); else if (!busy && !done && !(C && C.__blocked)) $('#msg').hidden = true;
+  }
+  function render(c, isAdmin) {
+    C = c;
+    var acct = c.Account && c.Account.name ? c.Account.name : 'No account';
+    $('#who').textContent = c.Name + ' · ' + acct;
+    var left = c.Renewal_Options_Left == null || c.Renewal_Options_Left === '' ? 'Not recorded' : String(c.Renewal_Options_Left);
+    $('#facts').innerHTML = [['Current term', nice(c.Contract_Start_Date) + ' – ' + nice(c.Final_End_Date || c.Contract_End_Date)], ['Renewal status', c.Renewal_Status || 'Blank'],
+      ['Contract status', c.Contract_Status || 'Blank'], ['Renewal options left', left + (left !== 'Not recorded' ? ' (new contract: ' + Math.max(0, +left - 1) + ')' : '')]]
+      .map(function (p) { return '<div><dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd></div>'; }).join('');
+    var d = defaults(c); $('#ns').value = d.ns; $('#ne').value = d.ne;
+    $('#hint').textContent = 'Start is the day after the current end. End is ' + d.months + ' months later' + (+c.Renewal_Option_Length_Mo > 0 ? ' (the renewal term on this contract).' : ' (no renewal term recorded, so 12).');
+    if (!isAdmin) { c.__blocked = true; show('bad', 'Only an Administrator can mark a contract renewed, because it changes Contract Status. Ask Beau.'); }
+    else if (c.Contract_Status === 'Renewed' || c.Renewal_Status === 'Renewed') { c.__blocked = true; show('bad', 'This contract is already marked <b>Renewed</b>. Look for its renewal in the <b>Renewed Into</b> list on this page.'); }
+    check();
+  }
+  function go() {
+    if (busy || done || !C) return;
+    busy = true; check(); $('#go').textContent = 'Working…';
+    var args = { contractId: String(ID), newStart: $('#ns').value, newEnd: $('#ne').value };
+    var p = DEMO ? new Promise(function (res) { setTimeout(function () { res(DENY ? { ok: false, message: 'The new contract was not created. Nothing was changed. (demo)' } : { ok: true, newId: '1', newName: C.Name + ' - renewal ' + args.newStart.slice(0, 4) + '-' + args.newEnd.slice(2, 4), message: 'Renewed (demo).' }); }, 400); })
+      : ZOHO.CRM.FUNCTIONS.execute(FN, { arguments: JSON.stringify(args) }).then(function (r) {
+          var out = r && r.details && r.details.output; if (out == null) throw (r && (r.message || r.code)) || 'No answer from the function.';
+          try { return JSON.parse(out); } catch (e) { return { ok: false, message: String(out) }; }
+        });
+    p.then(function (res) {
+      busy = false; $('#go').textContent = 'Mark renewed';
+      if (res && res.ok) {
+        done = true; check();
+        show('good', '<b>' + esc(res.message) + '</b><br>' + (res.newId && !DEMO ? '<a href="#" id="open">Open the new contract</a>' : ''));
+        $('#cancel').textContent = 'Close';
+        var o = $('#open'); if (o) o.addEventListener('click', function (e) { e.preventDefault(); ZOHO.CRM.UI.Record.open({ Entity: 'Contracts', RecordID: res.newId }).then(function () { ZOHO.CRM.UI.Popup.close(); }); });
+      } else {
+        check();
+        show('bad', esc(res && res.message || 'Not done.') + (res && res.newId && !DEMO ? ' <a href="#" id="open">Open it</a>' : ''));
+        var o2 = $('#open'); if (o2) o2.addEventListener('click', function (e) { e.preventDefault(); ZOHO.CRM.UI.Record.open({ Entity: 'Contracts', RecordID: res.newId }); });
+      }
+    }, function (e) { busy = false; $('#go').textContent = 'Mark renewed'; check(); show('bad', 'Not done: ' + esc(friendly(e)) + ' Nothing should have changed; refresh the contract to check.'); });
+  }
+  $('#ns').addEventListener('change', function () {   /* moving the start moves the end by the same term */
+    var a = parse($('#ns').value); if (a && C) { var d = defaults(C); $('#ne').value = iso(addDays(addMonths(a, d.months), -1)); } check();
+  });
+  $('#ne').addEventListener('input', check);
+  $('#go').addEventListener('click', go);
+  $('#form').addEventListener('submit', function (e) { e.preventDefault(); go(); });
+  $('#cancel').addEventListener('click', function () { if (DEMO) return; if (done) ZOHO.CRM.UI.Popup.closeReload(); else ZOHO.CRM.UI.Popup.close(); });
+  $('#ver').textContent = VERSION;
+  function fail(e) { show('bad', 'Could not read the contract: ' + esc(friendly(e))); $('#who').textContent = 'Contract not loaded'; }
+  if (DEMO) {
+    ID = '6715134000009276002';
+    render({ Name: 'TEST Contract (do not use)', Account: { name: 'TEST Account (do not use)' }, Contract_Start_Date: '2025-11-01', Final_End_Date: '2026-10-15', Renewal_Status: 'Needs decision', Contract_Status: 'In Progress', Renewal_Option_Length_Mo: 12, Renewal_Options_Left: 2 }, !/[?&]nonadmin=1/.test(location.search));
+    return;
+  }
+  ZOHO.embeddedApp.on('PageLoad', function (data) {
+    ID = data && (Array.isArray(data.EntityId) ? data.EntityId[0] : data.EntityId);
+    if (!ID) { fail('No contract id from the button.'); return; }
+    Promise.all([ZOHO.CRM.API.getRecord({ Entity: 'Contracts', RecordID: ID }), ZOHO.CRM.CONFIG.getCurrentUser()]).then(function (r) {
+      var c = r[0] && r[0].data && r[0].data[0]; if (!c) throw 'Contract not found.';
+      var u = r[1] && r[1].users && r[1].users[0], prof = u && u.profile && u.profile.name;
+      render(c, prof === 'Administrator');
+    }).catch(fail);
+  });
+  ZOHO.embeddedApp.init();
+})();
+</script>
+</body>
+</html>
