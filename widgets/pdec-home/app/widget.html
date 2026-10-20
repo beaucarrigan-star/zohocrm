@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- PDEC Home v1.2 (v1.1 + tiles v1.0.0, 20 Oct 2026) -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PDEC Home</title>
@@ -114,9 +115,51 @@ h1,h2,h3{font-family:var(--head)}
 #work-tiles .wk-note{margin:8px 0 0;padding:6px 10px;border-left:3px solid var(--warn);background:var(--surface2);color:var(--muted);font-size:12.5px}
 @media(max-width:640px){#work-tiles .wk-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
+<style id="needs-today-css">
+/* needs-today.css v1.0.0 (S17, 20 Oct 2026). "Needs you today" tile band for home pages, JPK v3 (Graphite + cobalt).
+   Every rule is scoped to #needs-today or #nt-nav. Colours use light-dark(), so the band follows the page's
+   color-scheme: system by default, or the page's own data-theme="light|dark" switch. */
+#nt-nav,#needs-today{
+  --nt-surface:light-dark(#FFFFFF,#191C20);--nt-surface2:light-dark(#F7F8FA,#1F2328);--nt-ink:light-dark(#1F2328,#E6E8EB);
+  --nt-ink2:light-dark(#3A424B,#C9CED4);--nt-muted:light-dark(#5B6470,#9AA1AB);--nt-line:light-dark(#DDE1E6,#2B3038);
+  --nt-line2:light-dark(#B8BEC7,#424955);--nt-accent:light-dark(#2F55A4,#7F9FE0);--nt-accent-ink:light-dark(#284A90,#9DB6EA);
+  --nt-bad:light-dark(#B42318,#F08A82);--nt-warn:light-dark(#8A5300,#E0B055);--nt-good:light-dark(#1E7A46,#5EC58C);
+  --nt-font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--nt-head:Archivo,'Public Sans',system-ui,sans-serif;
+  font-family:var(--nt-font);color:var(--nt-ink)}
+#nt-nav{display:flex;justify-content:flex-start;margin:10px 0 0;padding:0 var(--gutter,16px)}
+#nt-nav .jpk-nav{padding:0;background:transparent}
+#needs-today{margin:12px 0 16px;padding:0 var(--gutter,16px);box-sizing:border-box}
+#needs-today *{box-sizing:border-box}
+#needs-today[hidden]{display:none}
+#needs-today .nt-hd{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:0 0 10px}
+#needs-today h2{margin:0;font:600 16px/1.3 var(--nt-head);color:var(--nt-ink)}
+#needs-today .nt-lead{margin:0;font-size:12.5px;color:var(--nt-muted)}
+#needs-today .nt-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0;padding:0;list-style:none}
+@media (max-width:900px){#needs-today .nt-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){#needs-today .nt-tiles{grid-template-columns:1fr}}
+#needs-today .nt-tiles>li{display:flex;min-width:0}
+#needs-today .nt-tile{flex:1;display:flex;flex-direction:column;gap:6px;min-height:132px;padding:14px 16px;background:var(--nt-surface);
+  border:1px solid var(--nt-line);border-radius:4px;color:var(--nt-ink);text-decoration:none;min-width:0}
+#needs-today a.nt-tile:hover{border-color:var(--nt-accent)}
+#needs-today a.nt-tile:focus-visible{outline:2px solid var(--nt-accent);outline-offset:2px}
+#needs-today .nt-tile.empty{border-style:dashed;background:var(--nt-surface2)}
+#needs-today .nt-lbl{font-size:13px;font-weight:600;color:var(--nt-ink2);overflow-wrap:anywhere}
+#needs-today .nt-num{font:700 34px/1 var(--nt-head);font-variant-numeric:tabular-nums;color:var(--nt-ink)}
+#needs-today .nt-tile.empty .nt-num,#needs-today .nt-tile.err .nt-num{color:var(--nt-muted)}
+#needs-today .nt-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--nt-muted)}
+#needs-today .nt-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+#needs-today .nt-chip.bad{color:var(--nt-bad)}#needs-today .nt-chip.warn{color:var(--nt-warn)}#needs-today .nt-chip.good{color:var(--nt-good)}
+#needs-today .nt-mean{font-size:12.5px;line-height:1.4;color:var(--nt-muted)}
+#needs-today .nt-go{margin-top:auto;font-size:12.5px;font-weight:600;color:var(--nt-accent-ink)}
+#needs-today .nt-tile.loading .nt-num{color:var(--nt-line2)}
+#needs-today .nt-foot{margin:8px 0 0;font-size:11.5px;color:var(--nt-muted)}
+@media (prefers-reduced-motion:no-preference){#needs-today .nt-tile{transition:border-color .12s}}
+.wrap>#needs-today,.wrap>#nt-nav{padding-left:0;padding-right:0}
+</style>
 </head>
 <body>
 <div class="wrap">
+  <div id="nt-nav"></div>
   <div class="bar"><div class="row">
     <h1>PDEC Home</h1><span class="who" id="who">PDEC</span><span class="sample" id="src" hidden>Sample data</span><span class="who" id="asof"></span>
     <nav class="jump" aria-label="Jump to">
@@ -135,7 +178,8 @@ h1,h2,h3{font-family:var(--head)}
   </div></div>
 
   <div class="zone" id="z-work">My work</div>
-  <section id="work-tiles" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="PDEC" data-queue-profiles="Administrator,System Support" hidden></section>
+  <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="PDEC" data-queue-profiles="Administrator,System Support" hidden></section>
+  <section id="needs-today" data-home="PDEC" data-build="PDEC Home v1.2 (v1.1 + tiles v1.0.0, 20 Oct 2026)" hidden></section>
 
 
   <section class="card" id="s-del"><header tabindex="0" role="button"><h2>Deliverables</h2><span class="sub" id="del-sub"></span><span class="chev">▾</span></header>
@@ -1819,6 +1863,370 @@ window.__pdec={D:function(){return D},paint:paint,delRows:delRows,compRows:compR
   root.hidden = false; root.setAttribute('aria-busy', 'true'); root.innerHTML = '<p class="wk-note">Loading your work…</p><p class="wk-note" hidden></p>';
   if (demo && W) runDemo(); else live();
 })();
+
+</script>
+<script id="needs-today-js">
+/* jpk-nav.js v1.0.0 (19 Oct 2026): JPK.navBar, "Back to [tab]" + "Home" buttons for widgets on record pages.
+   Standalone kit file (load after jpk.js if you use it; it does not need jpk.js).
+   One module-to-tab map below. Edit only the map when a tab or module changes.
+   Same-window navigation: a plain <a target="_top"> link to the CRM tab URL (tested 19 Oct 2026 from a
+   widget on a Canvas record page: opens in the same window; the SDK has no tab-navigation call). */
+(function (root) {
+  'use strict';
+  var JPK = root.JPK = root.JPK || {};
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+
+  /* ---- the one map: tab label -> web tab, and which modules belong to which tab ---- */
+  var TABS = {
+    'Records':         { url: ORG + 'WebTab25', modules: ['Accounts', 'Deals', 'Contracts', 'Customer_Onboarding', 'Vendors'] },
+    'Support Process': { url: ORG + 'WebTab26', modules: ['Cases', 'Support_Emails'] },
+    'Processes':       { url: ORG + 'WebTab24', modules: ['Billing_Periods', 'Billing_Findings', 'Solicitations', 'Contract_Ingest_Tab'] }
+  };
+  var HOME = { label: 'Home', url: ORG + 'Home/begin' };
+  /* friendly names, used for ?module= in demo mode and matching */
+  var ALIAS = { 'opportunities': 'Deals', 'customer onboarding': 'Customer_Onboarding', 'support emails': 'Support_Emails',
+    'billing periods': 'Billing_Periods', 'billing findings': 'Billing_Findings', 'contract ingest': 'Contract_Ingest_Tab' };
+
+  function resolve(entity) {
+    var e = String(entity || '').trim();
+    if (ALIAS[e.toLowerCase()]) e = ALIAS[e.toLowerCase()];
+    var low = e.toLowerCase();
+    for (var label in TABS) {
+      if (!Object.prototype.hasOwnProperty.call(TABS, label)) continue;
+      var m = TABS[label].modules;
+      for (var i = 0; i < m.length; i++) if (m[i].toLowerCase() === low) return { label: label, url: TABS[label].url, home: HOME.url, module: m[i] };
+    }
+    return null; /* unmapped module: caller shows Home only */
+  }
+
+  var CSS = '.jpk-nav{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin:0;padding:6px 8px;' +
+    'font:500 13px var(--font,"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif);background:var(--surface,#fff);color:var(--ink,#16191D)}' +
+    '.jpk-nav a{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line-strong,#B8BEC7);' +
+    'border-radius:var(--r-sm,3px);background:var(--surface,#fff);color:var(--ink,#16191D);text-decoration:none;font:inherit;white-space:nowrap;cursor:pointer}' +
+    '.jpk-nav a:hover{background:var(--surface2,#F7F8FA)}' +
+    '.jpk-nav a.back{color:var(--accent-ink,#284A90);font-weight:600;border-color:var(--accent,#2F55A4)}' +
+    '.jpk-nav a:focus-visible{outline:2px solid var(--accent,#2F55A4);outline-offset:2px}' +
+    '.jpk-nav svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}' +
+    '@media (max-width:640px){.jpk-nav{padding:6px 8px}.jpk-nav a{height:36px;padding:0 10px}}' +
+    '@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .jpk-nav{background:var(--surface,#191C20);color:var(--ink,#E6E8EB)}' +
+    ':root:not([data-theme="light"]) .jpk-nav a{background:var(--surface,#191C20);color:var(--ink,#E6E8EB);border-color:var(--line-strong,#424955)}' +
+    ':root:not([data-theme="light"]) .jpk-nav a:hover{background:var(--surface2,#1F2328)}' +
+    ':root:not([data-theme="light"]) .jpk-nav a.back{color:var(--accent-ink,#9DB6EA);border-color:var(--accent,#7F9FE0)}}';
+
+  function el(tag, attrs, html) {
+    var n = document.createElement(tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (html) n.innerHTML = html;
+    return n;
+  }
+  var ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>';
+  var HOMEI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>';
+
+  /* JPK.navBar(mount, entity) -> the resolved tab (or null). Draws "Back to <tab>" (if the module is mapped) and "Home". */
+  function navBar(mount, entity) {
+    if (!document.getElementById('jpk-nav-css')) {
+      var st = el('style', { id: 'jpk-nav-css' }); st.textContent = CSS; document.head.appendChild(st);
+    }
+    var r = resolve(entity);
+    var nav = el('nav', { 'class': 'jpk-nav', 'aria-label': 'Navigate' });
+    if (r) nav.appendChild(el('a', { 'class': 'back', href: r.url, target: '_top', rel: 'noopener', title: 'Back to ' + r.label }, ARROW + '<span>Back to ' + r.label + '</span>'));
+    nav.appendChild(el('a', { 'class': 'home', href: HOME.url, target: '_top', rel: 'noopener', title: 'Home' }, HOMEI + '<span>Home</span>'));
+    mount.innerHTML = ''; mount.appendChild(nav);
+    return r;
+  }
+
+  JPK.navBar = navBar; JPK.navResolve = resolve; JPK.navMap = { tabs: TABS, home: HOME };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { resolve: resolve, TABS: TABS, HOME: HOME };
+})(typeof window !== 'undefined' ? window : this);
+
+/* needs-today.js v1.0.0 (S17, 20 Oct 2026). "Needs you today" tiles for the CS, EM, BD and PDEC home pages.
+   Host page gives: <div id="nt-nav"></div><section id="needs-today" data-home="CS|EM|BD|PDEC" data-build="..."></section>
+   Each tile shows a count, what the count means and the age of the oldest item, and opens a native Zoho list view
+   in the same window (a plain <a target="_top">). An empty tile says what empty means.
+   Read-only: COQL selects only. The count uses the same rule as the list view it opens (VIEWS below).
+   ?ntdemo=1 shows sample numbers, ?ntdemo=empty shows every tile empty, ?ntdemo=err shows a failed tile. */
+(function (root) {
+  'use strict';
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+  /* Native list views the tiles open. cvid null = the module's default list (used until the view exists). */
+  var VIEWS = {"renewals120":{"tab":"CustomModule17","cvid":"6715134000009490031"},"renewals60":{"tab":"CustomModule17","cvid":"6715134000009312090"},"pastEnd":{"tab":"CustomModule17","cvid":"6715134000009312119"},"myOverdueTasks":{"tab":"Tasks","cvid":"6715134000000331210"},"emMyDue":{"tab":"Cases","cvid":"6715134000009490040"},"emUnassigned":{"tab":"Cases","cvid":"6715134000009490048"},"emWaiting":{"tab":"Cases","cvid":"6715134000009490056"},"stockApprove":{"tab":"CustomModule19","cvid":"6715134000009490068"},"bdPastClose":{"tab":"Potentials","cvid":"6715134000009490076"},"bdProposals14":{"tab":"CustomModule21","cvid":"6715134000009490084"},"bdColdProspects":{"tab":"Accounts","cvid":"6715134000009490092"},"pdecDelOverdue":{"tab":"CustomModule44","cvid":"6715134000009490100"},"pdecDel30":{"tab":"CustomModule44","cvid":"6715134000009490108"},"pdecComp90":{"tab":"CustomModule45","cvid":"6715134000009490116"},"pdecGoNoGo":{"tab":"CustomModule21","cvid":"6715134000009490124"}};
+  function viewUrl(key) {
+    var v = VIEWS[key]; if (!v) return ORG + 'Home/begin';
+    return ORG + v.tab + (v.cvid ? '/custom-view/' + v.cvid + '/list' : '');
+  }
+
+  /* ---------- dates (the signed-in person's local day) ---------- */
+  var DAY = 864e5;
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function startOf(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function addDays(d, n) { var x = startOf(d); x.setDate(x.getDate() + n); return x; }
+  function tz(d) { var o = -d.getTimezoneOffset(), s = o >= 0 ? '+' : '-'; o = Math.abs(o); return s + pad(Math.floor(o / 60)) + ':' + pad(o % 60); }
+  function endOfDayStamp(d) { var x = startOf(d); return ymd(x) + 'T23:59:59' + tz(x); }
+  function parseDay(v) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+  function parseTime(v) { var t = v ? Date.parse(v) : NaN; return isNaN(t) ? null : new Date(t); }
+  function daysBetween(a, b) { return Math.round((startOf(a) - startOf(b)) / DAY); }
+  function businessDaysSince(then, now) {
+    var d = startOf(then), n = 0, end = startOf(now);
+    while (d < end) { d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); var w = d.getDay(); if (w !== 0 && w !== 6) n++; }
+    return n;
+  }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function ageText(then, now) {
+    var h = Math.floor((now - then) / 36e5);
+    if (h < 1) return 'under an hour';
+    if (h < 48) return plural(h, 'hour');
+    return plural(Math.floor(h / 24), 'day');
+  }
+  function qid(id) { var s = String(id || ''); if (!/^\d+$/.test(s)) throw new Error('id is not valid'); return s; }
+  function inList(ids) { return '(' + ids.map(function (x) { return "'" + qid(x) + "'"; }).join(',') + ')'; }
+
+  var OPEN_CASE = "Status not in ('Closed','Resolved')";
+  var OPEN_TASK = "Status not in ('Completed','Cancelled','Deferred')";
+  var SOL_OPEN = ['Identified', 'Reviewing', 'Scoring', 'Decision Pending', 'Go - In Progress', 'Shortlisted / Orals'];
+  function sq(list) { return '(' + list.map(function (s) { return "'" + s + "'"; }).join(',') + ')'; }
+
+  /* ---------- tiles. q(ctx) -> COQL; read(rows, ctx) -> {n, chip, tone, mean}. ---------- */
+  var T = {
+    renewals120: {
+      label: 'Renewals not started, 120 days or less', view: 'renewals120', go: 'Open renewals',
+      q: function (c) { return "select id, Final_End_Date from Contracts where ((Counterparty_Type = 'Customer' and Renewal_Status = 'Not started') and (Final_End_Date >= '" + ymd(c.now) + "' and Final_End_Date <= '" + ymd(addDays(c.now, 120)) + "'))"; },
+      read: function (rows, c) {
+        var soon = rows.map(function (r) { return parseDay(r.Final_End_Date); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'bad', chip: 'Target is 0', mean: soon ? 'Soonest ends in ' + plural(daysBetween(soon, c.now), 'day') : '' };
+      },
+      empty: 'Every customer contract ending in the next 120 days has a renewal under way.'
+    },
+    renewals60: {
+      label: 'Renewals due in 60 days', view: 'renewals60', go: 'Open renewals due',
+      q: function (c) { return "select id, Final_End_Date, Renewal_Status from Contracts where ((Counterparty_Type = 'Customer' and (Renewal_Status not in ('Renewed','Not renewing') or Renewal_Status is null)) and (Final_End_Date >= '" + ymd(c.now) + "' and Final_End_Date <= '" + ymd(addDays(c.now, 60)) + "'))"; },
+      read: function (rows, c) {
+        var ns = rows.filter(function (r) { return r.Renewal_Status === 'Not started' || !r.Renewal_Status; }).length;
+        var soon = rows.map(function (r) { return parseDay(r.Final_End_Date); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: ns ? 'bad' : 'warn', chip: ns ? plural(ns, 'not started', 'not started') : 'All under way', mean: soon ? 'Soonest ends in ' + plural(daysBetween(soon, c.now), 'day') : '' };
+      },
+      empty: 'No customer contract ends in the next 60 days without a renewal decision.'
+    },
+    pastEnd: {
+      label: 'Past end date, no outcome', view: 'pastEnd', go: 'Record outcomes',
+      q: function (c) { return "select id, Final_End_Date from Contracts where ((Counterparty_Type = 'Customer' and Final_End_Date < '" + ymd(c.now) + "') and (Renewal_Status not in ('Renewed','Not renewing') or Renewal_Status is null))"; },
+      read: function (rows, c) {
+        var old = rows.map(function (r) { return parseDay(r.Final_End_Date); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'bad', chip: old ? 'Oldest ended ' + plural(daysBetween(c.now, old), 'day') + ' ago' : '', mean: 'Renewed, month-to-month or not renewing' };
+      },
+      empty: 'No customer contract is past its end date without an outcome.'
+    },
+    myTasks: {
+      label: 'My overdue tasks', view: 'myOverdueTasks', go: 'Open my tasks',
+      q: function (c) { return "select id, Due_Date from Tasks where ((Owner = '" + qid(c.me) + "' and " + OPEN_TASK + ") and Due_Date < '" + ymd(c.now) + "')"; },
+      read: function (rows, c) {
+        var old = rows.map(function (r) { return parseDay(r.Due_Date); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'bad', chip: old ? 'Oldest ' + plural(daysBetween(c.now, old), 'day') + ' overdue' : '', mean: 'Close, reschedule or reassign' };
+      },
+      empty: 'You have no overdue tasks.'
+    },
+    myCasesDue: {
+      label: 'My cases due today or overdue', view: 'emMyDue', go: 'Open my cases',
+      q: function (c) { return "select id, Due_By from Cases where ((Owner = '" + qid(c.me) + "' and " + OPEN_CASE + ") and Due_By <= '" + endOfDayStamp(c.now) + "')"; },
+      read: function (rows, c) {
+        var over = rows.filter(function (r) { var d = parseTime(r.Due_By); return d && d < c.now; }).length;
+        return { n: rows.length, tone: over ? 'bad' : 'warn', chip: over ? plural(over, 'overdue', 'overdue') : 'Due later today', mean: 'Due = one business day after the case opened' };
+      },
+      empty: 'None of your open cases is due today or overdue.'
+    },
+    emUnassigned: {
+      label: 'Unassigned on EM Support', view: 'emUnassigned', go: 'Take from the queue',
+      q: function (c) { return c.queue.length ? "select id, Created_Time from Cases where ((Handling_Team = 'EM Support' and " + OPEN_CASE + ") and Owner in " + inList(c.queue) + ")" : null; },
+      read: function (rows, c) {
+        var old = rows.map(function (r) { return parseTime(r.Created_Time); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'warn', chip: old ? 'Oldest ' + ageText(old, c.now) : '', mean: 'Open cases still with the queue' };
+      },
+      empty: 'Nothing is waiting in the EM Support queue.'
+    },
+    emWaiting: {
+      label: 'Waiting on someone else', view: 'emWaiting', go: 'Open waiting cases',
+      q: function () { return "select id, Modified_Time from Cases where (" + OPEN_CASE + " and Waiting_On in ('Customer','Vendor','Internal'))"; },
+      read: function (rows, c) {
+        var stale = rows.filter(function (r) { var d = parseTime(r.Modified_Time); return d && businessDaysSince(d, c.now) >= 5; }).length;
+        return { n: rows.length, tone: stale ? 'warn' : '', chip: stale ? plural(stale, 'case') + ' not updated in 5+ business days' : 'All updated this week', mean: 'Clock paused; chase the vendor or customer' };
+      },
+      empty: 'No open case is waiting on a customer, vendor or colleague.'
+    },
+    stockApprove: {
+      label: 'Stock alert emails to approve', view: 'stockApprove', go: 'Review the emails',
+      q: function () { return "select id, Created_Time from EM_Stock_Alerts where (Status = 'Open' and Email_Status = 'Awaiting approval')"; },
+      read: function (rows, c) {
+        var old = rows.map(function (r) { return parseTime(r.Created_Time); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'warn', chip: old ? 'Oldest ' + ageText(old, c.now) : '', mean: 'Drafted customer emails waiting for a yes' };
+      },
+      empty: 'No stock alert emails are waiting for approval.'
+    },
+    pastClose: {
+      label: 'My opportunities past close date', view: 'bdPastClose', go: 'Update close dates',
+      q: function (c) { return "select id, Closing_Date from Deals where ((Owner = '" + qid(c.me) + "' and Stage not in ('Closed Won','Closed Lost')) and Closing_Date < '" + ymd(c.now) + "')"; },
+      read: function (rows, c) {
+        var old = rows.map(function (r) { return parseDay(r.Closing_Date); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'bad', chip: old ? 'Oldest ' + plural(daysBetween(c.now, old), 'day') + ' past' : '', mean: 'Move the date or close the opportunity' };
+      },
+      empty: 'None of your open opportunities is past its close date.'
+    },
+    proposals14: {
+      label: 'Proposals due in 14 days', view: 'bdProposals14', go: 'Open solicitations',
+      q: function (c) { return "select id, Proposal_Due from Solicitations where (Status in " + sq(SOL_OPEN) + " and (Proposal_Due >= '" + ymd(c.now) + "T00:00:00" + tz(c.now) + "' and Proposal_Due <= '" + endOfDayStamp(addDays(c.now, 14)) + "'))"; },
+      read: function (rows, c) {
+        var soon = rows.map(function (r) { return parseTime(r.Proposal_Due); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        var d = soon ? daysBetween(soon, c.now) : null;
+        return { n: rows.length, tone: d !== null && d <= 3 ? 'bad' : 'warn', chip: soon ? (d === 0 ? 'Next one due today' : 'Next one due in ' + plural(d, 'day')) : '', mean: 'Open bids with a proposal date coming up' };
+      },
+      empty: 'No proposal is due in the next 14 days.'
+    },
+    coldProspects: {
+      label: 'My prospects with no touch in 90 days', view: 'bdColdProspects', go: 'Open cold prospects',
+      q: function (c) { return "select id, Last_Touch from Accounts where ((Account_Type = 'Prospect' and Owner = '" + qid(c.me) + "') and (Last_Touch < '" + ymd(addDays(c.now, -90)) + "' or Last_Touch is null))"; },
+      read: function (rows) {
+        var never = rows.filter(function (r) { return !r.Last_Touch; }).length;
+        return { n: rows.length, tone: 'warn', chip: never ? plural(never, 'never touched', 'never touched') : 'All touched once', mean: 'Log a call, email or meeting to warm them up' };
+      },
+      empty: 'Every prospect you own has had a touch in the last 90 days.'
+    },
+    delOverdue: {
+      label: 'Overdue deliverables', view: 'pdecDelOverdue', go: 'Open overdue deliverables',
+      q: function (c) { return "select id, Due_Date from Deliverables where ((Deliverable_Status not in ('Submitted','Waived') or Deliverable_Status is null) and Due_Date < '" + ymd(c.now) + "')"; },
+      read: function (rows, c) {
+        var old = rows.map(function (r) { return parseDay(r.Due_Date); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'bad', chip: old ? 'Oldest ' + plural(daysBetween(c.now, old), 'day') + ' overdue' : '', mean: 'Past due and not yet submitted' };
+      },
+      empty: 'No deliverable is past due. (Deliverables are added in the Deliverables tab.)'
+    },
+    del30: {
+      label: 'Deliverables due in 30 days', view: 'pdecDel30', go: 'Open deliverables due',
+      q: function (c) { return "select id, Due_Date from Deliverables where ((Deliverable_Status not in ('Submitted','Waived') or Deliverable_Status is null) and (Due_Date >= '" + ymd(c.now) + "' and Due_Date <= '" + ymd(addDays(c.now, 30)) + "'))"; },
+      read: function (rows, c) {
+        var soon = rows.map(function (r) { return parseDay(r.Due_Date); }).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'warn', chip: soon ? 'Next one in ' + plural(daysBetween(soon, c.now), 'day') : '', mean: 'Not yet submitted' };
+      },
+      empty: 'Nothing is due in the next 30 days.'
+    },
+    comp90: {
+      label: 'Compliance due within 90 days', view: 'pdecComp90', go: 'Open compliance items',
+      q: function (c) { return "select id, Expiry_or_Review_Date from Compliance_Items where ((Compliance_Status != 'Not Applicable' or Compliance_Status is null) and Expiry_or_Review_Date <= '" + ymd(addDays(c.now, 90)) + "')"; },
+      read: function (rows, c) {
+        var exp = rows.filter(function (r) { var d = parseDay(r.Expiry_or_Review_Date); return d && d < startOf(c.now); }).length;
+        return { n: rows.length, tone: exp ? 'bad' : 'warn', chip: exp ? plural(exp, 'already expired', 'already expired') : 'None expired yet', mean: 'Registrations, policies and audits to renew or review' };
+      },
+      empty: 'Nothing expires or comes up for review in the next 90 days.'
+    },
+    goNoGo: {
+      label: 'Go / no-go decisions pending', view: 'pdecGoNoGo', go: 'Open pending decisions',
+      q: function () { return "select id, Proposal_Due from Solicitations where (Status in " + sq(SOL_OPEN) + " and (Bid_Decision is null or Bid_Decision = 'Pending'))"; },
+      read: function (rows, c) {
+        var soon = rows.map(function (r) { return parseTime(r.Proposal_Due); }).filter(function (d) { return d && d >= startOf(c.now); }).sort(function (a, b) { return a - b; })[0];
+        return { n: rows.length, tone: 'warn', chip: soon ? 'Next proposal due in ' + plural(daysBetween(soon, c.now), 'day') : 'No proposal date set', mean: 'Open bids without a decision' };
+      },
+      empty: 'Every open solicitation has a bid decision.'
+    }
+  };
+  var HOMES = {
+    CS: { title: 'Needs you today', tiles: ['renewals120', 'renewals60', 'pastEnd', 'myTasks'] },
+    EM: { title: 'Needs you today', tiles: ['myCasesDue', 'emUnassigned', 'emWaiting', 'stockApprove'] },
+    BD: { title: 'Needs you today', tiles: ['pastClose', 'proposals14', 'coldProspects', 'myTasks'] },
+    PDEC: { title: 'Needs you today', tiles: ['delOverdue', 'del30', 'comp90', 'goNoGo'] }
+  };
+  /* sample numbers for ?ntdemo=1 (synthetic) */
+  var DEMO = {
+    renewals120: { n: 22, tone: 'bad', chip: 'Target is 0', mean: 'Soonest ends in 41 days' },
+    renewals60: { n: 3, tone: 'bad', chip: '2 not started', mean: 'Soonest ends in 41 days' },
+    pastEnd: { n: 18, tone: 'bad', chip: 'Oldest ended 290 days ago', mean: 'Renewed, month-to-month or not renewing' },
+    myTasks: { n: 25, tone: 'bad', chip: 'Oldest 18 days overdue', mean: 'Close, reschedule or reassign' },
+    myCasesDue: { n: 4, tone: 'bad', chip: '1 overdue', mean: 'Due = one business day after the case opened' },
+    emUnassigned: { n: 3, tone: 'warn', chip: 'Oldest 5 hours', mean: 'Open cases still with the queue' },
+    emWaiting: { n: 2, tone: 'warn', chip: '1 case not updated in 5+ business days', mean: 'Clock paused; chase the vendor or customer' },
+    stockApprove: { n: 3, tone: 'warn', chip: 'Oldest 3 days', mean: 'Drafted customer emails waiting for a yes' },
+    pastClose: { n: 3, tone: 'bad', chip: 'Oldest 288 days past', mean: 'Move the date or close the opportunity' },
+    proposals14: { n: 1, tone: 'warn', chip: 'Next one due in 5 days', mean: 'Open bids with a proposal date coming up' },
+    coldProspects: { n: 120, tone: 'warn', chip: '96 never touched', mean: 'Log a call, email or meeting to warm them up' },
+    delOverdue: { n: 0 }, del30: { n: 2, tone: 'warn', chip: 'Next one in 6 days', mean: 'Not yet submitted' },
+    comp90: { n: 1, tone: 'bad', chip: '1 already expired', mean: 'Registrations, policies and audits to renew or review' },
+    goNoGo: { n: 2, tone: 'warn', chip: 'Next proposal due in 5 days', mean: 'Open bids without a decision' }
+  };
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function tileHtml(key, res) {
+    var t = T[key], url = viewUrl(t.view), cls = 'nt-tile', body;
+    if (!res) { cls += ' loading'; body = '<span class="nt-num" aria-hidden="true">…</span><span class="nt-mean">Counting…</span>'; }
+    else if (res.error) { cls += ' err'; body = '<span class="nt-num">—</span><span class="nt-chip">Could not count</span><span class="nt-mean">' + esc(res.error) + '. The list still opens.</span>'; }
+    else if (!res.n) { cls += ' empty'; body = '<span class="nt-num">0</span><span class="nt-mean">' + esc(t.empty) + '</span>'; }
+    else body = '<span class="nt-num">' + res.n + '</span>' + (res.chip ? '<span class="nt-chip ' + esc(res.tone || '') + '">' + esc(res.chip) + '</span>' : '') + (res.mean ? '<span class="nt-mean">' + esc(res.mean) + '</span>' : '');
+    var label = t.label + (res && !res.error ? ': ' + (res.n || 0) : '');
+    return '<li><a class="' + cls + '" href="' + esc(url) + '" target="_top" aria-label="' + esc(label + '. ' + t.go) + '"><span class="nt-lbl">' + esc(t.label) + '</span>' + body + '<span class="nt-go">' + esc(t.go) + ' →</span></a></li>';
+  }
+
+  /* ---------- Zoho access (read-only) ---------- */
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timed out')); }, ms); })]); }
+  function coqlAll(q) {
+    var all = [];
+    function page(p) {
+      return withTimeout(root.ZOHO.CRM.API.coql({ select_query: q + ' limit 200 offset ' + (p * 200) }), 20000).then(function (r) {
+        var rows = (r && r.data) || []; all = all.concat(rows);
+        return rows.length === 200 && p < 9 ? page(p + 1) : all;
+      }, function (e) { if (!e || e.status === 204 || e.code === 'NO_CONTENT' || e === '') return all; throw e; });
+    }
+    return page(0);
+  }
+  function errText(e) {
+    var m = e && (e.message || (e.data && e.data[0] && e.data[0].message) || e.code) || 'unknown error';
+    if (/permission|not_allowed|no_permission|NOT_SUPPORTED|INVALID_MODULE/i.test(JSON.stringify(e || m))) return 'Your profile cannot read this module';
+    return String(m).slice(0, 80);
+  }
+  function user() {
+    return withTimeout(root.ZOHO.CRM.CONFIG.getCurrentUser(), 6000).then(function (r) { var u = r && r.users && r.users[0]; if (!u) throw new Error('no user'); return u; });
+  }
+  function retry(fn, n) { return fn().catch(function (e) { if (n <= 0) throw e; return wait(1500).then(function () { return retry(fn, n - 1); }); }); }
+  function queueIds() {
+    return withTimeout(root.ZOHO.CRM.API.getAllUsers({ Type: 'ActiveUsers' }), 8000).then(function (r) {
+      return ((r && r.users) || []).filter(function (u) { var p = u.profile && u.profile.name; return p === 'Administrator' || p === 'System Support'; }).map(function (u) { return String(u.id); });
+    }, function () { return []; });
+  }
+
+  function start() {
+    var sec = document.getElementById('needs-today');
+    if (!sec || sec.getAttribute('data-ready')) return;
+    sec.setAttribute('data-ready', '1');
+    var nav = document.getElementById('nt-nav');
+    if (nav && root.JPK && root.JPK.navBar) root.JPK.navBar(nav, null); /* Home only: no Back on a home page */
+    var home = HOMES[sec.getAttribute('data-home')]; if (!home) { sec.hidden = true; return; }
+    var m = /[?&]ntdemo=(\w+)/.exec(location.search), demo = m ? m[1] : '';
+    var build = sec.getAttribute('data-build') || '';
+    sec.innerHTML = '<div class="nt-hd"><h2 id="nt-h">' + esc(home.title) + '</h2><p class="nt-lead">Each tile opens the list behind the number. An empty tile says what empty means.</p></div>' +
+      '<ul class="nt-tiles" aria-labelledby="nt-h"></ul><p class="nt-foot" aria-live="polite"></p>';
+    sec.setAttribute('aria-labelledby', 'nt-h');
+    sec.hidden = false;
+    var ul = sec.querySelector('.nt-tiles'), foot = sec.querySelector('.nt-foot'), res = {};
+    function paint() { ul.innerHTML = home.tiles.map(function (k) { return tileHtml(k, res[k]); }).join(''); }
+    function stamp(t) { foot.textContent = t + (build ? ' · ' + build : ''); }
+    paint();
+    if (demo) {
+      home.tiles.forEach(function (k, i) { res[k] = demo === 'empty' ? { n: 0 } : demo === 'err' && i === 1 ? { error: 'Your profile cannot read this module' } : DEMO[k]; });
+      paint(); stamp('Sample numbers (demo)'); return;
+    }
+    if (!(root.ZOHO && root.ZOHO.CRM && root.ZOHO.CRM.API)) { sec.hidden = true; if (nav) nav.hidden = true; return; }
+    stamp('Counting…');
+    retry(user, 6).then(function (u) {
+      return queueIds().then(function (q) {
+        var ctx = { me: String(u.id), queue: q, now: new Date() };
+        return Promise.all(home.tiles.map(function (k) {
+          var t = T[k], query;
+          try { query = t.q(ctx); } catch (e) { res[k] = { error: errText(e) }; return null; }
+          if (!query) { res[k] = { n: 0 }; return null; }
+          return coqlAll(query).then(function (rows) { res[k] = t.read(rows, ctx); }, function (e) { res[k] = { error: errText(e) }; }).then(paint);
+        })).then(function () { paint(); stamp('Updated ' + new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })); });
+      });
+    }).catch(function () { home.tiles.forEach(function (k) { if (!res[k]) res[k] = { error: 'Could not reach Zoho' }; }); paint(); stamp('Reload the page to try again'); });
+  }
+  root.NeedsToday = { T: T, HOMES: HOMES, VIEWS: VIEWS, viewUrl: viewUrl, tileHtml: tileHtml, start: start, _d: { ymd: ymd, addDays: addDays, endOfDayStamp: endOfDayStamp, businessDaysSince: businessDaysSince, ageText: ageText } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})(typeof window !== 'undefined' ? window : this);
 
 </script>
 </body>
