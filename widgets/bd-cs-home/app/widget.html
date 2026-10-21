@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.8 (v5.3 + Devices on leg panel with labelled trends, Daily to Annual, Spare devices tile, 21 Oct 2026) -->
+<!-- Beau CS Home v5.9 (v5.8 + Lost devices link in the toolbar and Quick links, 21 Oct 2026) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1863,7 +1863,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.8 (v5.3 + Devices on leg panel with labelled trends, Daily to Annual, Spare devices tile, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.9 (v5.8 + Lost devices link in the toolbar and Quick links, 21 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -4247,7 +4247,7 @@ function rpInit() {
   var LINKS_CS = [
     ['CS - EM Customers', 'Accounts view', { view: 'CS - EM Customers', m: 'Accounts' }], ['CS - Operated Programs', 'Accounts view', { view: 'CS - Operated Programs', m: 'Accounts' }],
     ['EM Stock Alerts', 'module', { m: 'EM_Stock_Alerts' }], ['Accessory board', 'web tab', { href: TAB + 'WebTab6', top: true }],
-    ['Daily Unit Counts', 'module', { m: 'Daily_Unit_Counts' }], ['Unit trends by day', 'dashboard', { href: UNIT_TRENDS_URL, top: true }],
+    ['Daily Unit Counts', 'module', { m: 'Daily_Unit_Counts' }], ['Unit trends by day', 'dashboard', { href: UNIT_TRENDS_URL, top: true }], ['Lost devices', 'web tab (Lost Devices Tab)', { href: TAB + 'WebTab28', top: true }],
     ['Customer Onboarding', 'module', { m: 'Customer_Onboarding' }], ['Vendors', 'module', { m: 'Vendors' }]
   ];
   var LINKS_SUP = [
@@ -7415,7 +7415,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
         try { new MutationObserver(sync).observe(spec.el, { attributes: true, attributeFilter: ['hidden'] }); } catch (e) {}
       }
     });
-    allBtn = document.createElement('button'); allBtn.type = 'button'; allBtn.className = 'hl-all';
+    var lostBtn = document.createElement('button'); lostBtn.type = 'button'; lostBtn.className = 'hl-ext'; lostBtn.textContent = 'Lost devices \u2197'; lostBtn.title = 'Opens the Lost Devices tab (leaves this page)'; lostBtn.addEventListener('click', function () { window.open('https://crm.zoho.com/crm/org882980956/tab/WebTab28', '_top'); }); nav.appendChild(lostBtn); allBtn = document.createElement('button'); allBtn.type = 'button'; allBtn.className = 'hl-all';
     allBtn.addEventListener('click', function () {
       var anyOpen = specs.some(function (s) { return !s.navOnly && s.el.getAttribute('data-collapsed') !== 'true'; });
       specs.forEach(function (s) { if (!s.navOnly) setCollapsed(s, anyOpen, false); });
