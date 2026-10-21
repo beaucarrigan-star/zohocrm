@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.6 (v5.3 + Devices on leg panel with Spare % and daily trends, 21 Oct 2026) -->
+<!-- Beau CS Home v5.7 (v5.3 + Devices on leg panel with Spare % and daily trends, Spare devices tile, 21 Oct 2026) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1856,7 +1856,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.6 (v5.3 + Devices on leg panel with Spare % and daily trends, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.7 (v5.3 + Devices on leg panel with Spare % and daily trends, Spare devices tile, 21 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -1974,6 +1974,11 @@
           <span class="value num sk" id="k-units-v">—</span>
           <svg class="spark" id="units-spark" viewBox="0 0 300 30" preserveAspectRatio="none" aria-hidden="true"></svg>
           <span class="ctx" id="k-units-c">GPS units, leased and purchased</span>
+        </a>
+        <a class="kpi" id="k-devspare" href="#dev-panel" title="Jumps to Devices on leg">
+          <span class="label">Spare devices <span class="go" aria-hidden="true">see table ↓</span></span>
+          <span class="value num" id="k-devspare-v">—</span>
+          <span class="ctx" id="k-devspare-c">spare ÷ on leg, all devices</span>
         </a>
         <a class="kpi" id="k-excess" target="_top" data-view="excessSpares" title="Opens EM Stock Alerts - Excess spares">
           <span class="label">Excess spares<span class="go" aria-hidden="true">view ↗</span></span>
@@ -4312,6 +4317,9 @@ function rpInit() {
     body.innerHTML = h + '</tbody></table>';
     var n = $('dev-note'); if (n) n.textContent = 'Spare % = spare ÷ on leg. Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare. ' + 'Trends start 17 Oct. ' + 'Click a row for the larger chart.';
     $('dev-meta').textContent = M.asof ? 'as of ' + M.asof : '';
+    var kv = $('k-devspare-v'), kc = $('k-devspare-c');
+    if (kv) { kv.innerHTML = sp(M.all.cur.on, M.all.cur.sp); kv.classList.remove('sk'); }
+    if (kc) kc.textContent = fmt(M.all.cur.sp) + ' spare of ' + fmt(M.all.cur.on) + ' on leg' + (M.asof ? ' · as of ' + M.asof : '');
   }
   function loadDevicePanel() {
     var body = $('dev-body'); if (!body) return Promise.resolve();
@@ -4350,6 +4358,7 @@ function rpInit() {
       devRender();
     }).catch(function (e) { body.innerHTML = '<div class="dev-err">Unavailable: ' + esc(e && e.message || 'could not read Daily Unit Counts') + '</div>'; }).then(resize);
   }
+  (function () { var t = $('k-devspare'); if (t) t.addEventListener('click', function (e) { e.preventDefault(); var d = $('dev-panel'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); })();
   (function () {
     var el = $('dev-panel'); if (!el) return;
     el.addEventListener('click', function (e) {
