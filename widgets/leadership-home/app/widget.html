@@ -67,6 +67,16 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
 .status{font-size:12px;color:var(--muted)}
 .err{color:var(--bad);font-size:12.5px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.devs{min-height:0;height:auto}
+.devs table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.devs th,.devs td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.devs th:first-child,.devs td:first-child{text-align:left}
+.devs thead th{color:var(--muted);font-weight:600;font-size:12px}
+.devs tr.mfr td{font-weight:700;background:var(--surface2)}
+.devs tr.fam td:first-child{padding-left:22px}
+.devs tr.tot td{font-weight:700;border-top:2px solid var(--line-strong)}
+.devs .tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:9px;font-size:11px;font-weight:600;color:var(--accent-ink);background:var(--surface2);border:1px solid var(--line)}
+@media (max-width:560px){.devs th,.devs td{padding:6px 4px}}
 </style>
 </head>
 <body>
@@ -84,6 +94,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
     </div>
   </div>
   <ul class="grid" id="grid" aria-live="polite"></ul>
+  <section class="m devs" id="devs" aria-labelledby="h-devs"></section>
   <div class="note">Every number is counted the same way as a native report in the <b>Leadership measures</b> folder. A measure shows "Not yet reliable" until its inputs pass the weekly data check (Mondays), so the page never shows a number the CRM can't back up. <span id="stamp" class="status"></span></div>
 </div>
 <script id="jpk-nav-js">
@@ -164,7 +175,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
 <script id="leadership-js">
 (function () {
   'use strict';
-  var BUILD = 'Leadership Home v44.2 · 20 Oct 2026';
+  var BUILD = 'Leadership Home v45 · 21 Oct 2026';
   var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
   /* Native reports in the "Leadership measures" folder (S15). Links stay off until S15 is confirmed final. */
   var REPORTS_LIVE = true;
@@ -215,6 +226,8 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
       cases: "select id, Status, Created_Time, Modified_Time, Waiting_On, Account_Name.Brand from Cases where Created_Time >= '" + stampOf(d30) + "'",
       findings: "select id, Vendor, Age_days, Created_Time from Billing_Findings where Status in ('Open','Disputed with vendor')",
       odCases: "select id, Handling_Team, Account_Name.Brand from Cases where (Status not in ('Closed','Resolved') and Due_By < '" + stampOf(now) + "')",
+      devA: "select Count_Date, On_Leg, Spare, Day_Leased_On_Leg, Day_Leased_Spare, Day_Leased_On_Leg_Ex_Sheb, Day_Leased_Spare_Ex_Sheb from Daily_Unit_Counts where ((Device_Family = 'GPS' and Acquisition = 'Purchased') and Count_Date >= '" + ymd(addDays(now, -8)) + "') order by Count_Date desc",
+      devV: "select Vendor, Supplied_Through, Device_Family, SmartView_Customer, Count_Date, On_Leg, Spare from Daily_Unit_Counts where (Vendor in ('SCRAM','SuperCom') and Count_Date >= '" + ymd(addDays(now, -8)) + "') order by Count_Date desc",
       odTasks: "select id from Tasks where (Status not in ('Completed','Cancelled','Deferred') and Due_Date < '" + ymd(now) + "')"
     };
     var keys = Object.keys(Q); ERR = {};
@@ -228,7 +241,12 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
       risk: many(22, function (i) { return { 'Account.Brand': B[i % 4] }; }), rate: [],
       cases: many(40, function (i) { var c = addDays(now, -(i % 28) - 1); return { Status: i % 5 ? 'Closed' : 'New', Created_Time: c.toISOString(), Modified_Time: addDays(c, i % 3).toISOString(), 'Account_Name.Brand': B[i % 4] }; }),
       findings: many(185, function (i) { return { Vendor: i % 4 ? 'Allied Universal' : 'SuperCom', Age_days: i % 40 }; }),
-      odCases: many(9, function (i) { return { Handling_Team: i < 7 ? 'EM Support' : 'Customer Success', 'Account_Name.Brand': B[i % 4] }; }), odTasks: many(25, function () { return {}; }) };
+      odCases: many(9, function (i) { return { Handling_Team: i < 7 ? 'EM Support' : 'Customer Success', 'Account_Name.Brand': B[i % 4] }; }), odTasks: many(25, function () { return {}; }),
+      devA: [{ Count_Date: '2026-10-20', On_Leg: 29, Day_Leased_On_Leg: 346, Day_Leased_Spare: 60, Day_Leased_On_Leg_Ex_Sheb: 192 }],
+      devV: [{ Vendor: 'SCRAM', Supplied_Through: 'Allied', Device_Family: 'Remote Breath', SmartView_Customer: 'SCRAM | Ramsey County Pretrial', Count_Date: '2026-10-20', On_Leg: 158, Spare: 80 },
+        { Vendor: 'SCRAM', Supplied_Through: 'Direct', Device_Family: 'CAM', SmartView_Customer: 'SCRAM | Racine County', Count_Date: '2026-10-20', On_Leg: 43, Spare: 17 },
+        { Vendor: 'SCRAM', Supplied_Through: 'Direct', Device_Family: 'CAM', SmartView_Customer: 'SCRAM | Sheboygan Sheriff Pretrial', Count_Date: '2026-10-20', On_Leg: 6, Spare: 1 },
+        { Vendor: 'SuperCom', Supplied_Through: 'Direct', Device_Family: 'GPS', SmartView_Customer: 'SuperCom | Iowa County (WI)', Count_Date: '2026-10-20', On_Leg: 0, Spare: 4 }] };
   }
 
   /* ---------- measures ---------- */
@@ -290,6 +308,43 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
       '<div class="foot"><span class="' + trustCls + '"' + (tr.why ? ' title="' + esc(tr.why) + '"' : '') + '>' + esc(tr.trust) + '</span>' + link + '</div>' +
       (tr.why && tr.trust !== 'Reliable' ? '<p class="why">' + esc(tr.why) + '</p>' : '') + '</article></li>';
   }
+
+  /* ---------- devices on leg (v45): manufacturer, then device family; same rules as the EM and CS home pages ---------- */
+  var DEV_SHEB = /sheboygan.*(pretrial|sheriff|huber)|(pretrial|sheriff|huber).*sheboygan/i;
+  function nn(v) { return Number(v) || 0; }
+  function devices(d) {
+    var tr = trustOf({ id: 'devices', trust: 'Not yet reliable' }), cls = tr.trust === 'Reliable' ? 'trust ok' : 'trust';
+    var head = '<span class="kind">Stock · devices</span><h2 id="h-devs">Devices on leg</h2>';
+    var foot = '<div class="foot"><span class="' + cls + '">' + esc(tr.trust) + '</span><span class="def">Not filtered by brand. Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts.</span></div>';
+    if (!d) return head + '<span class="def">Counting…</span>';
+    if (d.devA === null && d.devV === null) return head + '<p class="err">Could not read Daily Unit Counts from Zoho.</p>' + foot;
+    var groups = {}, order = [], dates = [];
+    function add(mfr, fam, tag, on, onX, sp) {
+      var g = groups[mfr] || (groups[mfr] = { fams: {}, ord: [] }); if (order.indexOf(mfr) < 0) order.push(mfr);
+      var k = fam + '|' + tag, f = g.fams[k] || (g.fams[k] = { fam: fam, tag: tag, on: 0, onX: 0, sp: 0 }); if (g.ord.indexOf(k) < 0) g.ord.push(k);
+      f.on += on; f.onX += onX; f.sp += sp;
+    }
+    var days = {}; (d.devA || []).forEach(function (r) { var x = days[r.Count_Date] || (days[r.Count_Date] = { p: 0, l: null, s: 0, lx: 0 }); x.p += nn(r.On_Leg); if (r.Day_Leased_On_Leg != null) { x.l = nn(r.Day_Leased_On_Leg); x.s = nn(r.Day_Leased_Spare); x.lx = nn(r.Day_Leased_On_Leg_Ex_Sheb); } });
+    var dk = Object.keys(days).filter(function (k) { return days[k].l != null; }).sort(), cur = dk.length ? days[dk[dk.length - 1]] : null;
+    if (cur) { add('Allied', 'GPS', '', cur.l + cur.p, cur.lx + cur.p, cur.s); dates.push(dk[dk.length - 1]); }
+    var latest = {}; (d.devV || []).forEach(function (r) { if (!latest[r.Vendor] || r.Count_Date > latest[r.Vendor]) latest[r.Vendor] = r.Count_Date; });
+    (d.devV || []).forEach(function (r) {
+      if (r.Count_Date !== latest[r.Vendor] || !r.SmartView_Customer) return;
+      var on = nn(r.On_Leg); add(r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (r.Supplied_Through === 'Allied' ? 'via Allied' : 'Direct') : '', on, DEV_SHEB.test(r.SmartView_Customer) ? 0 : on, nn(r.Spare));
+    });
+    Object.keys(latest).forEach(function (k) { dates.push(latest[k]); }); dates.sort();
+    if (!order.length) return head + '<span class="def">No counts imported in the last 8 days.</span>' + foot;
+    var T = { on: 0, onX: 0, sp: 0 }, h = '<table><thead><tr><th>Manufacturer / device family</th><th>On leg</th><th>Excl. Sheboygan Pretrial</th><th>Spare</th><th>Total</th></tr></thead><tbody>';
+    order.forEach(function (m) {
+      var g = groups[m], s = { on: 0, onX: 0, sp: 0 }; g.ord.forEach(function (k) { var f = g.fams[k]; s.on += f.on; s.onX += f.onX; s.sp += f.sp; });
+      h += '<tr class="mfr"><td>' + esc(m) + '</td><td>' + s.on + '</td><td>' + s.onX + '</td><td>' + s.sp + '</td><td>' + (s.on + s.sp) + '</td></tr>';
+      g.ord.forEach(function (k) { var f = g.fams[k]; h += '<tr class="fam"><td>' + esc(f.fam) + (f.tag ? '<span class="tag">' + esc(f.tag) + '</span>' : '') + '</td><td>' + f.on + '</td><td>' + f.onX + '</td><td>' + f.sp + '</td><td>' + (f.on + f.sp) + '</td></tr>'; });
+      T.on += s.on; T.onX += s.onX; T.sp += s.sp;
+    });
+    h += '<tr class="tot"><td>All devices</td><td>' + T.on + '</td><td>' + T.onX + '</td><td>' + T.sp + '</td><td>' + (T.on + T.sp) + '</td></tr></tbody></table>';
+    var asof = dates.length ? ' <span class="def">as of ' + new Date(dates[dates.length - 1] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</span>' : '';
+    return head.replace('</h2>', '</h2>') + asof + h + foot;
+  }
   function readTrust() {
     if (DEMO || !(window.ZOHO && ZOHO.CRM && ZOHO.CRM.API && ZOHO.CRM.API.getOrgVariable)) return Promise.resolve(null);
     return withTimeout(ZOHO.CRM.API.getOrgVariable(TRUST_VAR), 10000).then(function (r) {
@@ -298,7 +353,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
     }).catch(function () { return null; });
   }
   function trustOf(m) { var t = TRUST && TRUST.measures && TRUST.measures[m.id]; return t && t.trust ? t : { trust: m.trust, why: '' }; }
-  function paint() { $('#grid').innerHTML = MEASURES.map(function (m) { return card(m, DATA); }).join(''); }
+  function paint() { $('#grid').innerHTML = MEASURES.map(function (m) { return card(m, DATA); }).join(''); $('#devs').innerHTML = devices(DATA); }
   function refresh() {
     DATA = null; paint(); $('#stamp').textContent = 'Counting…';
     var p = DEMO || !(window.ZOHO && ZOHO.CRM) ? Promise.resolve(demoData()) : load();
