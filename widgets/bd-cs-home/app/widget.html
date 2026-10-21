@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.4 (v5.3 + Devices on leg panel, 21 Oct 2026) -->
+<!-- Beau CS Home v5.5 (v5.3 + Devices on leg panel, Remote Breath via Allied under Allied, 21 Oct 2026) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1841,7 +1841,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.4 (v5.3 + Devices on leg panel, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.5 (v5.3 + Devices on leg panel, Remote Breath via Allied under Allied, 21 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -4280,7 +4280,7 @@ function rpInit() {
       V.forEach(function (r) {
         if (r.Count_Date !== latest[r.Vendor] || !r.SmartView_Customer) return;
         var on = n(r.On_Leg), sp = n(r.Spare), sheb = DEV_SHEB.test(r.SmartView_Customer);
-        add(r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (r.Supplied_Through === 'Allied' ? 'via Allied' : 'Direct') : '', on, sheb ? 0 : on, sp);
+        add((r.Vendor === 'SCRAM' && r.Supplied_Through === 'Allied') ? 'Allied' : r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (r.Supplied_Through === 'Allied' ? 'SCRAM' : 'Direct') : '', on, sheb ? 0 : on, sp);
       });
       Object.keys(latest).forEach(function (k) { dates.push(latest[k]); });
       if (!order.length) { body.innerHTML = '<div class="dev-err">No counts imported in the last 8 days.</div>'; return; }
