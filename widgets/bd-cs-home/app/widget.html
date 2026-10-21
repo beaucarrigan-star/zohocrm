@@ -1700,6 +1700,22 @@
   .bt td.reach.clip { min-width: 230px; width: 20%; }
   #bnums .kpi .label { flex-wrap: nowrap; } #bnums .kpi .label .go, #bnums .kpi .label .delta { flex: none; white-space: nowrap; }
 </style>
+<style id="bdcs-align2">
+  /* v5.10 (Oct 21 2026) line-up pass: Queue and Follow-ups share one header height, one tab/chip row height and the same frame;
+     the Queue's trailing columns (age, signal) keep a fixed width so they line up in every group. */
+  @media (min-width: 1200px) {
+    #z-work #z-fu { margin-top: 0; background: var(--surface); border: 1px solid var(--line); }
+    #z-work #z-fu > .band { margin: 0; flex-wrap: nowrap; align-items: center; box-sizing: border-box; min-height: 51px; padding: 11px var(--gutter); }
+    #z-work #z-fu > .band .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    #z-work #z-fu > .card { border: 0; background: none; box-shadow: none; }
+    #z-work #fu-filter { box-sizing: border-box; min-height: var(--qtabs-h, 42px); align-items: center; padding-block: 0; border-bottom: 1px solid var(--line); }
+  }
+  #queue-card .qtabs { box-sizing: border-box; min-height: var(--qtabs-h, 42px); }
+  #mycases .row.qrow .age { flex: none; width: 44px; min-width: 44px; text-align: right; white-space: nowrap; }
+  #mycases .row.qrow .sig { flex: none; width: 66px; min-width: 66px; text-align: right; }
+  #tasks .row.qrow .when, #unanswered .row.qrow .wait { flex: none; min-width: 64px; text-align: right; white-space: nowrap; }
+  #mycases .row.qrow > .act, #tasks .row.qrow > .act, #unanswered .row.qrow > .act { flex: none; width: 78px; min-width: 78px; text-align: center; padding: 0; }
+</style>
 <style id="work-tiles-css">
 #work-tiles{--surface:light-dark(#FFFFFF,#191C20);--surface2:light-dark(#F7F8FA,#1F2328);--ink:light-dark(#16191D,#E6E8EB);--muted:light-dark(#5F6670,#9AA1AB);--line:light-dark(#DCE0E5,#2B3038);--accent:light-dark(#2F55A4,#7F9FE0);--accent-soft:light-dark(#E6ECF8,#1E2A45);--warn:light-dark(#8A6412,#E0B055);--bad:light-dark(#A33A33,#F08A82);--font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;margin:0 0 16px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:4px;color:var(--ink);font-family:var(--font);font-size:14px}
 #work-tiles[hidden]{display:none}#work-tiles *{box-sizing:border-box}
