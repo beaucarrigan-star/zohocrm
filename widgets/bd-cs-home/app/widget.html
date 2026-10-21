@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.5 (v5.3 + Devices on leg panel, Remote Breath via Allied under Allied, 21 Oct 2026) -->
+<!-- Beau CS Home v5.6 (v5.3 + Devices on leg panel with Spare % and daily trends, 21 Oct 2026) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -170,6 +170,21 @@
 .dev-panel .dev-note { margin: 8px 10px 4px; font-size: 12px; color: var(--muted, light-dark(#5b6068, #9aa0a8)); }
 .dev-panel .dev-err { padding: 14px 10px; color: var(--muted, light-dark(#5b6068, #9aa0a8)); }
 @media (max-width: 560px) { .dev-panel th, .dev-panel td { padding: 6px 5px; } .dev-panel th { white-space: normal; } }
+
+.dev-panel .dev-tools { display: flex; align-items: center; gap: 6px; padding: 6px 10px 0; font-size: 12px; }
+.dev-panel .seg { font: inherit; font-size: 12px; padding: 2px 10px; border-radius: 12px; cursor: pointer; border: 1px solid var(--line, light-dark(#c9ccd1, #3a3d43)); background: transparent; color: inherit; }
+.dev-panel .seg[aria-pressed="true"] { background: light-dark(#e8eefc, #1c2742); color: light-dark(#1f4fd8, #8fb0ff); border-color: light-dark(#1f4fd8, #8fb0ff); }
+.dev-panel tr[data-k] { cursor: pointer; }
+.dev-panel tr[data-k]:hover td { background: light-dark(#f0f2f6, #23262b); }
+.dev-panel tr[data-k]:focus-visible { outline: 2px solid light-dark(#1f4fd8, #8fb0ff); outline-offset: -2px; }
+.dev-panel td.spk-c, .dev-panel th:last-child { text-align: center; color: light-dark(#1f4fd8, #8fb0ff); }
+.dev-panel th:last-child { color: var(--muted, light-dark(#5b6068, #9aa0a8)); }
+.dev-panel svg.spk { display: block; margin: 0 auto; }
+.dev-panel tr.chart td { text-align: left; white-space: normal; background: light-dark(#fafbfc, #1a1c20); color: light-dark(#1f4fd8, #8fb0ff); }
+.dev-panel tr.chart .sub { color: var(--muted, light-dark(#5b6068, #9aa0a8)); margin-bottom: 4px; }
+.dev-panel svg.big { width: 100%; max-width: 680px; height: auto; display: block; }
+.dev-panel svg.big text { fill: var(--muted, light-dark(#5b6068, #9aa0a8)); font-size: 11px; }
+.dev-panel svg.big line.grid { stroke: var(--line, light-dark(#d5d8dd, #33363c)); stroke-width: 1; }
 </style>
 <style id="base">
   * { box-sizing: border-box; }
@@ -1841,7 +1856,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.5 (v5.3 + Devices on leg panel, Remote Breath via Allied under Allied, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.6 (v5.3 + Devices on leg panel with Spare % and daily trends, 21 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -2007,6 +2022,7 @@
   <!-- ===================== Zone 4: Reference — Quick links | Vendor who-to-call ===================== -->
   <section class="bz card dev-panel" id="dev-panel" aria-label="Devices on leg">
     <div class="head"><h2>Devices on leg</h2><span class="meta" id="dev-meta">by manufacturer and device family</span></div>
+    <div class="dev-tools" id="dev-tools"></div>
     <div class="dev-wrap" id="dev-body"><div class="dev-err">Loading…</div></div>
     <p class="dev-note" id="dev-note"></p>
   </section>
@@ -2770,14 +2786,8 @@ function rpInit() {
       { id: 'e6', Name: 'Electronic Monitoring Account Access', Sender_Name: 'Polk Co. HS', Sender_Email: 'emaccess@polkcounty.gov', Direction: 'In', Received_At: new Date(Date.now() - 50 * 3600000).toISOString(), Conversation_Id: null, 'Case.id': 'c9', 'Case.Status': 'Resolved', 'Account.Account_Name': 'Polk County Human Services', Intake_Result: null },
       { id: 'e5', Name: 'Daily SmartView report', Sender_Name: 'Allied', Sender_Email: 'noreply@allied.com', Direction: 'In', Received_At: new Date(Date.now() - 6 * 3600000).toISOString(), Conversation_Id: 'cv4', Intake_Result: 'Automated report' }
     ],
-    devA: [{ Count_Date: '2026-10-20', On_Leg: 29, Day_Leased_On_Leg: 346, Day_Leased_Spare: 60, Day_Leased_On_Leg_Ex_Sheb: 192, Day_Leased_Spare_Ex_Sheb: 50 }],
-    devV: [
-      { Vendor: 'SCRAM', Supplied_Through: 'Allied', Device_Family: 'Remote Breath', SmartView_Customer: 'SCRAM | Ramsey County Pretrial', Count_Date: '2026-10-20', On_Leg: 158, Spare: 80 },
-      { Vendor: 'SCRAM', Supplied_Through: 'Allied', Device_Family: 'Remote Breath', SmartView_Customer: 'SCRAM | Marathon County', Count_Date: '2026-10-20', On_Leg: 16, Spare: 4 },
-      { Vendor: 'SCRAM', Supplied_Through: 'Direct', Device_Family: 'CAM', SmartView_Customer: 'SCRAM | Racine County', Count_Date: '2026-10-20', On_Leg: 43, Spare: 17 },
-      { Vendor: 'SCRAM', Supplied_Through: 'Direct', Device_Family: 'CAM', SmartView_Customer: 'SCRAM | Sheboygan Sheriff Pretrial', Count_Date: '2026-10-20', On_Leg: 6, Spare: 1 },
-      { Vendor: 'SuperCom', Supplied_Through: 'Direct', Device_Family: 'GPS', SmartView_Customer: 'SuperCom | Iowa County (WI)', Count_Date: '2026-10-20', On_Leg: 0, Spare: 4 },
-      { Vendor: 'SuperCom', Supplied_Through: 'Direct', Device_Family: 'Other', SmartView_Customer: 'SuperCom | Justice Point', Count_Date: '2026-10-20', On_Leg: 0, Spare: 4 }],
+    devA: (function () { var o = []; for (var k = 0; k < 14; k++) { var d = '2026-10-' + (k + 7 < 10 ? '0' : '') + (k + 7); o.push({ Count_Date: d, On_Leg: 25 + (k % 4), Day_Leased_On_Leg: 520 + k, Day_Leased_Spare: 70 - k % 6, Day_Leased_On_Leg_Ex_Sheb: 360 + k, Day_Leased_Spare_Ex_Sheb: 50 }); } return o; })(),
+    devV: (function () { var o = [], base = [['SCRAM', 'Allied', 'Remote Breath', 'SCRAM | Ramsey County Pretrial', 158, 80], ['SCRAM', 'Allied', 'Remote Breath', 'SCRAM | Marathon County', 16, 4], ['SCRAM', 'Direct', 'CAM', 'SCRAM | Racine County', 43, 17], ['SCRAM', 'Direct', 'CAM', 'SCRAM | Sheboygan Sheriff Pretrial', 6, 1], ['SuperCom', 'Direct', 'GPS', 'SuperCom | Iowa County (WI)', 0, 4], ['SuperCom', 'Direct', 'Other', 'SuperCom | Justice Point', 0, 4]]; for (var k = 0; k < 4; k++) base.forEach(function (b) { o.push({ Vendor: b[0], Supplied_Through: b[1], Device_Family: b[2], SmartView_Customer: b[3], Count_Date: '2026-10-' + (17 + k), On_Leg: b[4] > 0 ? b[4] + k : 0, Spare: b[5] - (k % 2) }); }); return o; })(),
     units: rep(9, { Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Leased', On_Leg: 56, Total_Units: 79 }).concat([{ Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Purchased', On_Leg: 6, Total_Units: 35.4 }]).concat(rep(10, { Count_Date: '2026-09-13', Device_Family: 'Remote Breath', On_Leg: 19, Total_Units: 90.4 }), [{ Count_Date: '2026-09-13', Device_Family: 'RF', On_Leg: 4, Total_Units: 5 }], rep(10, { Count_Date: '2026-09-13', Device_Family: 'Accessory', On_Leg: 15.7, Total_Units: 30.7 }), rep(4, { Count_Date: '2026-09-12', Device_Family: 'GPS', On_Leg: 49, Total_Units: 74.6 })),
     tasks: [
       { id: '1', Subject: 'Talk with Matt about the watch. Get a zoom call setup for activation', Due_Date: '2026-07-22', Priority: 'Immediate', 'Who_Id.First_Name': 'Matt', 'Who_Id.Last_Name': 'Thayer' },
@@ -4255,51 +4265,99 @@ function rpInit() {
      whole-day read below (loadUnitsLegacy) takes over, so the tile never depends on one contract. */
   var FLEET_DAYS = 14;
 
-  /* Devices on leg: manufacturer, then device family. On leg / Spare / Total, and on leg without Sheboygan Pretrial (Sheriff + Huber).
-     Allied GPS keeps the old tile's rule (on leg = leased + purchased, spare = leased only, excl. from the Ex_Sheb pair).
-     SCRAM and SuperCom come from the vendor import: latest count date per vendor, rows with no customer skipped. */
+  /* Devices on leg (v5.6): manufacturer, then device family. On leg / Excl. Sheboygan Pretrial / Spare / Spare % (spare / on leg) / Total,
+     and a daily trend line per row (click a row for the larger chart). Allied GPS keeps the old tile's rule (on leg = leased + purchased,
+     spare = leased only). Allied Remote Breath = SCRAM rows supplied through Allied. SCRAM and SuperCom come from the vendor import:
+     newest count date per vendor for the numbers, every imported day for the trend. Rows with no customer are skipped. */
   var DEV_SHEB = /sheboygan.*(pretrial|sheriff|huber)|(pretrial|sheriff|huber).*sheboygan/i;
+  var DEVM = null, DEV_METRIC = 'on', DEV_OPEN = {};
+  var DEV_TREND_FROM = '2026-10-17'; /* every trend starts 17 Oct, the first day SCRAM and SuperCom were imported */
+  function devSeries(by, dates, m) { var o = []; dates.forEach(function (d) { var x = by[d]; if (!x) return; var v = m === 'on' ? x.on : (x.on ? Math.round(x.sp * 1000 / x.on) / 10 : null); if (v != null) o.push([d, v]); }); return o; }
+  function devSpark(pts) {
+    if (pts.length < 2) return '<span class="sub">–</span>';
+    var W = 96, H = 26, vs = pts.map(function (p) { return p[1]; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), r = (hi - lo) || 1;
+    var xy = pts.map(function (p, i) { return [(i * (W - 6) / (pts.length - 1) + 3), (H - 4 - (p[1] - lo) / r * (H - 8))]; });
+    var last = xy[xy.length - 1];
+    return '<svg class="spk" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(pts[0][0] + ' ' + pts[0][1] + ' to ' + pts[pts.length - 1][0] + ' ' + pts[pts.length - 1][1]) + '"><polyline fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" points="' + xy.map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ') + '"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" fill="currentColor"/></svg>';
+  }
+  function devBig(pts, pct) {
+    if (pts.length < 2) return '<div class="dev-err">Only one day of counts so far, so there is no trend to draw yet.</div>';
+    var W = 640, H = 170, L = 44, R = 12, T = 12, B = 26, vs = pts.map(function (p) { return p[1]; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
+    if (hi === lo) { hi += 1; lo -= 1; } var pad = (hi - lo) * 0.1; hi += pad; lo = Math.max(0, lo - pad);
+    var X = function (i) { return L + i * (W - L - R) / (pts.length - 1); }, Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
+    var f = function (v) { return pct ? (Math.round(v * 10) / 10) + '%' : String(Math.round(v)); };
+    var fd = function (d) { var m = /^\d{4}-(\d{2})-(\d{2})/.exec(d); return m ? (+m[1]) + '/' + (+m[2]) : d; };
+    var h = '<svg class="big" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Daily trend"><line x1="' + L + '" y1="' + Y(hi) + '" x2="' + (W - R) + '" y2="' + Y(hi) + '" class="grid"/><line x1="' + L + '" y1="' + Y(lo) + '" x2="' + (W - R) + '" y2="' + Y(lo) + '" class="grid"/>' +
+      '<text x="' + (L - 6) + '" y="' + (Y(hi) + 4) + '" text-anchor="end">' + f(hi) + '</text><text x="' + (L - 6) + '" y="' + (Y(lo) + 4) + '" text-anchor="end">' + f(lo) + '</text>' +
+      '<text x="' + L + '" y="' + (H - 8) + '">' + fd(pts[0][0]) + '</text><text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end">' + fd(pts[pts.length - 1][0]) + '</text>' +
+      '<polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" points="' + pts.map(function (p, i) { return X(i).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join(' ') + '"/>';
+    pts.forEach(function (p, i) { h += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="3" fill="currentColor"><title>' + esc(p[0] + ': ' + f(p[1])) + '</title></circle>'; });
+    return h + '</svg>';
+  }
+  function devRender() {
+    var body = $('dev-body'), M = DEVM; if (!body || !M) return;
+    var pct = DEV_METRIC === 'pct', sp = function (on, s) { return on ? (Math.round(s * 1000 / on) / 10).toFixed(1) + '%' : '–'; };
+    var tools = $('dev-tools'); if (tools) tools.innerHTML = '<span class="sub">Trend</span><button type="button" class="seg" data-m="on" aria-pressed="' + (!pct) + '">On leg</button><button type="button" class="seg" data-m="pct" aria-pressed="' + pct + '">Spare %</button>';
+    var h = '<table><thead><tr><th>Manufacturer / device family</th><th>On leg</th><th>Excl. Sheboygan Pretrial</th><th>Spare</th><th>Spare %</th><th>Total</th><th>' + (pct ? 'Spare % trend' : 'On leg trend') + '</th></tr></thead><tbody>';
+    function row(cls, k, label, tag, v, by, dates) {
+      var pts = devSeries(by, dates, DEV_METRIC);
+      h += '<tr class="' + cls + '" data-k="' + esc(k) + '" tabindex="0"><td>' + esc(label) + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '</td><td>' + fmt(v.on) + '</td><td>' + fmt(v.onX) + '</td><td>' + fmt(v.sp) + '</td><td>' + sp(v.on, v.sp) + '</td><td>' + fmt(v.on + v.sp) + '</td><td class="spk-c">' + devSpark(pts) + '</td></tr>';
+      if (DEV_OPEN[k]) h += '<tr class="chart"><td colspan="7"><div class="sub">' + esc(label) + (tag ? ' (' + esc(tag) + ')' : '') + ' · daily ' + (pct ? 'spare % (spare ÷ on leg)' : 'on leg') + '</div>' + devBig(pts, pct) + '</td></tr>';
+    }
+    M.groups.forEach(function (g) {
+      row('mfr', 'm:' + g.name, g.name, '', g.cur, g.by, g.dates);
+      g.fams.forEach(function (f) { row('fam', f.key, f.fam, f.tag, f.cur, f.by, f.dates); });
+    });
+    row('tot', 'all', 'All devices', '', M.all.cur, M.all.by, M.all.dates);
+    body.innerHTML = h + '</tbody></table>';
+    var n = $('dev-note'); if (n) n.textContent = 'Spare % = spare ÷ on leg. Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare. ' + 'Trends start 17 Oct. ' + 'Click a row for the larger chart.';
+    $('dev-meta').textContent = M.asof ? 'as of ' + M.asof : '';
+  }
   function loadDevicePanel() {
-    var body = $('dev-body'), note = $('dev-note'); if (!body) return Promise.resolve();
-    var from = ymd(addDays(new Date(), -8)), n = function (v) { return Number(v) || 0; };
+    var body = $('dev-body'); if (!body) return Promise.resolve();
+    var from = DEV_TREND_FROM, n = function (v) { return Number(v) || 0; };
     var qA = "select Count_Date, On_Leg, Spare, Day_Leased_On_Leg, Day_Leased_Spare, Day_Leased_On_Leg_Ex_Sheb, Day_Leased_Spare_Ex_Sheb, Supplied_Through from Daily_Unit_Counts where ((Device_Family = 'GPS' and Acquisition = 'Purchased') and Count_Date >= '" + from + "') order by Count_Date desc";
     var qV = "select Vendor, Supplied_Through, Device_Family, SmartView_Customer, Count_Date, On_Leg, Spare, Total_Units from Daily_Unit_Counts where (Vendor in ('SCRAM','SuperCom') and Count_Date >= '" + from + "') order by Count_Date desc";
-    return Promise.all([api.all(qA, 4), api.all(qV, 4)]).then(function (res) {
-      var A = res[0] || [], V = res[1] || [], groups = {}, order = [], dates = [];
-      function add(mfr, fam, tag, on, onX, sp) {
-        var g = groups[mfr] || (groups[mfr] = { name: mfr, fams: {}, famOrder: [] }); if (order.indexOf(mfr) < 0) order.push(mfr);
-        var k = fam + '|' + tag, f = g.fams[k] || (g.fams[k] = { fam: fam, tag: tag, on: 0, onX: 0, sp: 0 }); if (g.famOrder.indexOf(k) < 0) g.famOrder.push(k);
-        f.on += on; f.onX += onX; f.sp += sp;
+    return Promise.all([api.all(qA, 4), api.all(qV, 8)]).then(function (res) {
+      var A = res[0] || [], V = res[1] || [], cells = {}, latest = {}, vstart = null;
+      function put(mfr, fam, tag, vendor, date, on, onX, sp) {
+        var k = mfr + '|' + fam + '|' + tag, c = cells[k] || (cells[k] = { key: k, mfr: mfr, fam: fam, tag: tag, vendor: vendor, by: {} });
+        var x = c.by[date] || (c.by[date] = { on: 0, onX: 0, sp: 0 }); x.on += on; x.onX += onX; x.sp += sp;
+        if (!latest[vendor] || date > latest[vendor]) latest[vendor] = date;
       }
-      /* Allied GPS: newest day that carries the leased totals */
-      var days = {}; A.forEach(function (r) { var d = days[r.Count_Date] || (days[r.Count_Date] = { p: 0, l: null, s: 0, lx: 0 }); d.p += n(r.On_Leg); if (r.Day_Leased_On_Leg != null) { d.l = n(r.Day_Leased_On_Leg); d.s = n(r.Day_Leased_Spare); d.lx = n(r.Day_Leased_On_Leg_Ex_Sheb); } });
-      var dk = Object.keys(days).filter(function (k) { return days[k].l != null; }).sort(), cur = dk.length ? days[dk[dk.length - 1]] : null;
-      if (cur) { add('Allied', 'GPS', '', cur.l + cur.p, cur.lx + cur.p, cur.s); dates.push(dk[dk.length - 1]); }
-      /* SCRAM / SuperCom: newest count date per vendor */
-      var latest = {}; V.forEach(function (r) { if (!latest[r.Vendor] || r.Count_Date > latest[r.Vendor]) latest[r.Vendor] = r.Count_Date; });
+      var days = {}; A.forEach(function (r) { var x = days[r.Count_Date] || (days[r.Count_Date] = { p: 0, l: null, s: 0, lx: 0 }); x.p += n(r.On_Leg); if (r.Day_Leased_On_Leg != null) { x.l = n(r.Day_Leased_On_Leg); x.s = n(r.Day_Leased_Spare); x.lx = n(r.Day_Leased_On_Leg_Ex_Sheb); } });
+      Object.keys(days).forEach(function (d) { var x = days[d]; if (x.l != null) put('Allied', 'GPS', '', 'AlliedGPS', d, x.l + x.p, x.lx + x.p, x.s); });
       V.forEach(function (r) {
-        if (r.Count_Date !== latest[r.Vendor] || !r.SmartView_Customer) return;
-        var on = n(r.On_Leg), sp = n(r.Spare), sheb = DEV_SHEB.test(r.SmartView_Customer);
-        add((r.Vendor === 'SCRAM' && r.Supplied_Through === 'Allied') ? 'Allied' : r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (r.Supplied_Through === 'Allied' ? 'SCRAM' : 'Direct') : '', on, sheb ? 0 : on, sp);
+        if (!r.SmartView_Customer) return; var on = n(r.On_Leg), via = r.Vendor === 'SCRAM' && r.Supplied_Through === 'Allied';
+        put(via ? 'Allied' : r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (via ? 'SCRAM' : 'Direct') : '', r.Vendor, r.Count_Date, on, DEV_SHEB.test(r.SmartView_Customer) ? 0 : on, n(r.Spare));
+        if (!vstart || r.Count_Date < vstart) vstart = r.Count_Date;
       });
-      Object.keys(latest).forEach(function (k) { dates.push(latest[k]); });
-      if (!order.length) { body.innerHTML = '<div class="dev-err">No counts imported in the last 8 days.</div>'; return; }
-      var T = { on: 0, onX: 0, sp: 0 }, h = '<table><thead><tr><th>Manufacturer / device family</th><th>On leg</th><th>Excl. Sheboygan Pretrial</th><th>Spare</th><th>Total</th></tr></thead><tbody>';
-      order.forEach(function (m) {
-        var g = groups[m], s = { on: 0, onX: 0, sp: 0 };
-        g.famOrder.forEach(function (k) { var f = g.fams[k]; s.on += f.on; s.onX += f.onX; s.sp += f.sp; });
-        h += '<tr class="mfr"><td>' + esc(g.name) + '</td><td>' + fmt(s.on) + '</td><td>' + fmt(s.onX) + '</td><td>' + fmt(s.sp) + '</td><td>' + fmt(s.on + s.sp) + '</td></tr>';
-        g.famOrder.forEach(function (k) { var f = g.fams[k];
-          h += '<tr class="fam"><td>' + esc(f.fam) + (f.tag ? '<span class="tag">' + esc(f.tag) + '</span>' : '') + '</td><td>' + fmt(f.on) + '</td><td>' + fmt(f.onX) + '</td><td>' + fmt(f.sp) + '</td><td>' + fmt(f.on + f.sp) + '</td></tr>'; });
-        T.on += s.on; T.onX += s.onX; T.sp += s.sp;
-      });
-      h += '<tr class="tot"><td>All devices</td><td>' + fmt(T.on) + '</td><td>' + fmt(T.onX) + '</td><td>' + fmt(T.sp) + '</td><td>' + fmt(T.on + T.sp) + '</td></tr></tbody></table>';
-      body.innerHTML = h;
-      dates.sort(); var d1 = dates.length ? new Date(dates[dates.length - 1] + 'T12:00:00') : null;
-      $('dev-meta').textContent = d1 ? 'as of ' + d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-      note.textContent = 'Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare.';
+      var keys = Object.keys(cells); if (!keys.length) { body.innerHTML = '<div class="dev-err">No counts imported since 17 Oct.</div>'; return; }
+      var zero = { on: 0, onX: 0, sp: 0 }, ORD = ['Allied', 'SCRAM', 'SuperCom'], gm = {};
+      keys.forEach(function (k) { var c = cells[k]; c.cur = c.by[latest[c.vendor]] || zero; c.dates = Object.keys(c.by).sort(); (gm[c.mfr] || (gm[c.mfr] = [])).push(c); });
+      function merge(list) {
+        var sets = list.map(function (c) { return c.dates; }), dates = sets[0].filter(function (d) { return sets.every(function (s) { return s.indexOf(d) > -1; }); }), by = {}, cur = { on: 0, onX: 0, sp: 0 };
+        dates.forEach(function (d) { by[d] = { on: 0, onX: 0, sp: 0 }; list.forEach(function (c) { var x = c.by[d]; by[d].on += x.on; by[d].onX += x.onX; by[d].sp += x.sp; }); });
+        list.forEach(function (c) { cur.on += c.cur.on; cur.onX += c.cur.onX; cur.sp += c.cur.sp; });
+        return { by: by, dates: dates, cur: cur };
+      }
+      var names = ORD.filter(function (m) { return gm[m]; }).concat(Object.keys(gm).filter(function (m) { return ORD.indexOf(m) < 0; }));
+      var groups = names.map(function (m) { var fams = gm[m].slice().sort(function (a, b) { return b.cur.on - a.cur.on; }), g = merge(fams); g.name = m; g.fams = fams; return g; });
+      var all = merge(keys.map(function (k) { return cells[k]; })), dts = [];
+      Object.keys(latest).forEach(function (k) { dts.push(latest[k]); }); dts.sort();
+      var d1 = dts.length ? new Date(dts[dts.length - 1] + 'T12:00:00') : null, v0 = vstart ? new Date(vstart + 'T12:00:00') : null;
+      DEVM = { groups: groups, all: all, asof: d1 ? d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '', vfrom: v0 ? v0.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' };
+      devRender();
     }).catch(function (e) { body.innerHTML = '<div class="dev-err">Unavailable: ' + esc(e && e.message || 'could not read Daily Unit Counts') + '</div>'; }).then(resize);
   }
+  (function () {
+    var el = $('dev-panel'); if (!el) return;
+    el.addEventListener('click', function (e) {
+      var sg = e.target.closest && e.target.closest('.seg'); if (sg) { DEV_METRIC = sg.getAttribute('data-m'); devRender(); resize(); return; }
+      var tr = e.target.closest && e.target.closest('tr[data-k]'); if (tr) { var k = tr.getAttribute('data-k'); DEV_OPEN[k] = !DEV_OPEN[k]; devRender(); resize(); }
+    });
+    el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('tr[data-k]')) { e.preventDefault(); e.target.click(); } });
+  })();
   function loadUnits() {
     watch('k-units-v', 'k-units-c');
     var from = ymd(addDays(today, -FLEET_DAYS));
