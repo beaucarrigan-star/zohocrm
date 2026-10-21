@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- EM Home v38.3 (v38.2 bulk-parallel + Devices on leg panel, 21 Oct 2026) -->
+<!-- EM Home v36.1 (v36 + tiles v1.0.1 retry fix, 20 Oct 2026) -->
 <!-- home-kit: src=em-home.src.html kit=1cb4f4f9 out=90d5bbd0 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -130,23 +130,6 @@
   }
   :root[data-theme="light"] { color-scheme: light; }
   :root[data-theme="dark"] { color-scheme: dark; }
-
-/* Devices on leg (v37 / v5.4, Oct 21 2026): stock by manufacturer and device family */
-#k-units { display: none !important; }
-.dev-panel { margin: 0 0 14px; }
-.dev-panel .dev-wrap { overflow-x: auto; }
-.dev-panel table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm, 13px); font-variant-numeric: tabular-nums; }
-.dev-panel th, .dev-panel td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line, light-dark(#e3e5e8, #2c2f34)); }
-.dev-panel th:first-child, .dev-panel td:first-child { text-align: left; white-space: normal; }
-.dev-panel thead th { color: var(--muted, light-dark(#5b6068, #9aa0a8)); font-weight: 600; font-size: 12px; }
-.dev-panel tr.mfr td { font-weight: 700; background: light-dark(#f4f5f7, #1e2024); }
-.dev-panel tr.fam td:first-child { padding-left: 24px; }
-.dev-panel tr.tot td { font-weight: 700; border-top: 2px solid var(--line, light-dark(#c9ccd1, #3a3d43)); }
-.dev-panel .tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600; color: light-dark(#1f4fd8, #8fb0ff); background: light-dark(#e8eefc, #1c2742); }
-.dev-panel .sub { color: var(--muted, light-dark(#5b6068, #9aa0a8)); }
-.dev-panel .dev-note { margin: 8px 10px 4px; font-size: 12px; color: var(--muted, light-dark(#5b6068, #9aa0a8)); }
-.dev-panel .dev-err { padding: 14px 10px; color: var(--muted, light-dark(#5b6068, #9aa0a8)); }
-@media (max-width: 560px) { .dev-panel th, .dev-panel td { padding: 6px 5px; } .dev-panel th { white-space: normal; } }
 </style>
 <style id="base">
   * { box-sizing: border-box; }
@@ -1470,7 +1453,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="EM Support" data-default-team="1" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="EM" data-build="EM Home v38.3 (v38.2 bulk-parallel + Devices on leg panel, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="EM" data-build="EM Home v36.1 (v36 + tiles v1.0.1 retry fix, 20 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -1592,12 +1575,6 @@
   </div>
 
   <!-- ===================== Zone 3: Reference — Quick links | Vendor contacts ===================== -->
-  <section class="bz card dev-panel" id="dev-panel" aria-label="Devices on leg">
-    <div class="head"><h2>Devices on leg</h2><span class="meta" id="dev-meta">by manufacturer and device family</span></div>
-    <div class="dev-wrap" id="dev-body"><div class="dev-err">Loading…</div></div>
-    <p class="dev-note" id="dev-note"></p>
-  </section>
-
   <div class="bz hl-zone hl-zone-reference hl-two hk-pair-1101" data-zone="reference" id="z-ref">
     <div class="card" aria-label="Quick links">
       <div class="head"><h2>Quick links</h2><span class="meta">most used first</span></div>
@@ -2055,14 +2032,6 @@
       { id: 'e6', Name: 'Electronic Monitoring Account Access', Sender_Name: 'Polk Co. HS', Sender_Email: 'emaccess@polkcounty.gov', Direction: 'In', Received_At: new Date(Date.now() - 50 * 3600000).toISOString(), Conversation_Id: null, 'Case.id': 'c9', 'Case.Status': 'Resolved', 'Account.Account_Name': 'Polk County Human Services', Intake_Result: null },
       { id: 'e5', Name: 'Daily SmartView report', Sender_Name: 'Allied', Sender_Email: 'noreply@allied.com', Direction: 'In', Received_At: new Date(Date.now() - 6 * 3600000).toISOString(), Conversation_Id: 'cv4', Intake_Result: 'Automated report' }
     ],
-    devA: [{ Count_Date: '2026-10-20', On_Leg: 29, Day_Leased_On_Leg: 346, Day_Leased_Spare: 60, Day_Leased_On_Leg_Ex_Sheb: 192, Day_Leased_Spare_Ex_Sheb: 50 }],
-    devV: [
-      { Vendor: 'SCRAM', Supplied_Through: 'Allied', Device_Family: 'Remote Breath', SmartView_Customer: 'SCRAM | Ramsey County Pretrial', Count_Date: '2026-10-20', On_Leg: 158, Spare: 80 },
-      { Vendor: 'SCRAM', Supplied_Through: 'Allied', Device_Family: 'Remote Breath', SmartView_Customer: 'SCRAM | Marathon County', Count_Date: '2026-10-20', On_Leg: 16, Spare: 4 },
-      { Vendor: 'SCRAM', Supplied_Through: 'Direct', Device_Family: 'CAM', SmartView_Customer: 'SCRAM | Racine County', Count_Date: '2026-10-20', On_Leg: 43, Spare: 17 },
-      { Vendor: 'SCRAM', Supplied_Through: 'Direct', Device_Family: 'CAM', SmartView_Customer: 'SCRAM | Sheboygan Sheriff Pretrial', Count_Date: '2026-10-20', On_Leg: 6, Spare: 1 },
-      { Vendor: 'SuperCom', Supplied_Through: 'Direct', Device_Family: 'GPS', SmartView_Customer: 'SuperCom | Iowa County (WI)', Count_Date: '2026-10-20', On_Leg: 0, Spare: 4 },
-      { Vendor: 'SuperCom', Supplied_Through: 'Direct', Device_Family: 'Other', SmartView_Customer: 'SuperCom | Justice Point', Count_Date: '2026-10-20', On_Leg: 0, Spare: 4 }],
     units: rep(9, { Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Leased', On_Leg: 56, Total_Units: 79 }).concat([{ Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Purchased', On_Leg: 6, Total_Units: 35.4 }]).concat(rep(10, { Count_Date: '2026-09-13', Device_Family: 'Remote Breath', On_Leg: 19, Total_Units: 90.4 }), [{ Count_Date: '2026-09-13', Device_Family: 'RF', On_Leg: 4, Total_Units: 5 }], rep(10, { Count_Date: '2026-09-13', Device_Family: 'Accessory', On_Leg: 15.7, Total_Units: 30.7 }), rep(4, { Count_Date: '2026-09-12', Device_Family: 'GPS', On_Leg: 49, Total_Units: 74.6 })),
     tasks: [
       { id: '1', Subject: 'Talk with Matt about the watch. Get a zoom call setup for activation', Due_Date: '2026-07-22', Priority: 'Immediate', 'Who_Id.First_Name': 'Matt', 'Who_Id.Last_Name': 'Thayer' },
@@ -2092,9 +2061,6 @@
   var delayed = function (v) { return SLOW ? new Promise(function (r) { setTimeout(function () { r(v); }, SLOW); }) : Promise.resolve(v); };
   var mock = {
     pick: function (q) {
-      var dv = function (r) { return delayed(r.slice()); };
-      if (/Vendor in \('SCRAM'/.test(q)) return dv(MOCK.devV);
-      if (/Supplied_Through from Daily_Unit_Counts/.test(q)) return dv(MOCK.devA);
       var d = function (k) { return delayed(MOCK[k].slice()); };
       if (/'EM Customer'/.test(q)) return d('emCust');
       if (/'Operated Program'/.test(q)) return d('ops');
@@ -2384,52 +2350,6 @@
      standing rule; excl.-Sheboygan comes from the Ex_Sheb pair. If no purchased rows come back the old
      whole-day read below (loadUnitsLegacy) takes over, so the tile never depends on one contract. */
   var FLEET_DAYS = 14;
-
-  /* Devices on leg: manufacturer, then device family. On leg / Spare / Total, and on leg without Sheboygan Pretrial (Sheriff + Huber).
-     Allied GPS keeps the old tile's rule (on leg = leased + purchased, spare = leased only, excl. from the Ex_Sheb pair).
-     SCRAM and SuperCom come from the vendor import: latest count date per vendor, rows with no customer skipped. */
-  var DEV_SHEB = /sheboygan.*(pretrial|sheriff|huber)|(pretrial|sheriff|huber).*sheboygan/i;
-  function loadDevicePanel() {
-    var body = $('dev-body'), note = $('dev-note'); if (!body) return Promise.resolve();
-    var from = ymd(addDays(new Date(), -8)), n = function (v) { return Number(v) || 0; };
-    var qA = "select Count_Date, On_Leg, Spare, Day_Leased_On_Leg, Day_Leased_Spare, Day_Leased_On_Leg_Ex_Sheb, Day_Leased_Spare_Ex_Sheb, Supplied_Through from Daily_Unit_Counts where ((Device_Family = 'GPS' and Acquisition = 'Purchased') and Count_Date >= '" + from + "') order by Count_Date desc";
-    var qV = "select Vendor, Supplied_Through, Device_Family, SmartView_Customer, Count_Date, On_Leg, Spare, Total_Units from Daily_Unit_Counts where (Vendor in ('SCRAM','SuperCom') and Count_Date >= '" + from + "') order by Count_Date desc";
-    return Promise.all([api.all(qA, 4), api.all(qV, 4)]).then(function (res) {
-      var A = res[0] || [], V = res[1] || [], groups = {}, order = [], dates = [];
-      function add(mfr, fam, tag, on, onX, sp) {
-        var g = groups[mfr] || (groups[mfr] = { name: mfr, fams: {}, famOrder: [] }); if (order.indexOf(mfr) < 0) order.push(mfr);
-        var k = fam + '|' + tag, f = g.fams[k] || (g.fams[k] = { fam: fam, tag: tag, on: 0, onX: 0, sp: 0 }); if (g.famOrder.indexOf(k) < 0) g.famOrder.push(k);
-        f.on += on; f.onX += onX; f.sp += sp;
-      }
-      /* Allied GPS: newest day that carries the leased totals */
-      var days = {}; A.forEach(function (r) { var d = days[r.Count_Date] || (days[r.Count_Date] = { p: 0, l: null, s: 0, lx: 0 }); d.p += n(r.On_Leg); if (r.Day_Leased_On_Leg != null) { d.l = n(r.Day_Leased_On_Leg); d.s = n(r.Day_Leased_Spare); d.lx = n(r.Day_Leased_On_Leg_Ex_Sheb); } });
-      var dk = Object.keys(days).filter(function (k) { return days[k].l != null; }).sort(), cur = dk.length ? days[dk[dk.length - 1]] : null;
-      if (cur) { add('Allied', 'GPS', '', cur.l + cur.p, cur.lx + cur.p, cur.s); dates.push(dk[dk.length - 1]); }
-      /* SCRAM / SuperCom: newest count date per vendor */
-      var latest = {}; V.forEach(function (r) { if (!latest[r.Vendor] || r.Count_Date > latest[r.Vendor]) latest[r.Vendor] = r.Count_Date; });
-      V.forEach(function (r) {
-        if (r.Count_Date !== latest[r.Vendor] || !r.SmartView_Customer) return;
-        var on = n(r.On_Leg), sp = n(r.Spare), sheb = DEV_SHEB.test(r.SmartView_Customer);
-        add(r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (r.Supplied_Through === 'Allied' ? 'via Allied' : 'Direct') : '', on, sheb ? 0 : on, sp);
-      });
-      Object.keys(latest).forEach(function (k) { dates.push(latest[k]); });
-      if (!order.length) { body.innerHTML = '<div class="dev-err">No counts imported in the last 8 days.</div>'; return; }
-      var T = { on: 0, onX: 0, sp: 0 }, h = '<table><thead><tr><th>Manufacturer / device family</th><th>On leg</th><th>Excl. Sheboygan Pretrial</th><th>Spare</th><th>Total</th></tr></thead><tbody>';
-      order.forEach(function (m) {
-        var g = groups[m], s = { on: 0, onX: 0, sp: 0 };
-        g.famOrder.forEach(function (k) { var f = g.fams[k]; s.on += f.on; s.onX += f.onX; s.sp += f.sp; });
-        h += '<tr class="mfr"><td>' + esc(g.name) + '</td><td>' + fmt(s.on) + '</td><td>' + fmt(s.onX) + '</td><td>' + fmt(s.sp) + '</td><td>' + fmt(s.on + s.sp) + '</td></tr>';
-        g.famOrder.forEach(function (k) { var f = g.fams[k];
-          h += '<tr class="fam"><td>' + esc(f.fam) + (f.tag ? '<span class="tag">' + esc(f.tag) + '</span>' : '') + '</td><td>' + fmt(f.on) + '</td><td>' + fmt(f.onX) + '</td><td>' + fmt(f.sp) + '</td><td>' + fmt(f.on + f.sp) + '</td></tr>'; });
-        T.on += s.on; T.onX += s.onX; T.sp += s.sp;
-      });
-      h += '<tr class="tot"><td>All devices</td><td>' + fmt(T.on) + '</td><td>' + fmt(T.onX) + '</td><td>' + fmt(T.sp) + '</td><td>' + fmt(T.on + T.sp) + '</td></tr></tbody></table>';
-      body.innerHTML = h;
-      dates.sort(); var d1 = dates.length ? new Date(dates[dates.length - 1] + 'T12:00:00') : null;
-      $('dev-meta').textContent = d1 ? 'as of ' + d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-      note.textContent = 'Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare.';
-    }).catch(function (e) { body.innerHTML = '<div class="dev-err">Unavailable: ' + esc(e && e.message || 'could not read Daily Unit Counts') + '</div>'; }).then(resize);
-  }
   function loadUnits() {
     watch('k-units-v', 'k-units-c');
     var from = ymd(addDays(today, -FLEET_DAYS));
@@ -4714,7 +4634,6 @@
     W.run(1, function () { return loadUnanswered(); });
     W.run(1, function () { return api.orgVar(ANNOUNCE_VAR).then(renderNotice).then(resize); });
     W.run(2, function () { return loadUnits().then(function () { var v = $('k-units-v'); if (v && v.querySelector('.err')) { v.textContent = '—'; setText('k-units-c', 'Not shared with your profile yet'); } }); });
-    W.run(2, loadDevicePanel);
     W.run(2, function () { return loadExcess().then(function () { var v = $('k-excess-v'); if (v && v.querySelector('.err')) { v.textContent = '—'; setText('k-excess-c', 'Not shared with your profile yet'); } }); });
     W.run(2, loadStockAlerts);
     W.run(2, loadAccessoryOrders);
