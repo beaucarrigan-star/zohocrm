@@ -175,7 +175,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
 <script id="leadership-js">
 (function () {
   'use strict';
-  var BUILD = 'Leadership Home v45 · 21 Oct 2026';
+  var BUILD = 'Leadership Home v46 · 21 Oct 2026';
   var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
   /* Native reports in the "Leadership measures" folder (S15). Links stay off until S15 is confirmed final. */
   var REPORTS_LIVE = true;
@@ -330,7 +330,7 @@ h1{margin:2px 0 0;font:700 24px/1.2 var(--head)}
     var latest = {}; (d.devV || []).forEach(function (r) { if (!latest[r.Vendor] || r.Count_Date > latest[r.Vendor]) latest[r.Vendor] = r.Count_Date; });
     (d.devV || []).forEach(function (r) {
       if (r.Count_Date !== latest[r.Vendor] || !r.SmartView_Customer) return;
-      var on = nn(r.On_Leg); add(r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (r.Supplied_Through === 'Allied' ? 'via Allied' : 'Direct') : '', on, DEV_SHEB.test(r.SmartView_Customer) ? 0 : on, nn(r.Spare));
+      var on = nn(r.On_Leg); add((r.Vendor === 'SCRAM' && r.Supplied_Through === 'Allied') ? 'Allied' : r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (r.Supplied_Through === 'Allied' ? 'SCRAM' : 'Direct') : '', on, DEV_SHEB.test(r.SmartView_Customer) ? 0 : on, nn(r.Spare));
     });
     Object.keys(latest).forEach(function (k) { dates.push(latest[k]); }); dates.sort();
     if (!order.length) return head + '<span class="def">No counts imported in the last 8 days.</span>' + foot;
