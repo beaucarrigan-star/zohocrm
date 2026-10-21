@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- EM Home v37 (v36.1 + Devices on leg panel, 21 Oct 2026) -->
+<!-- EM Home v38.3 (v38.2 bulk-parallel + Devices on leg panel, 21 Oct 2026) -->
 <!-- home-kit: src=em-home.src.html kit=1cb4f4f9 out=90d5bbd0 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1470,7 +1470,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="EM Support" data-default-team="1" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="EM" data-build="EM Home v37 (v36.1 + Devices on leg panel, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="EM" data-build="EM Home v38.3 (v38.2 bulk-parallel + Devices on leg panel, 21 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -4025,12 +4025,29 @@
     var done = [], failed = [], i = 0; bulkBusy = true; $('bulk-go').disabled = true;
     var note = 'Status changed from the home page (mass update)';
     var apply = function (r, c) { if (c.owner) setOwnerLocal(r, c.owner); if (c.status) r.Status = c.status; flipPersonal(r, c); };
-    (function next() {
-      if (i >= jobs.length) return finish();
-      var j = jobs[i++]; toast('Updating ' + i + ' of ' + jobs.length + ' · ' + caseName(j.r) + '…', { ms: 120000 });
-      saveOne(j.id, j.c, note, resExtra).then(function () { apply(j.r, j.c); delete Q.sel[j.id]; done.push(j); renderQueue(); })
-        .catch(function (e) { failed.push({ j: j, msg: e.message === 'RECORD_IN_BLUEPRINT' ? 'the Blueprint refused it' : e.message }); })
-        .then(next);
+    /* Parallel bulk (20 Oct 2026): up to 4 cases at once instead of one after another; one retry on a rate-limit style error. */
+    var BULK_CONC = 4, running = 0, finished = 0;
+    var runOne = function (j, tries) {
+      return saveOne(j.id, j.c, note, resExtra).catch(function (e) {
+        if (tries < 1 && /too many|rate|limit|concurren|timed? ?out/i.test(String((e && e.message) || ''))) return new Promise(function (r) { setTimeout(r, 2500); }).then(function () { return runOne(j, tries + 1); });
+        throw e;
+      });
+    };
+    toast('Updating ' + jobs.length + ' case' + (jobs.length === 1 ? '' : 's') + '…', { ms: 120000 });
+    (function pump() {
+      while (running < BULK_CONC && i < jobs.length) {
+        (function (j) {
+          running++;
+          runOne(j, 0).then(function () { apply(j.r, j.c); delete Q.sel[j.id]; done.push(j); renderQueue(); })
+            .catch(function (e) { failed.push({ j: j, msg: e.message === 'RECORD_IN_BLUEPRINT' ? 'the Blueprint refused it' : e.message }); })
+            .then(function () {
+              running--; finished++;
+              if (finished >= jobs.length) return finish();
+              toast('Updating ' + finished + ' of ' + jobs.length + '…', { ms: 120000 });
+              pump();
+            });
+        })(jobs[i++]);
+      }
     })();
     function finish() {
       bulkBusy = false; $('bulk-go').disabled = false; renderQueue();
