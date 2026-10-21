@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.9 (v5.8 + Lost devices link in the toolbar and Quick links, 21 Oct 2026) -->
+<!-- Beau CS Home v5.9 (v5.8 + Spare numbers in Devices on leg open a pop-out of which agencies hold the spares, 21 Oct 2026) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1114,6 +1114,27 @@
   @keyframes pk-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(.985); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
   @media (prefers-reduced-motion: reduce) { .peek .peek-panel { animation: none; } }
 </style>
+<style id="dev-pop">
+  /* v5.9: Spare pop-out (Devices on leg). Uses the record peek's overlay, so Esc, the X and a backdrop click close it. */
+  .dev-panel a.spare-link { color: var(--accent-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .dev-panel a.spare-link:hover { text-decoration-thickness: 2px; }
+  .peek .peek-panel.dpop { max-width: 860px; }
+  .dpop .dp-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+  .dpop .dp-bar .sub { margin-right: auto; }
+  .dpop table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-md); }
+  .dpop th, .dpop td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .dpop th:first-child, .dpop td:first-child, .dpop th.l, .dpop td.l { text-align: left; }
+  .dpop th:first-child { width: 30%; } .dpop td { overflow-wrap: anywhere; }
+  .dpop th { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .dpop thead.vh th { height: 0; padding: 0; border: 0; font-size: 0; line-height: 0; overflow: hidden; }
+  .dpop td.send { font-weight: 700; color: var(--ink); }
+  .dpop tr.done td { color: var(--muted); opacity: .65; }
+  .dpop tr.tot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
+  .dpop .st { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-size: var(--fs-xs); white-space: nowrap; }
+  .dpop details { margin-top: var(--sp-2); }
+  .dpop summary { cursor: pointer; color: var(--muted); font-size: var(--fs-sm); padding: 4px 0; }
+  .dpop .dp-note { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+</style>
 <style id="hl-float">
   /* UI/UX Phase 1 (Sep 30 2026): pinned toolbar, toast layer, brightness target. viewport-js drives the vars. */
   .page { position: relative; background: var(--ground); }
@@ -1700,22 +1721,6 @@
   .bt td.reach.clip { min-width: 230px; width: 20%; }
   #bnums .kpi .label { flex-wrap: nowrap; } #bnums .kpi .label .go, #bnums .kpi .label .delta { flex: none; white-space: nowrap; }
 </style>
-<style id="bdcs-align2">
-  /* v5.10 (Oct 21 2026) line-up pass: Queue and Follow-ups share one header height, one tab/chip row height and the same frame;
-     the Queue's trailing columns (age, signal) keep a fixed width so they line up in every group. */
-  @media (min-width: 1200px) {
-    #z-work #z-fu { margin-top: 0; background: var(--surface); border: 1px solid var(--line); }
-    #z-work #z-fu > .band { margin: 0; flex-wrap: nowrap; align-items: center; box-sizing: border-box; min-height: 51px; padding: 11px var(--gutter); }
-    #z-work #z-fu > .band .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    #z-work #z-fu > .card { border: 0; background: none; box-shadow: none; }
-    #z-work #fu-filter { box-sizing: border-box; min-height: var(--qtabs-h, 42px); align-items: center; padding-block: 0; border-bottom: 1px solid var(--line); }
-  }
-  #queue-card .qtabs { box-sizing: border-box; min-height: var(--qtabs-h, 42px); }
-  #mycases .row.qrow .age { flex: none; width: 44px; min-width: 44px; text-align: right; white-space: nowrap; }
-  #mycases .row.qrow .sig { flex: none; width: 66px; min-width: 66px; text-align: right; }
-  #tasks .row.qrow .when, #unanswered .row.qrow .wait { flex: none; min-width: 64px; text-align: right; white-space: nowrap; }
-  #mycases .row.qrow > .act, #tasks .row.qrow > .act, #unanswered .row.qrow > .act { flex: none; width: 78px; min-width: 78px; text-align: center; padding: 0; }
-</style>
 <style id="work-tiles-css">
 #work-tiles{--surface:light-dark(#FFFFFF,#191C20);--surface2:light-dark(#F7F8FA,#1F2328);--ink:light-dark(#16191D,#E6E8EB);--muted:light-dark(#5F6670,#9AA1AB);--line:light-dark(#DCE0E5,#2B3038);--accent:light-dark(#2F55A4,#7F9FE0);--accent-soft:light-dark(#E6ECF8,#1E2A45);--warn:light-dark(#8A6412,#E0B055);--bad:light-dark(#A33A33,#F08A82);--font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;margin:0 0 16px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:4px;color:var(--ink);font-family:var(--font);font-size:14px}
 #work-tiles[hidden]{display:none}#work-tiles *{box-sizing:border-box}
@@ -1879,7 +1884,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.9 (v5.8 + Lost devices link in the toolbar and Quick links, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.9 (v5.8 + Spare pop-out by agency, 21 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -2850,6 +2855,12 @@ function rpInit() {
   var mock = {
     pick: function (q) {
       var dv = function (r) { return delayed(r.slice()); };
+      if (/select SmartView_Customer, Account\.Account_Name/.test(q)) {
+        var gps = /Device_Family = 'GPS'/.test(q);
+        if (gps) return dv([['Justice Point - Ramsey County Pretrial', 'Ramsey County Pretrial Program', 34, 13], ['Justice Point - Sheboygan County Sheriff Huber', 'Sheboygan County Sheriff', 13, 12], ['Justice Point - Racine County Pretrial', 'Racine County Pretrial Program', 46, 10], ['Justice Point - Dodge County Sheriff', 'Dodge Co. Sheriff', 7, 4], ['Justice Point - Columbia Co Human Svs HHS', 'Columbia County HHS Juvenile', 0, 3], ['Justice Point - Marathon County INF', 'Marathon Co. Sheriff Dept', 15, 3]].map(function (a) { return { SmartView_Customer: a[0], 'Account.Account_Name': a[1], Vendor: null, Acquisition: 'Leased', Device_Family: 'GPS', On_Leg: a[2], Spare: a[3] }; }).concat([{ SmartView_Customer: 'Justice Point - Rock Co Purchased', 'Account.Account_Name': 'Rock County Pretrial Program', Vendor: null, Acquisition: 'Purchased', Device_Family: 'GPS', On_Leg: 20, Spare: 5 }]));
+        var vv = /Vendor = 'SuperCom'/.test(q) ? 'SuperCom' : 'SCRAM';
+        return dv(MOCK.devV.filter(function (r) { return r.Vendor === vv; }).map(function (r) { return { SmartView_Customer: r.SmartView_Customer, 'Account.Account_Name': devPopClean(r.SmartView_Customer), Vendor: r.Vendor, Supplied_Through: r.Supplied_Through, Device_Family: r.Device_Family, On_Leg: r.On_Leg, Spare: r.Spare }; }));
+      }
       if (/Vendor in \('SCRAM'/.test(q)) return dv(MOCK.devV);
       if (/Supplied_Through from Daily_Unit_Counts/.test(q)) return dv(MOCK.devA);
       var d = function (k) { return delayed(MOCK[k].slice()); };
@@ -4263,7 +4274,7 @@ function rpInit() {
   var LINKS_CS = [
     ['CS - EM Customers', 'Accounts view', { view: 'CS - EM Customers', m: 'Accounts' }], ['CS - Operated Programs', 'Accounts view', { view: 'CS - Operated Programs', m: 'Accounts' }],
     ['EM Stock Alerts', 'module', { m: 'EM_Stock_Alerts' }], ['Accessory board', 'web tab', { href: TAB + 'WebTab6', top: true }],
-    ['Daily Unit Counts', 'module', { m: 'Daily_Unit_Counts' }], ['Unit trends by day', 'dashboard', { href: UNIT_TRENDS_URL, top: true }], ['Lost devices', 'web tab (Lost Devices Tab)', { href: TAB + 'WebTab28', top: true }],
+    ['Daily Unit Counts', 'module', { m: 'Daily_Unit_Counts' }], ['Unit trends by day', 'dashboard', { href: UNIT_TRENDS_URL, top: true }],
     ['Customer Onboarding', 'module', { m: 'Customer_Onboarding' }], ['Vendors', 'module', { m: 'Vendors' }]
   ];
   var LINKS_SUP = [
@@ -4293,7 +4304,7 @@ function rpInit() {
      whole-day read below (loadUnitsLegacy) takes over, so the tile never depends on one contract. */
   var FLEET_DAYS = 14;
 
-  /* Devices on leg (v5.8): manufacturer, then device family. On leg / Excl. Sheboygan Pretrial / Spare / Spare % (spare / on leg) / Total, with a
+  /* Devices on leg (v5.8; v5.9 adds the Spare pop-out below): manufacturer, then device family. On leg / Excl. Sheboygan Pretrial / Spare / Spare % (spare / on leg) / Total, with a
      labelled trend per row (click a row for the larger chart). Trend can run Daily (from 17 Oct), Weekly, Monthly, Quarterly or Annual: each period shows
      its last counted day (stock is a snapshot, not a sum). Weekly and longer fetch the longer history the first time they are picked.
      Allied GPS keeps the old tile's rule (on leg = leased + purchased, spare = leased only). Allied Remote Breath = SCRAM rows supplied through Allied.
@@ -4349,14 +4360,14 @@ function rpInit() {
     var h = '<table><thead><tr><th>Manufacturer / device family</th><th>On leg</th><th>Excl. Sheboygan Pretrial</th><th>Spare</th><th>Spare %</th><th>Total</th><th>' + pl + (pct ? ' spare % trend' : ' on leg trend') + '</th></tr></thead><tbody>';
     function row(cls, k, label, tag, v, by, dates) {
       var pts = devPts(by, dates, per, DEV_METRIC);
-      h += '<tr class="' + cls + '" data-k="' + esc(k) + '" tabindex="0"><td>' + esc(label) + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '</td><td>' + fmt(v.on) + '</td><td>' + fmt(v.onX) + '</td><td>' + fmt(v.sp) + '</td><td>' + sp(v.on, v.sp) + '</td><td>' + fmt(v.on + v.sp) + '</td><td class="spk-c">' + devSpark(pts, pct) + '</td></tr>';
+      h += '<tr class="' + cls + '" data-k="' + esc(k) + '" tabindex="0"><td>' + esc(label) + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '</td><td>' + fmt(v.on) + '</td><td>' + fmt(v.onX) + '</td><td><a href="#" class="spare-link" title="Which agencies hold these spares">' + fmt(v.sp) + '</a></td><td>' + sp(v.on, v.sp) + '</td><td>' + fmt(v.on + v.sp) + '</td><td class="spk-c">' + devSpark(pts, pct) + '</td></tr>';
       if (DEV_OPEN[k]) h += '<tr class="chart"><td colspan="7"><div class="sub">' + esc(label) + (tag ? ' (' + esc(tag) + ')' : '') + ' · ' + pl.toLowerCase() + ' ' + (pct ? 'spare % (spare ÷ on leg)' : 'on leg') + (per === 'day' ? '' : ' · each period shows its last counted day') + '</div>' + devBig(pts, pct) + '</td></tr>';
     }
     M.groups.forEach(function (g) { row('mfr', 'm:' + g.name, g.name, '', g.cur, g.by, g.dates); g.fams.forEach(function (f) { row('fam', f.key, f.fam, f.tag, f.cur, f.by, f.dates); }); });
     row('tot', 'all', 'All devices', '', M.all.cur, M.all.by, M.all.dates);
     var ap = devPts(M.all.by, M.all.dates, per, DEV_METRIC), warn = (per !== 'day' && ap.length < 2) ? '<div class="dev-err">Not enough data yet for a ' + pl.toLowerCase() + ' trend: counts for these devices start 17 Oct, so there is only ' + (ap.length ? 'one ' + per : 'no ' + per + ' to show') + ' so far. It fills in as more ' + per + 's of counts build up.</div>' : '';
     body.innerHTML = warn + h + '</tbody></table>';
-    var nt = $('dev-note'); if (nt) nt.textContent = 'Spare % = spare ÷ on leg. Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare. All trends start 17 Oct (earliest counts for these devices); Weekly and longer show each period\'s last counted day and say so when there is not enough data yet. Manufacturer and All devices lines cover only the days every family has (SCRAM and SuperCom start 17 Oct). Click a row for the larger chart.';
+    var nt = $('dev-note'); if (nt) nt.textContent = 'Spare % = spare ÷ on leg. Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare. All trends start 17 Oct (earliest counts for these devices); Weekly and longer show each period\'s last counted day and say so when there is not enough data yet. Manufacturer and All devices lines cover only the days every family has (SCRAM and SuperCom start 17 Oct). Click a row for the larger chart; click a Spare number to see which agencies hold the spares.';
     $('dev-meta').textContent = M.asof ? 'as of ' + M.asof : '';
     var kv = $('k-devspare-v'), kc = $('k-devspare-c');
     if (kv) { kv.innerHTML = sp(M.all.cur.on, M.all.cur.sp); kv.classList.remove('sk'); }
@@ -4393,10 +4404,118 @@ function rpInit() {
       var groups = names.map(function (m) { var fams = gm[m].slice().sort(function (a, b) { return b.cur.on - a.cur.on; }), g = merge(fams); g.name = m; g.fams = fams; return g; });
       var all = merge(keys.map(function (k) { return cells[k]; })), dts = []; Object.keys(latest).forEach(function (k) { dts.push(latest[k]); }); dts.sort();
       var d1 = dts.length ? new Date(dts[dts.length - 1] + 'T12:00:00') : null;
-      DEVM = { groups: groups, all: all, asof: d1 ? d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' };
+      DEVM = { latest: latest, groups: groups, all: all, asof: d1 ? d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' };
       if (full) DEV_FULL = true;
       devRender();
     }).catch(function (e) { body.innerHTML = '<div class="dev-err">Unavailable: ' + esc(e && e.message || 'could not read Daily Unit Counts') + '</div>'; }).then(resize);
+  }
+
+  /* v5.9 Spare pop-out: which agencies hold the spares of the clicked family / manufacturer / all devices.
+     Read only: Daily_Unit_Counts on each vendor's latest count date (per agency) and the Excess spares alerts for status.
+     Limit = 20% of on leg, rounded down, at least 1 (the Excess spares rule); send back = spare - limit. No serial numbers (look those up in the portal).
+     Allied GPS counts leased spares only. JusticePoint's own stock and demo accounts are left out of the ask list and shown as a footnote. */
+  var DEV_PORTALS = { allied: ['Allied SmartView', 'https://Smartview.ptm.com'], scram: ['SCRAM', 'https://accounts.scramnetwork.com/account/'], supercom: ['SuperCom PureMonitor', 'https://puremonitor.supercom.com/PureMonitorApplication/'] };
+  var DEV_PCODE = { AlliedGPS: 'allied', SCRAM: 'scram', SuperCom: 'supercom' };
+  var DEV_POP = { seq: 0, cache: {}, alerts: null };
+  function devPopSel(k) {
+    var M = DEVM, cells = [], t = '';
+    if (!M) return { title: '', cells: [] };
+    if (k === 'all') { M.groups.forEach(function (g) { cells = cells.concat(g.fams); }); t = 'All devices'; }
+    else if (k.indexOf('m:') === 0) { M.groups.forEach(function (g) { if ('m:' + g.name === k) { cells = g.fams.slice(); t = g.name; } }); }
+    else M.groups.forEach(function (g) { g.fams.forEach(function (f) { if (f.key === k) { cells = [f]; t = g.name + ' · ' + f.fam + (f.tag ? ' (' + f.tag + ')' : ''); } }); });
+    return { title: t, cells: cells };
+  }
+  function devPopFetch(vendor, date) {
+    var ck = vendor + '|' + date; if (DEV_POP.cache[ck]) return Promise.resolve(DEV_POP.cache[ck]);
+    var q = vendor === 'AlliedGPS'
+      ? "select SmartView_Customer, Account.Account_Name, Vendor, Acquisition, Device_Family, On_Leg, Spare from Daily_Unit_Counts where (Device_Family = 'GPS' and Count_Date = '" + date + "')"
+      : "select SmartView_Customer, Account.Account_Name, Vendor, Supplied_Through, Device_Family, On_Leg, Spare from Daily_Unit_Counts where (Vendor = '" + vendor + "' and Count_Date = '" + date + "')";
+    return api.all(q, 8).then(function (rows) { return (DEV_POP.cache[ck] = rows || []); });
+  }
+  function devPopAlerts() {
+    return api.all("select Status, Email_Status, Detail, Account.Account_Name from EM_Stock_Alerts where Alert_Type = 'Excess spares'", 4).then(function (rows) { return rows || []; }).catch(function () { return []; });
+  }
+  function devPopClean(c) { return String(c || '').replace(/^\s*(SCRAM|SuperCom)\s*\|\s*/i, '').replace(/^\s*Justice Point\s*-\s*/i, '').trim(); }
+  function devPopStatus(rec, alerts) {
+    if (!rec.acct) return null; var want = rec.acct.toLowerCase(), best = null;
+    alerts.forEach(function (a) {
+      if (String(a['Account.Account_Name'] || '').toLowerCase() !== want) return;
+      var d = String(a.Detail || ''), okFam = /GPS/i.test(rec.fam) ? /GPS/i.test(d) : /breath/i.test(rec.fam) ? /breath/i.test(d) : true;
+      if (!okFam) return;
+      var open = !a.Status || a.Status === 'Open'; if (!best || (open && !best.open)) best = { open: open, a: a };
+    });
+    if (!best) return { t: 'No alert', cls: '' };
+    var s = best.a.Status || 'Open', e = best.a.Email_Status, txt;
+    if (/request|return/i.test(s) || /request/i.test(e || '')) return { t: 'Return requested', cls: 'done' };
+    if (s !== 'Open') return { t: s, cls: 'done' };
+    txt = e && !/not applicable/i.test(e) ? 'Open · email ' + String(e).toLowerCase() : 'Open';
+    return { t: txt, cls: '' };
+  }
+  function devPopBuild(sel, data, alerts) {
+    var n = function (v) { return Number(v) || 0; }, recs = [], house = 0;
+    sel.cells.forEach(function (c) {
+      var rows = data[c.vendor] || [], by = {};
+      rows.forEach(function (r) {
+        if (!r.SmartView_Customer) return;
+        if (c.vendor === 'AlliedGPS') { if (r.Vendor === 'SCRAM' || r.Vendor === 'SuperCom') return; }
+        else {
+          if ((r.Device_Family || 'Other') !== c.fam) return;
+          if (c.vendor === 'SCRAM' && ((r.Supplied_Through === 'Allied') !== (c.tag === 'SCRAM'))) return;
+        }
+        var e = by[r.SmartView_Customer] || (by[r.SmartView_Customer] = { cust: r.SmartView_Customer, acct: r['Account.Account_Name'] || '', fam: c.fam, tag: c.tag, vendor: c.vendor, on: 0, sp: 0 });
+        e.on += n(r.On_Leg);
+        if (c.vendor === 'AlliedGPS') { if (r.Acquisition === 'Leased') e.sp += n(r.Spare); } else e.sp += n(r.Spare);
+      });
+      Object.keys(by).forEach(function (k) {
+        var e = by[k], nm = devPopClean(e.acct || e.cust);
+        if (/^(justice\s*point|demo\b.*)$/i.test(devPopClean(e.cust))) { house += e.sp; return; }
+        e.name = nm; e.limit = Math.max(Math.floor(e.on * 0.2), 1); e.send = Math.max(e.sp - e.limit, 0); e.st = devPopStatus(e, alerts); recs.push(e);
+      });
+    });
+    return { recs: recs, house: house };
+  }
+  function devPopRow(r, multi) {
+    var dev = multi ? '<td class="l">' + esc(r.fam + (r.tag ? ' (' + r.tag + ')' : '')) + '</td>' : '';
+    return '<tr class="' + (r.st && r.st.cls ? r.st.cls : '') + '"><td>' + esc(r.name) + '</td>' + dev + '<td>' + fmt(r.on) + '</td><td>' + fmt(r.sp) + '</td><td>' + fmt(r.limit) + '</td><td class="send">' + (r.send ? fmt(r.send) : '–') + '</td><td class="l">' + (r.st ? '<span class="st">' + esc(r.st.t) + '</span>' : '<span class="sub">–</span>') + '</td></tr>';
+  }
+  function devPopHTML(sel, B, asofTxt) {
+    var multi = sel.cells.length > 1, recs = B.recs.filter(function (r) { return r.sp > 0; });
+    var over = recs.filter(function (r) { return r.send > 0; }).sort(function (a, b) { return b.send - a.send || b.sp - a.sp || a.name.localeCompare(b.name); });
+    var within = recs.filter(function (r) { return !r.send; }).sort(function (a, b) { return b.sp - a.sp || a.name.localeCompare(b.name); });
+    var head = '<thead><tr><th>Agency</th>' + (multi ? '<th class="l">Device</th>' : '') + '<th>On leg</th><th>Spare</th><th>Limit</th><th>Send back</th><th class="l">Excess spares alert</th></tr></thead>';
+    var tS = 0, tSp = 0, tOn = 0; recs.forEach(function (r) { tS += r.send; tSp += r.sp; tOn += r.on; });
+    var h = '<div class="dp-bar"><span class="sub">' + (asofTxt ? 'Counts as of ' + esc(asofTxt) + '. ' : '') + 'Open the portal to find serial numbers.</span>';
+    var seen = {}; sel.cells.forEach(function (c) { var p = DEV_PCODE[c.vendor]; if (p && !seen[p]) { seen[p] = 1; h += '<a class="btn" target="_blank" rel="noopener" href="' + DEV_PORTALS[p][1] + '">' + esc(DEV_PORTALS[p][0]) + ' ↗</a>'; } });
+    h += '</div>';
+    if (!recs.length) return h + '<p class="dp-note">No agencies hold spares for this selection.</p>';
+    h += '<p class="dp-note"><b>' + fmt(tS) + '</b> to ask back across <b>' + over.length + '</b> ' + (over.length === 1 ? 'line' : 'lines') + ' over the limit. Limit = 20% of on leg, rounded down, at least 1.</p>';
+    h += over.length ? '<table>' + head + '<tbody>' + over.map(function (r) { return devPopRow(r, multi); }).join('') + '</tbody></table>' : '<p class="dp-note">Nobody is over the limit.</p>';
+    if (within.length) h += '<details><summary>Within limit (' + within.length + ')</summary><table>' + head + '<tbody>' + within.map(function (r) { return devPopRow(r, multi); }).join('') + '</tbody></table></details>';
+    h += '<table>' + head.replace('<thead>', '<thead class="vh">') + '<tbody><tr class="tot"><td>Total (listed above)</td>' + (multi ? '<td></td>' : '') + '<td>' + fmt(tOn) + '</td><td>' + fmt(tSp) + '</td><td></td><td class="send">' + fmt(tS) + '</td><td></td></tr></tbody></table>';
+    if (B.house) h += '<p class="dp-note">Not in the list: ' + fmt(B.house) + ' spare in JusticePoint\'s own or demo accounts.</p>';
+    return h;
+  }
+  function devPopFrame(title, body) {
+    return '<div class="peek-panel dpop"><div class="pk-head" id="pk-head"><span class="pk-id">Spare devices</span><span class="pk-title" style="font-size:var(--fs-md);font-weight:600;color:var(--ink)">' + esc(title) + '</span><button type="button" class="pk-x" data-pk="close" aria-label="Close" title="Close (Esc)">✕</button></div><div class="pk-body">' + body + '</div><div class="pk-foot"><span>Read only. Nothing here changes any record.</span></div></div>';
+  }
+  document.addEventListener('keydown', function (ev) { var pk = $('peek'); if (ev.key === 'Escape' && pk && !pk.hidden && pk.querySelector('.dpop')) { ev.preventDefault(); ev.stopPropagation(); closePeek(false); var l = DEV_POP.from; if (l && l.focus) l.focus({ preventScroll: true }); } }, true);
+  function devPopOpen(k) {
+    var sel = devPopSel(k); if (!sel.cells.length) return;
+    var peek = $('peek'); if (!peek) return; var seq = ++DEV_POP.seq; DEV_POP.from = document.activeElement;
+    if (PK.owner === 'rp' && !peek.hidden) { rpClose(); if (!peek.hidden) return; }   /* a record peek with an unsaved change stays */
+    PK.owner = 'cs';                                                                  /* the peek's Esc / backdrop / X belong to 'cs' */
+    peek.innerHTML = devPopFrame(sel.title, '<p class="dp-note">Loading…</p>'); peek.hidden = false; resize();
+    var need = {}; sel.cells.forEach(function (c) { var d = DEVM.latest[c.vendor]; if (d) need[c.vendor] = d; });
+    Promise.all(Object.keys(need).map(function (v) { return devPopFetch(v, need[v]).then(function (rows) { return [v, rows]; }); }).concat([devPopAlerts()])).then(function (res) {
+      if (seq !== DEV_POP.seq || peek.hidden) return;
+      var alerts = res.pop(), data = {}; res.forEach(function (x) { data[x[0]] = x[1]; });
+      var B = devPopBuild(sel, data, alerts);
+      peek.innerHTML = devPopFrame(sel.title, devPopHTML(sel, B, DEVM.asof)); resize();
+      var x = peek.querySelector('.pk-x'); if (x) x.focus({ preventScroll: true });
+    }).catch(function (e) {
+      if (seq !== DEV_POP.seq) return;
+      peek.innerHTML = devPopFrame(sel.title, '<div class="dev-err">Could not load the agencies: ' + esc(e && e.message || 'read failed') + '</div>'); resize();
+    });
   }
   (function () { var t = $('k-devspare'); if (t) t.addEventListener('click', function (e) { e.preventDefault(); var d = $('dev-panel'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); })();
   (function () {
@@ -4409,6 +4528,7 @@ function rpInit() {
         DEV_PERIOD = sg.getAttribute('data-p');
                 devRender(); resize(); return;
       }
+      var sl = t.closest('a.spare-link'); if (sl) { e.preventDefault(); var r0 = sl.closest('tr[data-k]'); if (r0) devPopOpen(r0.getAttribute('data-k')); return; }
       var tr = t.closest('tr[data-k]'); if (tr) { var k = tr.getAttribute('data-k'); DEV_OPEN[k] = !DEV_OPEN[k]; devRender(); resize(); }
     });
     el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('tr[data-k]')) { e.preventDefault(); e.target.click(); } });
@@ -7431,7 +7551,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
         try { new MutationObserver(sync).observe(spec.el, { attributes: true, attributeFilter: ['hidden'] }); } catch (e) {}
       }
     });
-    var lostBtn = document.createElement('button'); lostBtn.type = 'button'; lostBtn.className = 'hl-ext'; lostBtn.textContent = 'Lost devices \u2197'; lostBtn.title = 'Opens the Lost Devices tab (leaves this page)'; lostBtn.addEventListener('click', function () { window.open('https://crm.zoho.com/crm/org882980956/tab/WebTab28', '_top'); }); nav.appendChild(lostBtn); allBtn = document.createElement('button'); allBtn.type = 'button'; allBtn.className = 'hl-all';
+    allBtn = document.createElement('button'); allBtn.type = 'button'; allBtn.className = 'hl-all';
     allBtn.addEventListener('click', function () {
       var anyOpen = specs.some(function (s) { return !s.navOnly && s.el.getAttribute('data-collapsed') !== 'true'; });
       specs.forEach(function (s) { if (!s.navOnly) setCollapsed(s, anyOpen, false); });
