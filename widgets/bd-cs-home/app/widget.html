@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.7 (v5.3 + Devices on leg panel with Spare % and daily trends, Spare devices tile, 21 Oct 2026) -->
+<!-- Beau CS Home v5.8 (v5.3 + Devices on leg panel with labelled trends, Daily to Annual, Spare devices tile, 21 Oct 2026) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -185,6 +185,13 @@
 .dev-panel svg.big { width: 100%; max-width: 680px; height: auto; display: block; }
 .dev-panel svg.big text { fill: var(--muted, light-dark(#5b6068, #9aa0a8)); font-size: 11px; }
 .dev-panel svg.big line.grid { stroke: var(--line, light-dark(#d5d8dd, #33363c)); stroke-width: 1; }
+
+.dev-panel .dev-tools { flex-wrap: wrap; }
+.dev-panel .dev-tools .gap { margin-left: 12px; }
+.dev-panel .spn { display: block; font-size: 11px; color: var(--muted, light-dark(#5b6068, #9aa0a8)); white-space: nowrap; }
+.dev-panel svg.big text.val { fill: light-dark(#1f2328, #e6e8eb); font-size: 11px; font-weight: 600; }
+.dev-panel svg.big text.ax { font-size: 10.5px; }
+.dev-panel svg.big { max-width: 760px; }
 </style>
 <style id="base">
   * { box-sizing: border-box; }
@@ -1856,7 +1863,7 @@
     </div>
   </header>
   <section id="work-tiles-off" data-note="S17: replaced by needs-today; rename to work-tiles to restore" aria-label="Your work today" data-tab-url="https://crm.zoho.com/crm/org882980956/tab/WebTab27" data-teams="Business Development,Customer Success" data-queue-profiles="Administrator,System Support" hidden></section>
-  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.7 (v5.3 + Devices on leg panel with Spare % and daily trends, Spare devices tile, 21 Oct 2026)" hidden></section>
+  <section id="needs-today" data-home="CS" data-build="Beau CS Home v5.8 (v5.3 + Devices on leg panel with labelled trends, Daily to Annual, Spare devices tile, 21 Oct 2026)" hidden></section>
 
 
   <section class="quick-actions" aria-label="Search and create">
@@ -2791,7 +2798,7 @@ function rpInit() {
       { id: 'e6', Name: 'Electronic Monitoring Account Access', Sender_Name: 'Polk Co. HS', Sender_Email: 'emaccess@polkcounty.gov', Direction: 'In', Received_At: new Date(Date.now() - 50 * 3600000).toISOString(), Conversation_Id: null, 'Case.id': 'c9', 'Case.Status': 'Resolved', 'Account.Account_Name': 'Polk County Human Services', Intake_Result: null },
       { id: 'e5', Name: 'Daily SmartView report', Sender_Name: 'Allied', Sender_Email: 'noreply@allied.com', Direction: 'In', Received_At: new Date(Date.now() - 6 * 3600000).toISOString(), Conversation_Id: 'cv4', Intake_Result: 'Automated report' }
     ],
-    devA: (function () { var o = []; for (var k = 0; k < 14; k++) { var d = '2026-10-' + (k + 7 < 10 ? '0' : '') + (k + 7); o.push({ Count_Date: d, On_Leg: 25 + (k % 4), Day_Leased_On_Leg: 520 + k, Day_Leased_Spare: 70 - k % 6, Day_Leased_On_Leg_Ex_Sheb: 360 + k, Day_Leased_Spare_Ex_Sheb: 50 }); } return o; })(),
+    devA: (function () { var o = []; for (var k = 0; k < 50; k++) { var dt = new Date(2026, 8, 1 + k), d = dt.getFullYear() + '-' + ('0' + (dt.getMonth() + 1)).slice(-2) + '-' + ('0' + dt.getDate()).slice(-2); o.push({ Count_Date: d, On_Leg: 25 + (k % 4), Day_Leased_On_Leg: 500 + k % 30, Day_Leased_Spare: 70 - k % 6, Day_Leased_On_Leg_Ex_Sheb: 350 + k % 30, Day_Leased_Spare_Ex_Sheb: 50 }); } return o; })(),
     devV: (function () { var o = [], base = [['SCRAM', 'Allied', 'Remote Breath', 'SCRAM | Ramsey County Pretrial', 158, 80], ['SCRAM', 'Allied', 'Remote Breath', 'SCRAM | Marathon County', 16, 4], ['SCRAM', 'Direct', 'CAM', 'SCRAM | Racine County', 43, 17], ['SCRAM', 'Direct', 'CAM', 'SCRAM | Sheboygan Sheriff Pretrial', 6, 1], ['SuperCom', 'Direct', 'GPS', 'SuperCom | Iowa County (WI)', 0, 4], ['SuperCom', 'Direct', 'Other', 'SuperCom | Justice Point', 0, 4]]; for (var k = 0; k < 4; k++) base.forEach(function (b) { o.push({ Vendor: b[0], Supplied_Through: b[1], Device_Family: b[2], SmartView_Customer: b[3], Count_Date: '2026-10-' + (17 + k), On_Leg: b[4] > 0 ? b[4] + k : 0, Spare: b[5] - (k % 2) }); }); return o; })(),
     units: rep(9, { Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Leased', On_Leg: 56, Total_Units: 79 }).concat([{ Count_Date: '2026-09-13', Device_Family: 'GPS', Acquisition: 'Purchased', On_Leg: 6, Total_Units: 35.4 }]).concat(rep(10, { Count_Date: '2026-09-13', Device_Family: 'Remote Breath', On_Leg: 19, Total_Units: 90.4 }), [{ Count_Date: '2026-09-13', Device_Family: 'RF', On_Leg: 4, Total_Units: 5 }], rep(10, { Count_Date: '2026-09-13', Device_Family: 'Accessory', On_Leg: 15.7, Total_Units: 30.7 }), rep(4, { Count_Date: '2026-09-12', Device_Family: 'GPS', On_Leg: 49, Total_Units: 74.6 })),
     tasks: [
@@ -4270,64 +4277,82 @@ function rpInit() {
      whole-day read below (loadUnitsLegacy) takes over, so the tile never depends on one contract. */
   var FLEET_DAYS = 14;
 
-  /* Devices on leg (v5.6): manufacturer, then device family. On leg / Excl. Sheboygan Pretrial / Spare / Spare % (spare / on leg) / Total,
-     and a daily trend line per row (click a row for the larger chart). Allied GPS keeps the old tile's rule (on leg = leased + purchased,
-     spare = leased only). Allied Remote Breath = SCRAM rows supplied through Allied. SCRAM and SuperCom come from the vendor import:
-     newest count date per vendor for the numbers, every imported day for the trend. Rows with no customer are skipped. */
+  /* Devices on leg (v5.8): manufacturer, then device family. On leg / Excl. Sheboygan Pretrial / Spare / Spare % (spare / on leg) / Total, with a
+     labelled trend per row (click a row for the larger chart). Trend can run Daily (from 17 Oct), Weekly, Monthly, Quarterly or Annual: each period shows
+     its last counted day (stock is a snapshot, not a sum). Weekly and longer fetch the longer history the first time they are picked.
+     Allied GPS keeps the old tile's rule (on leg = leased + purchased, spare = leased only). Allied Remote Breath = SCRAM rows supplied through Allied.
+     Manufacturer and All devices lines use only the days every child row has (SCRAM and SuperCom start 17 Oct). */
   var DEV_SHEB = /sheboygan.*(pretrial|sheriff|huber)|(pretrial|sheriff|huber).*sheboygan/i;
-  var DEVM = null, DEV_METRIC = 'on', DEV_OPEN = {};
-  var DEV_TREND_FROM = '2026-10-17'; /* every trend starts 17 Oct, the first day SCRAM and SuperCom were imported */
-  function devSeries(by, dates, m) { var o = []; dates.forEach(function (d) { var x = by[d]; if (!x) return; var v = m === 'on' ? x.on : (x.on ? Math.round(x.sp * 1000 / x.on) / 10 : null); if (v != null) o.push([d, v]); }); return o; }
-  function devSpark(pts) {
-    if (pts.length < 2) return '<span class="sub">–</span>';
-    var W = 96, H = 26, vs = pts.map(function (p) { return p[1]; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), r = (hi - lo) || 1;
-    var xy = pts.map(function (p, i) { return [(i * (W - 6) / (pts.length - 1) + 3), (H - 4 - (p[1] - lo) / r * (H - 8))]; });
-    var last = xy[xy.length - 1];
-    return '<svg class="spk" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(pts[0][0] + ' ' + pts[0][1] + ' to ' + pts[pts.length - 1][0] + ' ' + pts[pts.length - 1][1]) + '"><polyline fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" points="' + xy.map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ') + '"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" fill="currentColor"/></svg>';
+  var DEVM = null, DEV_METRIC = 'on', DEV_PERIOD = 'day', DEV_OPEN = {}, DEV_FULL = false, DEV_BUSY = false;
+  var DEV_TREND_FROM = '2026-10-17', DEV_HIST_FROM = '2026-01-01';
+  var DEV_PERIODS = [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['quarter', 'Quarterly'], ['year', 'Annual']], DEV_KEEP = { day: 400, week: 12, month: 12, quarter: 8, year: 5 };
+  var DEV_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function devBucket(d, per) {
+    var y = +d.slice(0, 4), m = +d.slice(5, 7), dd = +d.slice(8, 10);
+    if (per === 'day') return [d, DEV_MON[m - 1] + ' ' + dd];
+    if (per === 'week') { var t = new Date(y, m - 1, dd), wd = (t.getDay() + 6) % 7; t.setDate(t.getDate() - wd); var k = ymd(t); return [k, 'wk ' + DEV_MON[t.getMonth()] + ' ' + t.getDate()]; }
+    if (per === 'month') return [d.slice(0, 7), DEV_MON[m - 1] + ' ' + y];
+    if (per === 'quarter') { var q = Math.floor((m - 1) / 3) + 1; return [y + '-Q' + q, 'Q' + q + ' ' + y]; }
+    return [String(y), String(y)];
+  }
+  function devPts(by, dates, per, met) {
+    var seen = {}, order = [];
+    dates.forEach(function (d) { if (d < DEV_TREND_FROM) return; var bk = devBucket(d, per), e = seen[bk[0]]; if (!e) { e = seen[bk[0]] = { k: bk[0], label: bk[1] }; order.push(e); } e.d = d; });
+    var pts = []; order.forEach(function (e) { var x = by[e.d]; if (!x) return; var v = met === 'on' ? x.on : (x.on ? Math.round(x.sp * 1000 / x.on) / 10 : null); if (v != null) pts.push({ label: e.label, v: v, d: e.d }); });
+    return pts.slice(-DEV_KEEP[per]);
+  }
+  function devF(v, pct) { return pct ? (Math.round(v * 10) / 10).toFixed(1) + '%' : fmt(Math.round(v)); }
+  function devSpark(pts, pct) {
+    if (pts.length < 2) return '<span class="sub">not enough data yet</span>';
+    var W = 96, H = 26, vs = pts.map(function (p) { return p.v; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), r = (hi - lo) || 1;
+    var xy = pts.map(function (p, i) { return [(i * (W - 6) / (pts.length - 1) + 3), (H - 4 - (p.v - lo) / r * (H - 8))]; }), last = xy[xy.length - 1], a = pts[0], z = pts[pts.length - 1];
+    return '<svg class="spk" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(a.label + ' ' + devF(a.v, pct) + ' to ' + z.label + ' ' + devF(z.v, pct)) + '"><polyline fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" points="' + xy.map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ') + '"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" fill="currentColor"/></svg><span class="spn">' + devF(a.v, pct) + ' → ' + devF(z.v, pct) + '</span>';
   }
   function devBig(pts, pct) {
-    if (pts.length < 2) return '<div class="dev-err">Only one day of counts so far, so there is no trend to draw yet.</div>';
-    var W = 640, H = 170, L = 44, R = 12, T = 12, B = 26, vs = pts.map(function (p) { return p[1]; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
-    if (hi === lo) { hi += 1; lo -= 1; } var pad = (hi - lo) * 0.1; hi += pad; lo = Math.max(0, lo - pad);
-    var X = function (i) { return L + i * (W - L - R) / (pts.length - 1); }, Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
-    var f = function (v) { return pct ? (Math.round(v * 10) / 10) + '%' : String(Math.round(v)); };
-    var fd = function (d) { var m = /^\d{4}-(\d{2})-(\d{2})/.exec(d); return m ? (+m[1]) + '/' + (+m[2]) : d; };
-    var h = '<svg class="big" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Daily trend"><line x1="' + L + '" y1="' + Y(hi) + '" x2="' + (W - R) + '" y2="' + Y(hi) + '" class="grid"/><line x1="' + L + '" y1="' + Y(lo) + '" x2="' + (W - R) + '" y2="' + Y(lo) + '" class="grid"/>' +
-      '<text x="' + (L - 6) + '" y="' + (Y(hi) + 4) + '" text-anchor="end">' + f(hi) + '</text><text x="' + (L - 6) + '" y="' + (Y(lo) + 4) + '" text-anchor="end">' + f(lo) + '</text>' +
-      '<text x="' + L + '" y="' + (H - 8) + '">' + fd(pts[0][0]) + '</text><text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end">' + fd(pts[pts.length - 1][0]) + '</text>' +
-      '<polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" points="' + pts.map(function (p, i) { return X(i).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join(' ') + '"/>';
-    pts.forEach(function (p, i) { h += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="3" fill="currentColor"><title>' + esc(p[0] + ': ' + f(p[1])) + '</title></circle>'; });
+    if (pts.length < 2) return '<div class="dev-err">Only one period of counts so far, so there is no trend to draw yet.</div>' + (pts.length ? '<div class="sub">' + esc(pts[0].label) + ': ' + devF(pts[0].v, pct) + '</div>' : '');
+    var W = 680, H = 190, L = 48, R = 18, T = 26, B = 30, vs = pts.map(function (p) { return p.v; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
+    if (hi === lo) { hi += 1; lo -= 1; } var pad = (hi - lo) * 0.15; hi += pad; lo = Math.max(0, lo - pad);
+    var n = pts.length, X = function (i) { return L + i * (W - L - R) / (n - 1); }, Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); }, step = n > 18 ? 3 : n > 10 ? 2 : 1, tick = n > 14 ? 2 : 1;
+    var h = '<svg class="big" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Trend"><line x1="' + L + '" y1="' + Y(hi).toFixed(1) + '" x2="' + (W - R) + '" y2="' + Y(hi).toFixed(1) + '" class="grid"/><line x1="' + L + '" y1="' + Y(lo).toFixed(1) + '" x2="' + (W - R) + '" y2="' + Y(lo).toFixed(1) + '" class="grid"/>' +
+      '<text x="' + (L - 6) + '" y="' + (Y(hi) + 4).toFixed(1) + '" text-anchor="end">' + devF(hi, pct) + '</text><text x="' + (L - 6) + '" y="' + (Y(lo) + 4).toFixed(1) + '" text-anchor="end">' + devF(lo, pct) + '</text>' +
+      '<polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" points="' + pts.map(function (p, i) { return X(i).toFixed(1) + ',' + Y(p.v).toFixed(1); }).join(' ') + '"/>';
+    pts.forEach(function (p, i) {
+      var x = X(i).toFixed(1), y = Y(p.v).toFixed(1);
+      h += '<circle cx="' + x + '" cy="' + y + '" r="3" fill="currentColor"><title>' + esc(p.label + ': ' + devF(p.v, pct)) + '</title></circle>';
+      if ((n - 1 - i) % step === 0 || i === 0) h += '<text class="val" x="' + x + '" y="' + (+y - 8) + '" text-anchor="middle">' + devF(p.v, pct) + '</text>';
+      if ((n - 1 - i) % tick === 0 || i === 0) h += '<text x="' + x + '" y="' + (H - 10) + '" text-anchor="' + (i === n - 1 ? 'end' : i === 0 ? 'start' : 'middle') + '" class="ax">' + esc(p.label) + '</text>';
+    });
     return h + '</svg>';
   }
+  function devSeg(arr, cur, attr) { return arr.map(function (a) { return '<button type="button" class="seg" data-' + attr + '="' + a[0] + '" aria-pressed="' + (cur === a[0]) + '">' + a[1] + '</button>'; }).join(''); }
   function devRender() {
     var body = $('dev-body'), M = DEVM; if (!body || !M) return;
-    var pct = DEV_METRIC === 'pct', sp = function (on, s) { return on ? (Math.round(s * 1000 / on) / 10).toFixed(1) + '%' : '–'; };
-    var tools = $('dev-tools'); if (tools) tools.innerHTML = '<span class="sub">Trend</span><button type="button" class="seg" data-m="on" aria-pressed="' + (!pct) + '">On leg</button><button type="button" class="seg" data-m="pct" aria-pressed="' + pct + '">Spare %</button>';
-    var h = '<table><thead><tr><th>Manufacturer / device family</th><th>On leg</th><th>Excl. Sheboygan Pretrial</th><th>Spare</th><th>Spare %</th><th>Total</th><th>' + (pct ? 'Spare % trend' : 'On leg trend') + '</th></tr></thead><tbody>';
+    var pct = DEV_METRIC === 'pct', sp = function (on, s) { return on ? (Math.round(s * 1000 / on) / 10).toFixed(1) + '%' : '–'; }, per = DEV_PERIOD;
+    var pl = DEV_PERIODS.filter(function (x) { return x[0] === per; })[0][1];
+    var tools = $('dev-tools'); if (tools) tools.innerHTML = '<span class="sub">Trend</span>' + devSeg([['on', 'On leg'], ['pct', 'Spare %']], DEV_METRIC, 'm') + '<span class="sub gap">Period</span>' + devSeg(DEV_PERIODS, per, 'p') + (DEV_BUSY ? '<span class="sub">Loading history…</span>' : '');
+    var h = '<table><thead><tr><th>Manufacturer / device family</th><th>On leg</th><th>Excl. Sheboygan Pretrial</th><th>Spare</th><th>Spare %</th><th>Total</th><th>' + pl + (pct ? ' spare % trend' : ' on leg trend') + '</th></tr></thead><tbody>';
     function row(cls, k, label, tag, v, by, dates) {
-      var pts = devSeries(by, dates, DEV_METRIC);
-      h += '<tr class="' + cls + '" data-k="' + esc(k) + '" tabindex="0"><td>' + esc(label) + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '</td><td>' + fmt(v.on) + '</td><td>' + fmt(v.onX) + '</td><td>' + fmt(v.sp) + '</td><td>' + sp(v.on, v.sp) + '</td><td>' + fmt(v.on + v.sp) + '</td><td class="spk-c">' + devSpark(pts) + '</td></tr>';
-      if (DEV_OPEN[k]) h += '<tr class="chart"><td colspan="7"><div class="sub">' + esc(label) + (tag ? ' (' + esc(tag) + ')' : '') + ' · daily ' + (pct ? 'spare % (spare ÷ on leg)' : 'on leg') + '</div>' + devBig(pts, pct) + '</td></tr>';
+      var pts = devPts(by, dates, per, DEV_METRIC);
+      h += '<tr class="' + cls + '" data-k="' + esc(k) + '" tabindex="0"><td>' + esc(label) + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '</td><td>' + fmt(v.on) + '</td><td>' + fmt(v.onX) + '</td><td>' + fmt(v.sp) + '</td><td>' + sp(v.on, v.sp) + '</td><td>' + fmt(v.on + v.sp) + '</td><td class="spk-c">' + devSpark(pts, pct) + '</td></tr>';
+      if (DEV_OPEN[k]) h += '<tr class="chart"><td colspan="7"><div class="sub">' + esc(label) + (tag ? ' (' + esc(tag) + ')' : '') + ' · ' + pl.toLowerCase() + ' ' + (pct ? 'spare % (spare ÷ on leg)' : 'on leg') + (per === 'day' ? '' : ' · each period shows its last counted day') + '</div>' + devBig(pts, pct) + '</td></tr>';
     }
-    M.groups.forEach(function (g) {
-      row('mfr', 'm:' + g.name, g.name, '', g.cur, g.by, g.dates);
-      g.fams.forEach(function (f) { row('fam', f.key, f.fam, f.tag, f.cur, f.by, f.dates); });
-    });
+    M.groups.forEach(function (g) { row('mfr', 'm:' + g.name, g.name, '', g.cur, g.by, g.dates); g.fams.forEach(function (f) { row('fam', f.key, f.fam, f.tag, f.cur, f.by, f.dates); }); });
     row('tot', 'all', 'All devices', '', M.all.cur, M.all.by, M.all.dates);
-    body.innerHTML = h + '</tbody></table>';
-    var n = $('dev-note'); if (n) n.textContent = 'Spare % = spare ÷ on leg. Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare. ' + 'Trends start 17 Oct. ' + 'Click a row for the larger chart.';
+    var ap = devPts(M.all.by, M.all.dates, per, DEV_METRIC), warn = (per !== 'day' && ap.length < 2) ? '<div class="dev-err">Not enough data yet for a ' + pl.toLowerCase() + ' trend: counts for these devices start 17 Oct, so there is only ' + (ap.length ? 'one ' + per : 'no ' + per + ' to show') + ' so far. It fills in as more ' + per + 's of counts build up.</div>' : '';
+    body.innerHTML = warn + h + '</tbody></table>';
+    var nt = $('dev-note'); if (nt) nt.textContent = 'Spare % = spare ÷ on leg. Excl. Sheboygan Pretrial removes the Sheriff Pretrial and Huber accounts. Allied GPS spare counts leased units only. SuperCom: allocated = on leg, available = spare. All trends start 17 Oct (earliest counts for these devices); Weekly and longer show each period\'s last counted day and say so when there is not enough data yet. Manufacturer and All devices lines cover only the days every family has (SCRAM and SuperCom start 17 Oct). Click a row for the larger chart.';
     $('dev-meta').textContent = M.asof ? 'as of ' + M.asof : '';
     var kv = $('k-devspare-v'), kc = $('k-devspare-c');
     if (kv) { kv.innerHTML = sp(M.all.cur.on, M.all.cur.sp); kv.classList.remove('sk'); }
     if (kc) kc.textContent = fmt(M.all.cur.sp) + ' spare of ' + fmt(M.all.cur.on) + ' on leg' + (M.asof ? ' · as of ' + M.asof : '');
   }
-  function loadDevicePanel() {
+  function loadDevicePanel(full) {
     var body = $('dev-body'); if (!body) return Promise.resolve();
     var from = DEV_TREND_FROM, n = function (v) { return Number(v) || 0; };
     var qA = "select Count_Date, On_Leg, Spare, Day_Leased_On_Leg, Day_Leased_Spare, Day_Leased_On_Leg_Ex_Sheb, Day_Leased_Spare_Ex_Sheb, Supplied_Through from Daily_Unit_Counts where ((Device_Family = 'GPS' and Acquisition = 'Purchased') and Count_Date >= '" + from + "') order by Count_Date desc";
     var qV = "select Vendor, Supplied_Through, Device_Family, SmartView_Customer, Count_Date, On_Leg, Spare, Total_Units from Daily_Unit_Counts where (Vendor in ('SCRAM','SuperCom') and Count_Date >= '" + from + "') order by Count_Date desc";
     return Promise.all([api.all(qA, 4), api.all(qV, 8)]).then(function (res) {
-      var A = res[0] || [], V = res[1] || [], cells = {}, latest = {}, vstart = null;
+      var A = res[0] || [], V = res[1] || [], cells = {}, latest = {};
       function put(mfr, fam, tag, vendor, date, on, onX, sp) {
         var k = mfr + '|' + fam + '|' + tag, c = cells[k] || (cells[k] = { key: k, mfr: mfr, fam: fam, tag: tag, vendor: vendor, by: {} });
         var x = c.by[date] || (c.by[date] = { on: 0, onX: 0, sp: 0 }); x.on += on; x.onX += onX; x.sp += sp;
@@ -4338,9 +4363,8 @@ function rpInit() {
       V.forEach(function (r) {
         if (!r.SmartView_Customer) return; var on = n(r.On_Leg), via = r.Vendor === 'SCRAM' && r.Supplied_Through === 'Allied';
         put(via ? 'Allied' : r.Vendor, r.Device_Family || 'Other', r.Vendor === 'SCRAM' ? (via ? 'SCRAM' : 'Direct') : '', r.Vendor, r.Count_Date, on, DEV_SHEB.test(r.SmartView_Customer) ? 0 : on, n(r.Spare));
-        if (!vstart || r.Count_Date < vstart) vstart = r.Count_Date;
       });
-      var keys = Object.keys(cells); if (!keys.length) { body.innerHTML = '<div class="dev-err">No counts imported since 17 Oct.</div>'; return; }
+      var keys = Object.keys(cells); if (!keys.length) { body.innerHTML = '<div class="dev-err">No counts imported since ' + from + '.</div>'; return; }
       var zero = { on: 0, onX: 0, sp: 0 }, ORD = ['Allied', 'SCRAM', 'SuperCom'], gm = {};
       keys.forEach(function (k) { var c = cells[k]; c.cur = c.by[latest[c.vendor]] || zero; c.dates = Object.keys(c.by).sort(); (gm[c.mfr] || (gm[c.mfr] = [])).push(c); });
       function merge(list) {
@@ -4351,10 +4375,10 @@ function rpInit() {
       }
       var names = ORD.filter(function (m) { return gm[m]; }).concat(Object.keys(gm).filter(function (m) { return ORD.indexOf(m) < 0; }));
       var groups = names.map(function (m) { var fams = gm[m].slice().sort(function (a, b) { return b.cur.on - a.cur.on; }), g = merge(fams); g.name = m; g.fams = fams; return g; });
-      var all = merge(keys.map(function (k) { return cells[k]; })), dts = [];
-      Object.keys(latest).forEach(function (k) { dts.push(latest[k]); }); dts.sort();
-      var d1 = dts.length ? new Date(dts[dts.length - 1] + 'T12:00:00') : null, v0 = vstart ? new Date(vstart + 'T12:00:00') : null;
-      DEVM = { groups: groups, all: all, asof: d1 ? d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '', vfrom: v0 ? v0.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' };
+      var all = merge(keys.map(function (k) { return cells[k]; })), dts = []; Object.keys(latest).forEach(function (k) { dts.push(latest[k]); }); dts.sort();
+      var d1 = dts.length ? new Date(dts[dts.length - 1] + 'T12:00:00') : null;
+      DEVM = { groups: groups, all: all, asof: d1 ? d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' };
+      if (full) DEV_FULL = true;
       devRender();
     }).catch(function (e) { body.innerHTML = '<div class="dev-err">Unavailable: ' + esc(e && e.message || 'could not read Daily Unit Counts') + '</div>'; }).then(resize);
   }
@@ -4362,8 +4386,14 @@ function rpInit() {
   (function () {
     var el = $('dev-panel'); if (!el) return;
     el.addEventListener('click', function (e) {
-      var sg = e.target.closest && e.target.closest('.seg'); if (sg) { DEV_METRIC = sg.getAttribute('data-m'); devRender(); resize(); return; }
-      var tr = e.target.closest && e.target.closest('tr[data-k]'); if (tr) { var k = tr.getAttribute('data-k'); DEV_OPEN[k] = !DEV_OPEN[k]; devRender(); resize(); }
+      var t = e.target.closest ? e.target : null; if (!t) return;
+      var sg = t.closest('.seg');
+      if (sg) {
+        if (sg.hasAttribute('data-m')) { DEV_METRIC = sg.getAttribute('data-m'); devRender(); resize(); return; }
+        DEV_PERIOD = sg.getAttribute('data-p');
+                devRender(); resize(); return;
+      }
+      var tr = t.closest('tr[data-k]'); if (tr) { var k = tr.getAttribute('data-k'); DEV_OPEN[k] = !DEV_OPEN[k]; devRender(); resize(); }
     });
     el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('tr[data-k]')) { e.preventDefault(); e.target.click(); } });
   })();
