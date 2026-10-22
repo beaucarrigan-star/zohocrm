@@ -17,7 +17,7 @@
   function coql(q) {
     return new Promise(function (resolve, reject) {
       window.ZOHO.CRM.API.coql({ select_query: q }).then(function (res) {
-        resolve({ rows: R.blankNoEnd((res && res.data) || []), more: !!(res && res.info && res.info.more_records) });
+        resolve({ rows: (res && res.data) || [], more: !!(res && res.info && res.info.more_records) });
       }, function (e) {
         if (!e || e.status === 204 || e.code === 'NO_CONTENT' || e === '') resolve({ rows: [], more: false });
         else reject(new Error((e.message || (e.data && e.data[0] && e.data[0].message) || e.code || 'Query failed')));
@@ -33,7 +33,7 @@
       return Promise.resolve({ rows: rows, more: false });
     }
     var c = { select: cfg.list.select, order: cfg.list.order, searchField: cfg.list.searchField, page: PAGE };
-    var bw = brandWhere(), where = f && (typeof f.where === 'function' ? f.where() : f.where), search = st.search, clientSearch = null;
+    var bw = brandWhere(), where = f && f.where, search = st.search, clientSearch = null;
     if (bw) {   /* this org's COQL takes at most two ANDed conditions: brand + filter go to the server, search is then applied to the page client-side */
       where = where ? '(' + where + ') and (' + bw + ')' : bw;
       if (search && where !== bw) { clientSearch = search; search = ''; }
@@ -51,7 +51,7 @@
   var REL = window.RecRelations, LAY = window.RecLayouts || {}, GEN = window.RecRelMods || {};
   var SDKOPEN = { Contract_Roles: null, Stage_History: null, CheckLists: null, Contact_Roles: null, Products: 'Products', Cases: 'Cases', Deals: 'Deals', Contact_Name: 'Products' };
   function sdkEntity(list) { if (list in SDKOPEN) return SDKOPEN[list]; return list.replace(/\d+$/, ''); }
-  function normRec(r) { R.blankNoEnd([r]); if (r && r.Owner && !r['Owner.first_name']) r['Owner.first_name'] = R.plain(r.Owner); return r; }
+  function normRec(r) { if (r && r.Owner && !r['Owner.first_name']) r['Owner.first_name'] = R.plain(r.Owner); return r; }
   function fetchRecord(id) {
     if (!live) { var r = demoRows().filter(function (x) { return x.id === id; })[0]; return Promise.resolve(r || null); }
     var viaCoql = function () { return coql(R.recordQuery(cfg.entity, cfg.rec.select, id)).then(function (x) { return x.rows[0] || null; }); };
@@ -362,7 +362,7 @@
   }
   function drawPills() {
     var p = document.getElementById('pills');
-    var fl = cfg.list.filters.filter(function (f) { return !(brandScope() && typeof f.where === 'string' && /^\s*Brand\s*=/.test(f.where)); });   /* brand filters are replaced by the rail switcher */
+    var fl = cfg.list.filters.filter(function (f) { return !(brandScope() && f.where && /^\s*Brand\s*=/.test(f.where)); });   /* brand filters are replaced by the rail switcher */
     if (!fl.some(function (f) { return f.key === st.filter; })) st.filter = 'all';
     p.innerHTML = fl.map(function (f) { return '<button type="button" class="pillbtn" data-f="' + esc(f.key) + '" aria-pressed="' + (f.key === st.filter) + '">' + esc(f.label) + '</button>'; }).join('');
     p.onclick = function (e) { var b = e.target.closest('[data-f]'); if (b) { st.filter = b.getAttribute('data-f'); drawPills(); reload(); } };

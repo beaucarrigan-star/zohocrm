@@ -68,11 +68,28 @@
       t = e.target.closest('[data-bl]'); if (t) { var r = C.list.filter(function (x) { return x.id === t.getAttribute('data-bl'); })[0]; if (r) { C.type = r.Counterparty_Type === 'Vendor' ? 'Vendor' : 'Customer'; C.sel = r.id; C.run = null; C.msg = 'Selected ' + r.Name + '. Add its packet in step 2.'; cDraw(root); window.scrollTo(0, 0); } }
     };
   }
+  /* Progress bar for "Follow the read": the worker has no progress field, so the stage comes from what the page can see:
+     nothing touched yet = waiting; documents re-indexed since the start = reading; rate-line or clause counts changed = saving. */
+  function barHtml(R) {
+    var st = R.stage == null ? (R.done ? 'done' : 1) : R.stage, pct = 15, tone = 'var(--accent, #4aa3ff)', ind = true, txt;
+    var secs = Math.max(0, Math.round(((R.endedAt || Date.now()) - R.start) / 1000)), el = Math.floor(secs / 60) + ':' + (secs % 60 < 10 ? '0' : '') + (secs % 60);
+    if (st === 'done') { pct = 100; ind = false; tone = 'var(--good, #3fb97f)'; txt = 'Done in ' + el + ' - ' + esc(R.status || 'ready for review'); }
+    else if (st === 'failed') { pct = 100; ind = false; tone = 'var(--bad, #e5484d)'; txt = 'Failed after ' + el + ' - open the contract to see why'; }
+    else if (st === 'noop') { pct = 100; ind = false; tone = 'var(--line, #8a8f98)'; txt = 'Nothing new - this packet was already read'; }
+    else if (st === 'wait') { pct = 15; ind = false; txt = 'Still waiting after ' + el + ' - the worker may be off'; }
+    else if (st === 3) { pct = 85; txt = 'Saving results - ' + el; }
+    else if (st === 2) { pct = 50; txt = 'Reading files (' + (R.docs || []).length + ' read so far) - ' + el; }
+    else txt = 'Waiting for the worker - ' + el;
+    return '<div role="progressbar" aria-label="Ingest progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" style="height:10px;border-radius:6px;background:var(--s1);border:1px solid var(--line);overflow:hidden;margin:2px 0 8px">' +
+      '<div style="height:100%;width:' + pct + '%;background-color:' + tone + ';transition:width .6s' + (ind ? ';background-image:linear-gradient(90deg,rgba(255,255,255,.28),transparent,rgba(255,255,255,.28));background-size:200% 100%;animation:ci-stripe 1.4s linear infinite' : '') + '"></div></div>' +
+      '<style>@keyframes ci-stripe{from{background-position:200% 0}to{background-position:-200% 0}}@media (prefers-reduced-motion:reduce){[aria-label="Ingest progress"] div{animation:none!important}}</style>' +
+      '<p role="status" style="margin:0 0 10px;font-size:13px;font-weight:600">' + txt + '</p>';
+  }
   function runHtml(R) {
     var chips = (R.docs || []).map(function (d) { var st = d.Parse_Status || ''; var tone = /Parsed/i.test(st) ? 'good' : /No text|OCR/i.test(st) ? 'warn' : /Fail/i.test(st) ? 'bad' : 'info'; return '<tr><td>' + esc(d.File_Name || '') + '</td><td>' + esc(d.Doc_Type || '') + '</td><td>' + X.pillHtml(st || 'Waiting') + '</td></tr>'; }).join('');
-    return '<dl><dt>Status</dt><dd>' + esc(R.status || 'Waiting for the worker') + '</dd><dt>Documents</dt><dd>' + (R.docs || []).length + '</dd><dt>Clauses</dt><dd>' + (R.clauses || 0) + '</dd><dt>Rate lines</dt><dd>' + (R.rates || 0) + '</dd></dl>' +
+    return barHtml(R) + '<dl><dt>Status</dt><dd>' + esc(R.status || 'Waiting for the worker') + '</dd><dt>Documents</dt><dd>' + (R.docs || []).length + '</dd><dt>Clauses</dt><dd>' + (R.clauses || 0) + '</dd><dt>Rate lines</dt><dd>' + (R.rates || 0) + '</dd></dl>' +
       (R.summary ? '<p style="margin:10px 0 0;font-size:13px">' + esc(R.summary) + '</p>' : '') + (R.note ? '<p class="mut" style="margin:10px 0 0;font-size:12px">' + esc(R.note) + '</p>' : '') +
-      (chips ? '<div class="tw" style="margin-top:10px"><table><tbody>' + chips + '</tbody></table></div>' : '') + (R.polling ? '<p class="mut" style="margin:10px 0 0;font-size:12px">Checking every 5 seconds…</p>' : '');
+      (chips ? '<div class="tw" style="margin-top:10px"><table><tbody>' + chips + '</tbody></table></div>' : '') + (R.older ? '<p class="mut" style="margin:10px 0 0;font-size:12px">' + R.older + (R.older === 1 ? ' older file is' : ' older files are') + ' on this contract but not in this packet.</p>' : '') + (R.polling ? '<p class="mut" style="margin:10px 0 0;font-size:12px">Checking every 5 seconds…</p>' : '');
   }
   function cStart(root) {
     var cur = C.list.filter(function (r) { return r.id === C.sel; })[0]; if (!cur || !C.files.length) return;
@@ -96,23 +113,27 @@
   }
   function poll(root, id) {
     clearTimeout(C.timer); var R = C.run; if (!R) return;
-    if (Date.now() - R.start > 600000) { R.polling = false; R.note = 'Still waiting after 10 minutes. The worker may be off. Check back or press Refresh later.'; cDraw(root); return; }
+    if (Date.now() - R.start > 600000) { R.polling = false; R.stage = 'wait'; R.note = 'Still waiting after 10 minutes. The worker may be off. Check back or press Refresh later.'; cDraw(root); return; }
     var sd = sdk(), d0 = new Date(R.start).toISOString();
     Promise.all([
       sd.API.getRecord({ Entity: 'Contracts', RecordID: id }).then(function (r) { return r && r.data && r.data[0] || {}; }, function () { return {}; }),
-      X.coql("select id, File_Name, Doc_Type, Text_Layer, Sha1, Parse_Status from Contract_Documents where Contract = '" + q1(id) + "'").then(function (r) { return r.rows; }, function () { return []; }),
+      X.coql("select id, File_Name, Doc_Type, Text_Layer, Sha1, Parse_Status, Modified_Time from Contract_Documents where Contract = '" + q1(id) + "'").then(function (r) { return r.rows; }, function () { return []; }),
       X.coql("select id, Status from Contract_Clauses where Contract = '" + q1(id) + "'").then(function (r) { return r.rows; }, function () { return []; }),
       X.coql("select Note_Title, Note_Content, Created_Time from Notes where Parent_Id = '" + q1(id) + "' order by Created_Time desc limit 5").then(function (r) { return r.rows; }, function () { return []; })
     ]).then(function (a) {
       var rec = a[0], st = rec.Ingest_Status && rec.Ingest_Status !== '-None-' ? rec.Ingest_Status : '';
-      R.docs = a[1]; R.clauses = a[2].length; R.rates = (rec.Rate_Lines || []).length; R.summary = rec.Ingest_Summary || '';
+      R.docs = a[1].filter(function (d) { return !d.Modified_Time || new Date(d.Modified_Time).getTime() >= R.start - 60000; }); R.older = a[1].length - R.docs.length; R.clauses = a[2].length; R.rates = (rec.Rate_Lines || []).length; R.summary = rec.Ingest_Summary || '';
       var fresh = a[3].filter(function (n) { return n.Created_Time && new Date(n.Created_Time).getTime() >= R.start; })[0];
       if (fresh) R.note = String(fresh.Note_Content || fresh.Note_Title || '').slice(0, 300);
       R.status = st || R.status;
-      var changed = st && st !== R.before;
-      if (/Needs Review|Ingested/.test(st) && (changed || fresh)) { R.done = true; R.polling = false; loadC(true); }
+      var changed = st && st !== R.before, ing = rec.Ingested_On && new Date(rec.Ingested_On).getTime() >= R.start - 5000;
+      if (/Needs Review|Ingested/.test(st) && (changed || fresh || ing)) { R.done = true; R.polling = false; loadC(true); }
       else if (/Failed/.test(st) && changed) { R.polling = false; R.note = (R.note ? R.note + ' ' : '') + 'The read failed. Open the contract to see why.'; R.done = true; }
       else if (fresh && /already read/i.test(R.note || '')) { R.polling = false; R.note = 'The worker says this packet was already read earlier, so nothing changed.'; }
+      if (R.base == null) R.base = { c: R.clauses, r: R.rates };
+      if (R.done) { R.stage = /Failed/.test(st) ? 'failed' : 'done'; R.endedAt = R.endedAt || Date.now(); }
+      else if (!R.polling) R.stage = /already read/i.test(R.note || '') ? 'noop' : 'wait';
+      else R.stage = R.docs.length ? (R.clauses !== R.base.c || R.rates !== R.base.r ? 3 : 2) : 1;
       cDraw(root);
       if (R.polling && C.run === R) C.timer = setTimeout(function () { poll(root, id); }, 5000);
     });

@@ -10,7 +10,7 @@
     onboarding: 'M4 12l5 5L20 6', vendor_pricing: 'M3 7l9-4 9 4-9 4zM3 12l9 4 9-4M3 17l9 4 9-4', cases: 'M4 7h16v13H4zM9 7V4h6v3M4 12h16',
     triage: 'M3 5h18v14H3zM3 7l9 6 9-6', billing: 'M3 5h18v14H3zM3 10h18M7 15h4', billing_run: 'M5 3l14 9-14 9z', billing_flow: 'M4 6h16M4 12h10M4 18h7',
     billing_findings: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.5-4.5', p_contract: 'M6 3h9l5 5v13H6zM14 3v6h6', contract_ingest: 'M12 3v12M7 10l5 5 5-5M4 21h16',
-    p_solicit: 'M4 4h16v12H4zM8 20h8M12 16v4', guide_contract: 'M5 4h14v16H5zM9 9h6M9 13h6', guide_billing: 'M5 4h14v16H5zM9 9h6M9 13h6', solicit_new: 'M12 5v14M5 12h14', _: 'M4 6h16M4 12h16M4 18h16'
+    p_solicit: 'M4 4h16v12H4zM8 20h8M12 16v4', solicit_new: 'M12 5v14M5 12h14', _: 'M4 6h16M4 12h16M4 18h16'
   };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function icon(k) { return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (ICONS[k] || ICONS._) + '"/></svg>'; }
