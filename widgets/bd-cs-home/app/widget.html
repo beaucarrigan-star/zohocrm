@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.10 (v5.9 + polish from the 21 Oct review: Relationships drill-down padding, footer version label, Numbers figures one size and labels aligned, narrow-screen fixes for the page width and the spare pop-out table) -->
+<!-- Beau CS Home v5.11 (v5.10 + the Spare pop-out's alert box now works the alert: an Open alert with a drafted email opens an inline editor (Approve & send, Reject, Save draft) in the row; other Open alerts link to the record, 21 Oct 2026). v5.10 (v5.9 + polish from the 21 Oct review: Relationships drill-down padding, footer version label, Numbers figures one size and labels aligned, narrow-screen fixes for the page width and the spare pop-out table) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1134,6 +1134,15 @@
   .dpop details { margin-top: var(--sp-2); }
   .dpop summary { cursor: pointer; color: var(--muted); font-size: var(--fs-sm); padding: 4px 0; }
   .dpop .dp-note { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+  /* v5.11: the alert box is a button (review the drafted email) or a link (open the record) when the alert is Open. */
+  .dpop .st.st-btn { white-space: normal; text-align: left; border-radius: 10px; font: inherit; font-size: var(--fs-xs); font-weight: 600; color: var(--accent-ink); border-color: var(--accent-ink); background: var(--surface); text-decoration: none; cursor: pointer; line-height: 1.3; padding: 3px 8px; }
+  .dpop .st.st-btn:hover { background: var(--surface-2); }
+  .dpop .st.st-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .dpop th:last-child { width: 24%; }
+  .dpop tr.dp-work[hidden] { display: none; }
+  .dpop tr.dp-work td { text-align: left; padding: 4px 8px 12px; background: var(--surface-2); border-bottom: 2px solid var(--line-strong); }
+  .dpop tr.dp-work .sm-item { background: var(--surface); }
+  .dpop tr.dp-work .sm-note { margin: var(--sp-2) var(--sp-3) 0; }
 </style>
 <style id="hl-float">
   /* UI/UX Phase 1 (Sep 30 2026): pinned toolbar, toast layer, brightness target. viewport-js drives the vars. */
@@ -2850,7 +2859,7 @@ function rpInit() {
   var delayed = function (v) { return SLOW ? new Promise(function (r) { setTimeout(function () { r(v); }, SLOW); }) : Promise.resolve(v); };
   MOCK.stockEmails = [
     { id: 's1', Alert_Type: 'Customer spare floor', 'Account.Account_Name': 'Columbia County Treatment Court', Detail: 'Spares on hand 2, floor 4', Recipient_Emails: 'mlopez@columbiacountywi.gov, tbrandt@rockcounty.org', Draft_Subject: 'Spare GPS units running low: Columbia County', Draft_Body: '<p>Hi Maria,</p><p>Columbia County is down to <b>2 spare units</b>, below the agreed floor of 4. To keep new enrollments moving, we suggest ordering <b>3 more units</b> this week.</p><p>Reply here and we will place the order.</p><p>Thank you,<br>{{sender}}<br>JusticePoint Electronic Monitoring</p>', Created_Time: new Date(Date.now() - 4 * 3600000).toISOString() },
-    { id: 's2', Alert_Type: 'Excess spares', 'Account.Account_Name': 'Sauk County Sheriff', Detail: 'Spares on hand 14, assigned 20', Recipient_Emails: 'aruiz@saukcountywi.gov', Draft_Subject: 'Spare units we can take back: Sauk County', Draft_Body: '<p>Hi Ana,</p><p>Sauk County holds <b>14 spare units</b> against 20 assigned. We suggest returning <b>6 units</b> so they can serve other counties.</p><p>Let us know and we will send a prepaid label.</p><p>Thank you,<br>{{sender}}</p>', Created_Time: new Date(Date.now() - 30 * 3600000).toISOString() }
+    { id: 's2', Alert_Type: 'Excess spares', 'Account.Account_Name': 'Ramsey County Pretrial Program', Detail: 'GPS spares on hand 13, limit 6', Recipient_Emails: 'aruiz@co.ramsey.mn.us', Draft_Subject: 'Spare units we can take back: Ramsey County Pretrial Program', Draft_Body: '<p>Hi Ana,</p><p>Ramsey County Pretrial Program holds <b>13 spare units</b> against 34 on the leg. We suggest returning <b>7 units</b> so they can serve other counties.</p><p>Let us know and we will send a prepaid label.</p><p>Thank you,<br>{{sender}}</p>', Created_Time: new Date(Date.now() - 30 * 3600000).toISOString() }
   ];
   var mock = {
     pick: function (q) {
@@ -2867,6 +2876,11 @@ function rpInit() {
       if (/'EM Customer'/.test(q)) return d('emCust');
       if (/'Operated Program'/.test(q)) return d('ops');
       if (/from Cases where Owner/.test(q)) return d('myCases');
+      if (/Draft_Subject/.test(q) && /where id = /.test(q)) return delayed(MOCK.stockEmails.filter(function (e) { return q.indexOf("'" + e.id + "'") >= 0; }));
+      if (/select id, Status, Email_Status, Detail, Account\.Account_Name from EM_Stock_Alerts/.test(q)) return delayed([
+        { id: 's2', Status: 'Open', Email_Status: 'Awaiting approval', Detail: 'GPS spares on hand 13, limit 6', 'Account.Account_Name': 'Ramsey County Pretrial Program' },
+        { id: 'x3', Status: 'Open', Email_Status: 'Sent', Detail: 'GPS spares on hand 12, limit 2', 'Account.Account_Name': 'Sheboygan County Sheriff' },
+        { id: 'x4', Status: 'Return requested', Email_Status: 'Sent', Detail: 'GPS spares on hand 4, limit 1', 'Account.Account_Name': 'Dodge Co. Sheriff' }]);
       if (/Draft_Subject/.test(q)) return delayed(MOCK.stockEmails.slice());
       if (/from EM_Stock_Alerts where Status = 'Open' and Alert_Type/.test(q) === false && /Email_Status/.test(q) && /from EM_Stock_Alerts/.test(q)) return delayed([{ Alert_Type: 'Program growth', Email_Status: 'Awaiting approval' }, { Alert_Type: 'Customer spare floor', Email_Status: 'Awaiting approval' }, { Alert_Type: 'House stock', Email_Status: 'Not applicable' }, { Alert_Type: 'Excess spares', Email_Status: 'Sent' }]);
       if (/from Accessory_Order_Recommendations/.test(q)) return delayed([{ Status: 'Overdue' }, { Status: 'Overdue' }, { Status: 'Due' }, { Status: 'Due' }, { Status: 'Due' }]);
@@ -2933,7 +2947,7 @@ function rpInit() {
 
 
 
-  var VERSION = 'BD + CS Home v5.10';
+  var VERSION = 'BD + CS Home v5.11';
   var POLL_S = 120;
   var ME = { id: null, name: '' };
   var TODAY = ymd(new Date());
@@ -4433,7 +4447,7 @@ function rpInit() {
     return api.all(q, 8).then(function (rows) { return (DEV_POP.cache[ck] = rows || []); });
   }
   function devPopAlerts() {
-    return api.all("select Status, Email_Status, Detail, Account.Account_Name from EM_Stock_Alerts where Alert_Type = 'Excess spares'", 4).then(function (rows) { return rows || []; }).catch(function () { return []; });
+    return api.all("select id, Status, Email_Status, Detail, Account.Account_Name from EM_Stock_Alerts where Alert_Type = 'Excess spares'", 4).then(function (rows) { return rows || []; }).catch(function () { return []; });
   }
   function devPopClean(c) { return String(c || '').replace(/^\s*(SCRAM|SuperCom)\s*\|\s*/i, '').replace(/^\s*Justice Point\s*-\s*/i, '').trim(); }
   function devPopStatus(rec, alerts) {
@@ -4446,10 +4460,11 @@ function rpInit() {
     });
     if (!best) return { t: 'No alert', cls: '' };
     var s = best.a.Status || 'Open', e = best.a.Email_Status, txt;
+    var wk = { id: best.a.id || null, open: s === 'Open', wait: /awaiting approval/i.test(e || '') };
     if (/request|return/i.test(s) || /request/i.test(e || '')) return { t: 'Return requested', cls: 'done' };
     if (s !== 'Open') return { t: s, cls: 'done' };
     txt = e && !/not applicable/i.test(e) ? 'Open · email ' + String(e).toLowerCase() : 'Open';
-    return { t: txt, cls: '' };
+    return { t: txt, cls: '', id: wk.id, open: wk.open, wait: wk.wait };
   }
   function devPopBuild(sel, data, alerts) {
     var n = function (v) { return Number(v) || 0; }, recs = [], house = 0;
@@ -4474,9 +4489,49 @@ function rpInit() {
     });
     return { recs: recs, house: house };
   }
+  /* v5.11: the alert box works the alert. Open + a drafted email waiting = a button that opens the email editor in a row under this one;
+     any other Open alert = a link to the record in CRM; everything else stays a plain label. */
+  function devPopStCell(r) {
+    var st = r.st; if (!st) return '<span class="sub">–</span>';
+    if (st.id && st.open) {
+      if (st.wait) return '<button type="button" class="st st-btn" data-dp="work" data-id="' + esc(st.id) + '" aria-expanded="false" title="Open the drafted email to edit, approve or reject">Open · review email ›</button>';
+      return '<a class="st st-btn" target="_top" href="' + esc(url.rec('EM_Stock_Alerts', st.id)) + '" title="Open this alert in CRM">' + esc(st.t) + ' ↗</a>';
+    }
+    return '<span class="st">' + esc(st.t) + '</span>';
+  }
   function devPopRow(r, multi) {
     var dev = multi ? '<td class="l">' + esc(r.fam + (r.tag ? ' (' + r.tag + ')' : '')) + '</td>' : '';
-    return '<tr class="' + (r.st && r.st.cls ? r.st.cls : '') + '"><td>' + esc(r.name) + '</td>' + dev + '<td>' + fmt(r.on) + '</td><td>' + fmt(r.sp) + '</td><td>' + fmt(r.limit) + '</td><td class="send">' + (r.send ? fmt(r.send) : '–') + '</td><td class="l">' + (r.st ? '<span class="st">' + esc(r.st.t) + '</span>' : '<span class="sub">–</span>') + '</td></tr>';
+    return '<tr class="' + (r.st && r.st.cls ? r.st.cls : '') + '"><td>' + esc(r.name) + '</td>' + dev + '<td>' + fmt(r.on) + '</td><td>' + fmt(r.sp) + '</td><td>' + fmt(r.limit) + '</td><td class="send">' + (r.send ? fmt(r.send) : '–') + '</td><td class="l">' + devPopStCell(r) + '</td></tr>';
+  }
+  function devPopFocusEditor(w) { var i = w && w.querySelector('[data-sm="subject"]'); if (i) i.focus({ preventScroll: false }); }
+  function devPopHideWork(w) {
+    if (!w) return; w.hidden = true;
+    var b = w.previousElementSibling && w.previousElementSibling.querySelector('[data-dp="work"]');
+    if (b) { b.setAttribute('aria-expanded', 'false'); b.focus({ preventScroll: true }); } resize();
+  }
+  function devPopWork(btn) {
+    var tr = btn.closest('tr'), id = btn.getAttribute('data-id'), nx = tr.nextElementSibling;
+    if (nx && nx.classList.contains('dp-work')) {                      /* already built: show / hide it, edits kept */
+      var show = nx.hidden; nx.hidden = !show; btn.setAttribute('aria-expanded', String(show)); if (show) devPopFocusEditor(nx); resize(); return;
+    }
+    var build = function (r) {
+      var w = document.createElement('tr'); w.className = 'dp-work';
+      w.innerHTML = '<td colspan="' + tr.children.length + '"><div class="sm-item open" data-id="' + esc(id) + '"><p class="sm-note">Sent from <b>' + esc(SUPPORT_FROM) + '</b> and signed as <b>' + esc(smWho()) + '</b>. Edit anything before you approve.</p>' + smEditor(r) + '</div></td>';
+      tr.parentNode.insertBefore(w, tr.nextSibling); btn.setAttribute('aria-expanded', 'true'); btn.disabled = false; resize(); devPopFocusEditor(w);
+    };
+    var r = smRow(id); if (r) return build(r);
+    btn.disabled = true;                                               /* not in the Stock emails list: read just this alert */
+    api.all("select id, Alert_Type, Draft_Subject, Draft_Body, Recipient_Emails, Detail, Created_Time, Account.Account_Name from EM_Stock_Alerts where id = '" + String(id).replace(/[^\w-]/g, '') + "'", 1).then(function (rows) {
+      if (rows && rows[0]) build(rows[0]); else { btn.disabled = false; toast('Could not find that alert.'); }
+    }).catch(function () { btn.disabled = false; toast('Could not open that alert.'); });
+  }
+  function devPopWorked(id, action) {                                  /* smDo calls this after Approve & send / Reject went through */
+    var pk = $('peek'); if (!pk || !pk.querySelector('.dpop')) return;
+    var bs = pk.querySelectorAll('button[data-dp="work"]'), b = null; Array.prototype.forEach.call(bs, function (x) { if (x.getAttribute('data-id') === String(id)) b = x; });
+    if (!b) return;
+    var tr = b.closest('tr'), w = tr.nextElementSibling; if (w && w.classList.contains('dp-work')) w.remove();
+    var sp = document.createElement('span'); sp.className = 'st'; sp.textContent = action === 'approve' ? 'Open · email sent' : 'Open · email rejected';
+    b.replaceWith(sp); tr.classList.add('done'); resize();
   }
   function devPopHTML(sel, B, asofTxt) {
     var multi = sel.cells.length > 1, recs = B.recs.filter(function (r) { return r.sp > 0; });
@@ -4496,9 +4551,10 @@ function rpInit() {
     return h;
   }
   function devPopFrame(title, body) {
-    return '<div class="peek-panel dpop"><div class="pk-head" id="pk-head"><span class="pk-id">Spare devices</span><span class="pk-title" style="font-size:var(--fs-md);font-weight:600;color:var(--ink)">' + esc(title) + '</span><button type="button" class="pk-x" data-pk="close" aria-label="Close" title="Close (Esc)">✕</button></div><div class="pk-body">' + body + '</div><div class="pk-foot"><span>Read only. Nothing here changes any record.</span></div></div>';
+    return '<div class="peek-panel dpop"><div class="pk-head" id="pk-head"><span class="pk-id">Spare devices</span><span class="pk-title" style="font-size:var(--fs-md);font-weight:600;color:var(--ink)">' + esc(title) + '</span><button type="button" class="pk-x" data-pk="close" aria-label="Close" title="Close (Esc)">✕</button></div><div class="pk-body">' + body + '</div><div class="pk-foot"><span>The counts are read only. Opening an alert\'s email lets you approve, edit or reject it.</span></div></div>';
   }
-  document.addEventListener('keydown', function (ev) { var pk = $('peek'); if (ev.key === 'Escape' && pk && !pk.hidden && pk.querySelector('.dpop')) { ev.preventDefault(); ev.stopPropagation(); closePeek(false); var l = DEV_POP.from; if (l && l.focus) l.focus({ preventScroll: true }); } }, true);
+  document.addEventListener('keydown', function (ev) { var pk = $('peek'); if (ev.key === 'Escape' && pk && !pk.hidden && pk.querySelector('.dpop') && ev.target.closest && ev.target.closest('.dp-work')) { ev.preventDefault(); ev.stopPropagation(); devPopHideWork(ev.target.closest('.dp-work')); return; }
+    if (ev.key === 'Escape' && pk && !pk.hidden && pk.querySelector('.dpop')) { ev.preventDefault(); ev.stopPropagation(); closePeek(false); var l = DEV_POP.from; if (l && l.focus) l.focus({ preventScroll: true }); } }, true);
   function devPopOpen(k) {
     var sel = devPopSel(k); if (!sel.cells.length) return;
     var peek = $('peek'); if (!peek) return; var seq = ++DEV_POP.seq; DEV_POP.from = document.activeElement;
@@ -4739,7 +4795,7 @@ function rpInit() {
         say((out && out.message) || 'Draft saved.', 'good'); return;
       }
       SM.rows = SM.rows.filter(function (x) { return String(x.id) !== String(id); }); SM.open = null;
-      smPaint(); toast((out && out.message) || (action === 'approve' ? 'Sent.' : 'Rejected.')); loadStockAlerts();
+      smPaint(); toast((out && out.message) || (action === 'approve' ? 'Sent.' : 'Rejected.')); loadStockAlerts(); devPopWorked(id, action);
       if (P.kind === 'stock' && String(P.id) === String(id)) closePeek(false);
       if (typeof AG !== 'undefined' && AG.data) { AG.data.items = AG.data.items.filter(function (i) { return !(i.src === 'stock' && String(i.id) === String(id)); }); agRender(); }
     }).catch(function (e) {
@@ -4764,7 +4820,8 @@ function rpInit() {
     var tries = 0, tick = function () { if (!smNav() && tries++ < 20) setTimeout(tick, 250); }; tick();
     var pk = $('peek');
     if (pk) pk.addEventListener('click', function (ev) {
-      var b = ev.target.closest('[data-sm]'); if (!b || P.kind !== 'stock') return;
+      var wk = ev.target.closest('[data-dp="work"]'); if (wk) { ev.preventDefault(); devPopWork(wk); return; }
+      var b = ev.target.closest('[data-sm]'); if (!b || (P.kind !== 'stock' && !b.closest('.dpop'))) return;
       var li = b.closest('.sm-item'), k = b.getAttribute('data-sm'); if (!li) return;
       if (k === 'approve' || k === 'reject' || k === 'save') smDo(li, k, b);
     });
@@ -7092,6 +7149,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
     if (!$('note-overlay').hidden || !$('vmail-overlay').hidden) { if (!typing && shortcut) hush(); return; }   /* dialogs keep Esc, Tab, Enter */
 
     if (peekShown() && PK.owner === 'cs') {
+      if (k === 'Escape' && t && t.closest && t.closest('.dp-work')) return act('cs:dp-work-fold', function () { devPopHideWork(t.closest('.dp-work')); });   /* v5.11: Esc folds the alert editor, the pop-out and the draft stay */
       if (k === 'Escape') return act(typing ? 'cs:blur' : 'cs:close', function () { if (typing) t.blur(); else closePeek(true); });
       if (typing) return;
       if (k === 'j') return act('cs:next', function () { moveCur(1); });
