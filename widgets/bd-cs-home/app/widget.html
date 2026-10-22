@@ -10670,9 +10670,9 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.0.2 (v5.11 + S24 page shell and calendar, layout pass, 22 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.0.3 (v5.11 + S24 page shell and calendar, link fixes, 22 Oct 2026)">
 <style id="jpk-shell-css">
-/* jpk-shell.css v0.2.1 (S24 v6.0.2, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
+/* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
    Every rule is scoped under html[data-jpk-shell="on"], so with the shell off this file has no effect (one exception: the footer
    switch link, which also shows when the shell is off). Colours, spacing and type come from the page's tokens (--surface, --line,
@@ -11062,16 +11062,19 @@ html[data-jpk-shell="on"] .jpk-pick-sel { font-size: var(--fs-md); color: var(--
 }
 </style>
 <script id="jpk-shell-config">
-/* jpk-shell-config (CS): Beau CS Home v6.0.2. Spec section 7 with the section 11 decisions (S21 order: Numbers before Boards;
+/* jpk-shell-config (CS): Beau CS Home v6.0.3. Spec section 7 with the section 11 decisions (S21 order: Numbers before Boards;
    Up-next above the tiles on narrow screens; step 4 "Close out" counts cases), brought in line with Beau's mockup (v6.0.1 fix list):
    header with greeting, counts and quick actions in one row; a Needs Today list with the tiles directly below it; three cards;
    the calendar with day arrows and a 5-day strip; the flow bar at the bottom.
+   v6.0.3: slugs and views for the collections and billing links, Needs Approval list view, Log lost device href (WebTab28).
    v6.0.2: two columns only for the top band; Queue + Follow-ups, Numbers, Boards, Devices on leg, Relationships, then Quick links +
    Vendor contacts span the full width (zone "full"). */
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.0.2',
+  build: 'Beau CS Home v6.0.3',
+  slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8' },
+  views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
   enabled: true,
   greeting: '#greeting',
   counts: [
@@ -11080,8 +11083,8 @@ window.JPK_SHELL = {
   ],
   actions: [
     { id: 'reorderDevices', label: 'Reorder devices', kind: 'stockEmails', fallback: { kind: 'tab', module: 'Daily_Unit_Counts' }, icon: 'layers', tip: 'Opens Stock emails to approve, where the spare floor emails that ask a customer to order units wait.' },
-    { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the list when there are several.' },
-    { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: '', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
+    { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', view: 'collectionsApproval', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the Needs Approval list when there are several.' },
+    { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
     { id: 'billingCheck', label: 'Billing check', kind: 'agendaRecordOrCreate', module: 'Billing_Periods', profiles: ['Administrator'], icon: 'check', tip: 'Opens this month\'s billing period, or a new one if it does not exist yet.' },
     { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'outlook', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens a new meeting in Outlook in a new tab.' }
   ],
@@ -11910,7 +11913,8 @@ window.JPK_SHELL = {
 })(typeof window !== 'undefined' ? window : this);
 </script>
 <script id="jpk-shell-js">
-/* jpk-shell.js v0.2.1 (S24 v6.0.2, 22 Oct 2026): the page frame ("shell") for Beau CS Home, reusable by BD Home and EM Home.
+/* jpk-shell.js v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame ("shell") for Beau CS Home, reusable by BD Home and EM Home.
+   v6.0.3: slugs for Collection_Requests and Billing_Periods, a views map (collectionsApproval = the Needs Approval list), Log lost device href.
    v6.0.2: only the top band has two columns (Needs Today, tiles and cards | calendar and Today & Upcoming); from Queue and
    Follow-ups down every section spans the full width in a new "full" zone (S21 order, Quick links and Vendor contacts last);
    a "Top" button (bottom right, fixed) appears after one screen of scrolling.
@@ -11951,19 +11955,22 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.0.2',
+    build: 'Beau CS Home v6.0.3',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
-    slugs: { Deals: 'Potentials', Contracts: 'CustomModule17', Daily_Unit_Counts: 'CustomModule18', EM_Stock_Alerts: 'CustomModule19' },
+    /* v6.0.3: Collection_Requests and Billing_Periods added (confirmed against the live org). Standard tabs (Accounts, Contacts, Cases, Tasks, Events) work by name. Do not guess other custom module slugs. */
+    slugs: { Deals: 'Potentials', Contracts: 'CustomModule17', Daily_Unit_Counts: 'CustomModule18', EM_Stock_Alerts: 'CustomModule19', Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8' },
+    /* v6.0.3: existing Zoho list views the quick actions open (same pattern as the page's viewUrl: tab + '/custom-view/' + cvid + '/list') */
+    views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
     counts: [
       { key: 'needs', one: 'item needs you', many: 'items need you', from: 'needs.open', zone: 'jpk:needs' },
       { key: 'meetings', one: 'meeting today', many: 'meetings today', from: 'calendar.today', zone: 'jpk:calendar' }
     ],
     actions: [
       { id: 'reorderDevices', label: 'Reorder devices', kind: 'stockEmails', fallback: { kind: 'tab', module: 'Daily_Unit_Counts' }, icon: 'layers', tip: 'Opens Stock emails to approve, where the spare floor emails that ask a customer to order units wait.' },
-      { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the list when there are several.' },
-      { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: '', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
+      { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', view: 'collectionsApproval', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the Needs Approval list when there are several.' },
+      { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
       { id: 'billingCheck', label: 'Billing check', kind: 'agendaRecordOrCreate', module: 'Billing_Periods', profiles: ['Administrator'], icon: 'check', tip: 'Opens this month\'s billing period, or a new one if it does not exist yet.' },
       { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'outlook', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens a new meeting in Outlook in a new tab.' }
     ],
@@ -12009,6 +12016,7 @@ window.JPK_SHELL = {
     if (user.zones && typeof user.zones === 'object' && !Object.prototype.hasOwnProperty.call(user.zones, 'full')) c.zones.full = [];
     c.calendar = shallow(DEFAULTS.calendar, user.calendar, KNOWN_CAL, 'calendar');
     c.slugs = shallow(DEFAULTS.slugs, user.slugs, null, 'slugs');
+    c.views = shallow(DEFAULTS.views, user.views, null, 'views');
     c.needs = shallow(DEFAULTS.needs, user.needs, Object.keys(DEFAULTS.needs), 'needs');
     c.cards = shallow(DEFAULTS.cards, user.cards, Object.keys(DEFAULTS.cards), 'cards');
     if (!Array.isArray(c.counts)) { warn('counts is not a list; default used'); c.counts = DEFAULTS.counts; }
@@ -12052,6 +12060,8 @@ window.JPK_SHELL = {
   function scrollTo(el) { if (!el) return; try { el.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); } catch (e) { try { el.scrollIntoView(); } catch (e2) {} } }
   function kick() { try { root.requestAnimationFrame(function () { try { root.dispatchEvent(new Event('resize')); } catch (e) {} }); } catch (e) {} }
   function crmTab(module) { return CFG.crmBase + (CFG.slugs[module] || module); }
+  /* v6.0.3: a configured list view (Zoho custom view) as a URL, or '' when the key is not configured */
+  function crmView(key) { var v = CFG.views && CFG.views[key]; return v && v.module && v.cvid ? crmTab(v.module) + '/custom-view/' + v.cvid + '/list' : ''; }
   function crmRec(module, id) { return crmTab(module) + '/' + id; }
   function isId(id) { return /^\d+$/.test(String(id == null ? '' : id)); }
   function visible(el) { return !!el && !el.hidden && !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length); }
@@ -12727,7 +12737,8 @@ window.JPK_SHELL = {
       case 'agendaRecordOrTab':
         c = collections();
         if (c.state === 'ok' && c.n === 1 && isId(c.rows[0].id)) return { href: crmRec(a.module, c.rows[0].id), how: 'top' };
-        return { href: crmTab(a.module), how: 'top' };
+        /* v6.0.3: several waiting, none, or the read failed: the Needs Approval list view when configured, else the bare module tab */
+        return { href: (a.view && crmView(a.view)) || crmTab(a.module), how: 'top' };
       case 'agendaRecordOrCreate':
         c = billingNow();
         if (c.state === 'ok' && c.row && isId(c.row.id)) return { href: crmRec(a.module, c.row.id), how: 'top' };
