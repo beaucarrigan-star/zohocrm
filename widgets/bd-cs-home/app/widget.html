@@ -10670,14 +10670,33 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.0 (v5.11 + S24 page shell and calendar, 22 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.0.1 (v5.11 + S24 page shell and calendar, mockup pass, 22 Oct 2026)">
 <style id="jpk-shell-css">
-/* jpk-shell.css v0.1.0 (S24 step 5, 22 Oct 2026): the page frame for Beau CS Home. Pairs with jpk-shell.js.
-   Every rule is scoped under html[data-jpk-shell="on"], so with the shell off this file has no effect.
-   Colours, spacing, type and radius come from the page's tokens (--surface, --line, --muted, --accent, --sp-*, --fs-*, --radius, --gutter);
-   nothing is redefined. The zone containers carry the kit's .hk-edge opt-in class so the moved sections keep their edge-to-edge look. */
+/* jpk-shell.css v0.2.0 (S24 v6.0.1, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
+   Every rule is scoped under html[data-jpk-shell="on"], so with the shell off this file has no effect (one exception: the footer
+   switch link, which also shows when the shell is off). Colours, spacing and type come from the page's tokens (--surface, --line,
+   --muted, --accent, --sp-*, --fs-*); nothing is redefined. New values are jpk- custom properties. Rounded corners and gaps are
+   given to the jpk- blocks only; the moved sections keep their own edge-to-edge look (the zones carry the kit's .hk-edge opt-in). */
 
-html[data-jpk-shell="on"] { --jpk-side-w: clamp(320px, 30%, 400px); --jpk-sticky: 8px; }
+html[data-jpk-shell="on"] {
+  --jpk-side-w: clamp(320px, 30%, 400px); --jpk-sticky: 8px;
+  --jpk-r: 10px; --jpk-r-sm: 8px; --jpk-gap: 16px;
+  /* the dark up-next card and the flow bar: a fixed dark surface in both themes */
+  --jpk-dark: light-dark(#1B1F26, #0B0D10); --jpk-dark-2: light-dark(#2A303A, #1C2128);
+  --jpk-dark-ink: #F3F5F7; --jpk-dark-muted: #B9C0CA; --jpk-dark-line: rgba(255, 255, 255, .22);
+  --jpk-dark-accent: #3D6BD0; --jpk-dark-accent-ink: #FFFFFF;
+}
+
+/* ---------- the page's own greeting and date: shown by the shell's header instead (no page text is edited) ---------- */
+html[data-jpk-shell="on"] .mast .greet > #greeting { display: none; }
+html[data-jpk-shell="on"] .mast .greet > .date { font-size: 0; }               /* hides the date and its separator; keeps the refresh state */
+html[data-jpk-shell="on"] .mast .greet > .date #refreshed { font-size: var(--fs-md); }
+
+/* ---------- version labels (fix 7): the tiles' footnote and the footer show the new build tag; the page's text is untouched ---------- */
+html[data-jpk-shell="on"][data-jpk-label="on"] #needs-today .nt-foot { display: none; }
+html[data-jpk-shell="on"][data-jpk-label="on"] #needs-today::after { content: var(--jpk-nt-foot, none); display: block; margin: 8px var(--gutter, 16px) 0; font-size: 11.5px; color: var(--nt-muted, var(--muted)); }
+html[data-jpk-shell="on"][data-jpk-label="on"] #source { font-size: 0; }
+html[data-jpk-shell="on"][data-jpk-label="on"] #source::after { content: var(--jpk-source, none); font-size: var(--fs-sm); }
 
 /* ---------- zones and grid (spec 1) ---------- */
 html[data-jpk-shell="on"] .jpk-top,
@@ -10685,7 +10704,7 @@ html[data-jpk-shell="on"] .jpk-main,
 html[data-jpk-shell="on"] .jpk-side { display: grid; gap: 18px; align-content: start; min-width: 0; grid-template-columns: minmax(0, 1fr); }
 html[data-jpk-shell="on"][data-density="compact"] .jpk-main,
 html[data-jpk-shell="on"][data-density="compact"] .jpk-side { gap: var(--sp-3); }
-html[data-jpk-shell="on"] .jpk-top[hidden], html[data-jpk-shell="on"] .jpk-head[hidden] { display: none; }
+html[data-jpk-shell="on"] .jpk-top[hidden], html[data-jpk-shell="on"] .jpk-head[hidden], html[data-jpk-shell="on"] .jpk-qa-wrap[hidden] { display: none; }
 html[data-jpk-shell="on"] .jpk-zone > * { min-width: 0; }
 html[data-jpk-shell="on"] .jpk-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; align-items: start; }
 html[data-jpk-shell="on"] .jpk-main { container-type: inline-size; container-name: jpk-main; }
@@ -10693,8 +10712,9 @@ html[data-jpk-shell="on"] .jpk-side:empty { display: none; }
 @media (min-width: 1101px) {
   html[data-jpk-shell="on"] .jpk-cols { grid-template-columns: minmax(0, 1fr) var(--jpk-side-w); column-gap: 0; }
   /* one hairline between the columns, like the page's own side-by-side pairs */
-  html[data-jpk-shell="on"] .jpk-side { border-left: 1px solid var(--line); align-self: stretch; }
+  html[data-jpk-shell="on"] .jpk-side { border-left: 1px solid var(--line); align-self: stretch; padding-top: var(--jpk-gap); }
   html[data-jpk-shell="on"] .jpk-side.jpk-sticky { position: sticky; top: var(--jpk-sticky); align-self: start; }
+  html[data-jpk-shell="on"] .jpk-main { padding-top: var(--jpk-gap); }
 }
 
 /* pairs (.hl-two) inside a column stack unless the column itself is at least 900px wide */
@@ -10719,115 +10739,207 @@ html[data-jpk-shell="on"] .jpk-side .agenda .ag-row .t { flex: 1 1 60%; min-widt
 html[data-jpk-shell="on"] .jpk-side .agenda .ag-row .sig { width: auto; min-width: 0; flex: 0 1 auto; }
 html[data-jpk-shell="on"] .jpk-side .agenda .ag-row .ag-acts { width: auto; min-width: 0; }
 
-/* ---------- quick actions (spec 2) ---------- */
-html[data-jpk-shell="on"] .jpk-head { display: block; min-width: 0; }
-html[data-jpk-shell="on"] .jpk-qa { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; padding: 2px var(--gutter); min-width: 0; }
+/* ---------- the shell's cards (fix 6): rounded, with gaps, inside the gutter ---------- */
+html[data-jpk-shell="on"] .jpk-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--jpk-r); min-width: 0; color: var(--ink); }
+/* ids, so this wins over the kit's .hk-edge rule that zeroes side margins on a zone's children */
+html[data-jpk-shell="on"] #jpk-nt, html[data-jpk-shell="on"] #jpk-cards, html[data-jpk-shell="on"] #jpk-cal { margin-inline: var(--gutter, 16px); }
+html[data-jpk-shell="on"] .jpk-card-h { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); min-width: 0; }
+html[data-jpk-shell="on"] .jpk-card-t { margin: 0; font-family: var(--font-head, inherit); font-size: 17px; font-weight: 600; color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-card-t:focus { outline: none; }
+html[data-jpk-shell="on"] .jpk-card-t:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+html[data-jpk-shell="on"] .jpk-card-sub { font-size: var(--fs-md); color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-pill { margin-left: auto; align-self: center; padding: 1px 10px; border-radius: var(--radius-pill); background: var(--accent); color: var(--surface); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
+html[data-jpk-shell="on"] .jpk-pill[hidden] { display: none; }
+html[data-jpk-shell="on"] .jpk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+html[data-jpk-shell="on"] .jpk-ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- header (fix 2): greeting, date and counts on the left, the quick actions on the right ---------- */
+html[data-jpk-shell="on"] .jpk-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px var(--gutter, 16px) 14px; min-width: 0; }
+html[data-jpk-shell="on"] .jpk-hello { min-width: 0; }
+html[data-jpk-shell="on"] .jpk-hi { margin: 0; font-family: var(--font-head, inherit); font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -.01em; color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-sub { margin: 4px 0 0; font-size: var(--fs-md, 14px); color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-count { color: var(--ink-2); text-decoration: none; white-space: nowrap; border-radius: var(--radius-sm); }
+html[data-jpk-shell="on"] .jpk-count:hover { text-decoration: underline; text-underline-offset: 3px; color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-count b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+html[data-jpk-shell="on"] .jpk-count.jpk-unknown b { font-weight: 600; color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-dot { display: inline-block; width: 6px; height: 6px; margin-left: 3px; border-radius: 50%; background: var(--warn); vertical-align: super; }
+html[data-jpk-shell="on"] .jpk-sep { color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-qa-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+html[data-jpk-shell="on"] .jpk-qa-l { font-size: var(--fs-md); color: var(--muted); white-space: nowrap; }
+html[data-jpk-shell="on"] .jpk-qa { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-width: 0; }
 html[data-jpk-shell="on"] .jpk-qa-btn {
   font: inherit; font-size: var(--fs-base); font-weight: 600; color: var(--ink); background: var(--surface);
-  border: 1px solid var(--line-strong); border-radius: var(--radius-pill); padding: 5px 12px; min-height: 32px;
-  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; flex: none;
+  border: 1px solid var(--line-strong); border-radius: var(--jpk-r-sm); padding: 8px 14px; min-height: 40px;
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; flex: none;
 }
+html[data-jpk-shell="on"] .jpk-qa-btn .jpk-ic { color: var(--accent-ink); }
 html[data-jpk-shell="on"] .jpk-qa-btn:hover { background: var(--surface-2); border-color: var(--accent, var(--focus)); }
-html[data-jpk-shell="on"] .jpk-badge { min-width: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--accent, var(--focus)); color: var(--surface); font-size: var(--fs-xs); font-weight: 700; line-height: 18px; text-align: center; }
+html[data-jpk-shell="on"] .jpk-qa-btn.jpk-qa-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+html[data-jpk-shell="on"] .jpk-qa-btn.jpk-qa-primary .jpk-ic { color: inherit; }
+html[data-jpk-shell="on"] .jpk-qa-btn.jpk-qa-primary:hover { filter: brightness(1.08); }
 
-/* ---------- header counts (spec 3) ---------- */
-html[data-jpk-shell="on"] .jpk-counts { flex-basis: 100%; order: 5; margin: 0; text-align: right; font-size: var(--fs-md); color: var(--bar-muted, var(--muted)); }
-html[data-jpk-shell="on"] .jpk-count { color: var(--bar-ink, var(--ink)); text-decoration: none; white-space: nowrap; border-radius: var(--radius-sm); }
-html[data-jpk-shell="on"] .jpk-count:hover { text-decoration: underline; text-underline-offset: 3px; }
-html[data-jpk-shell="on"] .jpk-count b { font-weight: 700; font-variant-numeric: tabular-nums; }
-html[data-jpk-shell="on"] .jpk-dot { display: inline-block; width: 6px; height: 6px; margin-left: 3px; border-radius: 50%; background: var(--warn); vertical-align: super; }
-html[data-jpk-shell="on"] .jpk-sep { color: var(--bar-muted, var(--muted)); }
-html[data-jpk-shell="on"] .jpk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* ---------- Needs Today list (fix 1) ---------- */
+html[data-jpk-shell="on"] .jpk-nt-list { list-style: none; margin: 0; padding: 0; }
+html[data-jpk-shell="on"] .jpk-nt-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: 6px 16px; padding: 12px 18px; border-top: 1px solid var(--line); min-width: 0; }
+html[data-jpk-shell="on"] .jpk-nt-row:first-child { border-top: 0; }
+html[data-jpk-shell="on"] .jpk-tag { justify-self: start; padding: 2px 10px; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; background: var(--surface-2); color: var(--ink-2); }
+html[data-jpk-shell="on"] .jpk-tag-stock { background: var(--warn-tint, var(--surface-2)); color: var(--warn); }
+html[data-jpk-shell="on"] .jpk-tag-approve { background: var(--accent-soft, var(--surface-2)); color: var(--accent-ink); }
+html[data-jpk-shell="on"] .jpk-tag-renewal { background: var(--good-tint, var(--surface-2)); color: var(--good); }
+html[data-jpk-shell="on"] .jpk-tag-lost { background: var(--bad-tint, var(--surface-2)); color: var(--bad); }
+html[data-jpk-shell="on"] .jpk-tag-verify { background: var(--surface-2); color: var(--ink-2); }
+html[data-jpk-shell="on"] .jpk-nt-text { min-width: 0; display: grid; gap: 1px; }
+html[data-jpk-shell="on"] .jpk-nt-t { font-size: var(--fs-base, 15px); color: var(--ink); overflow-wrap: anywhere; }
+html[data-jpk-shell="on"] .jpk-nt-area { font-size: var(--fs-sm); color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-nt-empty { padding: 16px 18px; color: var(--muted); font-size: var(--fs-base); }
+html[data-jpk-shell="on"] .jpk-nt-note { margin: 0; padding: 8px 18px; font-size: var(--fs-md); color: var(--warn); border-bottom: 1px solid var(--line); }
+html[data-jpk-shell="on"] .jpk-nt-note[hidden], html[data-jpk-shell="on"] .jpk-nt-foot[hidden] { display: none; }
+html[data-jpk-shell="on"] .jpk-nt-foot { padding: 10px 18px; border-top: 1px solid var(--line); }
+html[data-jpk-shell="on"] .jpk-link { font: inherit; font-size: var(--fs-md); font-weight: 600; color: var(--accent-ink); background: none; border: 0; padding: 2px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
-/* ---------- flow strip (spec 4) ---------- */
-html[data-jpk-shell="on"] .jpk-flow { min-width: 0; padding: 0 var(--gutter); }
-html[data-jpk-shell="on"] .jpk-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
-html[data-jpk-shell="on"] .jpk-flow-item { position: relative; display: flex; align-items: stretch; min-width: 0; }
-html[data-jpk-shell="on"] .jpk-flow-item + .jpk-flow-item { border-left: 1px solid var(--line); }
+/* ---------- cards row (fix 5) ---------- */
+html[data-jpk-shell="on"] .jpk-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--jpk-gap); min-width: 0; }
+@container jpk-main (min-width: 720px) {
+  html[data-jpk-shell="on"] .jpk-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+html[data-jpk-shell="on"] .jpk-mini { padding: 14px 18px 8px; }
+html[data-jpk-shell="on"] .jpk-mini-h { margin: 0 0 6px; font-size: var(--fs-base, 15px); font-weight: 600; color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-mini-list { list-style: none; margin: 0; padding: 0; }
+html[data-jpk-shell="on"] .jpk-mini-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: var(--fs-base); min-width: 0; }
+html[data-jpk-shell="on"] .jpk-mini-row:first-child { border-top: 0; }
+html[data-jpk-shell="on"] .jpk-mini-k { min-width: 0; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-jpk-shell="on"] .jpk-mini-a { color: inherit; text-decoration: none; }
+html[data-jpk-shell="on"] .jpk-mini-a:hover { text-decoration: underline; text-underline-offset: 3px; }
+html[data-jpk-shell="on"] .jpk-mini-v { flex: none; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+html[data-jpk-shell="on"] .jpk-mini-v.jpk-bad { color: var(--bad); font-weight: 600; }
+html[data-jpk-shell="on"] .jpk-mini-v.jpk-good { color: var(--good); font-weight: 600; }
+html[data-jpk-shell="on"] .jpk-mini-empty, html[data-jpk-shell="on"] .jpk-mini-more { padding: 8px 0; color: var(--muted); font-size: var(--fs-md); }
+
+/* ---------- flow bar (section 4, fix 4): a dark bar at the bottom of the content ---------- */
+html[data-jpk-shell="on"] .jpk-flow, html[data-jpk-shell="on"] #jpk-flow {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-width: 0; margin: var(--jpk-gap) var(--gutter, 16px);
+  padding: 10px 16px; border-radius: var(--jpk-r); border: 1px solid light-dark(transparent, rgba(255, 255, 255, .14)); background: var(--jpk-dark); color: var(--jpk-dark-ink);
+}
+html[data-jpk-shell="on"] .jpk-flow-l { font-size: var(--fs-md); color: var(--jpk-dark-muted); white-space: nowrap; }
+html[data-jpk-shell="on"] .jpk-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+html[data-jpk-shell="on"] .jpk-flow-item { position: relative; display: flex; align-items: center; min-width: 0; }
+html[data-jpk-shell="on"] .jpk-flow-item + .jpk-flow-item::before { content: "›"; color: var(--jpk-dark-muted); margin: 0 6px 0 2px; font-size: 16px; }
 html[data-jpk-shell="on"] .jpk-step {
-  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); padding: 8px 36px 8px var(--sp-3);
-  font: inherit; font-size: var(--fs-base); color: var(--ink-2); background: transparent; border: 0; text-align: left; cursor: pointer;
+  min-width: 0; display: inline-flex; align-items: center; gap: 8px; padding: 7px 34px 7px 12px; min-height: 36px;
+  font: inherit; font-size: var(--fs-base); color: var(--jpk-dark-ink); background: var(--jpk-dark-2); border: 1px solid transparent; border-radius: var(--jpk-r-sm); text-align: left; cursor: pointer;
 }
-html[data-jpk-shell="on"] .jpk-step:hover { background: var(--surface-2); color: var(--ink); }
-html[data-jpk-shell="on"] .jpk-step:focus-visible, html[data-jpk-shell="on"] .jpk-tick:focus-visible,
-html[data-jpk-shell="on"] .jpk-qa-btn:focus-visible, html[data-jpk-shell="on"] .jpk-daychip:focus-visible,
-html[data-jpk-shell="on"] .jpk-cal :focus-visible, html[data-jpk-shell="on"] .jpk-count:focus-visible,
-html[data-jpk-shell="on"] .jpk-switch:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-html[data-jpk-shell="on"] .jpk-step-n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-sm); font-weight: 700; border: 1.5px solid var(--line-strong); color: var(--ink-2); }
-html[data-jpk-shell="on"] .jpk-step-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-html[data-jpk-shell="on"] .jpk-step-c { margin-left: auto; flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
-html[data-jpk-shell="on"] .jpk-current .jpk-step { color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent, var(--focus)); }
-html[data-jpk-shell="on"] .jpk-current .jpk-step-n { border-color: var(--accent, var(--focus)); color: var(--accent-ink); }
-html[data-jpk-shell="on"] .jpk-done .jpk-step-n { background: var(--good); border-color: var(--good); color: var(--surface); }
-html[data-jpk-shell="on"] .jpk-done .jpk-step-c { color: var(--good); }
-html[data-jpk-shell="on"] .jpk-unknown .jpk-step-c { color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-step:hover { border-color: var(--jpk-dark-line); }
+html[data-jpk-shell="on"] .jpk-step-n { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }
+html[data-jpk-shell="on"] .jpk-step-l { min-width: 0; white-space: nowrap; font-weight: 500; }
+html[data-jpk-shell="on"] .jpk-step-c { flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--jpk-dark-muted); font-variant-numeric: tabular-nums; }
+html[data-jpk-shell="on"] .jpk-current .jpk-step { background: var(--jpk-dark-accent); color: var(--jpk-dark-accent-ink); font-weight: 600; }
+html[data-jpk-shell="on"] .jpk-current .jpk-step-c { color: var(--jpk-dark-accent-ink); }
+html[data-jpk-shell="on"] .jpk-done .jpk-step-c { color: #8FE0B5; }
+html[data-jpk-shell="on"] .jpk-current.jpk-done .jpk-step-c { color: var(--jpk-dark-accent-ink); }
 html[data-jpk-shell="on"] .jpk-tick {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
-  background: var(--surface); color: var(--muted); cursor: pointer; opacity: 0;
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--jpk-dark-line); border-radius: 6px;
+  background: transparent; color: var(--jpk-dark-muted); cursor: pointer; opacity: .55;
 }
-html[data-jpk-shell="on"] .jpk-tick svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+html[data-jpk-shell="on"] .jpk-tick svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 html[data-jpk-shell="on"] .jpk-flow-item:hover .jpk-tick, html[data-jpk-shell="on"] .jpk-flow-item:focus-within .jpk-tick, html[data-jpk-shell="on"] .jpk-tick[aria-pressed="true"] { opacity: 1; }
-html[data-jpk-shell="on"] .jpk-tick[aria-pressed="true"] { color: var(--good); border-color: var(--good); }
-@media (hover: none) { html[data-jpk-shell="on"] .jpk-tick { opacity: 1; } }
-html[data-jpk-shell="on"] .jpk-flow-msg { margin: var(--sp-1) 0 0; font-size: var(--fs-md); color: var(--good); font-weight: 600; }
+html[data-jpk-shell="on"] .jpk-tick[aria-pressed="true"] { color: #8FE0B5; border-color: #8FE0B5; }
+html[data-jpk-shell="on"] .jpk-current .jpk-tick { color: var(--jpk-dark-accent-ink); border-color: rgba(255, 255, 255, .6); }
+html[data-jpk-shell="on"] .jpk-flow-note { margin: 0 0 0 auto; font-size: var(--fs-md); color: var(--jpk-dark-muted); white-space: nowrap; }
+html[data-jpk-shell="on"] .jpk-flow-msg { flex-basis: 100%; margin: 0; font-size: var(--fs-md); color: #8FE0B5; font-weight: 600; }
+html[data-jpk-shell="on"] .jpk-flow-msg[hidden] { display: none; }
+html[data-jpk-shell="on"] .jpk-flow :focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
 
-/* ---------- calendar (spec 1.2 side 1, 5, 6) ---------- */
+/* ---------- focus ---------- */
+html[data-jpk-shell="on"] .jpk-qa-btn:focus-visible, html[data-jpk-shell="on"] .jpk-daychip:focus-visible,
+html[data-jpk-shell="on"] .jpk-cal :focus-visible, html[data-jpk-shell="on"] .jpk-count:focus-visible, html[data-jpk-shell="on"] .jpk-nt :focus-visible,
+html[data-jpk-shell="on"] .jpk-cards :focus-visible, html[data-jpk-shell="on"] .jpk-switch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- calendar (fix 3) ---------- */
 html[data-jpk-shell="on"] .jpk-cal { min-width: 0; }
-html[data-jpk-shell="on"] .jpk-cal > .head { display: flex; align-items: center; gap: var(--sp-2); }
-html[data-jpk-shell="on"] .jpk-cal-h { margin: 0; }
+html[data-jpk-shell="on"] .jpk-cal > .head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px 18px; border-bottom: 0; background: transparent; }
+html[data-jpk-shell="on"] .jpk-cal > .head > .jpk-ic { color: var(--accent-ink); }
+html[data-jpk-shell="on"] .jpk-cal-h { margin: 0; font-family: var(--font-head, inherit); font-size: 17px; font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; }
 html[data-jpk-shell="on"] .jpk-cal-h:focus { outline: none; }
 html[data-jpk-shell="on"] .jpk-cal-h:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-html[data-jpk-shell="on"] .jpk-tg {
-  flex: none; width: 26px; height: 26px; padding: 0; margin-left: auto; display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--muted); cursor: pointer;
+html[data-jpk-shell="on"] .jpk-cal-meta { font-size: var(--fs-sm); color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-cal-nav { margin-left: auto; display: inline-flex; gap: 6px; }
+html[data-jpk-shell="on"] .jpk-arrow, html[data-jpk-shell="on"] .jpk-tg {
+  flex: none; width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--jpk-r-sm); color: var(--ink-2); cursor: pointer;
 }
-html[data-jpk-shell="on"] .jpk-tg:hover { color: var(--ink); border-color: var(--line-strong); background: var(--surface-2); }
-html[data-jpk-shell="on"] .jpk-tg svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+html[data-jpk-shell="on"] .jpk-arrow:hover:not(:disabled), html[data-jpk-shell="on"] .jpk-tg:hover { color: var(--ink); background: var(--surface-2); }
+html[data-jpk-shell="on"] .jpk-arrow:disabled { opacity: .45; cursor: default; }
+html[data-jpk-shell="on"] .jpk-arrow svg, html[data-jpk-shell="on"] .jpk-tg svg { width: 13px; height: 13px; display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+html[data-jpk-shell="on"] .jpk-tg { width: 28px; height: 28px; border-color: var(--line); }
+html[data-jpk-shell="on"] .jpk-tg svg { transition: transform .15s; }
 html[data-jpk-shell="on"] .jpk-collapsed .jpk-tg svg { transform: rotate(-90deg); }
-html[data-jpk-shell="on"] .jpk-collapsed > .head { border-bottom: 0; }
-html[data-jpk-shell="on"] .jpk-cal-body { padding: var(--sp-3) var(--gutter); display: grid; gap: var(--sp-3); }
-html[data-jpk-shell="on"] .jpk-cal-body[hidden], html[data-jpk-shell="on"] .jpk-cal-more[hidden], html[data-jpk-shell="on"] .jpk-showweek[hidden] { display: none; }
-html[data-jpk-shell="on"] .jpk-cal-more { display: grid; gap: var(--sp-2); }
+html[data-jpk-shell="on"] .jpk-cal-body { padding: 4px 14px 14px 18px; display: grid; gap: 12px; }
+html[data-jpk-shell="on"] .jpk-cal-body[hidden], html[data-jpk-shell="on"] .jpk-cal-more[hidden], html[data-jpk-shell="on"] .jpk-showweek[hidden], html[data-jpk-shell="on"] .jpk-week[hidden] { display: none; }
+html[data-jpk-shell="on"] .jpk-cal-more { display: grid; gap: 8px; }
 html[data-jpk-shell="on"] .jpk-cal-empty { margin: 0; color: var(--muted); font-size: var(--fs-base); }
 html[data-jpk-shell="on"] .jpk-cal-err { color: var(--bad); }
-html[data-jpk-shell="on"] .jpk-up { border: 1px solid var(--line); border-left: 3px solid var(--accent, var(--focus)); border-radius: var(--radius); padding: var(--sp-3); background: var(--surface-2); display: grid; gap: 4px; }
+
+/* 5-day strip */
+html[data-jpk-shell="on"] .jpk-week { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+html[data-jpk-shell="on"] .jpk-daychip {
+  font: inherit; min-width: 0; padding: 6px 2px; display: grid; grid-auto-flow: column; justify-content: center; align-items: baseline; gap: 4px; cursor: pointer; position: relative;
+  border: 1px solid transparent; border-radius: var(--jpk-r-sm); background: transparent; color: var(--ink-2); white-space: nowrap;
+}
+html[data-jpk-shell="on"] .jpk-daychip:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-daychip:disabled { color: var(--muted); cursor: default; }
+html[data-jpk-shell="on"] .jpk-daychip[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 600; }
+html[data-jpk-shell="on"] .jpk-dc-w { font-size: var(--fs-md); }
+html[data-jpk-shell="on"] .jpk-dc-d { font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
+html[data-jpk-shell="on"] .jpk-dc-n { position: absolute; left: 50%; bottom: 1px; transform: translateX(-50%); display: flex; height: 4px; }
+html[data-jpk-shell="on"] .jpk-dc-n i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent-ink); }
+html[data-jpk-shell="on"] .jpk-daychip[aria-pressed="true"] .jpk-dc-n i { background: var(--surface); }
+
+/* up next: the dark card */
+html[data-jpk-shell="on"] .jpk-up { border-radius: var(--jpk-r); border: 1px solid light-dark(transparent, rgba(255, 255, 255, .14)); padding: 14px 16px; background: var(--jpk-dark); color: var(--jpk-dark-ink); display: grid; gap: 4px; }
 html[data-jpk-shell="on"] .jpk-up p { margin: 0; }
-html[data-jpk-shell="on"] .jpk-up-k { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-up-k { font-size: var(--fs-xs, 12px); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--jpk-dark-muted); }
 html[data-jpk-shell="on"] .jpk-up-fb .jpk-up-k { text-transform: none; letter-spacing: 0; font-size: var(--fs-sm); }
-html[data-jpk-shell="on"] .jpk-up-rel { margin-left: 6px; text-transform: none; letter-spacing: 0; color: var(--accent-ink); }
-html[data-jpk-shell="on"] .jpk-up-rel.jpk-now { color: var(--good); }
-html[data-jpk-shell="on"] .jpk-up-t { font-size: var(--fs-lg); font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
-html[data-jpk-shell="on"] .jpk-up-s { font-size: var(--fs-md); color: var(--ink-2); }
-html[data-jpk-shell="on"] .jpk-chips, html[data-jpk-shell="on"] .jpk-up-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-html[data-jpk-shell="on"] .jpk-chip { font-size: var(--fs-sm); padding: 2px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-strong); color: var(--ink-2); text-decoration: none; background: var(--surface); }
+html[data-jpk-shell="on"] .jpk-up-rel { color: var(--jpk-dark-ink); }
+html[data-jpk-shell="on"] .jpk-up-rel.jpk-now { color: #8FE0B5; }
+html[data-jpk-shell="on"] .jpk-up-t { font-size: 16px; font-weight: 600; color: var(--jpk-dark-ink); overflow-wrap: anywhere; }
+html[data-jpk-shell="on"] .jpk-up-s { font-size: var(--fs-md); color: var(--jpk-dark-muted); }
+html[data-jpk-shell="on"] .jpk-chips, html[data-jpk-shell="on"] .jpk-up-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+html[data-jpk-shell="on"] .jpk-chip { font-size: var(--fs-sm); padding: 2px 8px; border-radius: var(--radius-pill); border: 1px solid var(--jpk-dark-line); color: var(--jpk-dark-ink); text-decoration: none; }
 html[data-jpk-shell="on"] .jpk-btn {
-  font: inherit; font-size: var(--fs-md); font-weight: 600; padding: 4px 10px; min-height: 28px; display: inline-flex; align-items: center;
-  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); text-decoration: none; cursor: pointer;
+  font: inherit; font-size: var(--fs-md); font-weight: 600; padding: 4px 12px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line-strong); border-radius: var(--jpk-r-sm); background: var(--surface); color: var(--ink); text-decoration: none; cursor: pointer; white-space: nowrap;
 }
 html[data-jpk-shell="on"] .jpk-btn:hover { background: var(--surface-2); }
-html[data-jpk-shell="on"] .jpk-btn.jpk-primary { background: var(--accent, var(--focus)); border-color: var(--accent, var(--focus)); color: var(--surface); }
+html[data-jpk-shell="on"] .jpk-btn.jpk-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+html[data-jpk-shell="on"] .jpk-btn.jpk-primary:hover { filter: brightness(1.08); }
+html[data-jpk-shell="on"] .jpk-up .jpk-btn { background: transparent; border-color: var(--jpk-dark-line); color: var(--jpk-dark-ink); }
+html[data-jpk-shell="on"] .jpk-up .jpk-btn:hover { background: rgba(255, 255, 255, .08); }
+html[data-jpk-shell="on"] .jpk-up .jpk-btn.jpk-primary { background: var(--jpk-dark-accent); border-color: var(--jpk-dark-accent); color: var(--jpk-dark-accent-ink); }
+html[data-jpk-shell="on"] .jpk-up :focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
 html[data-jpk-shell="on"] .jpk-showweek { justify-self: start; font: inherit; font-size: var(--fs-md); font-weight: 600; color: var(--accent-ink); background: transparent; border: 0; padding: 4px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-html[data-jpk-shell="on"] .jpk-day-h { margin: 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
-html[data-jpk-shell="on"] .jpk-day-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-html[data-jpk-shell="on"] .jpk-ev { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--sp-2); padding: 6px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-base); min-width: 0; }
-html[data-jpk-shell="on"] .jpk-ev-time { grid-column: 1; color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); }
-html[data-jpk-shell="on"] .jpk-ev-t { grid-column: 1; min-width: 0; color: var(--ink); overflow-wrap: anywhere; }
-html[data-jpk-shell="on"] .jpk-ev .jpk-join { grid-column: 2; grid-row: 1 / span 2; }
-html[data-jpk-shell="on"] .jpk-ev-v { display: block; font-size: var(--fs-sm); color: var(--muted); }
-html[data-jpk-shell="on"] .jpk-ev.jpk-past .jpk-ev-t, html[data-jpk-shell="on"] .jpk-ev.jpk-past .jpk-ev-time { color: var(--muted); }
-html[data-jpk-shell="on"] .jpk-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-html[data-jpk-shell="on"] .jpk-daychip {
-  font: inherit; min-width: 0; padding: 4px 2px; display: grid; justify-items: center; gap: 1px; cursor: pointer;
-  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink-2);
-}
-html[data-jpk-shell="on"] .jpk-daychip[aria-pressed="true"] { border-color: var(--accent, var(--focus)); box-shadow: inset 0 -2px 0 var(--accent, var(--focus)); color: var(--ink); }
-html[data-jpk-shell="on"] .jpk-dc-w { font-size: var(--fs-xs); font-weight: 600; }
-html[data-jpk-shell="on"] .jpk-dc-d { font-size: var(--fs-base); font-weight: 700; font-variant-numeric: tabular-nums; }
-html[data-jpk-shell="on"] .jpk-dc-n { display: flex; gap: 2px; height: 5px; }
-html[data-jpk-shell="on"] .jpk-dc-n i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent, var(--focus)); }
-html[data-jpk-shell="on"] .jpk-cal-foot { margin: 0; font-size: var(--fs-md); }
+html[data-jpk-shell="on"] .jpk-day-h { margin: 0; }
+
+/* the day's meetings: time, then a tinted box with the title and its link state */
+html[data-jpk-shell="on"] .jpk-day-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+html[data-jpk-shell="on"] .jpk-ev { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start; column-gap: 10px; font-size: var(--fs-base); min-width: 0; }
+html[data-jpk-shell="on"] .jpk-ev-time { padding-top: 9px; color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: var(--fs-md); white-space: nowrap; }
+html[data-jpk-shell="on"] .jpk-ev-box { min-width: 0; display: grid; gap: 2px; padding: 8px 12px; border-radius: var(--jpk-r-sm); background: var(--surface-2); }
+html[data-jpk-shell="on"] .jpk-ev-linked .jpk-ev-box { background: var(--accent-soft, var(--surface-2)); }
+html[data-jpk-shell="on"] .jpk-ev-tolink .jpk-ev-box { background: var(--warn-tint, var(--surface-2)); }
+html[data-jpk-shell="on"] .jpk-ev-t { min-width: 0; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+html[data-jpk-shell="on"] .jpk-ev-v { display: block; font-size: var(--fs-sm); color: var(--ink-2); font-weight: 400; }
+html[data-jpk-shell="on"] .jpk-ev-lk { font: inherit; font-size: var(--fs-md); justify-self: start; padding: 0; background: none; border: 0; text-align: left; }
+html[data-jpk-shell="on"] .jpk-ev-lk-on { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; }
+html[data-jpk-shell="on"] .jpk-ev-add { color: var(--warn); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+html[data-jpk-shell="on"] .jpk-ev-none { color: var(--ink-2); }
+html[data-jpk-shell="on"] .jpk-ev .jpk-join { margin-top: 4px; }
+html[data-jpk-shell="on"] .jpk-ev.jpk-past .jpk-ev-time { color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-ev.jpk-past .jpk-ev-box { opacity: .82; }
+html[data-jpk-shell="on"] .jpk-cal-foot { margin: 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--fs-md); color: var(--ink-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+html[data-jpk-shell="on"] .jpk-sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
 html[data-jpk-shell="on"] .jpk-ol { color: var(--accent-ink); }
+html[data-jpk-shell="on"] .jpk-cal-foot .jpk-ol { margin-left: auto; }
 
 /* ---------- footer switch and toast (spec 8) ---------- */
 html .jpk-switch { font: inherit; font-size: inherit; color: var(--accent-ink, inherit); background: none; border: 0; padding: 0 0 0 8px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
@@ -10838,20 +10950,35 @@ html[data-jpk-shell="on"] .jpk-shell-toast a { color: inherit; font-weight: 700;
 /* ---------- tablet and phone (spec 1.3) ---------- */
 @media (max-width: 1100px) {
   html[data-jpk-shell="on"] .jpk-side { display: none; }
+  html[data-jpk-shell="on"] .jpk-main { padding-top: 4px; }
 }
 @media (max-width: 860px) {
-  html[data-jpk-shell="on"] .jpk-counts { text-align: left; }
+  /* the actions wrap under the greeting */
+  html[data-jpk-shell="on"] .jpk-head { flex-direction: column; align-items: stretch; }
+  html[data-jpk-shell="on"] .jpk-qa-wrap { justify-content: flex-start; }
+  html[data-jpk-shell="on"] .jpk-qa-l { display: none; }
 }
 @media (max-width: 640px) {
-  /* chips: one row that scrolls sideways inside itself */
-  html[data-jpk-shell="on"] .jpk-qa { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 4px; }
-  /* flow: compact numbered segments; the label is still read out and shown as the button title */
-  html[data-jpk-shell="on"] .jpk-step { flex-direction: column; gap: 2px; padding: 6px 4px; align-items: center; text-align: center; }
-  html[data-jpk-shell="on"] .jpk-step-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  html[data-jpk-shell="on"] .jpk-step-c { margin-left: 0; font-size: var(--fs-sm); }
-  html[data-jpk-shell="on"] .jpk-tick { position: static; transform: none; width: 24px; height: 24px; margin: auto 4px auto 0; opacity: 1; }
-  html[data-jpk-shell="on"] .jpk-counts { font-size: var(--fs-sm); }
+  html[data-jpk-shell="on"] .jpk-hi { font-size: 21px; }
+  html[data-jpk-shell="on"] .jpk-qa { gap: 8px; }
+  html[data-jpk-shell="on"] .jpk-qa-btn { min-height: 38px; padding: 6px 12px; }
+  html[data-jpk-shell="on"] .jpk-nt-row { grid-template-columns: minmax(0, 1fr) auto; padding: 12px 14px; }
+  html[data-jpk-shell="on"] .jpk-nt-row .jpk-tag { grid-column: 1 / -1; }
+  html[data-jpk-shell="on"] .jpk-card-h { padding: 12px 14px; flex-wrap: wrap; }
+  html[data-jpk-shell="on"] .jpk-mini { padding: 12px 14px 6px; }
+  /* flow: the steps take two columns; the labels stay */
+  html[data-jpk-shell="on"] .jpk-flow { padding: 12px; }
+  html[data-jpk-shell="on"] .jpk-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  html[data-jpk-shell="on"] .jpk-flow-item + .jpk-flow-item::before { content: none; }
+  html[data-jpk-shell="on"] .jpk-step { width: 100%; padding-right: 32px; }
+  html[data-jpk-shell="on"] .jpk-step-l { overflow: hidden; text-overflow: ellipsis; }
+  html[data-jpk-shell="on"] .jpk-tick { opacity: 1; }
+  html[data-jpk-shell="on"] .jpk-flow-note { margin-left: 0; }
+  html[data-jpk-shell="on"] .jpk-ev { grid-template-columns: 56px minmax(0, 1fr); }
+  html[data-jpk-shell="on"] .jpk-ev .jpk-join { grid-column: 2; justify-self: start; }
+  html[data-jpk-shell="on"] .jpk-btn { min-height: 36px; }
 }
+@media (hover: none) { html[data-jpk-shell="on"] .jpk-tick { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { html[data-jpk-shell="on"] .jpk-tg svg { transition: none; } }
 </style>
 <style id="jpk-calendar-css">
@@ -10910,44 +11037,48 @@ html[data-jpk-shell="on"] .jpk-pick-sel { font-size: var(--fs-md); color: var(--
 }
 </style>
 <script id="jpk-shell-config">
-/* jpk-shell-config (CS): Beau CS Home. Spec section 7 with the section 11 decisions: S21 order (Numbers before Boards),
-   Up-next above the tiles on narrow screens, step 4 "Close out" counts cases. */
+/* jpk-shell-config (CS): Beau CS Home v6.0.1. Spec section 7 with the section 11 decisions (S21 order: Numbers before Boards;
+   Up-next above the tiles on narrow screens; step 4 "Close out" counts cases), brought in line with Beau's mockup (v6.0.1 fix list):
+   header with greeting, counts and quick actions in one row; a Needs Today list with the tiles directly below it; three cards;
+   the calendar with day arrows and a 5-day strip; the flow bar at the bottom. */
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
+  build: 'Beau CS Home v6.0.1',
   enabled: true,
   greeting: '#greeting',
   counts: [
-    { key: 'meetings', label: 'meetings',   from: 'calendar.today',   zone: 'calendar' },
-    { key: 'needs',    label: 'need you',   from: 'tiles.sum',        zone: '#needs-today' },
-    { key: 'due',      label: 'due today',  from: 'agenda.today',     zone: '#agenda-card' },
-    { key: 'approve',  label: 'to approve', from: 'alerts.approvals', zone: '#z-sm' }
+    { key: 'needs',    one: 'item needs you', many: 'items need you', from: 'needs.open',     zone: 'jpk:needs' },
+    { key: 'meetings', one: 'meeting today',  many: 'meetings today', from: 'calendar.today', zone: 'jpk:calendar' }
   ],
   actions: [
-    { id: 'markRenewed', label: 'Mark renewed', kind: 'view', view: 'renewals60', fallback: { kind: 'tab', module: 'Contracts' }, badge: 'tiles.renewals60', profiles: ['Administrator'], tip: 'Opens CS - Renewals due 60d. Mark each contract renewed on its record.' },
-    { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', source: 'collections', badge: 'alerts.collections', tip: 'Opens the collection request waiting for approval, or the list when there are several.' },
-    { id: 'billingCheck', label: 'Billing check', kind: 'agendaRecordOrCreate', module: 'Billing_Periods', source: 'billing', badge: 'alerts.billing', profiles: ['Administrator'], tip: 'Opens this month\'s billing period, or a new one if it does not exist yet.' },
-    { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: '', hideWhenMissing: true, tip: 'Opens Lost Devices.' },
-    { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'outlook', durationMin: 30, tip: 'Opens a new meeting in Outlook in a new tab.' }
+    { id: 'reorderDevices', label: 'Reorder devices', kind: 'stockEmails', fallback: { kind: 'tab', module: 'Daily_Unit_Counts' }, icon: 'layers', tip: 'Opens Stock emails to approve, where the spare floor emails that ask a customer to order units wait.' },
+    { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the list when there are several.' },
+    { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: '', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
+    { id: 'billingCheck', label: 'Billing check', kind: 'agendaRecordOrCreate', module: 'Billing_Periods', profiles: ['Administrator'], icon: 'check', tip: 'Opens this month\'s billing period, or a new one if it does not exist yet.' },
+    { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'outlook', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens a new meeting in Outlook in a new tab.' }
   ],
+  needs: { cap: 8, lostDevices: false, renewalDays: 60 },
+  cards: { renewalDays: 90, rows: 3, lostDevices: false },
   zones: {
     top:  ['#z-sm'],
-    main: ['#needs-today', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel'],
+    main: ['jpk:needs', '#needs-today', 'jpk:cards', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel'],
     side: ['jpk:calendar', '#agenda-card', '#z-ref'],
-    narrowOrder: ['#z-sm', 'jpk:calendar', '#needs-today', '#agenda-card', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
+    narrowOrder: ['#z-sm', 'jpk:calendar', 'jpk:needs', '#needs-today', 'jpk:cards', '#agenda-card', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
     sideWidth: 'clamp(320px, 30%, 400px)',
     stackPairsBelow: 900
   },
   calendar: {
     source: 'events', days: 7, owner: 'me', detailCap: 10, link: true, fallback: 'agenda',
     outlookUrl: 'https://outlook.office.com/calendar/view/day',
-    help: 'Put a meeting on the Zoho CRM Calendar in Outlook to see it here.'
+    help: 'Put a meeting on the Zoho CRM Calendar in Outlook to see it here.',
+    syncNote: 'From Outlook via Zoho Meetings sync'
   },
   flow: [
-    { n: 1, label: 'Alerts',                  count: 'alerts.all',       zones: ['#z-sm', '#agenda-card'] },
-    { n: 2, label: 'Needs you today',         count: 'tiles.sum',        zones: ['#needs-today'] },
-    { n: 3, label: 'Meetings and follow-ups', count: 'calendar.open+fu', zones: ['jpk:calendar', '#z-fu'] },
-    { n: 4, label: 'Close out',               count: 'cases.mineOpen',   zones: ['#z-work'] }
+    { n: 1, label: 'Alerts',                count: 'alerts.all',       zones: ['#z-sm', '#agenda-card'] },
+    { n: 2, label: 'Needs Today',           count: 'needs.open',       zones: ['jpk:needs', '#needs-today'] },
+    { n: 3, label: 'Meetings & follow-ups', count: 'calendar.open+fu', zones: ['jpk:calendar', '#z-fu'] },
+    { n: 4, label: 'Close out',             count: 'cases.mineOpen',   zones: ['#queue-card'] }
   ],
   seed: { collapse: { 'bd-rel': true } }
 };
@@ -11751,86 +11882,67 @@ window.JPK_SHELL = {
 })(typeof window !== 'undefined' ? window : this);
 </script>
 <script id="jpk-shell-js">
-/* jpk-shell.js v0.1.0 (S24 step 5, 22 Oct 2026): the page frame ("shell") for Beau CS Home, reusable by BD Home and EM Home.
-   Spec: S24-LAYOUT-SPEC-APPROVED.md (sections 1 to 5, 7, 8; section 11 decisions win).
+/* jpk-shell.js v0.2.0 (S24 v6.0.1, 22 Oct 2026): the page frame ("shell") for Beau CS Home, reusable by BD Home and EM Home.
+   Spec: S24-LAYOUT-SPEC-APPROVED.md (section 11 decisions win), brought in line with Beau's mockup (CRM_OS_Home page 2) by the v6.0.1 fix list.
 
-   What it does: adds a quick-action row, header counts, a four-step flow strip and a calendar block, then MOVES the page's
-   existing sections (by element id only) into three zones: top, main (left) and side (right). It never edits the inside of a
-   section: no text, attributes or listeners of an existing section are changed. It reads DOM text and the page's test hooks
-   (window.__bd, window.NeedsToday, window.__bdcsUser) and makes no network calls of its own.
+   What it does: adds a header (greeting, date, counts and the quick actions in one row), a "Needs Today" list, three compact cards,
+   a calendar block and a "Today's flow" bar at the bottom, then MOVES the page's existing sections (by element id only) into three
+   zones: top, main (left) and side (right). It never edits the inside of a section: no text, attributes or listeners of an existing
+   section are changed. It reads DOM text and the page's test hooks (window.__bd, window.NeedsToday, window.__bdcsUser) and makes no
+   network calls of its own. The two version labels (the tiles' footnote and the page footer) are replaced on screen with CSS only.
 
    Switch (section 8): JPK_SHELL.enabled (master), then ?shell=0|1 (wins), then localStorage 'jpk-shell-<home>' = 'off'|'on'.
    Off = the script exits before touching the DOM, apart from one footer link to switch back on.
 
-   Globals: window.JPKShell = { config, mount, unmount, calendar, counts, flow, version, lastNav }. Events on window:
+   Globals: window.JPKShell = { config, mount, unmount, calendar, counts, flow, needs, cards, version, lastNav }. Events on window:
    'jpk:mounted', 'jpk:counts'. Storage keys: jpk-shell-*, jpk-flow-<home>-<YYYY-MM-DD>.
 
    ------------------------------------------------------------------------------------------------------------------------
-   CALENDAR DATA INTERFACE (step 6 builds the real one; this file only ships a demo stub)
+   CALENDAR DATA INTERFACE (jpk-calendar.js is the real one; this file only ships a demo stub)
 
      window.jpkCalendar.load(range) -> Promise<Array<Event>>
-
-     range = {
-       start: Date,      // local midnight of the first day (today 00:00)
-       end:   Date,      // local 23:59:59.999 of the last day (today + days - 1)
-       days:  Number,    // config calendar.days (7)
-       owner: 'me',      // config calendar.owner
-       detailCap: Number // config calendar.detailCap (10): how many of today's meetings may get a detail read
-     }
-
-     Event = {
-       id:        String,          // Zoho Events record id
-       title:     String,          // Event_Title
-       start:     String | Date,   // ISO 8601 with offset, or a Date
-       end:       String | Date,
-       allDay:    Boolean,
-       venue:     String,          // '' when none
-       joinUrl:   String,          // Teams join link, '' when none found
-       accountId: String,          // What_Id (Accounts) or ''
-       contactId: String,          // Who_Id or ''
-       attendees: Array<{ name: String, email: String, contactId: String }>,
-       // optional, shown on chips when present:
-       accountName: String, contactName: String
-     }
-
-     Rejecting the promise means "the read failed" (the calendar shows the failure wording). Resolving [] means "no meetings".
-     Optional: window.jpkCalendar.link(event) -> Promise (the link picker, step 6). When absent, "Link to account" is not shown.
-     If window.jpkCalendar is already defined when this file runs (step 6 loads first), the stub below is not installed.
-     The stub answers with demo events only in preview (no Zoho SDK, or ?preview=1, or ?caldemo=1|empty|err|later|done|slow); in a live
-     page without step 6 it rejects, so the calendar never shows made-up meetings.
+     range = { start: Date (today 00:00), end: Date (last day 23:59:59.999), days: Number, owner: 'me', detailCap: Number }
+     Event = { id, title, start, end, allDay, venue, joinUrl, accountId, contactId, attendees: [{ name, email, contactId }],
+               accountName?, contactName? }
+     Rejecting the promise means "the read failed". Resolving [] means "no meetings".
+     Optional: link(event, opener) (the link picker) and open(event, opener) (the details panel).
+     If window.jpkCalendar is already defined when this file runs, the stub below is not installed. The stub answers with demo
+     events only in preview; in a live page without jpk-calendar.js it rejects, so the calendar never shows made-up meetings.
    ------------------------------------------------------------------------------------------------------------------------ */
 (function (root) {
   'use strict';
-  var VERSION = '0.1.0';
+  var VERSION = '0.2.0';
   var doc = root.document;
   if (!doc) return;
+  var NA = 'n/a';   /* shown for a count that is not known (loading or failed); never a false 0 */
 
   /* ============================ config ============================ */
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
+    build: 'Beau CS Home v6.0.1',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
-    slugs: { Deals: 'Potentials', Contracts: 'CustomModule17' },
+    slugs: { Deals: 'Potentials', Contracts: 'CustomModule17', Daily_Unit_Counts: 'CustomModule18', EM_Stock_Alerts: 'CustomModule19' },
     counts: [
-      { key: 'meetings', label: 'meetings', from: 'calendar.today', zone: 'calendar' },
-      { key: 'needs', label: 'need you', from: 'tiles.sum', zone: '#needs-today' },
-      { key: 'due', label: 'due today', from: 'agenda.today', zone: '#agenda-card' },
-      { key: 'approve', label: 'to approve', from: 'alerts.approvals', zone: '#z-sm' }
+      { key: 'needs', one: 'item needs you', many: 'items need you', from: 'needs.open', zone: 'jpk:needs' },
+      { key: 'meetings', one: 'meeting today', many: 'meetings today', from: 'calendar.today', zone: 'jpk:calendar' }
     ],
     actions: [
-      { id: 'markRenewed', label: 'Mark renewed', kind: 'view', view: 'renewals60', fallback: { kind: 'tab', module: 'Contracts' }, badge: 'tiles.renewals60', profiles: ['Administrator'], tip: 'Opens CS - Renewals due 60d. Mark each contract renewed on its record.' },
-      { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', source: 'collections', badge: 'alerts.collections', tip: 'Opens the collection request waiting for approval, or the list when there are several.' },
-      { id: 'billingCheck', label: 'Billing check', kind: 'agendaRecordOrCreate', module: 'Billing_Periods', source: 'billing', badge: 'alerts.billing', profiles: ['Administrator'], tip: 'Opens this month\'s billing period, or a new one if it does not exist yet.' },
-      { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: '', hideWhenMissing: true, tip: 'Opens Lost Devices.' },
-      { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'outlook', durationMin: 30, tip: 'Opens a new meeting in Outlook in a new tab.' }
+      { id: 'reorderDevices', label: 'Reorder devices', kind: 'stockEmails', fallback: { kind: 'tab', module: 'Daily_Unit_Counts' }, icon: 'layers', tip: 'Opens Stock emails to approve, where the spare floor emails that ask a customer to order units wait.' },
+      { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the list when there are several.' },
+      { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: '', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
+      { id: 'billingCheck', label: 'Billing check', kind: 'agendaRecordOrCreate', module: 'Billing_Periods', profiles: ['Administrator'], icon: 'check', tip: 'Opens this month\'s billing period, or a new one if it does not exist yet.' },
+      { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'outlook', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens a new meeting in Outlook in a new tab.' }
     ],
+    needs: { cap: 8, lostDevices: false, renewalDays: 60 },
+    cards: { renewalDays: 90, rows: 3, lostDevices: false },
     zones: {
       top: ['#z-sm'],
-      main: ['#needs-today', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel'],
+      main: ['jpk:needs', '#needs-today', 'jpk:cards', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel'],
       side: ['jpk:calendar', '#agenda-card', '#z-ref'],
-      narrowOrder: ['#z-sm', 'jpk:calendar', '#needs-today', '#agenda-card', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
+      narrowOrder: ['#z-sm', 'jpk:calendar', 'jpk:needs', '#needs-today', 'jpk:cards', '#agenda-card', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
       sideWidth: 'clamp(320px, 30%, 400px)',
       stackPairsBelow: 900,
       narrowBelow: 1101
@@ -11838,13 +11950,14 @@ window.JPK_SHELL = {
     calendar: {
       source: 'events', days: 7, owner: 'me', detailCap: 10, link: true, fallback: 'agenda',
       outlookUrl: 'https://outlook.office.com/calendar/view/day',
-      help: 'Put a meeting on the Zoho CRM Calendar in Outlook to see it here.'
+      help: 'Put a meeting on the Zoho CRM Calendar in Outlook to see it here.',
+      syncNote: 'From Outlook via Zoho Meetings sync'
     },
     flow: [
       { n: 1, label: 'Alerts', count: 'alerts.all', zones: ['#z-sm', '#agenda-card'], tip: 'Stock and collections emails to approve, and overdue items on Today & Upcoming' },
-      { n: 2, label: 'Needs you today', count: 'tiles.sum', zones: ['#needs-today'], tip: 'The four tiles' },
-      { n: 3, label: 'Meetings and follow-ups', count: 'calendar.open+fu', zones: ['jpk:calendar', '#z-fu'], tip: 'Meetings still ahead today and your follow-ups' },
-      { n: 4, label: 'Close out', count: 'cases.mineOpen', zones: ['#z-work'], tip: 'Your open cases. Resolve or close what you finished today.' }
+      { n: 2, label: 'Needs Today', count: 'needs.open', zones: ['jpk:needs', '#needs-today'], tip: 'The Needs Today list and the four tiles' },
+      { n: 3, label: 'Meetings & follow-ups', count: 'calendar.open+fu', zones: ['jpk:calendar', '#z-fu'], tip: 'Meetings still ahead today and your follow-ups' },
+      { n: 4, label: 'Close out', count: 'cases.mineOpen', zones: ['#queue-card'], tip: 'Your open cases. Resolve or close what you finished today.' }
     ],
     seed: { collapse: { 'bd-rel': true } }
   };
@@ -11862,6 +11975,8 @@ window.JPK_SHELL = {
     c.zones = shallow(DEFAULTS.zones, user.zones, KNOWN_ZONES, 'zones');
     c.calendar = shallow(DEFAULTS.calendar, user.calendar, KNOWN_CAL, 'calendar');
     c.slugs = shallow(DEFAULTS.slugs, user.slugs, null, 'slugs');
+    c.needs = shallow(DEFAULTS.needs, user.needs, Object.keys(DEFAULTS.needs), 'needs');
+    c.cards = shallow(DEFAULTS.cards, user.cards, Object.keys(DEFAULTS.cards), 'cards');
     if (!Array.isArray(c.counts)) { warn('counts is not a list; default used'); c.counts = DEFAULTS.counts; }
     if (!Array.isArray(c.actions)) { warn('actions is not a list; default used'); c.actions = DEFAULTS.actions; }
     if (!Array.isArray(c.flow)) { warn('flow is not a list; default used'); c.flow = DEFAULTS.flow; }
@@ -11894,6 +12009,8 @@ window.JPK_SHELL = {
   function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
   function addDays(d, n) { var x = startOfDay(d); x.setDate(x.getDate() + n); return x; }
   function toDate(v) { if (v instanceof Date) return v; var t = Date.parse(v); return isNaN(t) ? null : new Date(t); }
+  function dayOf(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+  function daysBetween(a, b) { return Math.round((startOfDay(a) - startOfDay(b)) / 864e5); }
   function hhmm(d) { return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
   function preview() { return /[?&]preview=1/.test(root.location.search) || !root.ZOHO; }
   function param(name) { var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(root.location.search); return m ? decodeURIComponent(m[1]) : null; }
@@ -11902,7 +12019,20 @@ window.JPK_SHELL = {
   function kick() { try { root.requestAnimationFrame(function () { try { root.dispatchEvent(new Event('resize')); } catch (e) {} }); } catch (e) {} }
   function crmTab(module) { return CFG.crmBase + (CFG.slugs[module] || module); }
   function crmRec(module, id) { return crmTab(module) + '/' + id; }
+  function isId(id) { return /^\d+$/.test(String(id == null ? '' : id)); }
   function visible(el) { return !!el && !el.hidden && !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length); }
+  function plural(n, one, many) { return n === 1 ? one : many; }
+  function cssStr(s) { return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ') + '"'; }
+  function money(n) { return '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+  var ICON = {
+    layers: '<path d="M8 2.5 14 5.5 8 8.5 2 5.5z"/><path d="M2 8.5 8 11.5 14 8.5"/>',
+    mail: '<rect x="2" y="3.5" width="12" height="9" rx="1.5"/><path d="M2.5 4.5 8 9l5.5-4.5"/>',
+    search: '<circle cx="7" cy="7" r="4.25"/><path d="M10.2 10.2 13.5 13.5"/>',
+    check: '<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.2 8.2 7.2 10.2 10.8 6"/>',
+    plus: '<path d="M8 3v10M3 8h10"/>',
+    cal: '<rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/>'
+  };
+  function icon(k) { return ICON[k] ? '<svg class="jpk-ic" viewBox="0 0 16 16" aria-hidden="true">' + ICON[k] + '</svg>' : ''; }
 
   /* ============================ the switch (section 8) ============================ */
   var KEY_SWITCH = 'jpk-shell-' + CFG.home;
@@ -11934,16 +12064,16 @@ window.JPK_SHELL = {
     mounted: false, page: null, els: {}, moved: [], anchors: [], narrow: null, mq: null,
     user: undefined, userWaited: false,
     cal: { status: 'loading', events: [], error: null, day: null, showWeek: false, collapsed: false },
-    counts: {}, flowFuMine: null, flowLastStep: null, timers: [], observers: [], lastCountsSig: '', lastFlowSig: ''
+    counts: {}, flowFuMine: null, flowLastStep: null, flowCur: null, flowClickAt: 0, flowSeen: {}, io: null,
+    needs: { state: 'loading', rows: [], notes: [] }, needsSig: '', updatedAt: null,
+    timers: [], observers: [], lastCountsSig: '', lastFlowSig: '', lastCardsSig: '', lastLabelSig: ''
   };
-  var JPKShell = root.JPKShell = { config: CFG, version: VERSION, mount: mount, unmount: unmount, lastNav: null, state: S };
+  var JPKShell = root.JPKShell = { config: CFG, version: VERSION, build: CFG.build, mount: mount, unmount: unmount, lastNav: null, state: S };
 
   /* ============================ calendar data (stub; see the interface at the top) ============================ */
   function demoEvents() {
     var now = new Date(), t0 = startOfDay(now), at = function (dayOff, h, m, dur) { var s = addDays(t0, dayOff); s.setHours(h, m, 0, 0); return { s: s, e: new Date(s.getTime() + dur * 60000) }; };
-    var nextHalf = new Date(now.getTime()); nextHalf.setMinutes(nextHalf.getMinutes() < 30 ? 30 : 60, 0, 0);
-    var soon = { s: new Date(nextHalf.getTime() + 25 * 60000 - ((nextHalf - now) % 60000)), e: null };
-    soon.s = new Date(now.getTime() + 25 * 60000); soon.s.setSeconds(0, 0); soon.e = new Date(soon.s.getTime() + 30 * 60000);
+    var soon = { s: new Date(now.getTime() + 25 * 60000), e: null }; soon.s.setSeconds(0, 0); soon.e = new Date(soon.s.getTime() + 30 * 60000);
     var past = { s: new Date(now.getTime() - 3 * 3600000), e: new Date(now.getTime() - 2.5 * 3600000) };
     var later = { s: new Date(now.getTime() + 3 * 3600000), e: new Date(now.getTime() + 4 * 3600000) };
     var ev = function (id, title, w, o) { return Object.assign({ id: id, title: title, start: w.s.toISOString(), end: w.e.toISOString(), allDay: false, venue: '', joinUrl: '', accountId: '', contactId: '', attendees: [] }, o || {}); };
@@ -11972,8 +12102,8 @@ window.JPK_SHELL = {
             if (mode === 'slow') return;   /* never answers: the loading state */
             var t0 = startOfDay(new Date()), t1 = addDays(t0, 1), now = new Date(), list = demoEvents();
             var isToday = function (e) { var s = toDate(e.start); return s >= t0 && s < t1; };
-            if (mode === 'later') list = list.filter(function (e) { return !isToday(e); });                 /* meetings this week, none today */
-            if (mode === 'done') list = list.map(function (e) {                                              /* today's meetings all over */
+            if (mode === 'later') list = list.filter(function (e) { return !isToday(e); });
+            if (mode === 'done') list = list.map(function (e) {
               if (!isToday(e)) return e; var span = now - t0, s = new Date(t0.getTime() + span * 0.2), en = new Date(t0.getTime() + span * 0.4);
               return Object.assign({}, e, { start: s.toISOString(), end: en.toISOString() });
             });
@@ -11985,15 +12115,17 @@ window.JPK_SHELL = {
   }
 
   /* ============================ mount / zones (section 1) ============================ */
+  function own(entry) { return entry === 'jpk:calendar' ? S.els.cal : entry === 'jpk:needs' ? S.els.nt : entry === 'jpk:cards' ? S.els.cards : undefined; }
   function zoneEl(entry) {
-    if (entry === 'jpk:calendar') return S.els.cal;
+    var o = own(entry); if (o !== undefined) return o || null;
     if (typeof entry !== 'string' || entry.charAt(0) !== '#') { warn('zone entry "' + entry + '" is not an id selector; skipped'); return null; }
     var el = $(entry.slice(1));
     if (!el) warn('zone entry "' + entry + '" matches nothing; skipped');
     return el;
   }
+  function isOwn(el) { return el === S.els.cal || el === S.els.nt || el === S.els.cards; }
   function remember(el) {
-    if (!el || el.__jpkAnchor || el === S.els.cal) return;
+    if (!el || el.__jpkAnchor || isOwn(el)) return;
     var a = doc.createComment('jpk-shell:' + el.id);
     el.parentNode.insertBefore(a, el);
     el.__jpkAnchor = a; S.anchors.push({ el: el, anchor: a });
@@ -12030,31 +12162,30 @@ window.JPK_SHELL = {
 
   function mount() {
     if (S.mounted) return true;
+    S.needsSig = S.lastCardsSig = S.lastCountsSig = S.lastFlowSig = S.lastLabelSig = '';
     var page = S.page = $('page') || q('.page');
     if (!page) { warn('no #page; shell not mounted'); return false; }
     doc.documentElement.setAttribute('data-jpk-shell', 'on');
     doc.documentElement.style.setProperty('--jpk-side-w', CFG.zones.sideWidth);
     var E = S.els;
-    E.head = mk('section', 'jpk-head', { 'aria-label': 'Quick actions', id: 'jpk-head' });
-    E.qa = mk('div', 'jpk-qa', { role: 'group', 'aria-label': 'Quick actions' });
-    E.head.appendChild(E.qa);
-    E.flow = mk('nav', 'jpk-flow', { 'aria-label': 'Your day in four steps', id: 'jpk-flow' });
+    E.head = buildHead();
+    E.flow = mk('nav', 'jpk-flow', { 'aria-label': 'Today\'s flow', id: 'jpk-flow' });
     E.top = mk('div', 'jpk-top jpk-zone hk-edge', { 'data-jpk-zone': 'top' });
     E.cols = mk('div', 'jpk-cols');
     E.main = mk('div', 'jpk-main jpk-zone hk-edge', { 'data-jpk-zone': 'main' });
     E.side = mk('aside', 'jpk-side jpk-zone hk-edge', { 'data-jpk-zone': 'side', 'aria-label': 'Calendar and dated work' });
     E.cols.appendChild(E.main); E.cols.appendChild(E.side);
     E.cal = buildCalendar();
+    E.nt = buildNeeds();
+    E.cards = buildCards();
 
-    var bar = page.querySelector(':scope > .quick-actions'), mast = page.querySelector(':scope > .mast');
-    var after = bar || mast || null;
-    var ins = function (n) { page.insertBefore(n, after ? after.nextSibling : page.firstChild); after = n; };
-    ins(E.head); ins(E.flow); ins(E.top); ins(E.cols);
-
-    /* header counts: inside the masthead, under the date line (spec 1.1 / 3) */
-    var greet = mast && mast.querySelector('.greet');
-    E.counts = mk('p', 'jpk-counts', { 'aria-live': 'polite', id: 'jpk-counts' });
-    if (greet) greet.appendChild(E.counts); else ins(E.counts);
+    /* header right after the masthead; the frame after the search bar; the flow bar at the bottom of the content, above the footer */
+    var bar = page.querySelector(':scope > .quick-actions'), mast = page.querySelector(':scope > .mast'), foot = page.querySelector(':scope > .foot-note');
+    page.insertBefore(E.head, mast ? mast.nextSibling : page.firstChild);
+    var after = bar || E.head;
+    var ins = function (n) { page.insertBefore(n, after.nextSibling); after = n; };
+    ins(E.top); ins(E.cols);
+    if (foot) page.insertBefore(E.flow, foot); else ins(E.flow);
 
     try { S.mq = root.matchMedia('(max-width: ' + (CFG.zones.narrowBelow - 1) + 'px)'); } catch (e) { S.mq = null; }
     if (S.mq) { var onMq = function () { arrange(); refresh(); }; if (S.mq.addEventListener) S.mq.addEventListener('change', onMq); else if (S.mq.addListener) S.mq.addListener(onMq); S.onMq = onMq; }
@@ -12064,12 +12195,13 @@ window.JPK_SHELL = {
     buildFlow();
     seedCollapse();
     watch();
+    watchFlowZones();
     loadCalendar();
     waitUser();
     S.mounted = true;
     refresh();
     footerLink(true);
-    try { root.dispatchEvent(new CustomEvent('jpk:mounted', { detail: { home: CFG.home, version: VERSION } })); } catch (e) {}
+    try { root.dispatchEvent(new CustomEvent('jpk:mounted', { detail: { home: CFG.home, version: VERSION, build: CFG.build } })); } catch (e) {}
     return true;
   }
 
@@ -12077,15 +12209,17 @@ window.JPK_SHELL = {
     if (!S.mounted) return false;
     S.anchors.slice().reverse().forEach(function (p) { if (p.anchor.parentNode) { p.anchor.parentNode.insertBefore(p.el, p.anchor); p.anchor.parentNode.removeChild(p.anchor); } delete p.el.__jpkAnchor; });
     S.anchors = [];
-    ['head', 'flow', 'top', 'cols', 'counts'].forEach(function (k) { var n = S.els[k]; if (n && n.parentNode) n.parentNode.removeChild(n); });
+    ['head', 'flow', 'top', 'cols'].forEach(function (k) { var n = S.els[k]; if (n && n.parentNode) n.parentNode.removeChild(n); });
     S.observers.forEach(function (o) { try { o.disconnect(); } catch (e) {} }); S.observers = [];
+    if (S.io) { try { S.io.disconnect(); } catch (e) {} S.io = null; }
     S.timers.forEach(function (t) { clearInterval(t); clearTimeout(t); }); S.timers = [];
     if (S.mq && S.onMq) { if (S.mq.removeEventListener) S.mq.removeEventListener('change', S.onMq); else if (S.mq.removeListener) S.mq.removeListener(S.onMq); }
     root.removeEventListener('resize', sticky);
     var sw = q('.jpk-switch'); if (sw) { var prev = sw.previousSibling; sw.parentNode.removeChild(sw); if (prev && prev.nodeType === 3 && prev.textContent === ' ') prev.parentNode.removeChild(prev); }
-    doc.documentElement.removeAttribute('data-jpk-shell'); doc.documentElement.removeAttribute('data-jpk-width');
-    doc.documentElement.style.removeProperty('--jpk-side-w');
-    S.mounted = false; S.els = {};
+    var h = doc.documentElement;
+    ['data-jpk-shell', 'data-jpk-width', 'data-jpk-label'].forEach(function (a) { h.removeAttribute(a); });
+    ['--jpk-side-w', '--jpk-nt-foot', '--jpk-source'].forEach(function (p) { h.style.removeProperty(p); });
+    S.mounted = false; S.els = {}; S.lastLabelSig = '';
     kick();
     return true;
   }
@@ -12106,6 +12240,7 @@ window.JPK_SHELL = {
 
   /* ============================ data readers (read-only) ============================ */
   function ag() { var b = root.__bd; return b && b.AG && b.AG.data ? b.AG.data : null; }
+  function bdD() { var b = root.__bd; return b && b.D ? b.D : null; }
   function tiles() {
     /* the four "Needs you today" tiles: { key: {n, state} } in HOMES order; state = loading | err | ok */
     var sec = $('needs-today'), out = { list: [], byKey: {} };
@@ -12131,12 +12266,27 @@ window.JPK_SHELL = {
     return null;
   }
   function stockWaiting() { var ul = $('sm-list'); if (!ul) return null; return qa(':scope > li.sm-item', ul).length; }
+  function stockRows() {
+    /* Stock emails to approve (the page paints them; Created_Time is read by the page but not shown, so there is no date here) */
+    return qa('#sm-list > li.sm-item').map(function (li) {
+      return { id: li.getAttribute('data-id') || '', account: tx(li.querySelector('.acct')), type: tx(li.querySelector('.pill')), subject: tx(li.querySelector('.subj')) };
+    }).filter(function (r) { return r.id; });
+  }
+  function acctOf(r) { return r['Account.Account_Name'] || (r.Account && r.Account.name) || ''; }
   function collections() {
+    /* collection requests waiting for approval: the agenda's raw rows when it read them, else its items (the preview sample) */
     var d = ag(); if (!d) return { state: 'loading' };
     var raw = d.raw && d.raw.collections;
-    if (!Array.isArray(raw)) return { state: 'err' };
-    var rows = raw.filter(function (r) { return !r.Email_Status || r.Email_Status === 'Awaiting approval'; });
-    return { state: 'ok', n: rows.length, rows: rows };
+    if (Array.isArray(raw)) {
+      var rows = raw.filter(function (r) { return !r.Email_Status || r.Email_Status === 'Awaiting approval'; })
+        .map(function (r) { return { id: String(r.id), account: acctOf(r), name: r.Name || '', balance: r.Open_Balance != null && r.Open_Balance !== '' ? Number(r.Open_Balance) : null }; });
+      return { state: 'ok', n: rows.length, rows: rows };
+    }
+    if (d.raw && Object.prototype.hasOwnProperty.call(d.raw, 'collections')) return { state: 'err' };   /* the read failed (null) */
+    if (!Array.isArray(d.items)) return { state: 'err' };
+    var its = d.items.filter(function (i) { return i.src === 'collections' && i.id !== 'report-missing'; })
+      .map(function (i) { return { id: String(i.id), account: i.account || '', name: i.title || '', balance: null, tag: i.tag || '' }; });
+    return { state: 'ok', n: its.length, rows: its };
   }
   function billingNow() {
     var d = ag(); if (!d) return { state: 'loading' };
@@ -12154,14 +12304,6 @@ window.JPK_SHELL = {
     for (i = 0; i < 12; i++) if ((m = t.match(new RegExp('\\b' + MONTHS[i] + '[a-z]*\\.?\\s*,?\\s*(\\d{4})')))) return m[1] + '-' + pad(i + 1);
     return null;
   }
-  function agendaToday() {
-    var d = ag();
-    if (d && d.counts && typeof d.counts.today === 'number') return { state: 'ok', n: d.counts.today, errors: d.errors || [] };
-    var n = tx(q('#ag-tab-today .n'));
-    if (/^\d+$/.test(n)) return { state: 'ok', n: parseInt(n, 10), errors: [] };
-    if (d && d.errors && d.errors.length) return { state: 'err', errors: d.errors };
-    return { state: 'loading', errors: [] };
-  }
   function agendaOverdue() { var d = ag(); if (!d || !Array.isArray(d.items)) return null; return d.items.filter(function (i) { return i.overdue; }).length; }
   function followUps() {
     var mine = q('#fu-scope [data-fuscope="mine"]'), list = $('fu-list');
@@ -12175,24 +12317,266 @@ window.JPK_SHELL = {
     var t = tx($('scope-mine-n'));
     return /^\d+$/.test(t) ? parseInt(t, 10) : null;
   }
-  function meetingsLeftToday() {
-    if (S.cal.status !== 'ok') return null;
-    var now = new Date(), t0 = startOfDay(now), t1 = addDays(now, 1);
-    return S.cal.events.filter(function (e) { var s = toDate(e.start), en = toDate(e.end) || s; return s >= t0 && s < t1 && en > now; }).length;
+  /* contracts the page already loaded for Boards (window.__bd.D.contracts), with the renewals60 tile's rule:
+     a customer contract whose renewal is not Renewed or Not renewing, ending today or within N days */
+  function renewals(days) {
+    var D = bdD(); if (!D || !Array.isArray(D.contracts)) return root.__bd ? 'none' : null;   /* null = not loaded yet, 'none' = this page has no contracts data */
+    if (!D.contracts.length && !(D.accounts || []).length) return null;                           /* Boards data still loading */
+    var now = new Date(), acc = {};
+    (D.accounts || []).forEach(function (a) { acc[String(a.id)] = a.Account_Name; });
+    return D.contracts.filter(function (c) {
+      if (c.Counterparty_Type === 'Vendor' || /^(renewed|not renewing)$/i.test(c.Renewal_Status || '')) return false;
+      var e = dayOf(c.Final_End_Date); if (!e) return false;
+      var n = daysBetween(e, now); return n >= 0 && n <= days;
+    }).map(function (c) {
+      var e = dayOf(c.Final_End_Date);
+      return { id: String(c.id), name: c.Name || 'Contract', customer: acc[String(c.AccountId)] || c.Name || 'Contract', end: e, days: daysBetween(e, now), status: c.Renewal_Status || '' };
+    }).sort(function (a, b) { return a.end - b.end; });
+  }
+  function devSpare(mfr) {
+    /* Devices on leg, manufacturer row: the Spare column (on hand: in inventory or pending assignment) */
+    var tr = q('#dev-body tr.mfr[data-k="m:' + mfr + '"]'); if (!tr || !tr.cells || tr.cells.length < 4) return null;
+    var t = tx(tr.cells[3]).replace(/,/g, '');
+    return /^\d+$/.test(t) ? parseInt(t, 10) : null;
   }
 
-  /* a value: { v: Number|null, dot: Boolean, title: String } ; v null = unknown (shown as —) */
+  /* ============================ Needs Today list (fix 1) ============================ */
+  var NT_TYPES = {
+    stock: { tag: 'Stock alert', area: 'Daily Unit Counts' },
+    approve: { tag: 'Approve', area: 'Collections' },
+    renewal: { tag: 'Renewal', area: 'Contracts' },
+    lost: { tag: 'Lost device', area: 'Lost Devices' },
+    verify: { tag: 'Verify', area: 'Billing check' }
+  };
+  function idCmp(a, b) { a = String(a); b = String(b); if (isId(a) && isId(b)) return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0); return a < b ? -1 : a > b ? 1 : 0; }
+  /* -> { state: loading|ok, rows: [{ type, key, id, text, date (ms or null), act, go }], notes: [] }
+     Every row comes from data the page already loaded; nothing is read from Zoho here. Sorted oldest first: rows with a date by that
+     date, then rows without one by record id (Zoho ids rise with creation time). */
+  function needsModel() {
+    var d = ag();
+    if (!d) return { state: 'loading', rows: [], notes: [] };
+    var rows = [], seen = {}, notes = [];
+    var add = function (r) { var k = r.type + ':' + r.id; if (seen[k]) return; seen[k] = 1; r.key = k; rows.push(r); };
+    var items = Array.isArray(d.items) ? d.items : [];
+    /* 1. stock emails to approve (same list as the Stock emails zone and the "to approve" count), then other stock alerts on the agenda */
+    stockRows().forEach(function (s) {
+      var reorder = /spare floor|program growth/i.test(s.type);
+      add({ type: 'stock', id: s.id, text: s.subject || ((s.type || 'Stock alert') + (s.account ? ': ' + s.account : '')), date: null, act: reorder ? 'Reorder' : 'Review', go: { kind: 'stock', id: s.id }, primary: true });
+    });
+    items.filter(function (i) { return i.src === 'stock'; }).forEach(function (i) {
+      if (seen['stock:' + i.id]) return;
+      add({ type: 'stock', id: String(i.id), text: (i.title || 'Stock alert') + (i.account ? ': ' + i.account : ''), date: null, act: 'Review', go: { kind: 'rec', module: 'EM_Stock_Alerts', id: i.id, fallback: 'reorderDevices' }, primary: true });
+    });
+    /* 2. collection emails waiting for approval */
+    var c = collections();
+    if (c.state === 'ok') c.rows.forEach(function (r) {
+      var who = r.account || r.name || 'a customer', bal = r.balance != null ? ' (' + money(r.balance) + ' open)' : r.tag ? ' (' + r.tag + ' open)' : '';
+      add({ type: 'approve', id: r.id, text: 'Collections email to finance contact: ' + who + bal, date: null, act: 'Review', go: { kind: 'rec', module: 'Collection_Requests', id: r.id, fallback: 'approveCollections' }, primary: true });
+    });
+    /* 3. renewals: contracts in the renewals60 window (Boards data), plus contract alerts the agenda has for today */
+    var ren = renewals(CFG.needs.renewalDays); if (!Array.isArray(ren)) ren = [];
+    ren.forEach(function (r) {
+      add({ type: 'renewal', id: r.id, text: 'Contract ends in ' + r.days + (r.days === 1 ? ' day: ' : ' days: ') + r.customer, date: addDays(r.end, -CFG.needs.renewalDays).getTime(), act: 'Mark renewed', go: { kind: 'rec', module: 'Contracts', id: r.id, fallback: 'renewals60' } });
+    });
+    items.filter(function (i) { return i.src === 'contract' && i.bucket === 'today'; }).forEach(function (i) {
+      var dd = dayOf(i.due);
+      add({ type: 'renewal', id: String(i.id), text: 'Renewal alert' + (i.tag ? ' (' + i.tag + ')' : '') + ': ' + (i.account || i.title || 'contract'), date: dd ? dd.getTime() : null, act: 'Mark renewed', go: { kind: 'rec', module: 'Contracts', id: i.id, fallback: 'renewals60' } });
+    });
+    /* 4. lost devices: only once the Lost Devices tool exists (no source yet, so no rows) */
+    /* 5. billing periods the agenda puts on Today, or past months not reconciled */
+    items.filter(function (i) { return i.src === 'billing' && (i.bucket === 'today' || i.overdue); }).forEach(function (i) {
+      var dd = dayOf(i.due), per = String(i.title || '').replace(/^Billing\s*/, '') || 'this month';
+      add({ type: 'verify', id: String(i.id), text: 'Vendor billing to reconcile: ' + per, date: dd ? dd.getTime() : null, act: 'Open', go: { kind: 'rec', module: 'Billing_Periods', id: i.id, fallback: 'billingCheck' } });
+    });
+    rows.sort(function (a, b) {
+      if (a.date != null && b.date != null) return a.date - b.date || idCmp(a.id, b.id);
+      if (a.date != null) return -1; if (b.date != null) return 1;
+      return idCmp(a.id, b.id);
+    });
+    if (Array.isArray(d.errors) && d.errors.length) notes.push('Could not read: ' + d.errors.join(', ') + '. The rest is shown.');
+    return { state: 'ok', rows: rows, notes: notes };
+  }
+  function buildNeeds() {
+    var s = mk('section', 'jpk-nt jpk-card', { id: 'jpk-nt', 'aria-labelledby': 'jpk-nt-h' });
+    s.innerHTML = '<div class="jpk-card-h"><h2 id="jpk-nt-h" class="jpk-card-t" tabindex="-1">Needs Today</h2><span class="jpk-card-sub">oldest first</span><span class="jpk-pill jpk-nt-badge" aria-live="polite"></span></div>'
+      + '<p class="jpk-nt-note" role="status" hidden></p><ul class="jpk-nt-list" aria-labelledby="jpk-nt-h"></ul><div class="jpk-nt-foot" hidden><button type="button" class="jpk-link jpk-nt-all" data-jpk-nt-all="1"></button></div>';
+    s.addEventListener('click', onNeedsClick);
+    return s;
+  }
+  function renderNeeds() {
+    var s = S.els.nt; if (!s) return;
+    var m = needsModel(), cap = Math.max(1, CFG.needs.cap || 8);
+    S.needs = m;
+    var shown = m.rows.slice(0, cap);
+    var sig = JSON.stringify([m.state, m.rows.map(function (r) { return [r.key, r.text, r.act, r.date]; }), m.notes, cap]);
+    if (sig === S.needsSig) return;
+    S.needsSig = sig;
+    if (m.state === 'ok') S.updatedAt = new Date();
+    var badge = s.querySelector('.jpk-nt-badge'), ul = s.querySelector('.jpk-nt-list'), note = s.querySelector('.jpk-nt-note'), foot = s.querySelector('.jpk-nt-foot'), all = s.querySelector('.jpk-nt-all');
+    badge.textContent = m.state === 'ok' ? m.rows.length + ' open' : '';
+    badge.hidden = m.state !== 'ok';
+    note.hidden = !m.notes.length; note.textContent = m.notes.join(' ');
+    var keep = doc.activeElement && s.contains(doc.activeElement) ? doc.activeElement.getAttribute('data-jpk-nt-go') : null;
+    if (m.state === 'loading') ul.innerHTML = '<li class="jpk-nt-empty">Loading your list.</li>';
+    else if (!m.rows.length) ul.innerHTML = '<li class="jpk-nt-empty">Nothing needs you today.</li>';
+    else ul.innerHTML = shown.map(function (r) {
+      var t = NT_TYPES[r.type];
+      return '<li class="jpk-nt-row" data-jpk-nt="' + esc(r.key) + '"' + (r.date != null ? ' data-jpk-at="' + esc(ymd(new Date(r.date))) + '"' : '') + '>'
+        + '<span class="jpk-tag jpk-tag-' + r.type + '">' + esc(t.tag) + '</span>'
+        + '<span class="jpk-nt-text"><span class="jpk-nt-t">' + esc(r.text) + '</span><span class="jpk-nt-area">' + esc(t.area) + '</span></span>'
+        + '<button type="button" class="jpk-btn' + (r.primary ? ' jpk-primary' : '') + ' jpk-nt-go" data-jpk-nt-go="' + esc(r.key) + '" aria-label="' + esc(r.act + ': ' + r.text) + '">' + esc(r.act) + '</button></li>';
+    }).join('');
+    var more = m.rows.length - shown.length;
+    foot.hidden = more <= 0;
+    all.textContent = more > 0 ? 'See all (' + more + ' more)' : '';
+    if (keep) { var nb = s.querySelector('[data-jpk-nt-go="' + keep + '"]'); if (nb) nb.focus(); }
+  }
+  var SEE_ALL = { stock: '#z-sm', approve: '#agenda-card', renewal: '#needs-today', verify: '#agenda-card', lost: '#needs-today' };
+  function onNeedsClick(e) {
+    var b = e.target.closest && e.target.closest('[data-jpk-nt-go],[data-jpk-nt-all]'); if (!b) return;
+    var m = S.needs, cap = Math.max(1, CFG.needs.cap || 8);
+    if (b.hasAttribute('data-jpk-nt-all')) {
+      var first = m.rows[cap]; if (!first) return;
+      JPKShell.lastNav = { id: 'needsSeeAll', type: first.type, at: Date.now() };
+      if (first.type === 'stock') { openStockEmails(null); return; }
+      var target = $(SEE_ALL[first.type].slice(1));
+      if (target && target.id === 'agenda-card') { var it = (ag() && ag().items || []).filter(function (i) { return String(i.id) === first.id; })[0], tab = $('ag-tab-' + (it && it.bucket || 'today')); if (tab && tab.getAttribute('aria-selected') !== 'true') tab.click(); }
+      goTo(target); return;
+    }
+    var row = m.rows.filter(function (r) { return r.key === b.getAttribute('data-jpk-nt-go'); })[0]; if (!row) return;
+    rowGo(row);
+  }
+  function actionById(id) { return CFG.actions.filter(function (x) { return x.id === id; })[0] || null; }
+  function rowGo(r) {
+    var g = r.go, label = r.act + ' ' + NT_TYPES[r.type].tag.toLowerCase();
+    if (g.kind === 'stock') { JPKShell.lastNav = { id: 'needs:' + r.key, how: 'local', at: Date.now() }; openStockEmails(g.id); return; }
+    var t = null;
+    if (isId(g.id)) t = { href: crmRec(g.module, g.id), how: 'top' };
+    else if (g.fallback === 'renewals60') t = actionTarget({ kind: 'view', view: 'renewals60', fallback: { kind: 'tab', module: 'Contracts' } });
+    else if (actionById(g.fallback)) t = actionTarget(actionById(g.fallback));
+    else t = { href: crmTab(g.module), how: 'top' };
+    if (!t) return;
+    navigate(t, { id: 'needs:' + r.key, label: label });
+  }
+  /* the Stock emails zone: shown through the page's own Go to button (#sm-nav), then the row opened through its own toggle */
+  function openStockEmails(id) {
+    var z = $('z-sm'), nav = $('sm-nav');
+    if (z && z.hidden && nav) nav.click();
+    if (!z || z.hidden) {
+      var a = actionById('reorderDevices'), f = a && a.fallback ? actionTarget(a.fallback) : null;
+      if (f) navigate(f, { id: 'reorderDevices', label: 'Daily Unit Counts' });
+      return;
+    }
+    syncTop();
+    var li = id ? qa('#sm-list > li.sm-item').filter(function (x) { return x.getAttribute('data-id') === String(id); })[0] : null;
+    var btn = li ? li.querySelector('.sm-sum') : q('#sm-list .sm-sum');
+    if (li && btn && btn.getAttribute('aria-expanded') !== 'true') btn.click();
+    if (li) { btn = li.isConnected ? li.querySelector('.sm-sum') : null; li = li.isConnected ? li : null; }
+    if (!li && id) { var again = qa('#sm-list > li.sm-item').filter(function (x) { return x.getAttribute('data-id') === String(id); })[0]; if (again) { li = again; btn = again.querySelector('.sm-sum'); } }
+    scrollTo(li || z);
+    var a = doc.activeElement;
+    if (btn && !(li && a && li.contains(a))) { try { btn.focus({ preventScroll: true }); } catch (e) {} }   /* the page's own toggle focuses the subject; keep that */
+  }
+
+  /* ============================ cards row (fix 5) ============================ */
+  function buildCards() {
+    var s = mk('section', 'jpk-cards', { id: 'jpk-cards', 'aria-label': 'Renewals, collections and devices' });
+    s.innerHTML = ['ren', 'col', 'dev'].map(function (k) {
+      var t = { ren: 'Renewals · ' + CFG.cards.renewalDays + ' days', col: 'Collections follow-ups', dev: 'Device inventory' }[k];
+      return '<article class="jpk-card jpk-mini" id="jpk-card-' + k + '" aria-labelledby="jpk-card-' + k + '-h"><h3 class="jpk-mini-h" id="jpk-card-' + k + '-h">' + esc(t) + '</h3><ul class="jpk-mini-list"></ul></article>';
+    }).join('');
+    s.addEventListener('click', onPreviewLink);
+    return s;
+  }
+  function line(left, right, tone, title, href) {
+    var l = href ? '<a class="jpk-mini-a" target="_top" href="' + esc(href) + '">' + esc(left) + '</a>' : esc(left);
+    return '<li class="jpk-mini-row"' + (title ? ' title="' + esc(title) + '"' : '') + '><span class="jpk-mini-k">' + l + '</span><span class="jpk-mini-v' + (tone ? ' jpk-' + tone : '') + '">' + right + '</span></li>';
+  }
+  function cardsModel() {
+    var out = {}, n = CFG.cards.rows || 3;
+    /* Renewals: Boards contracts ending in the window. At risk = not started and inside the renewals60 window (the tile marks those red) */
+    var ren = renewals(CFG.cards.renewalDays);
+    out.ren = ren == null ? { state: 'loading' } : ren === 'none' ? { state: 'none' } : { state: 'ok', total: ren.length, rows: ren.slice(0, n).map(function (r) {
+      var ns = !r.status || /^not started$/i.test(r.status), st = ns ? (r.days <= CFG.needs.renewalDays ? 'At risk' : 'Not started') : 'On track';
+      return { k: r.customer, v: st, tone: st === 'At risk' ? 'bad' : st === 'On track' ? 'good' : '', title: r.name + ': ends ' + r.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' (' + r.days + (r.days === 1 ? ' day' : ' days') + '). Renewal status: ' + (r.status || 'not set') + '.', href: isId(r.id) ? crmRec('Contracts', r.id) : '' };
+    }) };
+    /* Collections: requests waiting for approval (agenda), plus the agenda's "report not ingested" item */
+    var c = collections(), d = ag();
+    if (c.state === 'loading') out.col = { state: 'loading' };
+    else if (c.state === 'err') out.col = { state: 'err' };
+    else {
+      var rows = c.rows.map(function (r) { var bal = r.balance != null ? money(r.balance) + ' open · ' : r.tag ? r.tag + ' open · ' : ''; return { k: r.account || r.name || 'Collection request', v: esc(bal) + 'approve email', tone: '', href: isId(r.id) ? crmRec('Collection_Requests', r.id) : '' }; });
+      if (d && Array.isArray(d.items) && d.items.some(function (i) { return i.id === 'report-missing'; })) rows.unshift({ k: 'Collections report', v: 'not ingested this week', tone: 'bad', href: '' });
+      out.col = { state: 'ok', total: rows.length, rows: rows.slice(0, n) };
+    }
+    /* Devices: Spare (on hand) on the latest count, from Devices on leg; Lost this month only once the Lost Devices tool exists */
+    var sc = devSpare('SCRAM'), su = devSpare('SuperCom'), asof = tx($('dev-meta')), dv = [];
+    if (sc != null) dv.push({ k: 'SCRAM on hand', v: String(sc), tone: '', title: 'Spare units (in inventory or pending assignment) on the latest SCRAM count' + (asof ? ', ' + asof : '') + '. From Devices on leg.' });
+    if (su != null) dv.push({ k: 'SuperCom on hand', v: String(su), tone: '', title: 'Spare units on the latest SuperCom count' + (asof ? ', ' + asof : '') + '. From Devices on leg.' });
+    out.dev = { state: dv.length ? 'ok' : $('dev-body') && /Unavailable|No counts/.test(tx($('dev-body'))) ? 'ok' : q('#dev-body table') ? 'ok' : 'loading', total: dv.length, rows: dv, asof: asof };
+    return out;
+  }
+  var CARD_EMPTY = { ren: 'No renewals in the next ' + DEFAULTS.cards.renewalDays + ' days.', col: 'No collections emails are waiting.', dev: 'No device counts loaded.' };
+  function renderCards() {
+    var s = S.els.cards; if (!s) return;
+    var m = cardsModel(), sig = JSON.stringify(m);
+    if (sig === S.lastCardsSig) return;
+    S.lastCardsSig = sig;
+    ['ren', 'col', 'dev'].forEach(function (k) {
+      var ul = s.querySelector('#jpk-card-' + k + ' .jpk-mini-list'), x = m[k], h;
+      var empty = k === 'ren' ? 'No renewals in the next ' + CFG.cards.renewalDays + ' days.' : CARD_EMPTY[k];
+      if (x.state === 'loading') h = '<li class="jpk-mini-empty">Loading.</li>';
+      else if (x.state === 'err') h = '<li class="jpk-mini-empty">Could not read collections.</li>';
+      else if (x.state === 'none') h = '<li class="jpk-mini-empty">Renewals are not loaded on this page.</li>';
+      else if (!x.rows.length) h = '<li class="jpk-mini-empty">' + esc(empty) + '</li>';
+      else h = x.rows.map(function (r) { return line(r.k, k === 'col' ? r.v : esc(r.v), r.tone, r.title, r.href); }).join('')
+        + (x.total > x.rows.length ? '<li class="jpk-mini-more">' + (x.total - x.rows.length) + ' more</li>' : '');
+      ul.innerHTML = h;
+    });
+  }
+  function onPreviewLink(e) {
+    var b = e.target.closest && e.target.closest('a[target="_top"]'); if (!b || !preview()) return;
+    e.preventDefault(); JPKShell.lastNav = { id: 'cardLink', href: b.href, how: 'top', at: Date.now() }; toast('Would open ' + b.textContent + ' (preview)');
+  }
+
+  /* ============================ version label (fix 7): CSS only, the page's text and attributes are not edited ============================ */
+  function renderLabel() {
+    var tag = CFG.build; if (!tag) return;
+    var sec = $('needs-today'), foot = sec && sec.querySelector('.nt-foot'), h = doc.documentElement, nt = '', src = '';
+    if (foot) {
+      var t = tx(foot), b = sec.getAttribute('data-build') || '';
+      if (b && t.slice(-b.length) === b) t = t.slice(0, -b.length).replace(/\s*·\s*$/, '');
+      nt = (t ? t + ' · ' : '') + tag;
+    }
+    var se = $('source');
+    if (se) src = tag + tx(se).replace(/^.*?\bv\d+(?:\.\d+)*/, '');
+    var sig = nt + '|' + src;
+    if (sig === S.lastLabelSig) return;
+    S.lastLabelSig = sig;
+    if (nt) h.style.setProperty('--jpk-nt-foot', cssStr(nt));
+    if (src) h.style.setProperty('--jpk-source', cssStr(src));
+    h.setAttribute('data-jpk-label', 'on');
+  }
+
+  /* a value: { v: Number|null, dot: Boolean, title: String } ; v null = unknown (shown as n/a) */
   function value(expr) {
     var parts = String(expr).split('+'), sum = 0, unknown = false, notes = [];
     parts.forEach(function (p) { var r = one(p.trim()); if (r.v == null) unknown = true; else sum += r.v; if (r.title) notes.push(r.title); if (r.dot) notes.dot = true; });
     return { v: unknown ? null : sum, dot: !!notes.dot, title: notes.join(' ') };
   }
+  function eventsOn(day) { var a = startOfDay(day), b = addDays(day, 1); return S.cal.events.filter(function (e) { var s = toDate(e.start); return s >= a && s < b; }); }
   function one(key) {
     var T, r, c;
     switch (key) {
-      case 'calendar.today': case 'calendar.open':
-        r = meetingsLeftToday();
-        return r == null ? { v: null, title: S.cal.status === 'err' ? 'Calendar could not load' : '' } : { v: r };
+      case 'calendar.today':   /* every meeting on today's list, the same count the calendar shows (v6.0.1 fix) */
+        if (S.cal.status !== 'ok') return { v: null, title: S.cal.status === 'err' ? 'Calendar could not load' : '' };
+        return { v: eventsOn(new Date()).length };
+      case 'calendar.open':    /* meetings still ahead today (flow step 3) */
+        if (S.cal.status !== 'ok') return { v: null, title: S.cal.status === 'err' ? 'Calendar could not load' : '' };
+        var now = new Date();
+        return { v: eventsOn(now).filter(function (e) { var en = toDate(e.end) || toDate(e.start); return en > now; }).length };
+      case 'needs.open':
+        return S.needs.state === 'ok' ? { v: S.needs.rows.length } : { v: null, title: 'Still loading' };
       case 'tiles.sum':
         T = tiles(); if (!T) return { v: null };
         var bad = T.list.filter(function (x) { return x.state === 'err'; }).length, wait = T.list.some(function (x) { return x.state === 'loading'; });
@@ -12200,19 +12584,18 @@ window.JPK_SHELL = {
         if (bad === T.list.length) return { v: null, title: 'The tiles could not count' };
         var s = 0; T.list.forEach(function (x) { if (x.state === 'ok') s += x.n; });
         return { v: s, dot: bad > 0, title: bad ? bad + (bad === 1 ? ' tile' : ' tiles') + ' could not count' : '' };
-      case 'agenda.today':
-        r = agendaToday();
-        return { v: r.state === 'ok' ? r.n : null, dot: r.state === 'ok' && r.errors.length > 0, title: r.errors.length ? 'Could not read: ' + r.errors.join(', ') + '. The rest is counted.' : '' };
       case 'alerts.approvals':
         var st = stockWaiting(); c = collections();
         if (st == null && c.state !== 'ok') return { v: null };
+        if (c.state === 'loading') return { v: null };
         var miss = []; if (st == null) miss.push('stock emails'); if (c.state === 'err') miss.push('collections');
-        if (c.state === 'loading') return st == null ? { v: null } : { v: null };
         return { v: (st || 0) + (c.state === 'ok' ? c.n : 0), dot: miss.length > 0, title: miss.length ? 'Could not read: ' + miss.join(', ') + '. The rest is counted.' : '' };
       case 'alerts.collections':
         c = collections(); return c.state === 'ok' ? { v: c.n } : { v: null };
       case 'alerts.billing':
         c = billingNow(); return c.state === 'ok' ? { v: c.open ? 1 : 0 } : { v: null };
+      case 'alerts.stock':
+        r = stockWaiting(); return { v: r };
       case 'alerts.all':
         var a = one('alerts.approvals'), o = agendaOverdue();
         return a.v == null || o == null ? { v: null, title: a.title } : { v: a.v + o, dot: a.dot, title: a.title };
@@ -12225,17 +12608,33 @@ window.JPK_SHELL = {
     }
   }
 
-  /* ============================ header counts (section 3) ============================ */
-  function countTarget(zone) { return zone === 'calendar' || zone === 'jpk:calendar' ? S.els.cal : zone && zone.charAt(0) === '#' ? $(zone.slice(1)) : null; }
+  /* ============================ header (fix 2): greeting, date, counts and the quick actions in one row ============================ */
+  function buildHead() {
+    var h = mk('section', 'jpk-head', { id: 'jpk-head', 'aria-label': 'Today' });
+    h.innerHTML = '<div class="jpk-hello"><h1 class="jpk-hi"></h1><p class="jpk-sub" id="jpk-counts" aria-live="polite"></p></div>'
+      + '<div class="jpk-qa-wrap"><span class="jpk-qa-l" aria-hidden="true">Quick actions</span><div class="jpk-qa" role="group" aria-label="Quick actions"></div></div>';
+    S.els.hi = h.querySelector('.jpk-hi'); S.els.counts = h.querySelector('.jpk-sub'); S.els.qa = h.querySelector('.jpk-qa');
+    return h;
+  }
+  function greeting() {
+    /* the page's own greeting (#greeting, written by greet() once the user is known), without its full stop */
+    var g = q(CFG.greeting), t = tx(g).replace(/\.\s*$/, '');
+    if (!t) { var hr = new Date().getHours(); t = 'Good ' + (hr < 12 ? 'morning' : hr < 17 ? 'afternoon' : 'evening'); }
+    return t;
+  }
+  function countTarget(zone) { return zone === 'calendar' ? S.els.cal : zone && zone.indexOf('jpk:') === 0 ? own(zone) : zone && zone.charAt(0) === '#' ? $(zone.slice(1)) : null; }
   function renderCounts() {
     var box = S.els.counts; if (!box) return;
-    var items = CFG.counts.map(function (c) { var v = value(c.from); return { c: c, v: v }; });
-    var sig = JSON.stringify(items.map(function (i) { return [i.v.v, i.v.dot, i.v.title]; }));
+    var g = greeting(); if (S.els.hi.textContent !== g) S.els.hi.textContent = g;
+    var date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    var items = CFG.counts.map(function (c) { return { c: c, v: value(c.from) }; });
+    var sig = JSON.stringify([date, items.map(function (i) { return [i.v.v, i.v.dot, i.v.title]; })]);
     if (sig === S.lastCountsSig) return;
     S.lastCountsSig = sig;
-    box.innerHTML = items.map(function (i, n) {
-      var shown = i.v.v == null ? '—' : String(i.v.v);
-      return (n ? '<span class="jpk-sep" aria-hidden="true"> · </span>' : '') + '<a class="jpk-count' + (i.v.dot ? ' jpk-partial' : '') + '" href="' + esc(i.c.zone && i.c.zone.charAt(0) === '#' ? i.c.zone : '#jpk-cal') + '" data-jpk-count="' + esc(i.c.key) + '"' + (i.v.title ? ' title="' + esc(i.v.title) + '"' : '') + '><b>' + esc(shown) + '</b>' + (i.v.dot ? '<span class="jpk-dot" aria-hidden="true"></span>' : '') + ' ' + esc(i.c.label) + (i.v.title ? '<span class="jpk-sr"> (' + esc(i.v.title) + ')</span>' : '') + '</a>';
+    box.innerHTML = '<span class="jpk-date">' + esc(date) + '</span>' + items.map(function (i) {
+      var n = i.v.v, shown = n == null ? NA : String(n), words = i.c.one ? (n === 1 ? i.c.one : i.c.many) : i.c.label;
+      var z = i.c.zone || '', href = z.charAt(0) === '#' ? z : z === 'jpk:needs' ? '#jpk-nt' : '#jpk-cal';
+      return '<span class="jpk-sep" aria-hidden="true"> · </span><a class="jpk-count' + (i.v.dot ? ' jpk-partial' : '') + (n == null ? ' jpk-unknown' : '') + '" href="' + esc(href) + '" data-jpk-count="' + esc(i.c.key) + '"' + (i.v.title ? ' title="' + esc(i.v.title) + '"' : '') + '><b>' + esc(shown) + '</b>' + (i.v.dot ? '<span class="jpk-dot" aria-hidden="true"></span>' : '') + ' ' + esc(words) + (i.v.title ? '<span class="jpk-sr"> (' + esc(i.v.title) + ')</span>' : '') + '</a>';
     }).join('');
     S.counts = {}; items.forEach(function (i) { S.counts[i.c.key] = i.v.v; });
     JPKShell.counts = S.counts;
@@ -12253,11 +12652,11 @@ window.JPK_SHELL = {
     if (!el) return;
     if (el.getAttribute('data-collapsed') === 'true') { var tg = el.querySelector('.hl-tg'); if (tg) tg.click(); }
     scrollTo(el);
-    var f = el === S.els.cal ? el.querySelector('.jpk-cal-h') : el.querySelector('.hl-tg');
+    var f = el === S.els.cal ? el.querySelector('.jpk-cal-h') : el === S.els.nt ? el.querySelector('.jpk-card-t') : el.querySelector('.hl-tg');
     if (f) { try { f.focus({ preventScroll: true }); } catch (e) {} }
   }
 
-  /* ============================ quick actions (section 2) ============================ */
+  /* ============================ quick actions (section 2, fix 2) ============================ */
   function profileName() { var u = root.__bdcsUser; return u && u.profile && u.profile.name ? String(u.profile.name) : null; }
   function waitUser() {
     var t0 = Date.now();
@@ -12274,8 +12673,8 @@ window.JPK_SHELL = {
     return !!p && a.profiles.indexOf(p) >= 0;
   }
   function actionTarget(a) {
-    /* -> { href, how: 'top'|'blank'|'create'|'meeting', label } or null when the target is missing */
-    var NT = root.NeedsToday, c, rows;
+    /* -> { href, how: 'top'|'blank'|'create'|'meeting'|'local', run } or null when the target is missing */
+    var NT = root.NeedsToday, c;
     switch (a.kind) {
       case 'view':
         if (NT && NT.VIEWS && NT.VIEWS[a.view] && NT.viewUrl) return { href: NT.viewUrl(a.view), how: 'top' };
@@ -12283,13 +12682,17 @@ window.JPK_SHELL = {
       case 'tab': return { href: crmTab(a.module), how: 'top' };
       case 'href': return a.href ? { href: a.href, how: a.target === '_blank' ? 'blank' : 'top' } : null;
       case 'create': return { href: crmTab(a.module) + '/create', how: 'create', module: a.module };
+      case 'stockEmails':
+        /* the page's Stock emails to approve zone (opened through its own Go to button); without it, the fallback (Daily Unit Counts) */
+        if ($('z-sm') && $('sm-nav')) return { href: '#z-sm', how: 'local', run: function () { openStockEmails(null); } };
+        return a.fallback ? actionTarget(a.fallback) : null;
       case 'agendaRecordOrTab':
         c = collections();
-        if (c.state === 'ok' && c.n === 1 && /^\d+$/.test(String(c.rows[0].id))) return { href: crmRec(a.module, c.rows[0].id), how: 'top' };
+        if (c.state === 'ok' && c.n === 1 && isId(c.rows[0].id)) return { href: crmRec(a.module, c.rows[0].id), how: 'top' };
         return { href: crmTab(a.module), how: 'top' };
       case 'agendaRecordOrCreate':
         c = billingNow();
-        if (c.state === 'ok' && c.row && /^\d+$/.test(String(c.row.id))) return { href: crmRec(a.module, c.row.id), how: 'top' };
+        if (c.state === 'ok' && c.row && isId(c.row.id)) return { href: crmRec(a.module, c.row.id), how: 'top' };
         return { href: crmTab(a.module) + '/create', how: 'create', module: a.module };
       case 'meeting': return { href: meetingUrl(a), how: a.mode === 'zoho' ? 'create' : 'meeting', module: 'Events' };
       default: warn('unknown action kind "' + a.kind + '"'); return null;
@@ -12301,7 +12704,6 @@ window.JPK_SHELL = {
     var iso = function (d) { var o = -d.getTimezoneOffset(), sg = o >= 0 ? '+' : '-'; o = Math.abs(o); return ymd(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00' + sg + pad(Math.floor(o / 60)) + ':' + pad(o % 60); };
     return 'https://outlook.office.com/calendar/deeplink/compose?subject=&startdt=' + encodeURIComponent(iso(s)) + '&enddt=' + encodeURIComponent(iso(e));
   }
-  function badgeFor(a) { if (!a.badge) return null; var v = value(a.badge).v; return v ? v : null; }
   function buildActions() {
     var box = S.els.qa; if (!box) return;
     var html = '';
@@ -12310,18 +12712,16 @@ window.JPK_SHELL = {
       if (!allowed(a)) return;                                   /* profile-gated: hidden until the profile is known */
       var t = actionTarget(a);
       if (!t && a.hideWhenMissing) return;                       /* hidden, not disabled (Log lost device) */
-      var b = badgeFor(a);
-      html += '<button type="button" class="jpk-qa-btn" data-jpk-action="' + esc(a.id) + '"' + (a.tip ? ' title="' + esc(a.tip) + '"' : '') + '>' + esc(a.label)
-        + (b ? '<span class="jpk-badge" aria-label="' + b + ' waiting">' + b + '</span>' : '') + '</button>';
+      html += '<button type="button" class="jpk-qa-btn' + (a.primary ? ' jpk-qa-primary' : '') + '" data-jpk-action="' + esc(a.id) + '"' + (a.tip ? ' title="' + esc(a.tip) + '"' : '') + '>' + icon(a.icon) + '<span>' + esc(a.label) + '</span></button>';
     });
     if (box.__html !== html) { var f = doc.activeElement && box.contains(doc.activeElement) ? doc.activeElement.getAttribute('data-jpk-action') : null; box.innerHTML = html; box.__html = html; if (f) { var nb = box.querySelector('[data-jpk-action="' + f + '"]'); if (nb) nb.focus(); } }
-    E_hideHead();
+    var wrap = box.parentNode; if (wrap) wrap.hidden = !box.children.length;
   }
-  function E_hideHead() { if (S.els.head) S.els.head.hidden = !S.els.qa.children.length; }
   function navigate(t, a) {
     JPKShell.lastNav = { id: a.id, href: t.href, how: t.how, at: Date.now() };
+    if (t.how === 'local') { t.run(); return; }
     if (t.how === 'meeting') return openMeeting(t.href);
-    if (preview()) { toast('Would open ' + a.label.toLowerCase() + ': ' + t.href.replace(CFG.crmBase, '') + ' (preview)'); return; }
+    if (preview()) { toast('Would open ' + String(a.label).toLowerCase() + ': ' + t.href.replace(CFG.crmBase, '') + ' (preview)'); return; }
     if (t.how === 'create') {
       var Z = root.ZOHO, ok = Z && Z.CRM && Z.CRM.UI && Z.CRM.UI.Record && typeof Z.CRM.UI.Record.create === 'function';
       if (ok) { Z.CRM.UI.Record.create({ Entity: t.module }).catch(function () { root.top.location.href = t.href; }); return; }
@@ -12339,7 +12739,7 @@ window.JPK_SHELL = {
   }
   function onAction(e) {
     var b = e.target.closest && e.target.closest('[data-jpk-action]'); if (!b) return;
-    var a = CFG.actions.filter(function (x) { return x.id === b.getAttribute('data-jpk-action'); })[0]; if (!a) return;
+    var a = actionById(b.getAttribute('data-jpk-action')); if (!a) return;
     var t = actionTarget(a); if (!t) return;
     navigate(t, a);
   }
@@ -12352,15 +12752,15 @@ window.JPK_SHELL = {
     toastT = setTimeout(function () { t.hidden = true; }, html ? 12000 : 5000);
   }
 
-  /* ============================ flow strip (section 4) ============================ */
+  /* ============================ flow bar (section 4, fix 4) ============================ */
   function flowKey(d) { return 'jpk-flow-' + CFG.home + '-' + ymd(d || new Date()); }
   function ticks() { try { return JSON.parse(store.get(flowKey()) || '[]') || []; } catch (e) { return []; } }
   function clearOldTicks() { var pre = 'jpk-flow-' + CFG.home + '-', today = flowKey(); store.keys().forEach(function (k) { if (k && k.indexOf(pre) === 0 && k !== today) store.del(k); }); }
   function buildFlow() {
     clearOldTicks();
     var E = S.els;
-    E.flow.innerHTML = '<ol class="jpk-steps" aria-live="polite"></ol><p class="jpk-flow-msg" hidden></p>';
-    E.flowList = E.flow.querySelector('.jpk-steps'); E.flowMsg = E.flow.querySelector('.jpk-flow-msg');
+    E.flow.innerHTML = '<span class="jpk-flow-l" aria-hidden="true">Today\'s flow</span><ol class="jpk-steps"></ol><p class="jpk-flow-note" aria-live="off"></p><p class="jpk-flow-msg" role="status" hidden></p>';
+    E.flowList = E.flow.querySelector('.jpk-steps'); E.flowMsg = E.flow.querySelector('.jpk-flow-msg'); E.flowNote = E.flow.querySelector('.jpk-flow-note');
     E.flowList.innerHTML = CFG.flow.map(function (f) {
       return '<li class="jpk-flow-item" data-jpk-step="' + f.n + '">'
         + '<button type="button" class="jpk-step" data-jpk-step-go="' + f.n + '"' + (f.tip ? ' title="' + esc(f.label + ': ' + f.tip) + '"' : '') + '>'
@@ -12370,23 +12770,43 @@ window.JPK_SHELL = {
         + '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5"/></svg></button></li>';
     }).join('');
   }
+  /* the current step: the one Beau last clicked, or the one whose zone is in view (most visible), else the first one not done */
+  function watchFlowZones() {
+    if (typeof root.IntersectionObserver !== 'function') return;
+    var map = [];
+    CFG.flow.forEach(function (f) { (f.zones || []).forEach(function (z) { var el = zoneEl(z); if (el) map.push({ el: el, n: f.n }); }); });
+    try {
+      S.io = new root.IntersectionObserver(function (entries) {
+        entries.forEach(function (en) { map.forEach(function (m) { if (m.el === en.target) m.h = en.isIntersecting ? en.intersectionRect.height : 0; }); });
+        if (Date.now() - S.flowClickAt < 1500) return;              /* the scroll that a click started does not move the highlight */
+        /* the reading column decides: on a wide screen the side column (calendar, Today & Upcoming) stays in view while the main
+           column scrolls, so it does not count; the most visible zone wins, a tie goes to the earlier step */
+        var best = null, bh = 0;
+        map.forEach(function (m) { if (!S.narrow && S.els.side && S.els.side.contains(m.el)) return; if ((m.h || 0) > bh + 1) { bh = m.h; best = m.n; } });
+        S.flowSeen = {}; map.forEach(function (m) { S.flowSeen[m.n + '|' + (m.el.id || '')] = m.h || 0; });
+        if (best != null && best !== S.flowCur) { S.flowCur = best; S.flowCurBy = 'view'; S.lastFlowSig = ''; renderFlow(); }
+      }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
+      map.forEach(function (m) { S.io.observe(m.el); });
+    } catch (e) { S.io = null; }
+  }
   function renderFlow() {
     var list = S.els.flowList; if (!list) return;
     if (ymd(new Date()) !== S.flowDay) { S.flowDay = ymd(new Date()); clearOldTicks(); }
-    var tk = ticks(), cur = null, out = [];
+    var tk = ticks(), firstOpen = null, out = [];
     CFG.flow.forEach(function (f) {
       var v = value(f.count), ticked = tk.indexOf(f.n) >= 0, done = ticked || v.v === 0;
-      if (!done && cur == null) cur = f.n;
+      if (!done && firstOpen == null) firstOpen = f.n;
       out.push({ f: f, v: v, done: done, ticked: ticked });
     });
-    var sig = JSON.stringify(out.map(function (o) { return [o.v.v, o.done, o.ticked, o.v.dot]; })) + cur;
+    var cur = S.flowCur != null ? S.flowCur : firstOpen;
+    var stamp = S.updatedAt ? 'Updated ' + hhmm(S.updatedAt) : '';
+    var sig = JSON.stringify(out.map(function (o) { return [o.v.v, o.done, o.ticked, o.v.dot]; })) + cur + stamp;
     if (sig === S.lastFlowSig) return;
     S.lastFlowSig = sig;
     out.forEach(function (o) {
       var li = list.querySelector('[data-jpk-step="' + o.f.n + '"]'); if (!li) return;
       var btn = li.querySelector('.jpk-step'), c = li.querySelector('.jpk-step-c'), tick = li.querySelector('.jpk-tick');
-      var txt = o.done ? 'Done' : o.v.v == null ? '—' : String(o.v.v);
-      c.textContent = txt;
+      c.textContent = o.done ? 'Done' : o.v.v == null ? NA : String(o.v.v);
       li.classList.toggle('jpk-done', o.done); li.classList.toggle('jpk-unknown', !o.done && o.v.v == null);
       if (cur === o.f.n) { btn.setAttribute('aria-current', 'step'); li.classList.add('jpk-current'); } else { btn.removeAttribute('aria-current'); li.classList.remove('jpk-current'); }
       btn.setAttribute('aria-label', 'Step ' + o.f.n + ', ' + o.f.label + ': ' + (o.done ? 'done' : o.v.v == null ? 'count not known yet' : o.v.v + ' to do') + '. Go there.');
@@ -12395,6 +12815,7 @@ window.JPK_SHELL = {
     var all = out.every(function (o) { return o.done; });
     S.els.flowMsg.hidden = !all;
     S.els.flowMsg.textContent = all ? 'All four steps clear for today.' : '';
+    S.els.flowNote.textContent = stamp;
     S.els.flow.classList.toggle('jpk-all-done', all);
   }
   function onFlow(e) {
@@ -12406,6 +12827,7 @@ window.JPK_SHELL = {
     }
     var f = CFG.flow.filter(function (x) { return x.n === +t.getAttribute('data-jpk-step-go'); })[0]; if (!f) return;
     var again = S.flowLastStep === f.n; S.flowLastStep = f.n;
+    S.flowCur = f.n; S.flowCurBy = 'click'; S.flowClickAt = Date.now(); S.lastFlowSig = ''; renderFlow();
     var target = null, zones = f.zones || [];
     if (f.n === 3 && again && zones[1]) target = zoneEl(zones[1]);
     else {
@@ -12417,20 +12839,23 @@ window.JPK_SHELL = {
     goTo(target);
   }
 
-  /* ============================ calendar block ============================ */
+  /* ============================ calendar block (fix 3) ============================ */
   function buildCalendar() {
-    var c = mk('section', 'jpk-cal card', { id: 'jpk-cal', 'aria-labelledby': 'jpk-cal-h' });
-    c.innerHTML = '<div class="head jpk-cal-head"><h2 id="jpk-cal-h" class="jpk-cal-h" tabindex="-1">Calendar</h2>'
+    var c = mk('section', 'jpk-cal jpk-card', { id: 'jpk-cal', 'aria-labelledby': 'jpk-cal-h' });
+    c.innerHTML = '<div class="head jpk-cal-head">' + icon('cal') + '<h2 id="jpk-cal-h" class="jpk-cal-h" tabindex="-1">Today</h2>'
       + '<span class="meta jpk-cal-meta"></span>'
+      + '<span class="jpk-cal-nav"><button type="button" class="jpk-arrow" data-jpk-move="-1" aria-label="Previous day"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>'
+      + '<button type="button" class="jpk-arrow" data-jpk-move="1" aria-label="Next day"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button></span>'
       + '<button type="button" class="jpk-tg" aria-expanded="true" aria-controls="jpk-cal-body" title="Hide Calendar" aria-label="Hide Calendar"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6"/></svg></button></div>'
       + '<div class="jpk-cal-body" id="jpk-cal-body">'
+      + '<div class="jpk-week" role="group" aria-label="Days"></div>'
       + '<div class="jpk-upnext" aria-live="polite"></div>'
       + '<button type="button" class="jpk-showweek" aria-expanded="false" aria-controls="jpk-cal-more">Show week</button>'
       + '<div class="jpk-cal-more" id="jpk-cal-more">'
-      + '<h3 class="jpk-day-h"></h3><ul class="jpk-day-list"></ul>'
-      + '<div class="jpk-week" role="group" aria-label="This week"></div>'
-      + '<p class="jpk-cal-foot"><a class="jpk-ol" target="_blank" rel="noopener">Open Outlook</a></p>'
-      + '</div></div>';
+      + '<h3 class="jpk-day-h jpk-sr"></h3><ul class="jpk-day-list"></ul>'
+      + '</div>'
+      + '<p class="jpk-cal-foot"><span class="jpk-sync-dot" aria-hidden="true"></span><span class="jpk-sync">' + esc(CFG.calendar.syncNote) + '</span> <a class="jpk-ol" target="_blank" rel="noopener">Open Outlook</a></p>'
+      + '</div>';
     c.querySelector('.jpk-ol').href = CFG.calendar.outlookUrl;
     S.cal.collapsed = store.get('jpk-shell-' + CFG.home + '-cal') === 'collapsed';
     c.addEventListener('click', onCal);
@@ -12448,8 +12873,7 @@ window.JPK_SHELL = {
     }, function (e) { S.cal.status = 'err'; S.cal.error = e; S.cal.events = []; })
       .then(function () { renderCalendar(); refresh(); });
   }
-  JPKShell.calendar = { reload: loadCalendar, state: S.cal, render: function () { renderCalendar(); refresh(); } };   /* render: step 6 (jpk-calendar) redraws after a link without a reload */
-  function eventsOn(day) { var a = startOfDay(day), b = addDays(day, 1); return S.cal.events.filter(function (e) { var s = toDate(e.start); return s >= a && s < b; }); }
+  JPKShell.calendar = { reload: loadCalendar, state: S.cal, render: function () { renderCalendar(); refresh(); } };   /* render: jpk-calendar redraws after a link without a reload */
   function relTime(s, e, now) {
     if (s <= now && e > now) return 'now';
     var m = Math.round((s - now) / 60000);
@@ -12461,19 +12885,26 @@ window.JPK_SHELL = {
     var d = ag(); if (!d || !Array.isArray(d.items)) return null;
     return d.items.filter(function (i) { return i.bucket === 'today'; })[0] || null;   /* the card's own sort order */
   }
+  function windowDays() { var t = startOfDay(new Date()); return { first: ymd(t), last: ymd(addDays(t, CFG.calendar.days - 1)) }; }
   function renderCalendar() {
     var c = S.els.cal; if (!c) return;
-    var now = new Date(), st = S.cal.status, today = startOfDay(now);
+    var now = new Date(), st = S.cal.status, today = startOfDay(now), W = windowDays();
     c.classList.toggle('jpk-collapsed', S.cal.collapsed);
     var tg = c.querySelector('.jpk-tg'); tg.setAttribute('aria-expanded', String(!S.cal.collapsed)); tg.title = (S.cal.collapsed ? 'Show' : 'Hide') + ' Calendar'; tg.setAttribute('aria-label', tg.title);
     c.querySelector('.jpk-cal-body').hidden = S.cal.collapsed;
+    if (!S.cal.day || S.cal.day < W.first || S.cal.day > W.last) S.cal.day = ymd(today);
+    var sel = new Date(S.cal.day + 'T12:00:00'), isToday = S.cal.day === ymd(today);
+    var title = isToday ? 'Today' : sel.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    var hEl = c.querySelector('.jpk-cal-h'); if (hEl.textContent !== title) hEl.textContent = title;
+    var arrows = c.querySelectorAll('[data-jpk-move]');
+    arrows[0].disabled = S.cal.day <= W.first; arrows[1].disabled = S.cal.day >= W.last;
     var meta = c.querySelector('.jpk-cal-meta');
     var todays = st === 'ok' ? eventsOn(now) : [];
     meta.textContent = st === 'ok' ? (todays.length ? todays.length + (todays.length === 1 ? ' meeting today' : ' meetings today') : '') : st === 'loading' ? 'loading' : '';
 
-    /* up next */
+    /* up next (always about today) */
     var up = c.querySelector('.jpk-upnext'), html;
-    if (st === 'loading') html = '<p class="jpk-cal-empty">Loading meetings…</p>';
+    if (st === 'loading') html = '<p class="jpk-cal-empty">Loading meetings.</p>';
     else {
       var next = st === 'ok' ? todays.filter(function (e) { return !e.allDay && (toDate(e.end) || toDate(e.start)) > now; })[0] : null;
       if (next) html = upNextHtml(next, now);
@@ -12487,17 +12918,16 @@ window.JPK_SHELL = {
     }
     if (up.__html !== html) { up.innerHTML = html; up.__html = html; }
 
-    /* day list + week strip */
-    var more = c.querySelector('.jpk-cal-more'), sw = c.querySelector('.jpk-showweek');
+    /* day list + 5-day strip (two days before the selected day to two after; days outside the loaded week cannot be picked) */
+    var more = c.querySelector('.jpk-cal-more'), sw = c.querySelector('.jpk-showweek'), wk = c.querySelector('.jpk-week');
     sw.hidden = !S.narrow;
     more.hidden = S.narrow && !S.cal.showWeek;
+    wk.hidden = more.hidden;
     sw.setAttribute('aria-expanded', String(!more.hidden));
     sw.textContent = more.hidden ? 'Show week' : 'Hide week';
-    if (!S.cal.day) S.cal.day = ymd(today);
-    var sel = new Date(S.cal.day + 'T12:00:00'), isToday = S.cal.day === ymd(today);
     c.querySelector('.jpk-day-h').textContent = isToday ? 'Today' : sel.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     var ul = c.querySelector('.jpk-day-list'), lh;
-    if (st === 'loading') lh = '<li class="jpk-cal-empty">Loading…</li>';
+    if (st === 'loading') lh = '<li class="jpk-cal-empty">Loading.</li>';
     else if (st === 'err') lh = '<li class="jpk-cal-empty jpk-cal-err" role="status">Calendar could not load. Reload the page to try again.</li>';
     else if (!S.cal.events.length) lh = '<li class="jpk-cal-empty">No meetings synced. ' + esc(CFG.calendar.help) + ' <a class="jpk-ol" href="' + esc(CFG.calendar.outlookUrl) + '" target="_blank" rel="noopener">Open Outlook</a></li>';
     else {
@@ -12505,24 +12935,47 @@ window.JPK_SHELL = {
       lh = ev.length ? ev.map(function (e) { return rowHtml(e, now); }).join('') : '<li class="jpk-cal-empty">' + (isToday ? 'No meetings today.' : 'Nothing on this day.') + '</li>';
     }
     if (ul.__html !== lh) { ul.innerHTML = lh; ul.__html = lh; }
-    var wk = c.querySelector('.jpk-week'), wh = '';
-    for (var i = 0; i < CFG.calendar.days; i++) {
-      var d = addDays(today, i), k = ymd(d), n = st === 'ok' ? eventsOn(d).length : 0;
-      wh += '<button type="button" class="jpk-daychip" data-jpk-day="' + k + '" aria-pressed="' + (k === S.cal.day) + '" aria-label="' + esc(d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ': ' + (st === 'ok' ? n + (n === 1 ? ' meeting' : ' meetings') : 'not loaded')) + '">'
-        + '<span class="jpk-dc-w">' + (i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' })) + '</span><span class="jpk-dc-d">' + d.getDate() + '</span>'
-        + '<span class="jpk-dc-n" aria-hidden="true">' + (n ? new Array(Math.min(n, 3) + 1).join('<i></i>') : '') + '</span></button>';
+    var wh = '';
+    for (var i = -2; i <= 2; i++) {
+      var d = addDays(sel, i), k = ymd(d), inWin = k >= W.first && k <= W.last, n = st === 'ok' && inWin ? eventsOn(d).length : 0;
+      wh += '<button type="button" class="jpk-daychip" data-jpk-day="' + k + '" aria-pressed="' + (k === S.cal.day) + '"' + (inWin ? '' : ' disabled') + ' aria-label="' + esc(d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ': ' + (!inWin ? 'outside the loaded week' : st === 'ok' ? n + (n === 1 ? ' meeting' : ' meetings') : 'not loaded')) + '">'
+        + '<span class="jpk-dc-w">' + d.toLocaleDateString('en-US', { weekday: 'short' }) + '</span> <span class="jpk-dc-d">' + d.getDate() + '</span>'
+        + '<span class="jpk-dc-n" aria-hidden="true">' + (n ? '<i></i>' : '') + '</span></button>';
     }
-    if (wk.__html !== wh) { var f = doc.activeElement && wk.contains(doc.activeElement) ? doc.activeElement.getAttribute('data-jpk-day') : null; wk.innerHTML = wh; wk.__html = wh; if (f) { var nb = wk.querySelector('[data-jpk-day="' + f + '"]'); if (nb) nb.focus(); } }
+    if (wk.__html !== wh) { var f = doc.activeElement && wk.contains(doc.activeElement) ? doc.activeElement.getAttribute('data-jpk-day') : null; wk.innerHTML = wh; wk.__html = wh; if (f) { var nb = wk.querySelector('[data-jpk-day="' + S.cal.day + '"]') || wk.querySelector('[data-jpk-day="' + f + '"]'); if (nb && !nb.disabled) nb.focus(); } }
   }
   function timeRange(e) {
     if (e.allDay) return 'All day';
     var s = toDate(e.start), en = toDate(e.end);
     return hhmm(s) + (en ? ' to ' + hhmm(en) : '');
   }
+  function provider(url) {
+    var u = String(url || '').toLowerCase();
+    if (/teams\.(microsoft|live)\.com/.test(u)) return 'Teams';
+    if (/zoom\.(us|com)/.test(u)) return 'Zoom';
+    if (/meet\.google\.com/.test(u)) return 'Google Meet';
+    return '';
+  }
+  function joinLabel(url) { var p = provider(url); return p === 'Google Meet' ? 'Join Google Meet' : p ? 'Join ' + p + ' meeting' : 'Join meeting'; }
+  function canLink() { return CFG.calendar.link && root.jpkCalendar && typeof root.jpkCalendar.link === 'function'; }
+  /* link state per meeting: linked (account or contact) / a highlighted link action when the meeting has attendees /
+     "No CRM link". Attendees are read only when a meeting is opened (step 6), so before that a meeting with a join link or a
+     venue counts as having attendees; once read, the real list decides. */
+  function linkState(e) {
+    if (e.accountId) return { k: 'linked', html: '<a class="jpk-ev-lk jpk-ev-lk-on" target="_top" href="' + esc(crmRec('Accounts', e.accountId)) + '" title="' + esc(e.accountName || 'Account') + '">Linked account · open</a>' };
+    if (e.contactId) return { k: 'linked', html: '<a class="jpk-ev-lk jpk-ev-lk-on" target="_top" href="' + esc(crmRec('Contacts', e.contactId)) + '" title="' + esc(e.contactName || 'Contact') + '">Linked contact · open</a>' };
+    var cs = root.jpkCalendar && root.jpkCalendar.state, read = !!(cs && Array.isArray(cs.detailReads) && cs.detailReads.indexOf(String(e.id)) >= 0);
+    var people = Array.isArray(e.attendees) && e.attendees.length > 0 ? true : read ? false : !!(e.joinUrl || e.venue);
+    if (people && canLink()) return { k: 'tolink', html: '<button type="button" class="jpk-ev-lk jpk-ev-add" data-jpk-link="' + esc(e.id) + '">+ Link to account or contact</button>' };
+    return { k: 'none', html: '<span class="jpk-ev-lk jpk-ev-none">No CRM link</span>' };
+  }
   function rowHtml(e, now) {
-    var en = toDate(e.end) || toDate(e.start), past = !e.allDay && en <= now;
-    var canOpen = root.jpkCalendar && typeof root.jpkCalendar.open === 'function';   /* step 6: the title opens the meeting's details */
-    return '<li class="jpk-ev' + (past ? ' jpk-past' : '') + '"><span class="jpk-ev-time">' + esc(timeRange(e)) + '</span><span class="jpk-ev-t">' + (canOpen ? '<button type="button" class="jpk-ev-open" data-jpk-open="' + esc(e.id) + '" data-jpk-at="' + toDate(e.start).getTime() + '">' + esc(e.title || '(no title)') + '</button>' : esc(e.title || '(no title)')) + (e.venue ? '<span class="jpk-ev-v">' + esc(e.venue) + '</span>' : '') + '</span>'
+    var en = toDate(e.end) || toDate(e.start), past = !e.allDay && en <= now, ls = linkState(e);
+    var canOpen = root.jpkCalendar && typeof root.jpkCalendar.open === 'function';
+    var s = toDate(e.start);
+    return '<li class="jpk-ev jpk-ev-' + ls.k + (past ? ' jpk-past' : '') + '"><span class="jpk-ev-time" title="' + esc(timeRange(e)) + '">' + esc(e.allDay ? 'All day' : hhmm(s)) + '</span>'
+      + '<div class="jpk-ev-box"><span class="jpk-ev-t">' + (canOpen ? '<button type="button" class="jpk-ev-open" data-jpk-open="' + esc(e.id) + '" data-jpk-at="' + s.getTime() + '">' + esc(e.title || '(no title)') + '</button>' : esc(e.title || '(no title)')) + (e.venue ? '<span class="jpk-ev-v">' + esc(timeRange(e)) + ' · ' + esc(e.venue) + '</span>' : '<span class="jpk-ev-v">' + esc(timeRange(e)) + '</span>') + '</span>'
+      + ls.html + '</div>'
       + (e.joinUrl && !past ? '<a class="jpk-btn jpk-join" href="' + esc(e.joinUrl) + '" target="_blank" rel="noopener" aria-label="Join ' + esc(e.title) + '">Join</a>' : '') + '</li>';
   }
   function upNextHtml(e, now) {
@@ -12530,23 +12983,28 @@ window.JPK_SHELL = {
     var chips = '';
     if (e.accountId) chips += '<a class="jpk-chip" target="_top" href="' + esc(crmRec('Accounts', e.accountId)) + '">' + esc(e.accountName || 'Account') + '</a>';
     if (e.contactId) chips += '<a class="jpk-chip" target="_top" href="' + esc(crmRec('Contacts', e.contactId)) + '">' + esc(e.contactName || 'Contact') + '</a>';
-    var canLink = CFG.calendar.link && root.jpkCalendar && typeof root.jpkCalendar.link === 'function';
-    if (!chips && canLink) chips = '<button type="button" class="jpk-btn" data-jpk-link="' + esc(e.id) + '">Link to account</button>';
-    return '<div class="jpk-up"><p class="jpk-up-k">Up next <span class="jpk-up-rel' + (rel === 'now' ? ' jpk-now' : '') + '">' + esc(rel) + '</span></p>'
+    if (!chips && canLink()) chips = '<button type="button" class="jpk-btn jpk-up-link" data-jpk-link="' + esc(e.id) + '">+ Link to account or contact</button>';
+    return '<div class="jpk-up"><p class="jpk-up-k">Up next · <span class="jpk-up-rel' + (rel === 'now' ? ' jpk-now' : '') + '">' + esc(rel) + '</span></p>'
       + '<p class="jpk-up-t">' + esc(e.title || '(no title)') + '</p><p class="jpk-up-s">' + esc(timeRange(e)) + (e.venue ? ' · ' + esc(e.venue) : '') + '</p>'
       + (chips ? '<div class="jpk-chips">' + chips + '</div>' : '')
-      + '<div class="jpk-up-acts">' + (e.joinUrl ? '<a class="jpk-btn jpk-primary" href="' + esc(e.joinUrl) + '" target="_blank" rel="noopener">Join</a>' : '')
-      + '<a class="jpk-btn" target="_top" href="' + esc(crmRec('Events', e.id)) + '">Open in Zoho</a>'
-      + '<a class="jpk-btn" target="_blank" rel="noopener" href="' + esc(CFG.calendar.outlookUrl) + '">Open in Outlook</a></div></div>';
+      + '<div class="jpk-up-acts">' + (e.joinUrl ? '<a class="jpk-btn jpk-primary jpk-up-join" href="' + esc(e.joinUrl) + '" target="_blank" rel="noopener">' + esc(joinLabel(e.joinUrl)) + '</a>' : '')
+      + '<a class="jpk-btn jpk-up-btn" target="_top" href="' + esc(crmRec('Events', e.id)) + '">Open in Zoho</a>'
+      + '<a class="jpk-btn jpk-up-btn" target="_blank" rel="noopener" href="' + esc(CFG.calendar.outlookUrl) + '">Open in Outlook</a></div></div>';
+  }
+  function moveDay(step) {
+    var W = windowDays(), d = addDays(new Date(S.cal.day + 'T12:00:00'), step), k = ymd(d);
+    if (k < W.first || k > W.last) return;
+    S.cal.day = k; renderCalendar();
   }
   function onCal(e) {
     var t = e.target.closest ? e.target : null; if (!t) return;
     var b;
     if ((b = t.closest('.jpk-tg'))) { S.cal.collapsed = !S.cal.collapsed; store.set('jpk-shell-' + CFG.home + '-cal', S.cal.collapsed ? 'collapsed' : 'open'); renderCalendar(); kick(); return; }
     if ((b = t.closest('.jpk-showweek'))) { S.cal.showWeek = !S.cal.showWeek; renderCalendar(); kick(); return; }
-    if ((b = t.closest('[data-jpk-day]'))) { S.cal.day = b.getAttribute('data-jpk-day'); renderCalendar(); return; }
-    if ((b = t.closest('[data-jpk-link]'))) { var ev = S.cal.events.filter(function (x) { return String(x.id) === b.getAttribute('data-jpk-link'); })[0]; if (ev) Promise.resolve(root.jpkCalendar.link(ev, b)).then(function () { renderCalendar(); refresh(); }, function () {}); return; }
-    if ((b = t.closest('[data-jpk-open]'))) { var at = +b.getAttribute('data-jpk-at'), oe = S.cal.events.filter(function (x) { return String(x.id) === b.getAttribute('data-jpk-open') && toDate(x.start).getTime() === at; })[0]; if (oe && root.jpkCalendar && root.jpkCalendar.open) Promise.resolve(root.jpkCalendar.open(oe, b)).then(function () { renderCalendar(); refresh(); }, function () {}); return; }
+    if ((b = t.closest('[data-jpk-move]'))) { moveDay(+b.getAttribute('data-jpk-move')); return; }
+    if ((b = t.closest('[data-jpk-day]'))) { if (!b.disabled) { S.cal.day = b.getAttribute('data-jpk-day'); renderCalendar(); var nb = S.els.cal.querySelector('[data-jpk-day="' + S.cal.day + '"]'); if (nb) nb.focus(); } return; }
+    if ((b = t.closest('[data-jpk-link]'))) { var ev = S.cal.events.filter(function (x) { return String(x.id) === b.getAttribute('data-jpk-link'); })[0]; if (ev && canLink()) { var inL = !!b.closest('.jpk-day-list'); Promise.resolve(root.jpkCalendar.link(ev, b)).then(function () { renderCalendar(); refresh(); refocus(b, ev.id, inL); }, function () {}); } return; }
+    if ((b = t.closest('[data-jpk-open]'))) { var at = +b.getAttribute('data-jpk-at'), oe = S.cal.events.filter(function (x) { return String(x.id) === b.getAttribute('data-jpk-open') && toDate(x.start).getTime() === at; })[0]; if (oe && root.jpkCalendar && root.jpkCalendar.open) { var inO = !!b.closest('.jpk-day-list'); Promise.resolve(root.jpkCalendar.open(oe, b)).then(function () { renderCalendar(); refresh(); refocus(b, oe.id, inO); }, function () {}); } return; }
     if ((b = t.closest('[data-jpk-agk]'))) {
       var k = b.getAttribute('data-jpk-agk'), tt = $('ag-tab-today');
       if (tt && tt.getAttribute('aria-selected') !== 'true') tt.click();
@@ -12557,13 +13015,30 @@ window.JPK_SHELL = {
     }
     if (preview() && (b = t.closest('a[target="_top"]'))) { e.preventDefault(); JPKShell.lastNav = { id: 'calendarLink', href: b.href, how: 'top', at: Date.now() }; toast('Would open ' + b.textContent + ' (preview)'); }
   }
+  /* after the details panel or the link picker closes: if the row was redrawn (its link state changed), focus goes back to the same
+     meeting's row (link control, else title) instead of the calendar heading */
+  function refocus(opener, id, inList) {
+    var a = doc.activeElement, c = S.els.cal; if (!c || (opener && opener.isConnected)) return;
+    /* step 6 sends focus to the new chip when the up-next opener is gone: keep that; a row opener goes back to its row */
+    if (a && a !== doc.body && a.id !== 'jpk-cal-h' && !(inList && a.classList && a.classList.contains('jpk-chip'))) return;
+    var sel = '[data-jpk-link="' + id + '"],[data-jpk-open="' + id + '"]';
+    var n = inList ? c.querySelector('.jpk-day-list [data-jpk-link="' + id + '"]') || c.querySelector('.jpk-day-list [data-jpk-open="' + id + '"]') : c.querySelector('.jpk-upnext [data-jpk-link="' + id + '"]') || c.querySelector(sel);
+    if (n) { try { n.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  function onCalKey(e) {
+    /* Left / Right on the day strip move the selected day (the strip is one group of buttons) */
+    var b = e.target.closest && e.target.closest('[data-jpk-day]'); if (!b || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault(); e.stopPropagation();
+    moveDay(e.key === 'ArrowRight' ? 1 : -1);
+    var nb = S.els.cal.querySelector('[data-jpk-day="' + S.cal.day + '"]'); if (nb) nb.focus();
+  }
 
   /* ============================ watching (reads only) ============================ */
   var refreshT = 0;
-  function refresh() { if (!S.els.counts) return; renderCounts(); renderFlow(); buildActions(); syncTop(); renderCalendar(); }
+  function refresh() { if (!S.els.counts) return; renderNeeds(); renderCards(); renderCounts(); renderFlow(); buildActions(); syncTop(); renderCalendar(); renderLabel(); }
   function soon() { clearTimeout(refreshT); refreshT = setTimeout(refresh, 120); }
   function watch() {
-    ['needs-today', 'sm-list', 'fu-list', 'ag-list', 'scope-mine-n', 'z-sm', 'bwrap', 'fu-scope'].forEach(function (id) {
+    ['needs-today', 'sm-list', 'fu-list', 'ag-list', 'scope-mine-n', 'z-sm', 'bwrap', 'fu-scope', 'dev-body', 'dev-meta', 'greeting', 'source'].forEach(function (id) {
       var el = $(id); if (!el) return;
       try { var o = new MutationObserver(soon); o.observe(el, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class', 'aria-pressed'] }); S.observers.push(o); } catch (e) {}
     });
@@ -12575,6 +13050,7 @@ window.JPK_SHELL = {
     S.els.counts.addEventListener('click', onCountClick);
     S.els.qa.addEventListener('click', onAction);
     S.els.flow.addEventListener('click', onFlow);
+    S.els.cal.addEventListener('keydown', onCalKey);
   }
 
   /* ============================ boot ============================ */
@@ -12582,7 +13058,9 @@ window.JPK_SHELL = {
     if (!wanted()) { footerLink(false); return; }
     mount();
   }
-  JPKShell.flow = { render: function () { S.lastFlowSig = ''; renderFlow(); }, key: flowKey };
+  JPKShell.flow = { render: function () { S.lastFlowSig = ''; renderFlow(); }, key: flowKey, current: function () { return S.flowCur; } };
+  JPKShell.needs = { model: needsModel, render: function () { S.needsSig = ''; renderNeeds(); } };
+  JPKShell.cards = { model: cardsModel };
   JPKShell.counts = {};
   JPKShell._value = value;
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
