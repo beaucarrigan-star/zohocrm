@@ -10670,9 +10670,10 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.0.1 (v5.11 + S24 page shell and calendar, mockup pass, 22 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.0.2 (v5.11 + S24 page shell and calendar, layout pass, 22 Oct 2026)">
 <style id="jpk-shell-css">
-/* jpk-shell.css v0.2.0 (S24 v6.0.1, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
+/* jpk-shell.css v0.2.1 (S24 v6.0.2, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
+   v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
    Every rule is scoped under html[data-jpk-shell="on"], so with the shell off this file has no effect (one exception: the footer
    switch link, which also shows when the shell is off). Colours, spacing and type come from the page's tokens (--surface, --line,
    --muted, --accent, --sp-*, --fs-*); nothing is redefined. New values are jpk- custom properties. Rounded corners and gaps are
@@ -10701,9 +10702,14 @@ html[data-jpk-shell="on"][data-jpk-label="on"] #source::after { content: var(--j
 /* ---------- zones and grid (spec 1) ---------- */
 html[data-jpk-shell="on"] .jpk-top,
 html[data-jpk-shell="on"] .jpk-main,
+html[data-jpk-shell="on"] .jpk-full,
 html[data-jpk-shell="on"] .jpk-side { display: grid; gap: 18px; align-content: start; min-width: 0; grid-template-columns: minmax(0, 1fr); }
 html[data-jpk-shell="on"][data-density="compact"] .jpk-main,
+html[data-jpk-shell="on"][data-density="compact"] .jpk-full,
 html[data-jpk-shell="on"][data-density="compact"] .jpk-side { gap: var(--sp-3); }
+/* v6.0.2: below the two-column band every section spans the full width, with the page's own pair rules (as in v5.11) */
+html[data-jpk-shell="on"] .jpk-full[hidden] { display: none; }
+html[data-jpk-shell="on"] .jpk-full { border-top: 1px solid var(--line); padding-top: var(--jpk-gap); }
 html[data-jpk-shell="on"] .jpk-top[hidden], html[data-jpk-shell="on"] .jpk-head[hidden], html[data-jpk-shell="on"] .jpk-qa-wrap[hidden] { display: none; }
 html[data-jpk-shell="on"] .jpk-zone > * { min-width: 0; }
 html[data-jpk-shell="on"] .jpk-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; align-items: start; }
@@ -10980,6 +10986,25 @@ html[data-jpk-shell="on"] .jpk-shell-toast a { color: inherit; font-weight: 700;
 }
 @media (hover: none) { html[data-jpk-shell="on"] .jpk-tick { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { html[data-jpk-shell="on"] .jpk-tg svg { transition: none; } }
+
+/* ---------- "Top" button (v6.0.2): fixed at the bottom right of the widget frame; shown after one screen of scrolling ---------- */
+html[data-jpk-shell="on"] .jpk-totop {
+  position: fixed; right: 12px; bottom: 12px; z-index: calc(var(--z-modal, 1000) - 1);
+  display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 4px 12px 4px 10px;
+  font: inherit; font-size: var(--fs-md, 13px); font-weight: 600; line-height: 1.2;
+  color: var(--jpk-dark-ink); background: var(--jpk-dark); border: 1px solid var(--jpk-dark-line); border-radius: var(--radius-pill, 999px);
+  box-shadow: var(--shadow-pop, 0 4px 14px rgba(0, 0, 0, .25)); cursor: pointer;
+}
+html[data-jpk-shell="on"] .jpk-totop[hidden] { display: none; }
+/* the page's own v5.11 back-to-top button (#to-top, made by its to-top-js script) is replaced by this one while the shell is on, so
+   there is only one; with ?shell=0 it shows as before. CSS only: its script and markup are untouched. */
+html[data-jpk-shell="on"] #to-top { display: none !important; }
+html[data-jpk-shell="on"] .jpk-totop:hover { background: var(--jpk-dark-2); }
+html[data-jpk-shell="on"] .jpk-totop:focus { outline: none; }
+html[data-jpk-shell="on"] .jpk-totop:focus-visible { outline: 2px solid var(--focus, #3D6BD0); outline-offset: 2px; box-shadow: 0 0 0 5px var(--surface, #FFFFFF); }
+html[data-jpk-shell="on"] .jpk-hi:focus { outline: none; }
+html[data-jpk-shell="on"] .jpk-hi:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+@media print { html[data-jpk-shell="on"] .jpk-totop { display: none; } }
 </style>
 <style id="jpk-calendar-css">
 /* jpk-calendar.css v0.1.0 (S24 step 6): the meeting details panel and link picker inside #jpk-cal, plus the clickable meeting titles.
@@ -11037,14 +11062,16 @@ html[data-jpk-shell="on"] .jpk-pick-sel { font-size: var(--fs-md); color: var(--
 }
 </style>
 <script id="jpk-shell-config">
-/* jpk-shell-config (CS): Beau CS Home v6.0.1. Spec section 7 with the section 11 decisions (S21 order: Numbers before Boards;
+/* jpk-shell-config (CS): Beau CS Home v6.0.2. Spec section 7 with the section 11 decisions (S21 order: Numbers before Boards;
    Up-next above the tiles on narrow screens; step 4 "Close out" counts cases), brought in line with Beau's mockup (v6.0.1 fix list):
    header with greeting, counts and quick actions in one row; a Needs Today list with the tiles directly below it; three cards;
-   the calendar with day arrows and a 5-day strip; the flow bar at the bottom. */
+   the calendar with day arrows and a 5-day strip; the flow bar at the bottom.
+   v6.0.2: two columns only for the top band; Queue + Follow-ups, Numbers, Boards, Devices on leg, Relationships, then Quick links +
+   Vendor contacts span the full width (zone "full"). */
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.0.1',
+  build: 'Beau CS Home v6.0.2',
   enabled: true,
   greeting: '#greeting',
   counts: [
@@ -11062,8 +11089,9 @@ window.JPK_SHELL = {
   cards: { renewalDays: 90, rows: 3, lostDevices: false },
   zones: {
     top:  ['#z-sm'],
-    main: ['jpk:needs', '#needs-today', 'jpk:cards', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel'],
-    side: ['jpk:calendar', '#agenda-card', '#z-ref'],
+    main: ['jpk:needs', '#needs-today', 'jpk:cards'],
+    side: ['jpk:calendar', '#agenda-card'],
+    full: ['#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
     narrowOrder: ['#z-sm', 'jpk:calendar', 'jpk:needs', '#needs-today', 'jpk:cards', '#agenda-card', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
     sideWidth: 'clamp(320px, 30%, 400px)',
     stackPairsBelow: 900
@@ -11882,12 +11910,15 @@ window.JPK_SHELL = {
 })(typeof window !== 'undefined' ? window : this);
 </script>
 <script id="jpk-shell-js">
-/* jpk-shell.js v0.2.0 (S24 v6.0.1, 22 Oct 2026): the page frame ("shell") for Beau CS Home, reusable by BD Home and EM Home.
+/* jpk-shell.js v0.2.1 (S24 v6.0.2, 22 Oct 2026): the page frame ("shell") for Beau CS Home, reusable by BD Home and EM Home.
+   v6.0.2: only the top band has two columns (Needs Today, tiles and cards | calendar and Today & Upcoming); from Queue and
+   Follow-ups down every section spans the full width in a new "full" zone (S21 order, Quick links and Vendor contacts last);
+   a "Top" button (bottom right, fixed) appears after one screen of scrolling.
    Spec: S24-LAYOUT-SPEC-APPROVED.md (section 11 decisions win), brought in line with Beau's mockup (CRM_OS_Home page 2) by the v6.0.1 fix list.
 
    What it does: adds a header (greeting, date, counts and the quick actions in one row), a "Needs Today" list, three compact cards,
    a calendar block and a "Today's flow" bar at the bottom, then MOVES the page's existing sections (by element id only) into three
-   zones: top, main (left) and side (right). It never edits the inside of a section: no text, attributes or listeners of an existing
+   zones: top, main (left), side (right) and full (full width, below the two columns). It never edits the inside of a section: no text, attributes or listeners of an existing
    section are changed. It reads DOM text and the page's test hooks (window.__bd, window.NeedsToday, window.__bdcsUser) and makes no
    network calls of its own. The two version labels (the tiles' footnote and the page footer) are replaced on screen with CSS only.
 
@@ -11911,7 +11942,7 @@ window.JPK_SHELL = {
    ------------------------------------------------------------------------------------------------------------------------ */
 (function (root) {
   'use strict';
-  var VERSION = '0.2.0';
+  var VERSION = '0.2.1';
   var doc = root.document;
   if (!doc) return;
   var NA = 'n/a';   /* shown for a count that is not known (loading or failed); never a false 0 */
@@ -11920,7 +11951,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.0.1',
+    build: 'Beau CS Home v6.0.2',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -11940,8 +11971,9 @@ window.JPK_SHELL = {
     cards: { renewalDays: 90, rows: 3, lostDevices: false },
     zones: {
       top: ['#z-sm'],
-      main: ['jpk:needs', '#needs-today', 'jpk:cards', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel'],
-      side: ['jpk:calendar', '#agenda-card', '#z-ref'],
+      main: ['jpk:needs', '#needs-today', 'jpk:cards'],
+      side: ['jpk:calendar', '#agenda-card'],
+      full: ['#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
       narrowOrder: ['#z-sm', 'jpk:calendar', 'jpk:needs', '#needs-today', 'jpk:cards', '#agenda-card', '#z-work', '#z-num', '#z-boards', '#dev-panel', '#z-rel', '#z-ref'],
       sideWidth: 'clamp(320px, 30%, 400px)',
       stackPairsBelow: 900,
@@ -11973,6 +12005,8 @@ window.JPK_SHELL = {
     for (k in DEFAULTS) c[k] = Object.prototype.hasOwnProperty.call(user, k) ? user[k] : DEFAULTS[k];
     /* objects merge one level deep so a page can set only what differs */
     c.zones = shallow(DEFAULTS.zones, user.zones, KNOWN_ZONES, 'zones');
+    /* v6.0.2: a config written before the full-width zone existed (zones given, no "full") keeps its own layout */
+    if (user.zones && typeof user.zones === 'object' && !Object.prototype.hasOwnProperty.call(user.zones, 'full')) c.zones.full = [];
     c.calendar = shallow(DEFAULTS.calendar, user.calendar, KNOWN_CAL, 'calendar');
     c.slugs = shallow(DEFAULTS.slugs, user.slugs, null, 'slugs');
     c.needs = shallow(DEFAULTS.needs, user.needs, Object.keys(DEFAULTS.needs), 'needs');
@@ -12138,11 +12172,12 @@ window.JPK_SHELL = {
     if (narrow) {
       /* one column; DOM order = visual order, so tab order follows what the eye sees */
       var seen = {};
-      var order = (z.narrowOrder || []).concat(z.top, z.main, z.side).filter(function (e) { if (seen[e]) return false; seen[e] = 1; return true; });
+      var order = (z.narrowOrder || []).concat(z.top, z.main, z.side, z.full || []).filter(function (e) { if (seen[e]) return false; seen[e] = 1; return true; });
       place(E.main, order);
     } else {
-      place(E.top, z.top || []); place(E.main, z.main || []); place(E.side, z.side || []);
+      place(E.top, z.top || []); place(E.main, z.main || []); place(E.side, z.side || []); place(E.full, (z.full || []).filter(function (e) { return (z.top || []).concat(z.main || [], z.side || []).indexOf(e) < 0; }));   /* an id named in top, main or side stays there */
     }
+    E.full.hidden = !E.full.firstElementChild;
     doc.documentElement.setAttribute('data-jpk-width', narrow ? 'narrow' : 'wide');
     syncTop();
     if (act && act !== doc.body && act !== doc.activeElement && doc.contains(act)) { try { act.focus({ preventScroll: true }); } catch (e) {} }
@@ -12175,6 +12210,7 @@ window.JPK_SHELL = {
     E.main = mk('div', 'jpk-main jpk-zone hk-edge', { 'data-jpk-zone': 'main' });
     E.side = mk('aside', 'jpk-side jpk-zone hk-edge', { 'data-jpk-zone': 'side', 'aria-label': 'Calendar and dated work' });
     E.cols.appendChild(E.main); E.cols.appendChild(E.side);
+    E.full = mk('div', 'jpk-full jpk-zone hk-edge', { 'data-jpk-zone': 'full' });
     E.cal = buildCalendar();
     E.nt = buildNeeds();
     E.cards = buildCards();
@@ -12184,8 +12220,9 @@ window.JPK_SHELL = {
     page.insertBefore(E.head, mast ? mast.nextSibling : page.firstChild);
     var after = bar || E.head;
     var ins = function (n) { page.insertBefore(n, after.nextSibling); after = n; };
-    ins(E.top); ins(E.cols);
+    ins(E.top); ins(E.cols); ins(E.full);
     if (foot) page.insertBefore(E.flow, foot); else ins(E.flow);
+    E.toTop = buildToTop();
 
     try { S.mq = root.matchMedia('(max-width: ' + (CFG.zones.narrowBelow - 1) + 'px)'); } catch (e) { S.mq = null; }
     if (S.mq) { var onMq = function () { arrange(); refresh(); }; if (S.mq.addEventListener) S.mq.addEventListener('change', onMq); else if (S.mq.addListener) S.mq.addListener(onMq); S.onMq = onMq; }
@@ -12209,7 +12246,8 @@ window.JPK_SHELL = {
     if (!S.mounted) return false;
     S.anchors.slice().reverse().forEach(function (p) { if (p.anchor.parentNode) { p.anchor.parentNode.insertBefore(p.el, p.anchor); p.anchor.parentNode.removeChild(p.anchor); } delete p.el.__jpkAnchor; });
     S.anchors = [];
-    ['head', 'flow', 'top', 'cols'].forEach(function (k) { var n = S.els[k]; if (n && n.parentNode) n.parentNode.removeChild(n); });
+    unToTop();
+    ['head', 'flow', 'top', 'cols', 'full', 'toTop'].forEach(function (k) { var n = S.els[k]; if (n && n.parentNode) n.parentNode.removeChild(n); });
     S.observers.forEach(function (o) { try { o.disconnect(); } catch (e) {} }); S.observers = [];
     if (S.io) { try { S.io.disconnect(); } catch (e) {} S.io = null; }
     S.timers.forEach(function (t) { clearInterval(t); clearTimeout(t); }); S.timers = [];
@@ -12611,7 +12649,7 @@ window.JPK_SHELL = {
   /* ============================ header (fix 2): greeting, date, counts and the quick actions in one row ============================ */
   function buildHead() {
     var h = mk('section', 'jpk-head', { id: 'jpk-head', 'aria-label': 'Today' });
-    h.innerHTML = '<div class="jpk-hello"><h1 class="jpk-hi"></h1><p class="jpk-sub" id="jpk-counts" aria-live="polite"></p></div>'
+    h.innerHTML = '<div class="jpk-hello"><h1 class="jpk-hi" tabindex="-1"></h1><p class="jpk-sub" id="jpk-counts" aria-live="polite"></p></div>'
       + '<div class="jpk-qa-wrap"><span class="jpk-qa-l" aria-hidden="true">Quick actions</span><div class="jpk-qa" role="group" aria-label="Quick actions"></div></div>';
     S.els.hi = h.querySelector('.jpk-hi'); S.els.counts = h.querySelector('.jpk-sub'); S.els.qa = h.querySelector('.jpk-qa');
     return h;
@@ -13052,6 +13090,82 @@ window.JPK_SHELL = {
     S.els.flow.addEventListener('click', onFlow);
     S.els.cal.addEventListener('keydown', onCalKey);
   }
+
+
+  /* ============================ "Top" button (v6.0.2) ============================
+     A small fixed button at the bottom right of the widget frame. It shows once the page has scrolled more than about one
+     screen, scrolls the page's scroller to the top (smooth unless reduced motion is asked for) and moves focus to the greeting.
+     The widget runs in an iframe that scrolls internally: the scroller is document.scrollingElement unless the page itself
+     (body or #page) is the scrolling box. If Zoho sizes the frame to the content (frame-fit), nothing scrolls and it stays hidden.
+     It never covers the flow bar or a control: after each scroll or resize it picks the lowest free spot on the right edge, in the
+     lower two thirds of the frame. If there is none (at 390 px the tiles and some table rows are full-width click targets), it steps
+     aside (hidden) until the next scroll frees a spot, unless it has keyboard focus. */
+  var TOP_SEL = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]), [role="button"], [role="tab"], [role="link"]';
+  function scroller() {
+    var se = doc.scrollingElement || doc.documentElement, cands = [doc.body, S.page];
+    for (var i = 0; i < cands.length; i++) {
+      var el = cands[i]; if (!el || el === se) continue;
+      var oy = ''; try { oy = root.getComputedStyle(el).overflowY; } catch (e) {}
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1) return el;
+    }
+    return se;
+  }
+  function viewH(sc) { return sc === (doc.scrollingElement || doc.documentElement) ? root.innerHeight : sc.clientHeight; }
+  function buildToTop() {
+    var b = mk('button', 'jpk-totop', { type: 'button', id: 'jpk-totop', title: 'Back to the top of the page' });
+    b.innerHTML = '<svg class="jpk-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3.5M3.5 8 8 3.5 12.5 8"/></svg><span>Top</span>';
+    b.hidden = true;
+    (doc.body || S.page).appendChild(b);
+    b.addEventListener('click', toTop);
+    S.topTick = null;
+    S.onTopScroll = function () { if (S.topTick) return; S.topTick = root.requestAnimationFrame(function () { S.topTick = null; placeTop(); }); };
+    root.addEventListener('scroll', S.onTopScroll, { passive: true });
+    doc.addEventListener('scroll', S.onTopScroll, { passive: true, capture: true });
+    root.addEventListener('resize', S.onTopScroll);
+    S.timers.push(setInterval(placeTop, 1500));   /* content that grows or shrinks without a scroll (boards, collapse toggles) */
+    root.requestAnimationFrame(placeTop);
+    return b;
+  }
+  function unToTop() {
+    if (!S.onTopScroll) return;
+    root.removeEventListener('scroll', S.onTopScroll, { passive: true });
+    doc.removeEventListener('scroll', S.onTopScroll, { passive: true, capture: true });
+    root.removeEventListener('resize', S.onTopScroll);
+    S.onTopScroll = null;
+  }
+  function hits(r, list) { for (var i = 0; i < list.length; i++) { var o = list[i]; if (r.left < o.right && r.right > o.left && r.top < o.bottom && r.bottom > o.top) return true; } return false; }
+  function placeTop() {
+    var b = S.els.toTop; if (!b) return;
+    var sc = scroller(), vh = viewH(sc), y = sc.scrollTop;
+    var show = y > vh * 0.9 && sc.scrollHeight - vh > vh, focused = doc.activeElement === b;
+    if (!show) { if (!b.hidden) b.hidden = true; return; }
+    if (b.hidden) b.hidden = false;
+    /* obstacles: the flow bar and every visible control in the lower half of the frame */
+    var obs = [], fl = S.els.flow;
+    if (fl && fl.offsetParent !== null) obs.push(fl.getBoundingClientRect());
+    qa(TOP_SEL).forEach(function (el) {
+      if (el === b || b.contains(el)) return;
+      var r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1 || r.bottom < vh / 3 || r.top > vh) return;
+      obs.push(r);
+    });
+    b.style.bottom = '12px';
+    var r0 = b.getBoundingClientRect(), h = r0.height || 32, step = 8, base = 12;
+    for (var off = base; off + h < vh * 2 / 3; off += step) {
+      var r = { left: r0.left - 4, right: r0.right + 4, top: vh - off - h - 4, bottom: vh - off + 4 };
+      if (!hits(r, obs)) { b.style.bottom = off + 'px'; b.removeAttribute('data-jpk-aside'); return; }
+    }
+    b.style.bottom = base + 'px';
+    if (focused) { b.removeAttribute('data-jpk-aside'); return; }   /* a keyboard user on the button keeps it */
+    b.hidden = true; b.setAttribute('data-jpk-aside', '1');
+  }
+  function toTop() {
+    var sc = scroller(), beh = reduced() ? 'auto' : 'smooth';
+    try { if (sc === (doc.scrollingElement || doc.documentElement)) root.scrollTo({ top: 0, behavior: beh }); else sc.scrollTo({ top: 0, behavior: beh }); } catch (e) { sc.scrollTop = 0; }
+    var hi = S.els.hi; if (hi) { try { hi.focus({ preventScroll: true }); } catch (e) { hi.focus(); } }
+    JPKShell.lastNav = { kind: 'top', scroller: sc === (doc.scrollingElement || doc.documentElement) ? 'document' : (sc.id || sc.tagName.toLowerCase()) };
+  }
+  JPKShell.top = { place: function () { placeTop(); }, scroller: scroller };
 
   /* ============================ boot ============================ */
   function boot() {
