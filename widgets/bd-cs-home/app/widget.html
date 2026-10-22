@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Beau CS Home v5.9 (v5.8 + Spare numbers in Devices on leg open a pop-out of which agencies hold the spares, 21 Oct 2026) -->
+<!-- Beau CS Home v5.10 (v5.9 + polish from the 21 Oct review: Relationships drill-down padding, footer version label, Numbers figures one size and labels aligned, narrow-screen fixes for the page width and the spare pop-out table) -->
 <!-- home-kit: src=bd-cs-home.src.html kit=9b13fd7f out=a6a74b83 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1378,7 +1378,7 @@
   /* numbers strip */
   .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-bottom: var(--sp-3); }
   .nums .kpi { min-height: 96px; padding: 12px 14px; text-decoration: none; color: inherit; cursor: pointer; border: 0; font: inherit; text-align: left; background: var(--surface); }
-  .nums .kpi .value { font-size: 26px; }
+  .nums .kpi .value { font-size: var(--fs-n1, 32px); }
   .nums .kpi .value.txt { font-size: var(--fs-lg, 18px); line-height: 1.25; overflow-wrap: anywhere; }
   .nums .kpi[aria-pressed="true"] { background: var(--jp-tint); box-shadow: inset 0 -3px 0 var(--jp); }
   .nums .kpi .label { font-size: var(--fs-xs); }
@@ -2933,7 +2933,7 @@ function rpInit() {
 
 
 
-  var VERSION = 'BD + CS Home v4.14';
+  var VERSION = 'BD + CS Home v5.10';
   var POLL_S = 120;
   var ME = { id: null, name: '' };
   var TODAY = ymd(new Date());
@@ -10594,5 +10594,22 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
 })(typeof window !== 'undefined' ? window : this);
 
 </script>
+<style id="v510-polish">
+  /* v5.10 (21 Oct 2026 review). Kept in one block so it can be lifted into the kit source. */
+  /* Narrow screens: the page grid's auto column grew to the widest child (435px at a 420px frame) and caused a sideways scroll. */
+  .page { grid-template-columns: minmax(0, 1fr); }
+  /* Relationships: the step list and its footnote had no side padding, so text sat on the frame edge. Rows keep their full-width rules. */
+  #z-rel .rel-list-h, #z-rel .rel-foot { padding-inline: var(--gutter, 16px); }
+  #z-rel .rel-row { padding-inline: var(--gutter, 16px); }
+  #z-rel #rel-list > .fine { padding-inline: var(--gutter, 16px); }
+  /* Numbers: tile labels share one line height so a "see table" or "open" link cannot push a label down. */
+  .numgrid .kpi .label, .nums .kpi .label { line-height: 16px; min-height: 16px; }
+  .numgrid .kpi .go { line-height: 1; }
+  .numgrid .kpi { padding-block: 14px; }  /* BD tiles had 12px, CS tiles 14px: labels sat 2px apart */
+  /* Spare pop-out: below ~640px the table scrolls sideways instead of crushing its columns. */
+  .dpop .pk-body { overflow-x: auto; }
+  .dpop table { min-width: 560px; }
+  .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
+</style>
 </body>
 </html>
