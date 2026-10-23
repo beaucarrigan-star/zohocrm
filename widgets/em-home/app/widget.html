@@ -2169,7 +2169,7 @@
   };
   var api = PREVIEW ? mock : live;
   /* v34: the Queue's case read also asks for Pushed_To, Case_Origin and Related_To.Full_Name; if CRM refuses any of them the same read repeats without them */
-  var XCASE = ', Pushed_To, Case_Origin, Related_To.Full_Name';
+  var XCASE = ', Pushed_To, Case_Origin, Related_To.Full_Name, Reported_By, Email';   /* v39.1: also the reporter, the Contact column's fallback */
   var coqlPlain = api.coql;
   api.coql = function (q) {
     if (q.indexOf(XCASE) < 0) return coqlPlain.call(api, q);
@@ -2570,7 +2570,7 @@
      owner and never reach the Team view, its counts, the waiting-emails tile or the link-to-case finder. If COQL refuses the Queue column the
      read repeats without it and every row counts as Team (CASE_COLS_BASE). */
   var CASE_COLS_BASE = "Case_ID, Subject, Status, Priority, Created_Time, Account_Name.Account_Name";
-  var CASE_COLS = CASE_COLS_BASE + ", Queue";
+  var CASE_COLS = CASE_COLS_BASE + ", Queue, Pushed_To, Case_Origin, Related_To.Full_Name, Reported_By, Email";   /* v39.1: same text as XCASE, so the fallback still strips it */
   var caseAgeDays = function (r) { if (!r.Created_Time) return 0; var ms = today - new Date(r.Created_Time); return Math.max(0, Math.floor(ms / 86400000)); };
   var sortCases = function (rows) {
     return rows.slice().sort(function (a, b) {
@@ -4185,7 +4185,7 @@
        case columns + Columns picker (kit col-toggles.js) · Queue tabs (kit queue-tabs.js) · Push to… / Today tag (kit peek-push.js) · the Numbers tiles
      ========================================================================= */
   var acctOf = function (r) { return r['Account_Name.Account_Name'] || (r.Account_Name && r.Account_Name.name) || ''; };
-  var contactOf = function (r) { return r['Related_To.Full_Name'] || (r.Related_To && r.Related_To.name) || ''; };
+  var contactOf = function (r) { return r['Related_To.Full_Name'] || (r.Related_To && r.Related_To.name) || r.Reported_By || r.Email || ''; };   /* v39.1 */
   /* whole business days (Mon-Fri) since a case was opened; "untouched" = still New after more than one */
   function bizDaysOld(r) {
     if (!r.Created_Time) return 0;
@@ -7127,7 +7127,7 @@
 })(typeof window !== 'undefined' ? window : this);
 
 </script>
-<meta name="jpk-build" content="EM Home v39.0 (v38.4 + S31 page frame and calendar, 23 Oct 2026)">
+<meta name="jpk-build" content="EM Home v39.1 (v39.0 + queue Contact fix, trimmed quick actions, Buddi and SuperCom portals, 23 Oct 2026)">
 <!-- jpk-s24:begin -->
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
@@ -8009,7 +8009,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'em',
   title: 'EM Home',
-  build: 'EM Home v39.0',
+  build: 'EM Home v39.1',
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   enabled: true,
   greeting: '#greeting',
@@ -8020,12 +8020,13 @@ window.JPK_SHELL = {
   ],
   actions: [
     { id: 'newCase', label: 'New case', kind: 'create', module: 'Cases', primary: true, icon: 'plus', tip: 'Opens the new case form in Zoho CRM.' },
-    { id: 'approveStock', label: 'Approve stock email', kind: 'view', view: 'stockApprove', fallback: { kind: 'tab', module: 'EM_Stock_Alerts' }, icon: 'mail', tip: 'Opens the stock emails waiting for a yes.' },
-    { id: 'reorderDevices', label: 'Reorder devices', kind: 'tab', module: 'EM_Stock_Alerts', icon: 'layers', tip: 'Opens EM Stock Alerts, where reorders start.' },
+    /* v39.1 off (Beau, 23 Oct): { id: 'approveStock', label: 'Approve stock email', kind: 'view', view: 'stockApprove', fallback: { kind: 'tab', module: 'EM_Stock_Alerts' }, icon: 'mail', tip: 'Opens the stock emails waiting for a yes.' }, */
+    /* v39.1 off (Beau, 23 Oct): { id: 'reorderDevices', label: 'Reorder devices', kind: 'tab', module: 'EM_Stock_Alerts', icon: 'layers', tip: 'Opens EM Stock Alerts, where reorders start.' }, */
     { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
     { id: 'smartView', label: 'SmartView', kind: 'href', href: 'https://smartview.ptm.com/Default.aspx', target: '_blank', icon: 'external', tip: 'Opens the Allied SmartView portal in a new tab.' },
     { id: 'scram', label: 'SCRAM', kind: 'href', href: 'https://accounts.scramnetwork.com/', target: '_blank', icon: 'external', tip: 'Opens the SCRAM portal in a new tab.' },
-    { id: 'pureMonitor', label: 'PureMonitor', kind: 'href', href: '', target: '_blank', hideWhenMissing: true, icon: 'external', tip: 'Opens the SuperCom PureMonitor portal in a new tab.' }
+    { id: 'pureMonitor', label: 'SuperCom', kind: 'href', href: 'https://puremonitor.supercom.com/PureMonitorApplication/', target: '_blank', hideWhenMissing: true, icon: 'external', tip: 'Opens the SuperCom PureMonitor portal in a new tab.' },
+    { id: 'buddi', label: 'Buddi', kind: 'href', href: 'https://eagle.buddi.us/', target: '_blank', hideWhenMissing: true, icon: 'external', tip: 'Opens the Buddi portal in a new tab.' }
   ],
   zones: {
     top:  ['#notice'],
@@ -12013,7 +12014,8 @@ html[data-jpk-shell="on"] .jpk-cal.jpk-collapsed .jpk-cal-nav { display: none; }
 html[data-jpk-shell="on"] .jpk-cal.jpk-collapsed { cursor: default; }
 html[data-jpk-shell="on"] .jpk-qa-btn[data-jpk-action="smartView"] > span::after,
 html[data-jpk-shell="on"] .jpk-qa-btn[data-jpk-action="scram"] > span::after,
-html[data-jpk-shell="on"] .jpk-qa-btn[data-jpk-action="pureMonitor"] > span::after { content: none; }
+html[data-jpk-shell="on"] .jpk-qa-btn[data-jpk-action="pureMonitor"] > span::after,
+html[data-jpk-shell="on"] .jpk-qa-btn[data-jpk-action="buddi"] > span::after { content: none; }
 
 /* S31: Today's flow as on Beau CS Home (copied from its S27 layer) */
 /* ---------- 3. Today's flow: a light strip under the header ---------- */
