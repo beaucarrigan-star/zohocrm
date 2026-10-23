@@ -11644,7 +11644,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.7.3',
+  build: 'Beau CS Home v6.8.0',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -17813,5 +17813,415 @@ html[data-jpk-popouts="on"] .jpk-mo-fb[hidden] { display: none; }
 })(window);
 </script>
 <!-- jpk-s29:end -->
+<!-- jpk-s32:start -->
+<style id="jpk-s32-css">
+/* jpk-s32.css (S32, 23 Oct 2026): the time-grid day view and the side details panel. Pairs with jpk-s32.js; every rule is scoped
+   under html[data-s32="on"], so with ?s32=0 nothing here applies. Page tokens only; amber and red use light-dark() like S29. */
+
+/* the shell's card list stays in the page for anything that reads it, but the grid replaces it on screen */
+html[data-s32="on"][data-s32-grid="on"] #jpk-cal .jpk-day-list { display: none; }
+html[data-s32="on"]:not([data-s32-grid="on"]) #jpk-cal .s32-wrap { display: none; }
+html[data-s32="on"] #jpk-cal .jpk-now { display: none; }   /* the S29 "Now" divider belongs to the card list */
+
+html[data-s32="on"] .s32-wrap {
+  --s32-blue: var(--accent);
+  --s32-blue-bg: color-mix(in srgb, var(--accent) 13%, var(--surface));
+  --s32-blue-ink: var(--accent-ink, var(--ink));
+  --s32-amber: light-dark(#B07A00, #E8B84A);
+  --s32-amber-bg: light-dark(#FBF1DA, color-mix(in srgb, #E8B84A 16%, var(--surface)));
+  --s32-amber-ink: light-dark(#5C4100, #F5D99A);
+  --s32-red: light-dark(#D92D20, #FF6B5E);
+  margin-top: 4px;
+}
+html[data-s32="on"] .s32-allday { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 0 0 8px 58px; border-bottom: 1px solid var(--line); margin-bottom: 4px; position: relative; }
+html[data-s32="on"] .s32-allday[hidden] { display: none; }
+html[data-s32="on"] .s32-ad-k { position: absolute; left: 0; top: 3px; width: 50px; text-align: right; font-size: 11px; color: var(--muted); }
+html[data-s32="on"] .s32-ad {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 8px; border-radius: 6px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer; border-left: 3px solid var(--s32-edge); background: var(--s32-bg); color: var(--s32-ink);
+}
+html[data-s32="on"] .s32-scroll { position: relative; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 8px 2px 0 0; }
+html[data-s32="on"] .s32-scroll:focus { outline: none; }
+html[data-s32="on"] .s32-grid { position: relative; margin-left: 58px; }
+html[data-s32="on"] .s32-hr { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); }
+html[data-s32="on"] .s32-hr span {
+  position: absolute; left: -58px; top: -8px; width: 50px; text-align: right; font-size: 11px; line-height: 16px; color: var(--muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+html[data-s32="on"] .s32-half { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed color-mix(in srgb, var(--line) 55%, transparent); }
+html[data-s32="on"] .s32-evs { position: absolute; inset: 0; }
+
+/* blocks */
+html[data-s32="on"] .s32-linked { --s32-edge: var(--s32-blue); --s32-bg: var(--s32-blue-bg); --s32-ink: var(--s32-blue-ink); }
+html[data-s32="on"] .s32-unlinked { --s32-edge: var(--s32-amber); --s32-bg: var(--s32-amber-bg); --s32-ink: var(--s32-amber-ink); }
+html[data-s32="on"] .s32-ev {
+  position: absolute; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; gap: 1px;
+  padding: 3px 8px 3px 8px; border-radius: 6px; border-left: 3px solid var(--s32-edge); background: var(--s32-bg); color: var(--s32-ink);
+  box-shadow: 0 0 0 1px var(--surface); cursor: default; transition: filter .12s ease, box-shadow .12s ease;
+  container-type: inline-size;
+}
+html[data-s32="on"] .s32-ev[data-jpk-open] { cursor: pointer; }
+html[data-s32="on"] .s32-ev[data-jpk-open]:hover { filter: brightness(.97); box-shadow: 0 0 0 1px var(--surface), 0 2px 8px rgba(15, 22, 24, .10); z-index: 2; }
+html[data-s32="on"] .s32-ev:focus-visible, html[data-s32="on"] .s32-ad:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; z-index: 3; }
+html[data-s32="on"] .s32-t { font-size: 13px; font-weight: 650; line-height: 1.25; color: var(--s32-ink); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+html[data-s32="on"] .s32-m { font-size: 11.5px; line-height: 1.25; color: color-mix(in srgb, var(--s32-ink) 72%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+html[data-s32="on"] .s32-short { flex-direction: row; align-items: center; gap: 6px; padding-top: 1px; padding-bottom: 1px; }
+html[data-s32="on"] .s32-short .s32-m { flex: none; }
+@container (max-width: 200px) { html[data-s32="on"] .s32-short .s32-m { display: none; } }
+@container (max-width: 150px) { html[data-s32="on"] .s32-m { display: none; } }
+html[data-s32="on"] .s32-short .s32-t { -webkit-line-clamp: 1; font-size: 12.5px; flex: 0 1 auto; min-width: 0; }
+html[data-s32="on"] .s32-past { opacity: .55; }
+html[data-s32="on"] .s32-past:hover { opacity: .8; }
+html[data-s32="on"] .s32-live { box-shadow: 0 0 0 1px var(--surface), 0 0 0 2px color-mix(in srgb, var(--s32-edge) 45%, transparent); }
+html[data-s32="on"] .s32-hasjoin { padding-right: 50px; }
+html[data-s32="on"] .s32-hasjoin-i { padding-right: 30px; }
+html[data-s32="on"] .s32-ev .s32-join.s32-join-i { padding: 0; box-sizing: border-box; width: 22px; height: 20px; display: inline-flex; align-items: center; justify-content: center; right: 4px; }
+html[data-s32="on"] .s32-join-i svg { flex: none; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+html[data-s32="on"] .s32-join {
+  position: absolute; right: 5px; top: 4px; padding: 2px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; line-height: 18px;
+  background: var(--s32-edge); color: #fff; text-decoration: none; white-space: nowrap;
+}
+html[data-s32="on"] .s32-unlinked .s32-join { color: light-dark(#fff, #2A1E00); }
+html[data-s32="on"] .s32-short .s32-join { top: 50%; transform: translateY(-50%); padding: 0 8px; }
+html[data-s32="on"] .s32-join:hover { filter: brightness(1.08); }
+html[data-s32="on"] .s32-join:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* now */
+html[data-s32="on"] .s32-now { position: absolute; left: -6px; right: 0; height: 0; border-top: 2px solid var(--s32-red); z-index: 4; pointer-events: none; }
+html[data-s32="on"] .s32-now::before { content: ""; position: absolute; left: 0; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--s32-red); }
+html[data-s32="on"] .s32-now b {
+  position: absolute; left: -58px; top: -9px; width: 50px; text-align: right; font-size: 10.5px; font-weight: 700; line-height: 16px;
+  color: var(--s32-red); background: var(--surface); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+html[data-s32="on"] .s32-empty { margin: 6px 0 0 58px; font-size: 13px; color: var(--muted); }
+html[data-s32="on"] .s32-empty[hidden] { display: none; }
+
+/* day range button and popover */
+html[data-s32="on"] .s32-bar { display: flex; justify-content: flex-end; margin: 0 0 2px; }
+html[data-s32="on"] .s32-gear {
+  height: 26px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; font: inherit; font-size: 12px; font-weight: 500;
+  background: none; border: 1px solid transparent; border-radius: 999px; color: var(--muted); cursor: pointer; white-space: nowrap;
+}
+html[data-s32="on"] .s32-gear svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+html[data-s32="on"] .s32-gear:hover, html[data-s32="on"] .s32-gear[aria-expanded="true"] { color: var(--ink); border-color: var(--line); }
+html[data-s32="on"] .s32-gear:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+html[data-s32="on"] .s32-pop {
+  margin: 6px 0 10px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--jpk-r, 10px); background: var(--surface);
+  box-shadow: var(--shadow-pop, 0 6px 20px rgba(15, 22, 24, .12)); display: grid; gap: 8px;
+}
+html[data-s32="on"] .s32-pop-h { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+html[data-s32="on"] .s32-pop-row { display: flex; align-items: center; gap: 10px; }
+html[data-s32="on"] .s32-pop-row label { width: 44px; font-size: 13px; color: var(--ink-2); }
+html[data-s32="on"] .s32-pop-row select { flex: 1; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13.5px; }
+html[data-s32="on"] .s32-pop-n { margin: 0; font-size: 12px; color: var(--muted); }
+html[data-s32="on"] .s32-pop-n.s32-bad { color: var(--bad, #B42318); }
+html[data-s32="on"] .s32-pop-a { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* the details panel and link picker slide in from the right, over the visible part of the page */
+html[data-s32="on"] #jpk-cal-panel:not([hidden]) {
+  position: fixed; z-index: calc(var(--z-modal, 1000) + 1); top: var(--s32-top, 0px); right: 0; height: var(--s32-h, 100vh); width: min(420px, 100vw);
+  box-sizing: border-box; margin: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 18px 20px;
+  background: var(--surface); color: var(--ink); border-left: 1px solid var(--line-strong); border-radius: 12px 0 0 12px;
+  box-shadow: -12px 0 32px rgba(15, 22, 24, .16); animation: s32-in .18s ease-out;
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 10px;
+}
+html[data-s32="on"] #jpk-cal-panel:not([hidden]) > * { flex: none; margin-top: 0; margin-bottom: 0; }
+html[data-s32="on"] #jpk-cal-panel .jpk-pn-acts { align-items: center; align-content: flex-start; margin-top: 6px; }
+html[data-s32="on"] #jpk-cal-panel .jpk-pn-h:focus { outline: none; box-shadow: none; }   /* a heading that takes focus for screen readers, not a field */
+@keyframes s32-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { html[data-s32="on"] #jpk-cal-panel:not([hidden]) { animation: none; } }
+html[data-s32="on"] .s32-scrim { position: fixed; inset: 0; z-index: var(--z-modal, 1000); background: var(--hl-dim, rgba(15, 22, 24, .28)); }
+html[data-s32="on"] .s32-scrim[hidden] { display: none; }
+@media (max-width: 520px) { html[data-s32="on"] #jpk-cal-panel:not([hidden]) { border-radius: 0; border-left: 0; } }
+</style>
+<script id="jpk-s32">
+/* jpk-s32.js (S32, 23 Oct 2026): a time-grid day view for the home calendar, in the style of Notion Calendar.
+   Same file on Beau CS Home, EM Home, BD Home and Leadership Home. Reads only what the shell already loaded
+   (JPKShell.calendar.state: events, day, status); makes no Zoho calls and writes nothing.
+     - The day's meetings sit on an hour grid, sized to their length; overlapping meetings sit side by side.
+     - A red line marks the current time on today, and the grid scrolls so it is in view.
+     - Blocks: pale fill, solid left edge. Blue = linked to an account or contact, amber = not linked. Past meetings fade.
+     - A meeting with a join link shows Join from 10 minutes before it starts until it ends.
+     - Clicking a block opens the existing details panel, which now slides in from the right.
+     - Day range: 7 AM to 6 PM unless changed with the clock button in the calendar header. Kept per person, in this browser.
+       Meetings outside the range still show; the grid grows to fit them.
+   The shell's own list stays in the page (hidden) so nothing that reads it breaks. ?s32=0 turns this layer off. */
+(function (root) {
+  'use strict';
+  var doc = root.document;
+  if (!doc || root.JPKS32) return;
+  if (/[?&]s32=0/.test(root.location.search)) return;
+  var VERSION = '1.0.0', KEY = 'jpk-cal-hours', DEF = { s: 7, e: 18 }, HPX = 52, MINH = 22, JOIN_MIN = 10;
+  var html = doc.documentElement;
+
+  /* ---------- helpers ---------- */
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function toDate(v) { if (v instanceof Date) return v; var t = Date.parse(v); return isNaN(t) ? null : new Date(t); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hm(d) { var h = d.getHours(), m = d.getMinutes(), ap = h < 12 ? 'AM' : 'PM', h12 = h % 12 || 12; return h12 + (m ? ':' + pad(m) : '') + ' ' + ap; }
+  function hm2(d) { var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + (m ? ':' + pad(m) : ''); }
+  function hourLabel(h) { if (h === 0 || h === 24) return '12 AM'; if (h === 12) return 'Noon'; return (h % 12) + (h < 12 ? ' AM' : ' PM'); }
+  function hours() {
+    var v = null;
+    try { v = JSON.parse(root.localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    if (v && v.s >= 0 && v.e <= 24 && v.e > v.s && v.s === Math.floor(v.s) && v.e === Math.floor(v.e)) return { s: v.s, e: v.e };
+    return { s: DEF.s, e: DEF.e };
+  }
+  function saveHours(v) { try { if (v) root.localStorage.setItem(KEY, JSON.stringify(v)); else root.localStorage.removeItem(KEY); } catch (e) {} }
+  function calState() { var C = root.JPKShell && root.JPKShell.calendar; return C && C.state ? C.state : null; }
+  function canOpen() { return !!(root.jpkCalendar && typeof root.jpkCalendar.open === 'function'); }
+  function provider(e) {
+    var u = String(e.joinUrl || '').toLowerCase(), v = String(e.venue || e.provider || '');
+    if (/teams\.(microsoft|live)\.com/.test(u) || /teams/i.test(v)) return 'Teams';
+    if (/zoom\./.test(u) || /zoom/i.test(v)) return 'Zoom';
+    if (/meet\.google\.com/.test(u)) return 'Google Meet';
+    if (/webex/.test(u)) return 'Webex';
+    if (/goto/.test(u)) return 'GoTo';
+    if (/meeting\.zoho\./.test(u)) return 'Zoho Meeting';
+    if (/^\s*online\s*$/i.test(v)) return 'Online';
+    return v.replace(/\s+meeting$/i, '');
+  }
+
+  /* ---------- pure layout (exported for tests) ---------- */
+  /* events of one day -> { allDay: [], timed: [{ ev, s, e, top, height, col, cols }] , from, to } (minutes from grid start) */
+  function layout(events, dayKey, range) {
+    var d0 = new Date(dayKey + 'T00:00:00'), d1 = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 1);
+    var allDay = [], timed = [];
+    (events || []).forEach(function (ev) {
+      var s = toDate(ev.start), e = toDate(ev.end) || s; if (!s) return;
+      if (ev.allDay) { if (ymd(s) === dayKey) allDay.push(ev); return; }
+      if (e <= d0 || s >= d1) { if (!(+s === +e && ymd(s) === dayKey)) return; }
+      var cs = s < d0 ? d0 : s, ce = e > d1 ? d1 : e;
+      timed.push({ ev: ev, s: s, e: e, sm: (cs - d0) / 60000, em: Math.max((ce - d0) / 60000, (cs - d0) / 60000 + 15) });
+    });
+    timed.sort(function (a, b) { return a.sm - b.sm || b.em - a.em; });
+    var from = range.s * 60, to = range.e * 60;
+    timed.forEach(function (t) { if (t.sm < from) from = Math.floor(t.sm / 60) * 60; if (t.em > to) to = Math.min(1440, Math.ceil(t.em / 60) * 60); });
+    /* overlap groups: a group ends when the next meeting starts after every meeting in it has ended */
+    var group = [], groupEnd = -1;
+    var flush = function () {
+      var colsEnd = [];
+      group.forEach(function (t) {
+        var c = 0; while (c < colsEnd.length && colsEnd[c] > t.sm) c++;
+        colsEnd[c] = t.em; t.col = c;
+      });
+      group.forEach(function (t) { t.cols = colsEnd.length; });
+      group = []; groupEnd = -1;
+    };
+    timed.forEach(function (t) { if (group.length && t.sm >= groupEnd) flush(); group.push(t); groupEnd = Math.max(groupEnd, t.em); });
+    flush();
+    timed.forEach(function (t) { t.top = (t.sm - from) / 60 * HPX; t.height = Math.max(MINH, (t.em - t.sm) / 60 * HPX - 2); });
+    return { allDay: allDay, timed: timed, from: from, to: to };
+  }
+
+  /* ---------- render ---------- */
+  var W = null, lastSig = '', lastDay = '', userScrolled = false, pendingScroll = true;
+  function ensure() {
+    var cal = doc.getElementById('jpk-cal'); if (!cal) return null;
+    var list = cal.querySelector('.jpk-day-list'); if (!list) return null;
+    if (W && W.root.isConnected && W.root.previousElementSibling === list) return W;
+    var wrap = doc.createElement('div');
+    wrap.className = 's32-wrap'; wrap.id = 's32-wrap';
+    wrap.innerHTML = '<div class="s32-bar"></div><div class="s32-allday" hidden></div><div class="s32-scroll" tabindex="-1"><div class="s32-grid" role="list" aria-label="Meetings on the time grid"></div></div><p class="s32-empty" hidden></p>';
+    list.parentNode.insertBefore(wrap, list.nextSibling);
+    var sc = wrap.querySelector('.s32-scroll');
+    sc.addEventListener('scroll', function () { if (!sc.__auto) userScrolled = true; sc.__auto = false; }, { passive: true });
+    wrap.addEventListener('click', function (e) {
+      var j = e.target.closest && e.target.closest('.s32-join');
+      if (j) { e.stopPropagation(); return; }   /* the link opens the meeting app; the shell must not also open details */
+    });
+    wrap.addEventListener('keydown', function (e) {
+      var b = e.target.closest && e.target.closest('.s32-ev[data-jpk-open]');
+      if (b && e.target === b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); b.click(); }
+    });
+    W = { root: wrap, cal: cal, list: list, all: wrap.querySelector('.s32-allday'), sc: sc, grid: wrap.querySelector('.s32-grid'), empty: wrap.querySelector('.s32-empty') };
+    html.setAttribute('data-s32', 'on');
+    gearButton(wrap.querySelector('.s32-bar'));
+    return W;
+  }
+  function blockHtml(t, now) {
+    var ev = t.ev, linked = !!(ev.accountId || ev.contactId), past = t.e <= now, live = t.s <= now && t.e > now;
+    var joinOn = !!ev.joinUrl && t.e > now && (t.s - now) <= JOIN_MIN * 60000;
+    var short = t.height < 34, pv = provider(ev);
+    var when = hm(t.s) + (t.e > t.s ? ' to ' + hm(t.e) : '');
+    var samePm = (t.s.getHours() < 12) === (t.e.getHours() < 12) && ymd(t.s) === ymd(t.e);
+    var meta = (t.e > t.s ? (samePm ? hm2(t.s) : hm(t.s)) + ' – ' + hm(t.e) : hm(t.s)) + (pv ? ' · ' + pv : '');
+    var w = 100 / t.cols, open = canOpen();
+    var link = linked ? (ev.accountName || ev.contactName || 'Linked') : 'Not linked';
+    var label = (ev.title || '(no title)') + ', ' + when + (pv ? ', ' + pv : '') + ', ' + link + (past ? ', over' : live ? ', happening now' : '');
+    return '<div role="listitem" class="s32-ev ' + (linked ? 's32-linked' : 's32-unlinked') + (past ? ' s32-past' : '') + (live ? ' s32-live' : '') + (short ? ' s32-short' : '') + (joinOn ? (t.cols > 1 ? ' s32-hasjoin-i' : ' s32-hasjoin') : '') + '"'
+      + ' style="top:' + t.top.toFixed(1) + 'px;height:' + t.height.toFixed(1) + 'px;left:calc(' + (t.col * w).toFixed(3) + '% + 1px);width:calc(' + w.toFixed(3) + '% - 3px)"'
+      + (open ? ' data-jpk-open="' + esc(ev.id) + '" data-jpk-at="' + t.s.getTime() + '" tabindex="0" aria-label="' + esc(label + '. Open details') + '"' : ' aria-label="' + esc(label) + '"')
+      + ' title="' + esc((ev.title || '(no title)') + '\n' + when + (pv ? ' · ' + pv : '') + '\n' + link) + '">'
+      + '<span class="s32-t">' + esc(ev.title || '(no title)') + '</span>'
+      + (short ? (t.cols > 1 ? '' : '<span class="s32-m">' + esc(hm(t.s)) + '</span>') : '<span class="s32-m">' + esc(meta) + '</span>')
+ + (joinOn ? '<a class="s32-join' + (t.cols > 1 ? ' s32-join-i' : '') + '" href="' + esc(ev.joinUrl) + '" target="_blank" rel="noopener" aria-label="Join ' + esc(ev.title || 'meeting') + ' (opens in a new tab)">' + (t.cols > 1 ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1z"/><path d="M10.5 7l3-2v6l-3-2"/></svg>' : 'Join') + '</a>' : '')
+      + '</div>';
+  }
+  function render(force) {
+    var S = calState(); if (!S) return;
+    var w = ensure(); if (!w) return;
+    var now = new Date(), day = S.day || ymd(now), isToday = day === ymd(now), rg = hours();
+    var st = S.status;
+    if (st !== 'ok') {   /* loading or failed: the shell's own message shows instead of the grid */
+      html.setAttribute('data-s32-grid', 'off');
+      lastSig = ''; return;
+    }
+    var L = layout(S.events, day, rg);
+    var sig = [day, now.getHours(), now.getMinutes(), rg.s, rg.e, JSON.stringify(L.timed.map(function (t) { var e = t.ev; return [e.id, e.start, e.end, e.title, !!e.accountId, !!e.contactId, e.accountName, e.contactName, e.joinUrl, e.venue]; })), L.allDay.map(function (e) { return e.id + (e.accountId || e.contactId ? '+' : ''); }).join(',')].join('|');
+    html.setAttribute('data-s32-grid', 'on');
+    if (day !== lastDay || force === 'scroll') { lastDay = day; pendingScroll = true; }
+    if (!force && sig === lastSig) { scrollIfDue(w, L, rg, isToday, now); return; }
+    lastSig = sig;
+    var keepFocus = doc.activeElement && w.root.contains(doc.activeElement) ? doc.activeElement.getAttribute('data-jpk-open') : null;
+
+    /* all-day strip */
+    if (L.allDay.length) {
+      w.all.hidden = false;
+      w.all.innerHTML = '<span class="s32-ad-k">All day</span>' + L.allDay.map(function (ev) {
+        var linked = !!(ev.accountId || ev.contactId);
+        return '<span class="s32-ad ' + (linked ? 's32-linked' : 's32-unlinked') + '"' + (canOpen() ? ' data-jpk-open="' + esc(ev.id) + '" data-jpk-at="' + toDate(ev.start).getTime() + '" role="button" tabindex="0"' : '') + ' title="' + esc(ev.title) + '">' + esc(ev.title || '(no title)') + '</span>';
+      }).join('');
+    } else { w.all.hidden = true; w.all.innerHTML = ''; }
+
+    /* grid */
+    var hrs = '', h;
+    for (h = L.from / 60; h <= L.to / 60; h++) {
+      var y = (h * 60 - L.from) / 60 * HPX;
+      hrs += '<div class="s32-hr' + (h === L.to / 60 ? ' s32-hr-last' : '') + '" style="top:' + y + 'px" aria-hidden="true">' + (h < L.to / 60 ? '<span>' + hourLabel(h) + '</span>' : '') + '</div>';
+      if (h < L.to / 60) hrs += '<div class="s32-half" style="top:' + (y + HPX / 2) + 'px" aria-hidden="true"></div>';
+    }
+    var nowLine = '';
+    var nm = now.getHours() * 60 + now.getMinutes();
+    if (isToday && nm >= L.from && nm <= L.to) nowLine = '<div class="s32-now" style="top:' + ((nm - L.from) / 60 * HPX) + 'px" role="presentation" aria-hidden="true"><b>' + esc(hm(now)) + '</b></div>';
+    var gridH = (L.to - L.from) / 60 * HPX;
+    w.grid.style.height = gridH + 'px';
+    w.grid.innerHTML = hrs + '<div class="s32-evs">' + L.timed.map(function (t) { return blockHtml(t, now); }).join('') + '</div>' + nowLine;
+    w.grid.setAttribute('aria-label', (isToday ? 'Today' : new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })) + ': ' + L.timed.length + (L.timed.length === 1 ? ' meeting' : ' meetings') + ' on the time grid');
+
+    /* the visible window is the person's day range; the grid scrolls for anything outside it */
+    var viewH = (rg.e - rg.s) * HPX + 8;
+    w.sc.style.maxHeight = Math.min(viewH, gridH + 8) + 'px';
+    w.empty.hidden = !!(L.timed.length || L.allDay.length);
+    if (!w.empty.hidden) w.empty.textContent = isToday ? 'No meetings today.' : 'Nothing on this day.';
+
+    scrollIfDue(w, L, rg, isToday, now);
+    if (keepFocus) { var f = w.root.querySelector('[data-jpk-open="' + keepFocus + '"]'); if (f) { try { f.focus({ preventScroll: true }); } catch (e) {} } }
+  }
+
+  /* scroll on a new day, the first draw or a new range: to now (today) or the first meeting, else the start of the range.
+     Waits while the calendar is collapsed or the week is hidden (no height yet), so opening it later still lands on now. */
+  function scrollIfDue(w, L, rg, isToday, now) {
+    if (!pendingScroll || !w.sc.clientHeight) return;
+    pendingScroll = false; userScrolled = false;
+    var nm = now.getHours() * 60 + now.getMinutes(), target;
+    if (isToday && nm >= L.from && nm <= L.to) target = (nm - L.from) / 60 * HPX - HPX * 1.25;
+    else if (L.timed.length && (L.timed[0].sm < rg.s * 60 || L.timed[0].sm > rg.e * 60 - 60)) target = L.timed[0].top - HPX / 2;
+    else target = (rg.s * 60 - L.from) / 60 * HPX;
+    w.sc.__auto = true; w.sc.scrollTop = Math.max(0, target);
+  }
+
+  /* ---------- day range setting ---------- */
+  var G = null;
+  function gearText() { var r = hours(); return hourLabel(r.s) + ' to ' + hourLabel(r.e); }
+  function gearButton(nav) {
+    if (!nav || nav.querySelector('.s32-gear')) return;
+    var b = doc.createElement('button');
+    b.type = 'button'; b.className = 's32-gear'; b.title = 'Change the hours the calendar shows'; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
+    b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2.2 1.4"/></svg><span class="s32-gear-t"></span>';
+    b.querySelector('.s32-gear-t').textContent = gearText();
+    b.setAttribute('aria-label', 'Day range ' + gearText() + '. Change');
+    nav.appendChild(b);
+    b.addEventListener('click', function (e) { e.stopPropagation(); if (G) closeGear(true); else openGear(b); });
+  }
+  function opts(sel, from, to) { var o = ''; for (var h = from; h <= to; h++) o += '<option value="' + h + '"' + (h === sel ? ' selected' : '') + '>' + hourLabel(h) + '</option>'; return o; }
+  function openGear(b) {
+    var cal = doc.getElementById('jpk-cal'); if (!cal) return;
+    var rg = hours(), p = doc.createElement('div');
+    p.className = 's32-pop'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Day range');
+    p.innerHTML = '<p class="s32-pop-h">Day range</p>'
+      + '<div class="s32-pop-row"><label for="s32-hs">Start</label><select id="s32-hs">' + opts(rg.s, 0, 23) + '</select></div>'
+      + '<div class="s32-pop-row"><label for="s32-he">End</label><select id="s32-he">' + opts(rg.e, 1, 24) + '</select></div>'
+      + '<p class="s32-pop-n" aria-live="polite">Meetings outside these hours still show. Saved in this browser.</p>'
+      + '<div class="s32-pop-a"><button type="button" class="jpk-btn jpk-primary" data-s32="save">Save</button><button type="button" class="jpk-btn" data-s32="reset">7 AM to 6 PM</button></div>';
+    var bar = cal.querySelector('.s32-bar'); if (!bar) return;
+    bar.parentNode.insertBefore(p, bar.nextSibling);
+    G = { p: p, b: b };
+    b.setAttribute('aria-expanded', 'true');
+    var hs = p.querySelector('#s32-hs'), he = p.querySelector('#s32-he'), note = p.querySelector('.s32-pop-n');
+    var check = function () { var ok = +he.value > +hs.value; note.textContent = ok ? 'Meetings outside these hours still show. Saved in this browser.' : 'End must be after start.'; note.classList.toggle('s32-bad', !ok); p.querySelector('[data-s32="save"]').disabled = !ok; return ok; };
+    hs.addEventListener('change', check); he.addEventListener('change', check);
+    p.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var a = e.target.closest && e.target.closest('[data-s32]'); if (!a) return;
+      if (a.getAttribute('data-s32') === 'save') { if (!check()) return; saveHours({ s: +hs.value, e: +he.value }); }
+      else saveHours(null);
+      closeGear(true); var t = b.querySelector('.s32-gear-t'); if (t) t.textContent = gearText(); b.setAttribute('aria-label', 'Day range ' + gearText() + '. Change'); render('scroll');
+    });
+    p.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeGear(true); } });
+    try { hs.focus(); } catch (e) {}
+  }
+  function closeGear(focus) {
+    if (!G) return;
+    var g = G; G = null;
+    if (g.p.parentNode) g.p.parentNode.removeChild(g.p);
+    g.b.setAttribute('aria-expanded', 'false');
+    if (focus) { try { g.b.focus(); } catch (e) {} }
+  }
+  doc.addEventListener('click', function (e) { if (G && !G.p.contains(e.target) && e.target !== G.b) closeGear(false); });
+
+  /* ---------- the details panel as a side panel ---------- */
+  var scrim = null;
+  function placePanel() {
+    var v = typeof root.hlViewport === 'function' ? root.hlViewport() : null;
+    var top = v && v.known ? v.top : 0, h = v && v.known ? v.h : root.innerHeight;
+    html.style.setProperty('--s32-top', Math.round(top) + 'px');
+    html.style.setProperty('--s32-h', Math.round(h) + 'px');
+  }
+  function syncPanel() {
+    var p = doc.getElementById('jpk-cal-panel');
+    var open = !!(p && !p.hidden);
+    if (!scrim) {
+      scrim = doc.createElement('div'); scrim.className = 's32-scrim'; scrim.hidden = true; scrim.setAttribute('aria-hidden', 'true');
+      doc.body.appendChild(scrim);
+      scrim.addEventListener('click', function () { var x = doc.querySelector('#jpk-cal-panel [data-pn="close"]'); if (x) x.click(); });
+    }
+    if (open) placePanel();
+    if (scrim.hidden === open) scrim.hidden = !open;
+    html.setAttribute('data-s32-panel', open ? 'open' : 'closed');
+  }
+
+  /* ---------- wiring ---------- */
+  var t = 0;
+  function soon() { clearTimeout(t); t = setTimeout(function () { render(false); syncPanel(); }, 60); }
+  function boot() {
+    var tries = 0;
+    (function wait() {
+      if (calState() && doc.getElementById('jpk-cal')) {
+        render(false); syncPanel();
+        var mo = new MutationObserver(function (list) {
+          for (var i = 0; i < list.length; i++) {
+            var n = list[i].target;
+            if (n && n.nodeType === 1 && (n.closest('.s32-wrap') || n.closest('.s32-pop'))) continue;
+            if (n && n.nodeType === 3 && n.parentNode && n.parentNode.closest && n.parentNode.closest('.s32-wrap')) continue;
+            soon(); return;
+          }
+        });
+        mo.observe(doc.getElementById('jpk-cal'), { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-pressed'] });
+        setInterval(function () { render(false); }, 30000);
+        root.addEventListener('jpk-join-resolved', soon);
+        root.addEventListener('resize', function () { if (html.getAttribute('data-s32-panel') === 'open') placePanel(); });
+        if (typeof root.hlOnViewport === 'function') root.hlOnViewport(function () { if (html.getAttribute('data-s32-panel') === 'open') placePanel(); });
+        return;
+      }
+      if (tries++ < 120) setTimeout(wait, 250);
+    })();
+  }
+  root.JPKS32 = { version: VERSION, build: 'S32 Notion-style calendar, 23 Oct 2026', layout: layout, hours: hours, render: function () { render(true); }, HPX: HPX };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
+})(window);
+</script>
+<!-- jpk-s32:end -->
 </body>
 </html>
