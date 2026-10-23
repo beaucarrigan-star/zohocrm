@@ -10670,7 +10670,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.7.0 (v6.6.0 + S29 readable calendar and Teams meetings, 23 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.7.2 (v6.7.1 + Lost and damaged devices labels, 23 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11554,7 +11554,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.7.0',
+  build: 'Beau CS Home v6.7.2',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -11567,7 +11567,7 @@ window.JPK_SHELL = {
   actions: [
     { id: 'reorderDevices', label: 'Reorder devices', kind: 'stockEmails', fallback: { kind: 'tab', module: 'Daily_Unit_Counts' }, icon: 'layers', tip: 'Opens Stock emails to approve, where the spare floor emails that ask a customer to order units wait.' },
     { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', view: 'collectionsApproval', popout: 'collectionsApprove', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the Needs Approval list when there are several.', popTip: 'Shows the collections emails waiting for approval in a box on this page.' },
-    { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
+    { id: 'logLostDevice', label: 'Log lost or damaged device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost & Damaged Devices.' },
     { id: 'billingCheck', label: 'Admin Processes', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab24', profiles: ['Administrator'], icon: 'check', tip: 'Opens the Admin Processes tab.' },
     { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'zoho', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens the new meeting form in Zoho CRM.', popout: 'calMonthNew', popTip: 'Adds a meeting to your Zoho CRM calendar from a box on this page.' }
   ],
@@ -11583,7 +11583,7 @@ window.JPK_SHELL = {
     stackPairsBelow: 900
   },
   calendar: {
-    source: 'events', days: 7, owner: 'me', detailCap: 10, link: true, fallback: 'agenda',
+    source: 'events', days: 7, owner: 'me', detailCap: 10, link: true, fallback: 'none', /* S29b: meetings only (was 'agenda') */
     outlookUrl: 'https://outlook.office.com/calendar/view/day',
     help: 'Put a meeting on the Zoho CRM Calendar in Outlook to see it here.',
     syncNote: 'From Outlook via Zoho Meetings sync'
@@ -12482,7 +12482,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.7.0',
+    build: 'Beau CS Home v6.7.2',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -12501,7 +12501,7 @@ window.JPK_SHELL = {
     actions: [
       { id: 'reorderDevices', label: 'Reorder devices', kind: 'stockEmails', fallback: { kind: 'tab', module: 'Daily_Unit_Counts' }, icon: 'layers', tip: 'Opens Stock emails to approve, where the spare floor emails that ask a customer to order units wait.' },
       { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', view: 'collectionsApproval', popout: 'collectionsApprove', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the Needs Approval list when there are several.', popTip: 'Shows the collections emails waiting for approval in a box on this page.' },
-      { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
+      { id: 'logLostDevice', label: 'Log lost or damaged device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost & Damaged Devices.' },
       { id: 'billingCheck', label: 'Admin Processes', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab24', profiles: ['Administrator'], icon: 'check', tip: 'Opens the Admin Processes tab.' },
       { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'zoho', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens the new meeting form in Zoho CRM.' }
     ],
@@ -12518,7 +12518,7 @@ window.JPK_SHELL = {
       narrowBelow: 1101
     },
     calendar: {
-      source: 'events', days: 7, owner: 'me', detailCap: 10, link: true, fallback: 'agenda',
+      source: 'events', days: 7, owner: 'me', detailCap: 10, link: true, fallback: 'none', /* S29b: meetings only (was 'agenda') */
       outlookUrl: 'https://outlook.office.com/calendar/view/day',
       help: 'Put a meeting on the Zoho CRM Calendar in Outlook to see it here.',
       syncNote: 'From Outlook via Zoho Meetings sync'
@@ -12928,7 +12928,7 @@ window.JPK_SHELL = {
     stock: { tag: 'Stock alert', area: 'Daily Unit Counts' },
     approve: { tag: 'Approve', area: 'Collections' },
     renewal: { tag: 'Renewal', area: 'Contracts' },
-    lost: { tag: 'Lost device', area: 'Lost Devices' },
+    lost: { tag: 'Lost or damaged', area: 'Lost & Damaged Devices' },
     verify: { tag: 'Verify', area: 'Admin Processes' }
   };
   function idCmp(a, b) { a = String(a); b = String(b); if (isId(a) && isId(b)) return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0); return a < b ? -1 : a > b ? 1 : 0; }
@@ -14038,9 +14038,9 @@ window.JPK_SHELL = {
       empty: function () { return 'Nothing needs you today.'; },
       rows: function () { var s = shell(), m = s && s.needs && s.needs.model(); return m && m.state === 'ok' ? m.rows : null; },
       cols: [
-        { label: 'Type', get: function (r) { return { stock: 'Stock alert', approve: 'Approve', renewal: 'Renewal', lost: 'Lost device', verify: 'Verify' }[r.type] || r.type; }, filter: true },
+        { label: 'Type', get: function (r) { return { stock: 'Stock alert', approve: 'Approve', renewal: 'Renewal', lost: 'Lost or damaged', verify: 'Verify' }[r.type] || r.type; }, filter: true },
         { label: 'Item', get: function (r) { return r.text; }, main: true },
-        { label: 'Area', get: function (r) { return { stock: 'Daily Unit Counts', approve: 'Collections', renewal: 'Contracts', lost: 'Lost Devices', verify: 'Admin Processes' }[r.type] || ''; } }
+        { label: 'Area', get: function (r) { return { stock: 'Daily Unit Counts', approve: 'Collections', renewal: 'Contracts', lost: 'Lost & Damaged Devices', verify: 'Admin Processes' }[r.type] || ''; } }
       ],
       peek: function (r) { return needsPeek(r); },
       expect: function () { var t = tx($('jpk-nt') && $('jpk-nt').querySelector('.jpk-nt-badge')); var m = /^(\d+) open$/.exec(t); return m ? +m[1] : null; },
