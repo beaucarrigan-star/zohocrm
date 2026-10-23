@@ -10760,7 +10760,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.7.3 (v6.7.2 + Shipped from AMS line and pop-out on Devices on leg, 23 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.9.0 (v6.8.0 + S33 declutter, 23 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11644,7 +11644,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.8.0',
+  build: 'Beau CS Home v6.9.0',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -12572,7 +12572,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.7.3',
+    build: 'Beau CS Home v6.9.0',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -18223,5 +18223,317 @@ html[data-s32="on"] .s32-scrim[hidden] { display: none; }
 })(window);
 </script>
 <!-- jpk-s32:end -->
+<!-- jpk-s33:start -->
+<style id="jpk-s33-css">
+/* jpk-s33.css (S33 v6.9.0, 23 Oct 2026): the CS Home declutter pass. Pairs with jpk-s33.js.
+   Every rule is scoped under html[data-s33="on"], which the script sets only while the S27 tabbed layout is on.
+   Hide, don't delete: nothing is removed from the page. ?s33=0, or the classic layout, shows v6.8.0 as it was. */
+
+/* ---------- 7. readable secondary text (both themes; high contrast keeps its own, stronger values) ---------- */
+html[data-s33="on"] {
+  --muted: light-dark(#4B525B, #B3B9C1);
+  --ink-2: light-dark(#30363D, #CBD0D6);
+  --fs-sm: 12.5px;
+  --fs-md: 13px;
+}
+
+/* ---------- 1. one-row header ---------- */
+html[data-s33="on"] #jpk-head .s27-eyebrow { display: none !important; }
+html[data-s33="on"] #jpk-head { padding-top: 10px; padding-bottom: 10px; align-items: center; }
+html[data-s33="on"] #jpk-head .jpk-hello { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; row-gap: 2px; }
+html[data-s33="on"] #jpk-head .jpk-hi { margin: 0; }
+html[data-s33="on"] #jpk-head .jpk-sub { margin: 0; }
+html[data-s33="on"] #jpk-head .jpk-qa-wrap { margin-top: 0; }
+
+/* ---------- 2. one way to navigate: the tabs. Today's flow is hidden ---------- */
+html[data-s33="on"] #jpk-flow { display: none !important; }
+
+/* ---------- 3. one "Needs you today" card: tiles on top, list below ---------- */
+html[data-s33="on"] #jpk-nt > #needs-today { margin: 0; padding: 14px 18px 4px; border: 0; background: none; box-shadow: none; }
+html[data-s33="on"] #jpk-nt > #needs-today .nt-hd,
+html[data-s33="on"] #jpk-nt > #needs-today .nt-foot { display: none !important; }
+html[data-s33="on"] #jpk-nt > #needs-today .nt-tiles { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+html[data-s33="on"] #needs-today .nt-tiles > li[data-s33-hide] { display: none !important; }
+html[data-s33="on"] #needs-today[data-s33-none] { display: none !important; }
+html[data-s33="on"] #jpk-nt > #needs-today { padding-bottom: 14px; }
+html[data-s33="on"] #jpk-nt > #needs-today::after { content: none !important; display: none !important; }   /* the "Updated · version" stamp; the header keeps the one stamp */
+html[data-s33="on"] #jpk-nt > #needs-today:not([hidden]):not([data-s33-none]) ~ .jpk-nt-list { border-top: 1px solid var(--line); }
+/* summary line: the renewals-at-risk count and the SCRAM / SuperCom line leave Today */
+html[data-s33="on"] #s27-sum [data-s27-sum="ren"],
+html[data-s33="on"] #s27-sum [data-s27-sum="dev"],
+html[data-s33="on"] #s27-sum [data-s27-sum="ren"] + .s27-dot,
+html[data-s33="on"] #s27-sum .s27-dot:has(+ [data-s27-sum="dev"]) { display: none !important; }
+html[data-s33="on"] #s27-sum:not(:has([data-s27-sum="col"])) { display: none !important; }
+/* ...and the on-hand line shows on Devices instead */
+html[data-s33="on"] .s33-onhand { margin: 4px 0 0; font-size: var(--fs-md); color: var(--muted); font-variant-numeric: tabular-nums; }
+html[data-s33="on"] .s33-onhand b { color: var(--ink); font-weight: 600; }
+html[data-s33="on"] .s33-onhand[hidden] { display: none; }
+
+/* ---------- 4. calendar on a day with nothing on it ---------- */
+html[data-s33="on"] #jpk-cal[data-s33-empty] .s32-scroll,
+html[data-s33="on"] #jpk-cal[data-s33-empty] .s32-bar,
+html[data-s33="on"] #jpk-cal[data-s33-empty] .s32-empty,
+html[data-s33="on"] #jpk-cal[data-s33-empty] .s32-allday { display: none !important; }
+html[data-s33="on"] #jpk-cal[data-s33-empty] #jpk-cal-more { min-height: 0; }
+html[data-s33="on"] .s33-next { margin: 8px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: var(--fs-md); color: var(--muted); }
+html[data-s33="on"] .s33-next b { display: block; margin-top: 2px; color: var(--ink); font-weight: 600; font-size: var(--fs-base, 13px); }
+html[data-s33="on"] .s33-next[hidden] { display: none; }
+
+/* ---------- 5. one renewal window: 120 days not started (Today). The 90-day Numbers tile and the 60-day tile are hidden ---------- */
+html[data-s33="on"] #numgrid [data-tile="renew"] { display: none !important; }
+
+/* ---------- 6. Numbers: five daily tiles, the rest behind "Show all numbers" ---------- */
+html[data-s33="on"]:not([data-s33-more]) #numgrid #k-devspare,
+html[data-s33="on"]:not([data-s33-more]) #numgrid #k-excess,
+html[data-s33="on"]:not([data-s33-more]) #numgrid #k-acc { display: none !important; }
+/* grid with no holes: five cells in one row; with all numbers shown, eight cells in two rows of four */
+html[data-s33="on"] #numgrid.numgrid.numgrid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+html[data-s33="on"][data-s33-more] #numgrid.numgrid.numgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+html[data-s33="on"] #numgrid .kpi.hbar { grid-column: auto; }
+@media (max-width: 1000px) {
+  html[data-s33="on"] #numgrid.numgrid.numgrid, html[data-s33="on"][data-s33-more] #numgrid.numgrid.numgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-s33="on"]:not([data-s33-more]) #numgrid .kpi.hbar { grid-column: span 2; }
+}
+@media (max-width: 420px) {
+  html[data-s33="on"] #numgrid.numgrid.numgrid, html[data-s33="on"][data-s33-more] #numgrid.numgrid.numgrid { grid-template-columns: minmax(0, 1fr); }
+  html[data-s33="on"] #numgrid .kpi.hbar { grid-column: auto !important; }
+}
+html[data-s33="on"] .s33-more {
+  margin-left: auto; font: inherit; font-size: var(--fs-md); font-weight: 600; color: var(--accent-ink, var(--ink)); background: none; border: 0;
+  padding: 4px 6px; border-radius: 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
+}
+html[data-s33="on"] .s33-more:hover { background: var(--surface-2); }
+html[data-s33="on"] .s33-more:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+html[data-s33="on"] #z-num > .band .s33-more + .hl-tg { margin-left: 4px; }
+html[data-s33="on"] #z-num[data-collapsed="true"] .s33-more { display: none; }
+/* one health chip per row: the reason when there is one, otherwise the colour word (the dot always stays) */
+html[data-s33="on"] td.s33-hasr > .s33-hw {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+html[data-s33="on"] td.s33-hasr > .s,
+html[data-s33="on"] td.s33-hasr > .s33-r { display: inline; margin-left: 4px; }
+
+/* ---------- 7. Support and Devices use the full width ---------- */
+html[data-s33="on"] #dev-panel.dev-panel,
+html[data-s33="on"] #s28-acc { max-width: none !important; }
+html[data-s33="on"] #s28-support .card,
+html[data-s33="on"] #s28-support .s28-boardcard,
+html[data-s33="on"] #s28-support .s28-pane,
+html[data-s33="on"] #s28-support table { max-width: none !important; }
+html[data-s33="on"] #s28-support .s28-pane,
+html[data-s33="on"] #s28-support .s28-view { width: auto; }
+
+</style>
+<script id="jpk-s33">
+/* jpk-s33.js (S33 v6.9.0, 23 Oct 2026): the CS Home declutter pass, one layer on top of S27, S28, S29 and S32.
+   It adds no data reads and no writes. It only:
+     1. tidies the header to one row (CSS);
+     2. hides Today's flow, so the tabs are the only navigation (CSS);
+     3. moves the "Needs you today" tiles into the Needs Today card and names the card "Needs you today";
+        hides tiles that are at zero and the 60-day renewal tile; moves the SCRAM / SuperCom on-hand line to Devices;
+     4. on a day with no meetings, folds the hour grid away and shows the next meeting instead;
+     5. hides the 90-day renewal count on Numbers (one renewal window: 120 days not started);
+     6. shows five Numbers tiles, with "Show all numbers" for the rest; one health chip per board row;
+     7. gives Support and Devices the full width, and darker secondary text (CSS).
+   Starts only while the S27 layout is on (html[data-s27="on"]); with the classic layout it undoes itself.
+   Hide, don't delete: nothing is removed. ?s33=0 turns the layer off. */
+(function (root) {
+  'use strict';
+  var doc = root.document;
+  if (!doc || root.JPKS33) return;
+  if (/[?&]s33=0/.test(root.location.search)) return;
+  var VERSION = '1.0.0', MORE_KEY = 'jpk-s33-morenums';
+  var html = doc.documentElement;
+  var HIDE_TILES = ['Renewals due in 60 days'];
+  var MORE_IDS = ['k-devspare', 'k-excess', 'k-acc'];
+
+  function $(id) { return doc.getElementById(id); }
+  function q(s, r) { try { return (r || doc).querySelector(s); } catch (e) { return null; } }
+  function qa(s, r) { try { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); } catch (e) { return []; } }
+  function tx(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+  function mk(tag, cls, attrs) { var n = doc.createElement(tag); if (cls) n.className = cls; if (attrs) for (var a in attrs) n.setAttribute(a, attrs[a]); return n; }
+  function flag(el, name, on) { if (!el) return; if (on) { if (!el.hasAttribute(name)) el.setAttribute(name, ''); } else if (el.hasAttribute(name)) el.removeAttribute(name); }
+  var store = {
+    get: function (k) { try { return root.localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { root.localStorage.setItem(k, v); } catch (e) {} }
+  };
+  function s27On() { return html.getAttribute('data-s27') === 'on'; }
+  function shellState() { try { return (root.JPKShell && root.JPKShell.state) || null; } catch (e) { return null; } }
+
+  var started = false, timer = 0, obs = [], home = null;   /* home = where #needs-today sat before it was moved */
+
+  /* ---------- 3. one Needs you today card ---------- */
+  /* The shell's arrange() re-places every zone on resize (Zoho's frame resizes often), and #needs-today is one of them.
+     While this layer is on, #needs-today is taken off the shell's zone lists so it stays inside the card; off() puts it back. */
+  var zoneBackup = null;
+  function unzone() {
+    var Z; try { Z = root.JPKShell && root.JPKShell.config && root.JPKShell.config.zones; } catch (e) { Z = null; }
+    if (!Z || zoneBackup) return;
+    zoneBackup = { main: (Z.main || []).slice(), narrowOrder: (Z.narrowOrder || []).slice() };
+    var drop = function (a) { return (a || []).filter(function (e) { return e !== '#needs-today'; }); };
+    Z.main = drop(Z.main); Z.narrowOrder = drop(Z.narrowOrder);
+  }
+  function rezone() {
+    var Z; try { Z = root.JPKShell && root.JPKShell.config && root.JPKShell.config.zones; } catch (e) { Z = null; }
+    if (Z && zoneBackup) { Z.main = zoneBackup.main; Z.narrowOrder = zoneBackup.narrowOrder; }
+    zoneBackup = null;
+  }
+  function merge() {
+    unzone();
+    var nt = $('jpk-nt'), sec = $('needs-today'); if (!nt || !sec) return;
+    var h = q(':scope > .jpk-card-h', nt);
+    if (!home && sec.parentNode !== nt) home = { parent: sec.parentNode, next: sec.nextSibling };
+    var want = h ? h.nextSibling : nt.firstChild;
+    if (sec.parentNode !== nt || (h && sec.previousElementSibling !== h)) nt.insertBefore(sec, want);
+    var t = $('jpk-nt-h');
+    if (t && tx(t) !== 'Needs you today') { if (!t.hasAttribute('data-s33-was')) t.setAttribute('data-s33-was', tx(t)); t.textContent = 'Needs you today'; }
+    var shown = 0;
+    qa('.nt-tiles > li', sec).forEach(function (li) {
+      var a = q('.nt-tile', li), lbl = tx(q('.nt-lbl', li));
+      var hide = HIDE_TILES.indexOf(lbl) >= 0 || !!(a && a.classList.contains('empty'));
+      flag(li, 'data-s33-hide', hide);
+      if (!hide) shown++;
+    });
+    flag(sec, 'data-s33-none', !sec.hidden && qa('.nt-tiles > li', sec).length > 0 && shown === 0);
+  }
+  function unmerge() {
+    rezone();
+    var sec = $('needs-today');
+    if (sec && home && home.parent) { try { home.parent.insertBefore(sec, home.next && home.next.parentNode === home.parent ? home.next : null); } catch (e) {} }
+    home = null;
+    var t = $('jpk-nt-h'); if (t && t.hasAttribute('data-s33-was')) { t.textContent = t.getAttribute('data-s33-was'); t.removeAttribute('data-s33-was'); }
+    qa('[data-s33-hide]').forEach(function (el) { el.removeAttribute('data-s33-hide'); });
+    if (sec) sec.removeAttribute('data-s33-none');
+  }
+
+  /* SCRAM / SuperCom on hand: shown on Devices, under the Devices on leg heading */
+  function onHand() {
+    var dp = $('dev-panel'), head = dp && q(':scope > .head', dp); if (!head) return;
+    var p = $('s33-onhand');
+    if (!p) { p = mk('p', 's33-onhand', { id: 's33-onhand' }); head.appendChild(p); }
+    else if (p.parentNode !== head) head.appendChild(p);
+    var src = q('#s27-sum [data-s27-sum="dev"]'), t = tx(src);
+    var m = /^(.*) on hand$/.exec(t);
+    var h = m ? 'Spare units on hand: <b>' + m[1].replace(/[&<>"']/g, '') + '</b>' : '';
+    if (p.__h !== h) { p.__h = h; p.innerHTML = h; }
+    p.hidden = !h;
+  }
+
+  /* ---------- 4. calendar on an empty day ---------- */
+  function fmtNext(ev) {
+    var s = new Date(ev.start); if (isNaN(s)) return '';
+    var now = new Date(), a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var dd = Math.round((new Date(s.getFullYear(), s.getMonth(), s.getDate()) - a) / 864e5);
+    var day = dd === 0 ? 'Today' : dd === 1 ? 'Tomorrow' : s.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    var time = ev.allDay ? 'all day' : s.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return day + ', ' + time;
+  }
+  function calEmpty() {
+    var c = $('jpk-cal'), w = $('s32-wrap'), S = shellState();
+    var ok = !!(S && S.cal && S.cal.status === 'ok');
+    var empty = ok && !!w && !w.hidden && !q('.s32-ev', w) && (function () { var a = q('.s32-allday', w); return !a || a.hidden; })();
+    flag(c, 'data-s33-empty', empty);
+    var body = $('jpk-cal-body'), up = body && q(':scope > .jpk-upnext', body); if (!up) return;
+    var p = $('s33-next');
+    if (!p) { p = mk('p', 's33-next', { id: 's33-next', 'aria-live': 'polite' }); }
+    if (p.parentNode !== body || p.previousElementSibling !== up) body.insertBefore(p, up.nextSibling);
+    var h = '';
+    if (empty) {
+      var now = Date.now();
+      var next = (S.cal.events || []).filter(function (e) { var t = Date.parse(e.start); return !isNaN(t) && t > now; })
+        .sort(function (x, y) { return Date.parse(x.start) - Date.parse(y.start); })[0];
+      if (next) {
+        var when = fmtNext(next), title = String(next.title || 'Meeting').replace(/[&<>"']/g, '');
+        h = 'Next meeting: ' + when + '<b>' + title + '</b>';
+      }
+    }
+    if (p.__h !== h) { p.__h = h; p.innerHTML = h; }
+    p.hidden = !h;
+  }
+
+  /* ---------- 6. Numbers: five tiles plus "Show all numbers" ---------- */
+  function moreBtn() {
+    var z = $('z-num'), band = z && q(':scope > .band', z); if (!band) return;
+    var b = $('s33-more');
+    var hiddenN = MORE_IDS.filter(function (id) { return $(id); }).length;
+    if (!b) {
+      b = mk('button', 's33-more', { id: 's33-more', type: 'button', 'aria-controls': 'numgrid' });
+      b.addEventListener('click', function () { setMore(!html.hasAttribute('data-s33-more')); });
+      var tg = q(':scope > .hl-tg', band);
+      band.insertBefore(b, tg || null);
+    }
+    var on = html.hasAttribute('data-s33-more');
+    var t = on ? 'Show fewer numbers' : 'Show all numbers (' + hiddenN + ' more)';
+    if (b.textContent !== t) b.textContent = t;
+    b.setAttribute('aria-expanded', String(on));
+    b.hidden = !hiddenN;
+  }
+  function setMore(on) { flag(html, 'data-s33-more', on); store.set(MORE_KEY, on ? '1' : '0'); moreBtn(); }
+
+  /* one health chip per row: wrap the colour word so it can step aside when a reason chip is there */
+  function health() {
+    qa('#board tbody td[title*="ustomer health"]').forEach(function (td) {
+      if (!td.__s33) {
+        Array.prototype.slice.call(td.childNodes).forEach(function (n) {
+          if (n.nodeType === 3 && n.textContent.trim()) { var s = mk('span', 's33-hw'); td.insertBefore(s, n); s.appendChild(n); }
+        });
+        td.__s33 = 1;
+      }
+      var hasR = !!q('.tchip, .s28-pill, .pill, .chip', td);
+      if (td.classList.contains('s33-hasr') !== hasR) td.classList.toggle('s33-hasr', hasR);
+    });
+  }
+
+  /* ---------- run ---------- */
+  function ensure() {
+    if (!s27On()) { if (started) off(); return; }
+    if (html.getAttribute('data-s33') !== 'on') html.setAttribute('data-s33', 'on');
+    try { merge(); } catch (e) {}
+    try { onHand(); } catch (e) {}
+    try { calEmpty(); } catch (e) {}
+    try { moreBtn(); } catch (e) {}
+    try { health(); } catch (e) {}
+  }
+  function off() {
+    started = false;
+    clearInterval(timer); timer = 0;
+    obs.forEach(function (o) { try { o.disconnect(); } catch (e) {} }); obs = [];
+    unmerge();
+    html.removeAttribute('data-s33'); html.removeAttribute('data-s33-more');
+    var c = $('jpk-cal'); if (c) c.removeAttribute('data-s33-empty');
+    ['s33-more', 's33-next', 's33-onhand'].forEach(function (id) { var n = $(id); if (n && n.parentNode) n.parentNode.removeChild(n); });
+    poll();
+  }
+  function start() {
+    if (started || !s27On()) return;
+    started = true;
+    if (store.get(MORE_KEY) === '1') flag(html, 'data-s33-more', true);
+    ensure();
+    timer = setInterval(ensure, 700);
+    ['jpk-nt', 'needs-today', 'jpk-cal', 'board', 'z-num', 'dev-panel'].forEach(function (id) {
+      var el = $(id); if (!el) return;
+      try {
+        var o = new MutationObserver(function () { clearTimeout(o.__t); o.__t = setTimeout(ensure, 40); });
+        o.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] });
+        obs.push(o);
+      } catch (e) {}
+    });
+  }
+  /* wait for S27 to switch the tabbed layout on (it starts on jpk:mounted); keep watching so a later switch back also works */
+  var pollT = 0;
+  function poll() {
+    clearTimeout(pollT);
+    (function wait() {
+      if (started) return;
+      if (s27On()) { start(); return; }
+      pollT = setTimeout(wait, 300);
+    })();
+  }
+  root.JPKS33 = { version: VERSION, build: 'S33 CS Home declutter, 23 Oct 2026', ensure: ensure, setMore: setMore, off: off };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', poll); else poll();
+})(window);
+
+</script>
+<!-- jpk-s33:end -->
 </body>
 </html>
