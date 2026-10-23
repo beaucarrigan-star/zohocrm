@@ -10670,7 +10670,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.3.0 (v6.2.0 + S26b add meetings from the calendar, 22 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.3.1 (v6.3.0 + S26c new meetings follow the link guard, 22 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11507,6 +11507,8 @@ html[data-jpk-popouts="on"] .jpk-mo-res button { width: 100%; display: grid; gri
 html[data-jpk-popouts="on"] .jpk-mo-res button:hover, html[data-jpk-popouts="on"] .jpk-mo-res button:focus-visible { background: var(--surface-2); outline: none; }
 html[data-jpk-popouts="on"] .jpk-mo-res .jpk-mo-rs { grid-column: 2; }
 html[data-jpk-popouts="on"] .jpk-mo-rnone { padding: 8px 10px; font-size: var(--fs-md); color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-lknote { margin: 0; padding: 9px 12px; border-radius: 10px; font-size: var(--fs-sm); line-height: 1.4; color: var(--ink-2); background: var(--warn-tint); }
+html[data-jpk-popouts="on"] .jpk-mo-lknote[hidden], html[data-jpk-popouts="on"] .jpk-mo-lkf[hidden] { display: none; }
 html[data-jpk-popouts="on"] .jpk-mo-ferr { margin: 0; font-size: var(--fs-md); color: var(--bad); }
 html[data-jpk-popouts="on"] .jpk-mo-ferr:empty { display: none; }
 html[data-jpk-popouts="on"] .jpk-mo-facts { display: flex; justify-content: flex-end; gap: 8px; }
@@ -11533,7 +11535,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.3.0',
+  build: 'Beau CS Home v6.3.1',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -12421,7 +12423,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.3.0',
+    build: 'Beau CS Home v6.3.1',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -13689,6 +13691,8 @@ window.JPK_SHELL = {
    v0.3.0: add a meeting from the calendar. The form sits in the month popout's day pane (New meeting in the bar, + Add meeting on
    the day, + Add meeting under the home calendar, and the New meeting quick action). Save = one insertRecord on Events (owner = the
    signed-in user, workflow trigger on); the home calendar and the month re-read after it. JPK_SHELL.popouts.create = false hides it.
+   v0.3.1: linking follows the calendar's write guard. A new meeting has no id, so while jpkCalendarConfig.writeAllowedIds is a list
+   (today: the TEST meeting only) the form hides the link field and sends no What_Id / Who_Id. writeAllowedIds = '*' turns it on.
    v0.2.0: the Month popout (Month button on the home calendar; a month grid and the chosen day's meetings, read with
    jpkCalendar.load for the six weeks on screen, read-only), new box markup for the softer design (jpk-pop-v2.css), and every
    contract or renewal box and list row links to the Contract Review Band (the contract record, where the band sits). Pairs with jpk-pop.css and jpk-shell.js (load after both).
@@ -13709,7 +13713,7 @@ window.JPK_SHELL = {
    Globals: window.JPKPop = { version, on, open, close, state, peekRow, frame, closeFrame, defs, read, needsGo, demoRows }. */
 (function (root) {
   'use strict';
-  var VERSION = '0.3.0';
+  var VERSION = '0.3.1';
   var doc = root.document;
   if (!doc) return;
 
@@ -14741,6 +14745,7 @@ window.JPK_SHELL = {
     + '<div class="jpk-mo-facts"><button type="button" class="jpk-fbtn" data-jpk-mx="fcancel">Cancel</button><button type="submit" class="jpk-fbtn jpk-fbtn-p">Add meeting</button></div>'
     + '<p class="jpk-mo-fine">Saved to your Zoho CRM calendar. Invite people from Outlook or Zoho; the Outlook sync decides whether it shows in Outlook.</p>'
     + '</form>';
+  function linkOpen() { var w = (root.jpkCalendarConfig || {}).writeAllowedIds; return w === '*'; }
   function canCreate() { return P.create !== false && (preview() || !!(root.ZOHO && root.ZOHO.CRM && root.ZOHO.CRM.API && typeof root.ZOHO.CRM.API.insertRecord === 'function')); }
   function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
   function atTime(day, t) { var dd = dayOf(day), m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); if (!dd || !m) return null; return new Date(dd.getFullYear(), dd.getMonth(), dd.getDate(), +m[1], +m[2], 0); }
@@ -14755,6 +14760,7 @@ window.JPK_SHELL = {
     if (FM.el) return FM.el;
     var f = FM.el = E.mo.querySelector('.jpk-mo-form');
     f.querySelector('[name="mv"]').innerHTML = VENUES.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('');
+    f.querySelector('.jpk-mo-lkf').insertAdjacentHTML('afterend', '<p class="jpk-mo-lknote" hidden>Linking to an account or contact is limited to the test meeting while it is being checked. Link this meeting from the home calendar once linking is open.</p>');
     f.addEventListener('submit', function (ev) { ev.preventDefault(); formSave(); });
     f.addEventListener('input', function (ev) {
       var n = ev.target && ev.target.name;
@@ -14780,6 +14786,9 @@ window.JPK_SHELL = {
       f.querySelector('[name="e"]').value = st ? hm(new Date(st.getTime() + FM.dur * 60000)) : '09:30';
       formAllDay(); formLinkPaint(); formResPaint(); formErr('');
     }
+    var lo = linkOpen();
+    f.querySelector('.jpk-mo-lkf').hidden = !lo; f.querySelector('.jpk-mo-lknote').hidden = lo;
+    if (!lo) { FM.link = null; FM.res = []; }
     f.querySelector('[name="d"]').value = day;
     FM.open = true; f.hidden = false;
     E.mo.querySelector('.jpk-mo-view').hidden = true;
@@ -14814,7 +14823,7 @@ window.JPK_SHELL = {
     var data = { Event_Title: v.title.slice(0, 255), Start_DateTime: isoAt(s), End_DateTime: isoAt(e), All_day: !!v.allDay, Meeting_Venue__s: v.mv || VENUES[0] };
     if (v.venue) data.Venue = v.venue.slice(0, 255);
     if (v.notes) data.Description = v.notes;
-    var L = v.link;
+    var L = linkOpen() ? v.link : null;
     if (L && L.type === 'account') { data.What_Id = { id: String(L.id) }; data.$se_module = 'Accounts'; }
     if (L && L.type === 'contact') { data.Who_Id = { id: String(L.id) }; if (L.accountId) { data.What_Id = { id: String(L.accountId) }; data.$se_module = 'Accounts'; } }
     return { data: data, s: s, e: e };
@@ -14840,7 +14849,7 @@ window.JPK_SHELL = {
     var done = function () { FM.busy = false; btn.disabled = false; btn.textContent = 'Add meeting'; };
     insertEvent(out.data).then(function (id) {
       done();
-      var L = v.link || {};
+      var L = (linkOpen() && v.link) || {};
       var ev = { id: id, title: out.data.Event_Title, start: out.data.Start_DateTime, end: out.data.End_DateTime, allDay: !!v.allDay, venue: v.venue || '', joinUrl: /^https?:\/\//i.test(v.venue) ? v.venue : '',
         accountId: L.type === 'account' ? String(L.id) : L.accountId ? String(L.accountId) : '', accountName: L.type === 'account' ? L.name : L.accountName || '',
         contactId: L.type === 'contact' ? String(L.id) : '', contactName: L.type === 'contact' ? L.name : '', attendees: [], recurring: false, recurrence: '', added: true };
