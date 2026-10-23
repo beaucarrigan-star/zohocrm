@@ -1,0 +1,18 @@
+{
+  "locale": ["en"],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": ["crm.zoho.com"],
+    "script-src": ["live.zwidgets.com"],
+    "style-src": ["fonts.googleapis.com"],
+    "font-src": ["fonts.gstatic.com"]
+  },
+  "modules": {
+    "widgets": [
+      { "name": "Lost Devices", "location": "crm.webtab", "url": "/app/lost.html" }
+    ]
+  }
+}
