@@ -10670,7 +10670,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.6.0 (v6.5.0 + S28 new tools, 22 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.7.0 (v6.6.0 + S29 readable calendar and Teams meetings, 23 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11554,7 +11554,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.6.0',
+  build: 'Beau CS Home v6.7.0',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -11856,6 +11856,37 @@ window.JPK_SHELL = {
   function isCancelled(t) { return /^\s*(canceled|cancelled)\s*:/i.test(String(t || '')); }
 
   /* one COQL row -> one internal record (Description is read for the join link here and not kept) */
+  /* S29: join links Zoho keeps in $meeting_details (not selectable in COQL). A meeting made with a provider (Meeting_Provider__s) and
+     no link in its text gets its link from the record: read-only, upcoming meetings only, 12 per load, one read per meeting. */
+  function teamsUrl(md) {
+    var u = md && typeof md === 'object' ? md.joinmeeting_url : '';
+    u = String(u || '').trim();
+    return /^https:\/\/teams\.microsoft\.com\/[^\s]+$/i.test(u) ? u : '';
+  }
+  var joinTried = {};
+  function resolveJoins(api, list) {
+    var now = new Date(), seen = {}, todo = [];
+    (list || []).forEach(function (e) {
+      var en = toDate(e.end) || toDate(e.start);
+      if (e && e.provider && !e.joinUrl && !e.allDay && en && en > now && /^\d+$/.test(String(e.id)) && !joinTried[e.id] && !seen[e.id]) { seen[e.id] = 1; todo.push(e); }
+    });
+    todo = todo.slice(0, 12);
+    if (!todo.length) return Promise.resolve();
+    var changed = false;
+    var step = function (i) {
+      if (i >= todo.length) return Promise.resolve();
+      var id = todo[i].id; joinTried[id] = 1;
+      return api.record('Events', id).then(function (rec) {
+        var u = teamsUrl(rec && rec['$meeting_details']);
+        if (u) { changed = true; (list || []).forEach(function (x) { if (x && String(x.id) === String(id)) x.joinUrl = u; }); eachById(id, function (x) { x.joinUrl = u; }); }
+      }, function () {}).then(function () { return step(i + 1); });
+    };
+    return step(0).then(function () {
+      if (!changed) return;
+      rerender();
+      try { root.dispatchEvent(new root.CustomEvent('jpk-join-resolved')); } catch (e) {}
+    });
+  }
   function normalize(r) {
     if (!r || !r.id) return null;
     var allDay = r.All_day === true || r.All_day === 'true', s, e;
@@ -11885,13 +11916,13 @@ window.JPK_SHELL = {
     var rule = parseRule(r.Recurring_Activity);
     return {
       id: String(r.id), title: String(r.Event_Title || '').trim() || '(no title)', s: s, e: e, allDay: allDay, venue: venue,
-      joinUrl: j ? j.url : '', accountId: lk(r.What_Id), accountName: lkName(r.What_Id), contactId: lk(r.Who_Id), contactName: lkName(r.Who_Id),
+      joinUrl: j ? j.url : teamsUrl(r['$meeting_details']), provider: r.Meeting_Provider__s ? String(r.Meeting_Provider__s) : '', accountId: lk(r.What_Id), accountName: lkName(r.What_Id), contactId: lk(r.Who_Id), contactName: lkName(r.Who_Id),
       ownerId: lk(r.Owner), rule: rule
     };
   }
   function toEvent(x, s, e, extra) {
     var ev = {
-      id: x.id, title: x.title, start: isoLocal(s), end: isoLocal(e), allDay: x.allDay, venue: x.venue, joinUrl: x.joinUrl,
+      id: x.id, title: x.title, start: isoLocal(s), end: isoLocal(e), allDay: x.allDay, venue: x.venue, joinUrl: x.joinUrl, provider: x.provider,
       accountId: x.accountId, contactId: x.contactId, attendees: [], accountName: x.accountName, contactName: x.contactName,
       recurring: !!x.rule, recurrence: x.rule ? ruleWords(x.rule) : ''
     };
@@ -11946,6 +11977,7 @@ window.JPK_SHELL = {
   }
   var COLS = {
     full: 'id, Event_Title, Start_DateTime, End_DateTime, All_day, Venue, Description, What_Id, Who_Id, Owner, Recurring_Activity',
+    fullP: 'id, Event_Title, Start_DateTime, End_DateTime, All_day, Venue, Description, What_Id, Who_Id, Owner, Recurring_Activity, Meeting_Provider__s',
     noRecur: 'id, Event_Title, Start_DateTime, End_DateTime, All_day, Venue, Description, What_Id, Who_Id, Owner',
     minimal: 'id, Event_Title, Start_DateTime, End_DateTime, All_day, Venue, What_Id, Who_Id, Owner'
   };
@@ -11971,7 +12003,7 @@ window.JPK_SHELL = {
       if (!me) throw new Error('Could not tell who you are, so your meetings cannot be found.');
       state.me = me;
       var tries = [];
-      ['full', 'noRecur', 'minimal'].forEach(function (k) { [true, false].forEach(function (own) { tries.push({ cols: k, owner: own }); }); });
+      ['fullP', 'full', 'noRecur', 'minimal'].forEach(function (k) { [true, false].forEach(function (own) { tries.push({ cols: k, owner: own }); }); });
       var where = function (own) { return own ? "where ((Owner.id = " + me + " and Start_DateTime >= '" + qs + "') and Start_DateTime <= '" + qe + "')" : "where (Start_DateTime >= '" + qs + "' and Start_DateTime <= '" + qe + "')"; };
       var i = 0, last;
       var next = function () {
@@ -11986,10 +12018,11 @@ window.JPK_SHELL = {
       return next().then(function (rows) {
         var t = state.query;
         if (!t.owner) { rows = rows.filter(function (r) { return lk(r.Owner) === me; }); state.notes.push('COQL refused the owner filter; meetings were filtered here.'); }
-        if (t.cols !== 'full') state.notes.push(t.cols === 'noRecur' ? 'Repeat rules could not be read.' : 'Repeat rules and join links could not be read.');
-        if (t.cols !== 'full') return rows;
+        var rich = t.cols === 'full' || t.cols === 'fullP';
+        if (!rich) state.notes.push(t.cols === 'noRecur' ? 'Repeat rules could not be read.' : 'Repeat rules and join links could not be read.');
+        if (!rich) return rows;
         /* repeating meetings that started before the range: the occurrences inside it come from their rule */
-        var mq = 'select ' + COLS.full + " from Events where ((" + (t.owner ? 'Owner.id = ' + me : 'id is not null') + " and Recurring_Activity is not null) and Start_DateTime < '" + qs + "') order by Start_DateTime desc";
+        var mq = 'select ' + COLS[t.cols] + " from Events where ((" + (t.owner ? 'Owner.id = ' + me : 'id is not null') + " and Recurring_Activity is not null) and Start_DateTime < '" + qs + "') order by Start_DateTime desc";
         return api.coql(mq + ' limit ' + cfg().pageSize + ' offset 0').then(function (r) {
           var older = r.rows.filter(function (x) { return t.owner || lk(x.Owner) === me; });
           return older.concat(rows);
@@ -11997,7 +12030,7 @@ window.JPK_SHELL = {
       });
     }).then(function (rows) {
       var list = build(rows, range);
-      return names(api, list).then(function () { state.events = list; return list; });
+      return names(api, list).then(function () { state.events = list; resolveJoins(api, list); return list; });
     }).catch(function (e) { state.error = e && e.message || String(e); throw zerr(e); });
   }
   /* chip names: one COQL per module for the ids on screen; a failure leaves the generic chip label */
@@ -12038,6 +12071,8 @@ window.JPK_SHELL = {
     partCache[id] = currentApi().record('Events', id).then(function (rec) {
       var list = (rec && Array.isArray(rec.Participants) ? rec.Participants : []).map(mapParticipant);
       eachById(id, function (e) { e.attendees = list; });
+      var tu = teamsUrl(rec && rec['$meeting_details']);
+      if (tu) eachById(id, function (e) { if (!e.joinUrl) e.joinUrl = tu; });
       return list;
     }, function (e) { delete partCache[id]; detailDays[day] = Math.max(0, (detailDays[day] || 1) - 1); throw zerr(e); });
     return partCache[id];
@@ -12350,6 +12385,7 @@ window.JPK_SHELL = {
       row(TEST_EVENT, 'TEST – CS Home calendar', soon, plus(soon, 30), { Venue: 'Microsoft Teams Meeting', Description: teams }),
       row('6715134000010000003', 'Collections follow-up with finance', new Date(now.getTime() + 3 * 3600000), new Date(now.getTime() + 4 * 3600000), { Venue: 'Room 2' }),
       row('6715134000010000004', 'Polk County renewal call', at(1, 10, 0), at(1, 11, 0), { Venue: 'Zoom', Description: 'Join Zoom Meeting https://us02web.zoom.us/j/84512345678?pwd=demo1 Meeting ID: 845 1234 5678 Passcode: 559201' }),
+      row('6715134000010000010', 'Teams kickoff created in Zoho', at(1, 9, 30), at(1, 10, 0), { Meeting_Provider__s: 'Microsoft Teams', Meeting_Venue__s: 'Online' }),
       row('6715134000010000005', 'SCRAM vendor sync', at(3, 14, 0), at(3, 14, 30), { Description: 'Join with Google Meet: https://meet.google.com/abc-defg-hij' }),
       row('6715134000010000006', 'Marathon County onboarding', at(3, 15, 30), at(3, 16, 15), { What_Id: { id: '6715134000000700006' } }),
       row('6715134000010000007', 'Out of office: WI Counties conference', at(2, 0, 0), at(2, 23, 59), { All_day: true }),
@@ -12381,7 +12417,7 @@ window.JPK_SHELL = {
         else out = [];
         return delay({ rows: out, more: false });
       },
-      record: function (m, id) { state.calls.push({ fn: 'getRecord', id: String(id), demo: true }); return delay({ id: id, Participants: id === TEST_EVENT || id === '6715134000010000001' ? parts : [] }); },
+      record: function (m, id) { state.calls.push({ fn: 'getRecord', id: String(id), demo: true }); var rr = { id: id, Participants: id === TEST_EVENT || id === '6715134000010000001' ? parts : [] }; if (id === '6715134000010000010') rr['$meeting_details'] = { joinmeeting_url: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_zoho_demo%40thread.v2/0?context=%7b%22Tid%22%3a%22demo%22%7d' }; return delay(rr); },
       update: function (data) { state.calls.push({ fn: 'updateRecord', data: data, demo: true }); return delay({ data: [{ code: 'SUCCESS', status: 'success', message: 'preview only', details: { id: data.id } }] }); },
       user: function () { return Promise.resolve({ id: me }); }
     };
@@ -12446,7 +12482,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.6.0',
+    build: 'Beau CS Home v6.7.0',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -13490,7 +13526,7 @@ window.JPK_SHELL = {
     else if (!S.cal.events.length) lh = '<li class="jpk-cal-empty">No meetings synced. ' + esc(CFG.calendar.help) + ' <a class="jpk-ol" href="' + esc(CFG.calendar.outlookUrl) + '" target="_blank" rel="noopener">Open Outlook</a></li>';
     else {
       var ev = eventsOn(sel);
-      lh = ev.length ? ev.map(function (e) { return rowHtml(e, now); }).join('') : '<li class="jpk-cal-empty">' + (isToday ? 'No meetings today.' : 'Nothing on this day.') + '</li>';
+      lh = ev.length ? dayRows(ev, now, isToday) : '<li class="jpk-cal-empty">' + (isToday ? 'No meetings today.' : 'Nothing on this day.') + '</li>';
     }
     if (ul.__html !== lh) { ul.innerHTML = lh; ul.__html = lh; }
     var wh = '';
@@ -13531,23 +13567,56 @@ window.JPK_SHELL = {
      venue counts as having attendees; once read, the real list decides. */
   function linkState(e) {
     /* v6.1: with popouts on, a linked meeting's account or contact opens its peek on the page */
-    if (popOn() && e.accountId) return { k: 'linked', html: '<button type="button" class="jpk-ev-lk jpk-ev-lk-on" data-jpk-pk="account:' + esc(e.accountId) + '" data-jpk-title="' + esc(e.accountName || 'Account') + '" title="' + esc(e.accountName || 'Account') + '">Linked account</button>' };
-    if (popOn() && e.contactId) return { k: 'linked', html: '<button type="button" class="jpk-ev-lk jpk-ev-lk-on" data-jpk-pk="contact:' + esc(e.contactId) + '" data-jpk-title="' + esc(e.contactName || 'Contact') + '" title="' + esc(e.contactName || 'Contact') + '">Linked contact</button>' };
-    if (e.accountId) return { k: 'linked', html: '<a class="jpk-ev-lk jpk-ev-lk-on" target="_top" href="' + esc(crmRec('Accounts', e.accountId)) + '" title="' + esc(e.accountName || 'Account') + '">Linked account · open</a>' };
-    if (e.contactId) return { k: 'linked', html: '<a class="jpk-ev-lk jpk-ev-lk-on" target="_top" href="' + esc(crmRec('Contacts', e.contactId)) + '" title="' + esc(e.contactName || 'Contact') + '">Linked contact · open</a>' };
+    if (popOn() && e.accountId) return { k: 'linked', html: '<button type="button" class="jpk-ev-lk jpk-ev-lk-on" data-jpk-pk="account:' + esc(e.accountId) + '" data-jpk-title="' + esc(e.accountName || 'Account') + '" title="' + esc(e.accountName || 'Account') + '">' + esc(e.accountName || 'Linked account') + '</button>' };
+    if (popOn() && e.contactId) return { k: 'linked', html: '<button type="button" class="jpk-ev-lk jpk-ev-lk-on" data-jpk-pk="contact:' + esc(e.contactId) + '" data-jpk-title="' + esc(e.contactName || 'Contact') + '" title="' + esc(e.contactName || 'Contact') + '">' + esc(e.contactName || 'Linked contact') + '</button>' };
+    if (e.accountId) return { k: 'linked', html: '<a class="jpk-ev-lk jpk-ev-lk-on" target="_top" href="' + esc(crmRec('Accounts', e.accountId)) + '" title="' + esc(e.accountName || 'Account') + '">' + esc(e.accountName || 'Linked account · open') + '</a>' };
+    if (e.contactId) return { k: 'linked', html: '<a class="jpk-ev-lk jpk-ev-lk-on" target="_top" href="' + esc(crmRec('Contacts', e.contactId)) + '" title="' + esc(e.contactName || 'Contact') + '">' + esc(e.contactName || 'Linked contact · open') + '</a>' };
     var cs = root.jpkCalendar && root.jpkCalendar.state, read = !!(cs && Array.isArray(cs.detailReads) && cs.detailReads.indexOf(String(e.id)) >= 0);
     var people = Array.isArray(e.attendees) && e.attendees.length > 0 ? true : read ? false : !!(e.joinUrl || e.venue);
     if (people && canLink()) return { k: 'tolink', html: '<button type="button" class="jpk-ev-lk jpk-ev-add" data-jpk-link="' + esc(e.id) + '">+ Link to account or contact</button>' };
     return { k: 'none', html: '<span class="jpk-ev-lk jpk-ev-none">No CRM link</span>' };
   }
+  /* S29: the day's meetings as cards. Start time (bold) and end time (muted) once, in the left column; the title; one muted line
+     with the shortened provider; a small account or contact chip; a compact Join button. Past meetings are dimmed and a Now line
+     separates them from the ones to come. */
+  function shortVenue(v) {
+    v = String(v || '').trim();
+    if (/^(microsoft )?teams( meeting)?$/i.test(v)) return 'Teams';
+    if (/^zoom( meeting)?$/i.test(v)) return 'Zoom';
+    if (/^(google )?meet( meeting)?$/i.test(v)) return 'Google Meet';
+    if (/^(cisco )?webex( meeting)?$/i.test(v)) return 'Webex';
+    return v;
+  }
+  function metaVenue(e) {
+    var v = shortVenue(e.venue), p = shortVenue(e.provider);
+    if (p && (!v || /^online$/i.test(v))) return p;
+    if (!v && e.joinUrl) return provider(e.joinUrl) || '';
+    return v;
+  }
   function rowHtml(e, now) {
     var en = toDate(e.end) || toDate(e.start), past = !e.allDay && en <= now, ls = linkState(e);
     var canOpen = root.jpkCalendar && typeof root.jpkCalendar.open === 'function';
-    var s = toDate(e.start);
-    return '<li class="jpk-ev jpk-ev-' + ls.k + (past ? ' jpk-past' : '') + '"><span class="jpk-ev-time" title="' + esc(timeRange(e)) + '">' + esc(e.allDay ? 'All day' : hhmm(s)) + '</span>'
-      + '<div class="jpk-ev-box"><span class="jpk-ev-t">' + (joinable(e, now) ? joinTitle(e, 'jpk-ev-open') : canOpen ? '<button type="button" class="jpk-ev-open" data-jpk-open="' + esc(e.id) + '" data-jpk-at="' + s.getTime() + '">' + esc(e.title || '(no title)') + '</button>' : esc(e.title || '(no title)')) + (e.venue ? '<span class="jpk-ev-v">' + esc(timeRange(e)) + ' · ' + esc(e.venue) + '</span>' : '<span class="jpk-ev-v">' + esc(timeRange(e)) + '</span>') + '</span>'
-      + ls.html + (joinable(e, now) && canOpen ? '<button type="button" class="jpk-ev-det" data-jpk-open="' + esc(e.id) + '" data-jpk-at="' + s.getTime() + '">Details</button>' : '') + '</div>'
+    var s = toDate(e.start), ee = toDate(e.end), jn = joinable(e, now), at = s.getTime(), mv = metaVenue(e);
+    var tm = e.allDay ? '<b>All day</b>' : '<b>' + esc(hhmm(s)) + '</b>' + (ee && ee > s ? '<i>' + esc(hhmm(ee)) + '</i>' : '');
+    var title = jn ? joinTitle(e, 'jpk-ev-open')
+      : canOpen ? '<button type="button" class="jpk-ev-open" data-jpk-open="' + esc(e.id) + '" data-jpk-at="' + at + '">' + esc(e.title || '(no title)') + '</button>'
+      : esc(e.title || '(no title)');
+    return '<li class="jpk-ev jpk-ev-' + ls.k + (past ? ' jpk-past' : '') + (canOpen ? ' jpk-ev-c' : '') + '"><span class="jpk-ev-time" title="' + esc(timeRange(e)) + '">' + tm + '</span>'
+      + '<div class="jpk-ev-box"><span class="jpk-ev-t">' + title + '</span>' + (mv ? '<span class="jpk-ev-v">' + esc(mv) + '</span>' : '')
+      + '<span class="jpk-ev-lkr">' + ls.html + (jn && canOpen ? '<button type="button" class="jpk-ev-det" data-jpk-open="' + esc(e.id) + '" data-jpk-at="' + at + '">Details</button>' : '') + '</span></div>'
       + (e.joinUrl && !past ? '<a class="jpk-btn jpk-join" href="' + esc(e.joinUrl) + '" target="_blank" rel="noopener" aria-label="Join ' + esc(e.title) + '">Join</a>' : '') + '</li>';
+  }
+  /* the rows of one day; on today a thin Now line sits before the first meeting still to come (or after the last one that is over) */
+  function dayRows(ev, now, isToday) {
+    var out = [], put = !isToday, nowLi = '<li class="jpk-now" role="separator" aria-label="Now">Now</li>', anyPast = false;
+    ev.forEach(function (e) {
+      var en = toDate(e.end) || toDate(e.start), past = !e.allDay && en <= now;
+      if (past) anyPast = true;
+      if (!put && !e.allDay && !past) { out.push(nowLi); put = true; }
+      out.push(rowHtml(e, now));
+    });
+    if (!put && anyPast) out.push(nowLi);
+    return out.join('');
   }
   function upNextHtml(e, now) {
     var s = toDate(e.start), en = toDate(e.end) || s, rel = relTime(s, en, now);
@@ -13556,7 +13625,7 @@ window.JPK_SHELL = {
     if (e.contactId) chips += on ? '<button type="button" class="jpk-chip" data-jpk-pk="contact:' + esc(e.contactId) + '" data-jpk-title="' + esc(e.contactName || 'Contact') + '">' + esc(e.contactName || 'Contact') + '</button>' : '<a class="jpk-chip" target="_top" href="' + esc(crmRec('Contacts', e.contactId)) + '">' + esc(e.contactName || 'Contact') + '</a>';
     if (!chips && canLink()) chips = '<button type="button" class="jpk-btn jpk-up-link" data-jpk-link="' + esc(e.id) + '">+ Link to account or contact</button>';
     return '<div class="jpk-up"><p class="jpk-up-k">Up next · <span class="jpk-up-rel' + (rel === 'now' ? ' jpk-now' : '') + '">' + esc(rel) + '</span></p>'
-      + '<p class="jpk-up-t">' + (joinable(e, now) ? joinTitle(e, 'jpk-up-tl') : esc(e.title || '(no title)')) + '</p><p class="jpk-up-s">' + esc(timeRange(e)) + (e.venue ? ' · ' + esc(e.venue) : '') + '</p>'
+      + '<p class="jpk-up-t">' + (joinable(e, now) ? joinTitle(e, 'jpk-up-tl') : esc(e.title || '(no title)')) + '</p><p class="jpk-up-s">' + esc(timeRange(e)) + (metaVenue(e) ? ' · ' + esc(metaVenue(e)) : '') + '</p>'
       + (chips ? '<div class="jpk-chips">' + chips + '</div>' : '')
       + '<div class="jpk-up-acts">' + (e.joinUrl ? '<a class="jpk-btn jpk-primary jpk-up-join" href="' + esc(e.joinUrl) + '" target="_blank" rel="noopener">' + esc(joinLabel(e.joinUrl)) + '</a>' : '')
       /* v6.1: "Details" opens the details panel (Open in Zoho and Open in Outlook are inside it); Open in Outlook stays on the card */
@@ -14695,7 +14764,7 @@ window.JPK_SHELL = {
     ul.innerHTML = evs.map(function (e, j) {
       var s = evAt(e.start), en = evAt(e.end), past = (en || s) < now;
       var tm = e.allDay ? 'All day' : esc(longTime(s)) + (en && !e.allDay ? '<span>' + esc(longTime(en)) + '</span>' : '');
-      var sub = [e.venue, e.recurring ? (e.recurrence || 'Repeats') : '', e.continued ? 'Continues' : ''].filter(Boolean).join(' · ');
+      var sub = [metaVenue(e), e.recurring ? (e.recurrence || 'Repeats') : '', e.continued ? 'Continues' : ''].filter(Boolean).join(' · ');
       var links = (e.accountId ? monthChip('account', e.accountId, e.accountName || 'Linked account') : '') + (e.contactId ? monthChip('contact', e.contactId, e.contactName || 'Linked contact') : '');
       var acts = (e.joinUrl && !past ? '<a class="jpk-mo-chip jpk-mo-join" href="' + esc(e.joinUrl) + '" target="_blank" rel="noopener">' + esc(joinName(e.joinUrl)) + '</a>' : '')
         + (isId(e.id) ? '<a class="jpk-mo-chip" target="_top" data-jpk-oz="1" href="' + esc(recUrl('Events', e.id)) + '">Open in Zoho ↗</a>' : '');
@@ -14730,6 +14799,9 @@ window.JPK_SHELL = {
     if (w === 'fcancel') { formClose(true); return; }
     if (w === 'pick') { formPick(+b.getAttribute('data-i')); return; }
     if (w === 'unpick') { FM.link = null; formLinkPaint(); var q = FM.el.querySelector('[name="q"]'); if (q) q.focus(); return; }
+    if (w === 'ipick') { invitePick(+b.getAttribute('data-i')); return; }
+    if (w === 'iunpick') { FM.inv.splice(+b.getAttribute('data-i'), 1); FM.inote = ''; invitePaint(); var iq = FM.el.querySelector('[name="iq"]'); if (iq) iq.focus(); return; }
+    if (w === 'notheams') { noTeamsSave(); return; }
     var k = b.getAttribute('data-jpk-md'); if (!k) return;
     var ev = t.closest && t.closest('[data-jpk-mev]');
     if (ev && ev.classList.contains('jpk-mo-cj')) { var de = (byDay(monthEvents())[k] || [])[+ev.getAttribute('data-jpk-mev')]; if (de && canJoin(de)) joinNow(de); }
@@ -14738,6 +14810,9 @@ window.JPK_SHELL = {
   function monthKey(e, t, k, single) {
     var stopIt = function () { e.preventDefault(); e.stopImmediatePropagation(); };
     if (FM.open && t && FM.el.contains(t)) {
+      if (k === 'Enter' && t.name === 'iq') { stopIt(); inviteEnter(); return; }
+      if (k === ',' && t.name === 'iq') { stopIt(); inviteEnter(); return; }
+      if (k === 'Escape' && FM.ires.length) { stopIt(); FM.ires = []; invitePaint(); FM.el.querySelector('[name="iq"]').focus(); return; }
       if (k === 'Escape') { stopIt(); if (FM.res.length) { FM.res = []; formResPaint(); FM.el.querySelector('[name="q"]').focus(); return; } formClose(true); return; }
       if (k === 'Tab') { trap(e); return; }
       if (k === 'ArrowDown' && t.name === 'q' && FM.res.length) { stopIt(); var r0 = FM.el.querySelector('[data-jpk-mx="pick"]'); if (r0) r0.focus(); return; }
@@ -14777,20 +14852,24 @@ window.JPK_SHELL = {
      the signed-in user (Zoho's default for a record made from a widget). The account and contact search is read-only COQL (8 each).
      Preview and ?preview=1 never write: the meeting is shown in the month for this visit only. */
   var VENUES = ['Client location', 'In-office', 'Online'];
-  var FM = { open: false, el: null, link: null, res: [], seq: 0, busy: false, timer: null };
+  var FM = { open: false, el: null, link: null, res: [], seq: 0, busy: false, timer: null, inv: [], ires: [], iseq: 0, itimer: null, inote: '', noTeams: false };
   var FORM_HTML = '<form class="jpk-mo-form" hidden novalidate aria-labelledby="jpk-mo-fh">'
     + '<div class="jpk-mo-fhead"><h3 id="jpk-mo-fh" class="jpk-mo-dh" tabindex="-1">New meeting</h3><button type="button" class="jpk-mo-fx" data-jpk-mx="fcancel" aria-label="Cancel the new meeting" title="Cancel (Esc)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>'
     + '<label class="jpk-mo-fl">Title<input name="t" type="text" maxlength="255" autocomplete="off" placeholder="e.g. Polk County renewal call" required></label>'
     + '<div class="jpk-mo-frow"><label class="jpk-mo-fl">Date<input name="d" type="date" required></label><label class="jpk-mo-chk"><input name="ad" type="checkbox"> All day</label></div>'
     + '<div class="jpk-mo-frow jpk-mo-times"><label class="jpk-mo-fl">Starts<input name="s" type="time" step="300" required></label><label class="jpk-mo-fl">Ends<input name="e" type="time" step="300" required></label></div>'
     + '<div class="jpk-mo-frow"><label class="jpk-mo-fl">Meeting type<select name="mv"></select></label></div>'
-    + '<label class="jpk-mo-fl"><span>Location or link <span class="jpk-mo-opt">optional</span></span><input name="v" type="text" maxlength="255" autocomplete="off" placeholder="Room, address or Teams link"></label>'
+    + '<label class="jpk-mo-fl jpk-mo-loc"><span>Location or link <span class="jpk-mo-opt">optional</span></span><input name="v" type="text" maxlength="255" autocomplete="off" placeholder="Room, address or Teams link"></label>'
+    + '<p class="jpk-mo-tnote" hidden>A Teams meeting and link are created when you save.</p>'
     + '<div class="jpk-mo-fl jpk-mo-lkf"><span id="jpk-mo-lkl">Link to an account or contact <span class="jpk-mo-opt">optional</span></span><div class="jpk-mo-lkv"></div>'
     + '<input name="q" type="search" autocomplete="off" placeholder="Search accounts and contacts" aria-labelledby="jpk-mo-lkl" aria-controls="jpk-mo-res"><ul class="jpk-mo-res" id="jpk-mo-res" role="listbox" aria-label="Matches" hidden></ul></div>'
+    + '<div class="jpk-mo-fl jpk-mo-inv"><span id="jpk-mo-ivl">Invite <span class="jpk-mo-opt">optional</span></span><div class="jpk-mo-ivv"></div>'
+    + '<input name="iq" type="search" autocomplete="off" placeholder="Search people, or type an email" aria-labelledby="jpk-mo-ivl" aria-controls="jpk-mo-ivr"><ul class="jpk-mo-res jpk-mo-ivr" id="jpk-mo-ivr" role="listbox" aria-label="People" hidden></ul><p class="jpk-mo-ivn" role="status"></p></div>'
     + '<label class="jpk-mo-fl"><span>Notes <span class="jpk-mo-opt">optional</span></span><textarea name="n" rows="3" maxlength="32000"></textarea></label>'
     + '<p class="jpk-mo-ferr" role="alert"></p>'
+    + '<div class="jpk-mo-fb" hidden><button type="button" class="jpk-fbtn" data-jpk-mx="notheams">Save without Teams</button></div>'
     + '<div class="jpk-mo-facts"><button type="button" class="jpk-fbtn" data-jpk-mx="fcancel">Cancel</button><button type="submit" class="jpk-fbtn jpk-fbtn-p">Add meeting</button></div>'
-    + '<p class="jpk-mo-fine">Saved to your Zoho CRM calendar. Invite people from Outlook or Zoho; the Outlook sync decides whether it shows in Outlook.</p>'
+    + '<p class="jpk-mo-fine">Saved to your Zoho CRM calendar. People you invite get an email from Zoho; the Outlook sync decides whether it shows in Outlook.</p>'
     + '</form>';
   function linkOpen() { var w = (root.jpkCalendarConfig || {}).writeAllowedIds; return w === '*'; }
   function canCreate() { return P.create !== false && (preview() || !!(root.ZOHO && root.ZOHO.CRM && root.ZOHO.CRM.API && typeof root.ZOHO.CRM.API.insertRecord === 'function')); }
@@ -14812,26 +14891,28 @@ window.JPK_SHELL = {
     f.addEventListener('input', function (ev) {
       var n = ev.target && ev.target.name;
       if (n === 'q') formSearch(ev.target.value);
+      if (n === 'iq') inviteSearch(ev.target.value);
+      if (n === 'mv') { FM.noTeams = false; formVenueSync(); }
       if (n === 's') { var s = atTime('2000-01-01', ev.target.value); if (s && FM.dur != null) { var en = new Date(s.getTime() + FM.dur * 60000); if (ymd(en) === '2000-01-01') f.querySelector('[name="e"]').value = hm(en); } }
       if (n === 'e') { var a = atTime('2000-01-01', f.querySelector('[name="s"]').value), b = atTime('2000-01-01', ev.target.value); if (a && b && b > a) FM.dur = (b - a) / 60000; }
       if (n === 'ad') formAllDay();
       formErr('');
     });
-    f.addEventListener('change', function (ev) { if (ev.target && ev.target.name === 'ad') formAllDay(); });
+    f.addEventListener('change', function (ev) { if (ev.target && ev.target.name === 'ad') formAllDay(); if (ev.target && ev.target.name === 'mv') { FM.noTeams = false; formVenueSync(); } });
     return f;
   }
   function formAllDay() { var f = FM.el, on = f.querySelector('[name="ad"]').checked; f.querySelector('.jpk-mo-times').hidden = on; }
-  function formErr(m) { var p = FM.el && FM.el.querySelector('.jpk-mo-ferr'); if (p) p.textContent = m || ''; }
+  function formErr(m) { var p = FM.el && FM.el.querySelector('.jpk-mo-ferr'); if (p) p.textContent = m || ''; if (!m) formFb(false); }
   function formOpen(day) {
     if (!monthOpen() || !canCreate()) return;
     var f = formEl(), first = !FM.open;
     if (first) {
-      f.reset(); FM.link = null; FM.res = []; FM.busy = false; FM.dur = P.meetingMin || 30;
+      f.reset(); FM.link = null; FM.res = []; FM.busy = false; FM.dur = P.meetingMin || 30; FM.inv = []; FM.ires = []; FM.inote = ''; FM.noTeams = false;
       f.querySelector('[name="mv"]').value = VENUES.indexOf(P.venue) >= 0 ? P.venue : VENUES[0];
       var s = defaultStart(day), st = atTime(day, s);
       f.querySelector('[name="s"]').value = s;
       f.querySelector('[name="e"]').value = st ? hm(new Date(st.getTime() + FM.dur * 60000)) : '09:30';
-      formAllDay(); formLinkPaint(); formResPaint(); formErr('');
+      formAllDay(); formLinkPaint(); formResPaint(); invitePaint(); formVenueSync(); formErr('');
     }
     var lo = linkOpen();
     f.querySelector('.jpk-mo-lkf').hidden = !lo; f.querySelector('.jpk-mo-lknote').hidden = lo;
@@ -14853,7 +14934,7 @@ window.JPK_SHELL = {
   }
   function formValues() {
     var f = FM.el, g = function (n) { var x = f.querySelector('[name="' + n + '"]'); return x ? (x.type === 'checkbox' ? x.checked : String(x.value || '').trim()) : ''; };
-    return { title: g('t'), day: g('d'), allDay: g('ad'), start: g('s'), end: g('e'), mv: g('mv'), venue: g('v'), notes: g('n'), link: FM.link };
+    return { title: g('t'), day: g('d'), allDay: g('ad'), start: g('s'), end: g('e'), mv: g('mv'), venue: g('v'), notes: g('n'), link: FM.link, inv: FM.inv.slice(), noTeams: FM.noTeams };
   }
   /* -> { data } or { error, field } */
   function formData(v) {
@@ -14867,24 +14948,38 @@ window.JPK_SHELL = {
       if (!e) return { error: 'Pick an end time.', field: 'e' };
       if (e <= s) return { error: 'The meeting has to end after it starts.', field: 'e' };
     }
-    var data = { Event_Title: v.title.slice(0, 255), Start_DateTime: isoAt(s), End_DateTime: isoAt(e), All_day: !!v.allDay, Meeting_Venue__s: v.mv || VENUES[0] };
-    if (v.venue) data.Venue = v.venue.slice(0, 255);
+    var mvv = v.mv || VENUES[0], teams = mvv === 'Online' && !v.noTeams;   /* S29: Online = a Teams meeting; the provider is sent only for it */
+    var data = { Event_Title: v.title.slice(0, 255), Start_DateTime: isoAt(s), End_DateTime: isoAt(e), All_day: !!v.allDay, Meeting_Venue__s: mvv };
+    if (teams) data.Meeting_Provider__s = 'Microsoft Teams';
+    if (v.venue && !teams) data.Venue = v.venue.slice(0, 255);
     if (v.notes) data.Description = v.notes;
     var L = linkOpen() ? v.link : null;
     if (L && L.type === 'account') { data.What_Id = { id: String(L.id) }; data.$se_module = 'Accounts'; }
     if (L && L.type === 'contact') { data.Who_Id = { id: String(L.id) }; if (L.accountId) { data.What_Id = { id: String(L.accountId) }; data.$se_module = 'Accounts'; } }
+    var inv = (v.inv || []).slice(0, 25);
+    if (inv.length) {
+      data.Participants = inv.map(function (p) { return p.type === 'email' ? { type: 'email', participant: p.email } : { type: p.type, participant: String(p.id) }; });
+      data['$send_notification'] = true;
+    }
     return { data: data, s: s, e: e };
   }
   var CREATES = [];   /* test hook: every insert this file asked for */
   function insertEvent(data) {
     CREATES.push(data);
-    if (preview()) return new Promise(function (res) { setTimeout(function () { res('preview-' + CREATES.length); }, 250); });
+    if (preview()) return new Promise(function (res, rej) {
+      setTimeout(function () {
+        if (data.Meeting_Provider__s && /[?&]caldemo=noteams/.test(root.location.search)) { var er = new Error('The given provider is not authorized (Meeting_Provider__s)'); er.provider = true; rej(er); }   /* demo: Zoho is not connected to Teams */
+        else res('preview-' + CREATES.length);
+      }, 250);
+    });
     return timeout(root.ZOHO.CRM.API.insertRecord({ Entity: 'Events', APIData: data, Trigger: ['workflow'] }), 20000).then(function (r) {
       var x = r && r.data && r.data[0];
       if (x && String(x.code).toUpperCase() === 'SUCCESS' && x.details && x.details.id) return String(x.details.id);
       var why = x && (x.message || x.code) || 'Zoho did not say why';
       if (x && x.details && x.details.api_name) why += ' (' + x.details.api_name + ')';
-      throw new Error(why);
+      var er = new Error(why);
+      if (/provider/i.test(why) || (x && x.details && x.details.api_name === 'Meeting_Provider__s')) er.provider = true;   /* S29: Zoho is not connected to the person's Teams */
+      throw er;
     });
   }
   function formSave() {
@@ -14897,7 +14992,7 @@ window.JPK_SHELL = {
     insertEvent(out.data).then(function (id) {
       done();
       var L = (linkOpen() && v.link) || {};
-      var ev = { id: id, title: out.data.Event_Title, start: out.data.Start_DateTime, end: out.data.End_DateTime, allDay: !!v.allDay, venue: v.venue || '', joinUrl: /^https?:\/\//i.test(v.venue) ? v.venue : '',
+      var ev = { id: id, title: out.data.Event_Title, start: out.data.Start_DateTime, end: out.data.End_DateTime, allDay: !!v.allDay, venue: out.data.Venue || '', provider: out.data.Meeting_Provider__s || '', joinUrl: /^https?:\/\//i.test(out.data.Venue || '') ? out.data.Venue : '',
         accountId: L.type === 'account' ? String(L.id) : L.accountId ? String(L.accountId) : '', accountName: L.type === 'account' ? L.name : L.accountName || '',
         contactId: L.type === 'contact' ? String(L.id) : '', contactName: L.type === 'contact' ? L.name : '', attendees: [], recurring: false, recurrence: '', added: true };
       var key = out.s.getFullYear() + '-' + out.s.getMonth();
@@ -14910,11 +15005,133 @@ window.JPK_SHELL = {
       paintMonth(); focusSel();
       toast('Meeting added: ' + ev.title + (preview() ? ' (preview, not saved)' : ''));
       nav({ id: 'calMonth:add', how: 'create', module: 'Events', recId: id });
+      if (preview() && out.data.Meeting_Provider__s) setTimeout(function () { ev.joinUrl = 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_new_demo%40thread.v2/0'; if (monthOpen()) paintMonth(); }, 700);   /* demo: the link Zoho adds a moment later */
       if (!preview()) {
         setTimeout(function () { if (monthOpen() && MO.y === out.s.getFullYear() && MO.m === out.s.getMonth()) monthLoad(true); }, 1200);   /* the real record, with Zoho's own values */
         try { var s = shell(); if (s && s.calendar && s.calendar.reload) s.calendar.reload(); } catch (e) {}
+        if (out.data.Meeting_Provider__s) setTimeout(function () {   /* the Teams link can take a few seconds: read the record again */
+          if (monthOpen() && MO.y === out.s.getFullYear() && MO.m === out.s.getMonth()) monthLoad(true);
+          try { var s2 = shell(); if (s2 && s2.calendar && s2.calendar.reload) s2.calendar.reload(); } catch (e) {}
+        }, 7000);
       }
-    }, function (e) { done(); formErr('Zoho did not save the meeting: ' + errText(e) + '. Nothing was added.'); });
+    }, function (e) {
+      done();
+      if (e && e.provider && out.data.Meeting_Provider__s) {
+        formErr("Zoho isn't connected to your Teams account right now. Reconnect Teams in Zoho, or save this as an online meeting without a Teams link.");
+        formFb(true);
+        return;
+      }
+      formErr('Zoho did not save the meeting: ' + errText(e) + '. Nothing was added.');
+    });
+  }
+  /* ---- S29: Teams for Online meetings, and the Invite field ---- */
+  function shortVenue(v) {
+    v = String(v || '').trim();
+    if (/^(microsoft )?teams( meeting)?$/i.test(v)) return 'Teams';
+    if (/^zoom( meeting)?$/i.test(v)) return 'Zoom';
+    if (/^(google )?meet( meeting)?$/i.test(v)) return 'Google Meet';
+    if (/^(cisco )?webex( meeting)?$/i.test(v)) return 'Webex';
+    return v;
+  }
+  function metaVenue(e) {
+    var v = shortVenue(e.venue), p = shortVenue(e.provider);
+    if (p && (!v || /^online$/i.test(v))) return p;
+    if (!v && e.joinUrl) return joinName(e.joinUrl).replace(/^Join /, '').replace(/ meeting$/, '');
+    return v;
+  }
+  var INV_MAX = 25, EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[A-Za-z]{2,}$/, USERS = null;
+  var DEMO_PEOPLE = [
+    { type: 'contact', id: '6715134000002592199', name: 'Pat Moreno', email: 'pmoreno@example.org' },
+    { type: 'contact', id: '6715134000002592200', name: 'Lee Okafor', email: 'lokafor@example.org' },
+    { type: 'user', id: '6715134000000503001', name: 'Beau Carrigan', email: 'beau@example.org' },
+    { type: 'user', id: '6715134000000503002', name: 'Riley Stone', email: 'rstone@example.org' },
+    { type: 'user', id: '6715134000000503003', name: 'Sam Patel', email: 'spatel@example.org' }
+  ];
+  function invKey(p) { return p.type + ':' + (p.type === 'email' ? String(p.email).toLowerCase() : p.id); }
+  function invHas(p) { var em = String(p.email || '').toLowerCase(); return FM.inv.some(function (x) { return invKey(x) === invKey(p) || (em && String(x.email || '').toLowerCase() === em); }); }
+  function invMatch(p, lt) { var em = String(p.email || '').toLowerCase(); return lt.indexOf('@') >= 0 ? em.indexOf(lt) >= 0 : (String(p.name || '').toLowerCase() + ' ' + em.split('@')[0]).indexOf(lt) >= 0; }
+  /* teammates: the CRM's active users, read once per page (preview: three demo teammates) */
+  function invUsers() {
+    if (USERS) return USERS;
+    if (preview()) return (USERS = Promise.resolve(DEMO_PEOPLE.filter(function (p) { return p.type === 'user'; })));
+    var A = root.ZOHO && root.ZOHO.CRM && root.ZOHO.CRM.API;
+    if (!A || typeof A.getAllUsers !== 'function') return Promise.resolve([]);
+    USERS = timeout(A.getAllUsers({ Type: 'ActiveUsers' }), 8000).then(function (r) {
+      return ((r && r.users) || []).map(function (u) { return { type: 'user', id: String(u.id), name: String(u.full_name || u.name || u.email || ''), email: String(u.email || '') }; });
+    }, function () { USERS = null; return []; });
+    return USERS;
+  }
+  function inviteSearch(term) {
+    clearTimeout(FM.itimer);
+    var t = String(term || '').trim(), seq = ++FM.iseq;
+    FM.inote = '';
+    if (t.length < 2) { FM.ires = []; invitePaint(); return; }
+    FM.itimer = setTimeout(function () {
+      var lt = t.toLowerCase(), q = t.replace(/'/g, "''").replace(/[%_]/g, ' ');
+      var pc = preview()
+        ? Promise.resolve(DEMO_PEOPLE.filter(function (p) { return p.type === 'contact' && invMatch(p, lt); }))
+        : read("select id, Full_Name, Email from Contacts where ((Last_Name like '%" + q + "%' or First_Name like '%" + q + "%') or Email like '%" + q + "%') order by Last_Name asc", 1).then(function (r) {
+            return r.rows.slice(0, 8).map(function (c) { return { type: 'contact', id: String(c.id), name: c.Full_Name || c.Email || 'Contact', email: c.Email || '' }; });
+          }, function () { return []; });
+      var pu = invUsers().then(function (us) { return us.filter(function (p) { return invMatch(p, lt); }).slice(0, 6); });
+      Promise.all([pu, pc]).then(function (x) {
+        if (seq !== FM.iseq || !FM.open) return;
+        var out = x[1].concat(x[0]);   /* contacts first, then teammates */
+        if (EMAIL_RE.test(t) && !out.some(function (p) { return String(p.email).toLowerCase() === lt; })) out.push({ type: 'email', email: t, name: t });
+        FM.ires = out.filter(function (p) { return !invHas(p); });
+        invitePaint(FM.ires.length ? '' : out.length ? 'Already invited.' : t.indexOf('@') >= 0 ? 'Keep typing the full email address.' : 'No matches. Type a full email address to invite someone outside the CRM.');
+      });
+    }, 250);
+  }
+  function inviteKind(p) { return p.type === 'user' ? 'Teammate' : p.type === 'contact' ? 'Contact' : 'Email'; }
+  function invitePaint(empty) {
+    var f = FM.el; if (!f) return;
+    var box = f.querySelector('.jpk-mo-ivv'), ul = f.querySelector('.jpk-mo-ivr'), nt = f.querySelector('.jpk-mo-ivn');
+    box.innerHTML = FM.inv.map(function (p, i) {
+      return '<span class="jpk-mo-lkc jpk-mo-ivc" data-t="' + p.type + '"><span class="jpk-mo-rk">' + inviteKind(p) + '</span><span class="jpk-mo-rn">' + esc(p.name) + '</span>'
+        + '<button type="button" data-jpk-mx="iunpick" data-i="' + i + '" aria-label="Remove ' + esc(p.name) + ' from the invitation" title="Remove"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></span>';
+    }).join('');
+    ul.hidden = !FM.ires.length && !empty;
+    ul.innerHTML = FM.ires.length ? FM.ires.map(function (r, i) {
+      return '<li><button type="button" role="option" data-jpk-mx="ipick" data-i="' + i + '"><span class="jpk-mo-rk">' + inviteKind(r) + '</span><span class="jpk-mo-rn">' + esc(r.type === 'email' ? 'Invite ' + r.email : r.name) + '</span>'
+        + (r.type !== 'email' && r.email ? '<span class="jpk-mo-rs">' + esc(r.email) + '</span>' : '') + '</button></li>';
+    }).join('') : empty ? '<li class="jpk-mo-rnone">' + esc(empty) + '</li>' : '';
+    nt.textContent = FM.inote || '';
+  }
+  function inviteAdd(p) {
+    if (!p) return false;
+    if (invHas(p)) { FM.inote = ''; return true; }
+    if (FM.inv.length >= INV_MAX) { FM.inote = 'You can invite up to ' + INV_MAX + ' people.'; invitePaint(); return false; }
+    FM.inv.push(p); FM.ires = []; FM.inote = ''; FM.iseq++; clearTimeout(FM.itimer);
+    var q = FM.el.querySelector('[name="iq"]'); q.value = '';
+    invitePaint(); try { q.focus(); } catch (e) {}
+    return true;
+  }
+  function invitePick(i) { inviteAdd(FM.ires[i]); }
+  /* Enter or a comma in the box: a typed email address is added as typed (or as the contact or teammate who has it); otherwise the first match */
+  function inviteEnter() {
+    var q = FM.el.querySelector('[name="iq"]'), t = String(q.value || '').trim(); if (!t) return;
+    var lt = t.toLowerCase(), hit = FM.ires.filter(function (p) { return String(p.email || '').toLowerCase() === lt; })[0];
+    if (hit) { inviteAdd(hit); return; }
+    if (EMAIL_RE.test(t)) { inviteAdd({ type: 'email', email: t, name: t }); return; }
+    if (FM.ires.length) { inviteAdd(FM.ires[0]); return; }
+    FM.inote = 'Pick someone from the list, or type a full email address such as name@example.org.'; invitePaint();
+  }
+  function formVenueSync() {
+    var f = FM.el; if (!f) return;
+    var on = f.querySelector('[name="mv"]').value === 'Online' && !FM.noTeams;
+    f.querySelector('.jpk-mo-loc').hidden = on; f.querySelector('.jpk-mo-tnote').hidden = !on;
+  }
+  function formFb(show) {
+    var b = FM.el && FM.el.querySelector('.jpk-mo-fb'); if (!b) return;
+    b.hidden = !show;
+    if (show) { var x = b.querySelector('button'); if (x) { try { x.focus(); } catch (e) {} } }
+  }
+  /* Zoho refused the Teams provider: nothing is retried until the person asks for it */
+  function noTeamsSave() {
+    FM.noTeams = true; formVenueSync(); formFb(false); formErr('');
+    var v = FM.el.querySelector('[name="v"]'); if (v) { try { v.focus(); } catch (e) {} }
+    formSave();
   }
   /* account and contact search: read-only COQL, 8 of each; preview searches the accounts the page loaded */
   function formSearch(term) {
@@ -15171,6 +15388,7 @@ window.JPK_SHELL = {
   }
 
   /* ============================ boot ============================ */
+  root.addEventListener('jpk-join-resolved', function () { if (monthOpen()) paintMonth(); });   /* S29: a Teams link arrived after the month was drawn */
   var JPKPop = root.JPKPop = {
     version: VERSION, on: active, config: P, defs: DEFS, read: read, reads: READS, demoRows: demoRows,
     open: function (id, opener, o) { return open(id, opener || null, o); },
@@ -17388,5 +17606,122 @@ html[data-s27="on"] #btabs .btabs-sep { display: none; }
 })();
 </script>
 <!-- jpk-s28:end -->
+<style id="jpk-s29-css">
+/* jpk-s29.css (S29 v6.7.0, 23 Oct 2026): a readable calendar. Today's meetings as white cards, the month grid with bigger,
+   higher-contrast pills, and the New meeting form's Teams note, Invite field and fallback. Loaded after every other calendar rule. */
+
+/* ---------- Today: one card per meeting ---------- */
+html[data-jpk-shell="on"] .jpk-day-list { gap: 10px; }
+html[data-jpk-shell="on"] .jpk-ev {
+  --s29-edge: var(--accent);
+  grid-template-columns: 76px minmax(0, 1fr) auto; align-items: start; column-gap: 12px; padding: 12px 14px 12px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--s29-edge); border-radius: 10px;
+}
+html[data-jpk-shell="on"] .jpk-ev-tolink, html[data-jpk-shell="on"] .jpk-ev-none { --s29-edge: light-dark(#B07A00, #E8B84A); }
+html[data-jpk-shell="on"] .jpk-ev-c { cursor: pointer; }
+html[data-jpk-shell="on"] .jpk-ev-c:hover { border-color: var(--line-strong); border-left-color: var(--s29-edge); }
+html[data-jpk-shell="on"] .jpk-ev-time { display: grid; gap: 2px; padding-top: 1px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+html[data-jpk-shell="on"] .jpk-ev-time b { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-ev-time i { font-style: normal; font-size: 13px; color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-ev-box { padding: 0; background: none; border-radius: 0; gap: 3px; }
+html[data-jpk-shell="on"] .jpk-ev-linked .jpk-ev-box, html[data-jpk-shell="on"] .jpk-ev-tolink .jpk-ev-box { background: none; }
+html[data-jpk-shell="on"] .jpk-ev-t { font-size: 15px; line-height: 1.35; font-weight: 600; color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-ev-open { text-decoration: none; font-weight: 600; }
+html[data-jpk-shell="on"] .jpk-ev-open:hover { text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: 3px; }
+html[data-jpk-shell="on"] a.jpk-ev-join { text-decoration: none; }
+html[data-jpk-shell="on"] a.jpk-ev-join:hover { text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: 3px; color: var(--ink); }
+html[data-jpk-shell="on"] .jpk-ev-v { font-size: 13px; color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-ev-lkr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; margin-top: 3px; }
+html[data-jpk-shell="on"] .jpk-ev-lk { font-size: 12.5px; }
+html[data-jpk-shell="on"] .jpk-ev-lk-on {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 10px; border-radius: 999px; font-weight: 600;
+  color: var(--accent-ink); background: var(--accent-soft); text-decoration: none; cursor: pointer;
+}
+html[data-jpk-shell="on"] .jpk-ev-lk-on:hover { filter: brightness(.96); }
+html[data-jpk-shell="on"] .jpk-ev-add { color: var(--muted); font-weight: 500; text-decoration: none; cursor: pointer; }
+html[data-jpk-shell="on"] .jpk-ev-add:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+html[data-jpk-shell="on"] .jpk-ev-none { color: var(--muted); }
+html[data-jpk-shell="on"] .jpk-ev-det { font-size: 12.5px; text-decoration: none; }
+html[data-jpk-shell="on"] .jpk-ev-det:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+/* the compact Join button, also on a meeting whose title joins (S27 hid it there) */
+html[data-jpk-shell="on"][data-s27="on"] .jpk-ev:has(.jpk-ev-open.jpk-ev-join) > .jpk-join, html[data-jpk-shell="on"] .jpk-ev > .jpk-join {
+  display: inline-flex; align-self: center; margin: 0; min-height: 32px; padding: 4px 14px; font-size: var(--fs-md);
+  color: var(--accent-ink); background: var(--accent-soft); border-color: transparent;
+}
+html[data-jpk-shell="on"] .jpk-ev > .jpk-join:hover { background: var(--accent); color: var(--jpk-on-accent, #fff); }
+html[data-jpk-shell="on"] .jpk-ev.jpk-past { opacity: .6; }
+html[data-jpk-shell="on"] .jpk-ev.jpk-past .jpk-ev-box { opacity: 1; }
+html[data-jpk-shell="on"] .jpk-ev.jpk-past .jpk-ev-time { color: inherit; }
+/* the "Now" line between the meetings that are over and the ones to come */
+html[data-jpk-shell="on"] .jpk-now { list-style: none; display: flex; align-items: center; gap: 8px; height: 14px; margin: -2px 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--s29-now); --s29-now: light-dark(#C62828, #FF8A80); }
+html[data-jpk-shell="on"] .jpk-now::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--s29-now); }
+html[data-jpk-shell="on"] .jpk-now::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--s29-now); }
+@media (max-width: 640px) {
+  html[data-jpk-shell="on"] .jpk-ev { grid-template-columns: 58px minmax(0, 1fr) auto; column-gap: 10px; padding: 11px 10px 11px 10px; }
+  html[data-jpk-shell="on"] .jpk-ev-time b { font-size: 13.5px; }
+  html[data-jpk-shell="on"] .jpk-ev-time i { font-size: 12px; }
+  html[data-jpk-shell="on"] .jpk-ev .jpk-join { grid-column: auto; justify-self: end; }
+}
+
+/* ---------- Month grid ---------- */
+/* wider than before so a pill holds a readable part of the title */
+html[data-jpk-popouts="on"] .jpk-pop[data-jpk-mode="month"] .jpk-pop-panel { max-width: min(1360px, calc(100vw - 48px)); }
+@media (min-width: 641px) {
+  html[data-jpk-popouts="on"] .jpk-mo-dow, html[data-jpk-popouts="on"] .jpk-mo-grid { grid-template-columns: .7fr repeat(5, minmax(0, 1fr)) .7fr; }
+  html[data-jpk-popouts="on"] .jpk-mo-cell.jpk-mo-wk .jpk-mo-et { display: none; }   /* the narrow weekend columns keep the room for the title; the tooltip has the time */
+}
+@media (min-width: 901px) { html[data-jpk-popouts="on"] .jpk-mo-grid { grid-auto-rows: minmax(104px, auto); } }
+html[data-jpk-popouts="on"] .jpk-mo-ev {
+  --pb: light-dark(#FCE9B5, #4A3912); --pe: light-dark(#B07A00, #E8B84A); --pt: light-dark(#1F1600, #FFF4D6); --pm: light-dark(#5A4300, #E7D3A0);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: break-word;
+  padding: 3px 6px 3px 8px; border-radius: 5px; font-size: 12.5px; line-height: 1.3; font-weight: 500; color: var(--pt); background: var(--pb); box-shadow: inset 3px 0 0 var(--pe);
+}
+html[data-jpk-popouts="on"] .jpk-mo-ev.jpk-mo-lk { --pb: light-dark(#D6E2F8, #233A68); --pe: light-dark(#2F55A4, #8FB0F2); --pt: light-dark(#0E1B38, #EAF1FF); --pm: light-dark(#2A3F6B, #C5D5F5); background: var(--pb); box-shadow: inset 3px 0 0 var(--pe); }
+html[data-jpk-popouts="on"] .jpk-mo-ev.jpk-mo-ad { --pb: var(--surface-2); --pe: var(--line-strong); --pt: var(--ink); --pm: var(--ink-2); background: var(--pb); box-shadow: inset 3px 0 0 var(--pe); font-weight: 600; }
+html[data-jpk-popouts="on"] .jpk-mo-et { margin-right: 4px; font-size: 11.5px; font-weight: 600; color: var(--pm); }
+html[data-jpk-popouts="on"] .jpk-mo-more { padding: 1px 0 0 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+html[data-jpk-popouts="on"] .jpk-mo-cell:hover .jpk-mo-more { text-decoration: underline; text-underline-offset: 2px; }
+html[data-jpk-popouts="on"] .jpk-mo-key i { background: light-dark(#B07A00, #E8B84A); }
+html[data-jpk-popouts="on"] .jpk-mo-key i.jpk-mo-lk { background: light-dark(#2F55A4, #8FB0F2); }
+@media (max-width: 640px) {
+  html[data-jpk-popouts="on"] .jpk-mo-grid { grid-auto-rows: 54px; }
+  html[data-jpk-popouts="on"] .jpk-mo-dots i { background: light-dark(#B07A00, #E8B84A); }
+  html[data-jpk-popouts="on"] .jpk-mo-dots i.jpk-mo-lk { background: light-dark(#2F55A4, #8FB0F2); }
+}
+
+/* ---------- New meeting form: Teams note, Invite, fallback ---------- */
+html[data-jpk-popouts="on"] .jpk-mo-tnote { margin: 0; padding: 9px 12px; border-radius: 10px; font-size: var(--fs-md); line-height: 1.4; color: var(--ink); background: var(--accent-soft); }
+html[data-jpk-popouts="on"] .jpk-mo-inv { position: relative; }
+html[data-jpk-popouts="on"] .jpk-mo-ivv { display: flex; flex-wrap: wrap; gap: 6px; }
+html[data-jpk-popouts="on"] .jpk-mo-ivv:empty { display: none; }
+html[data-jpk-popouts="on"] .jpk-mo-ivc { min-width: 0; }
+html[data-jpk-popouts="on"] .jpk-mo-ivc .jpk-mo-rn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-jpk-popouts="on"] .jpk-mo-ivn { margin: 4px 0 0; font-size: var(--fs-sm); color: var(--bad); }
+html[data-jpk-popouts="on"] .jpk-mo-ivn:empty { display: none; }
+html[data-jpk-popouts="on"] .jpk-mo-fb { display: flex; }
+html[data-jpk-popouts="on"] .jpk-mo-fb[hidden] { display: none; }
+</style>
+<script id="jpk-s29">
+/* jpk-s29.js (S29 v6.7.0, 23 Oct 2026): the small, separate part of the readable-calendar layer. The card markup, the Now line, the
+   month pills and the New meeting form changes are patched into jpk-shell.js, jpk-pop.js and jpk-calendar.js (their private code);
+   this layer adds what needs no private access: a click anywhere on a Today card opens its details, as the title does. */
+(function (root) {
+  'use strict';
+  var doc = root.document;
+  if (!doc || root.JPKS29) return;
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var li = t.closest('.jpk-day-list .jpk-ev-c');
+    if (!li || t.closest('a, button, input, select, textarea, label')) return;
+    var sel = root.getSelection && root.getSelection();
+    if (sel && String(sel).length) return;                                  /* the person is selecting text */
+    var b = li.querySelector('[data-jpk-open]');
+    if (b) b.click();
+  });
+  root.JPKS29 = { version: '1.0.0', build: 'S29 readable calendar and Teams meetings, 23 Oct 2026' };
+})(window);
+</script>
+<!-- jpk-s29:end -->
 </body>
 </html>
