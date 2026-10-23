@@ -1,0 +1,28 @@
+/* Lost Devices widget styles. Tokens come from jpk-theme-v3.css; nothing here sets a color value. */
+.ld-main{background:var(--surface);min-height:100%}
+.ld-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ld-head h1{margin:0;font-size:19px}
+.ld-head .sub{color:var(--muted);font-size:12.5px}
+.ld-head .tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ld-brands{padding:0 16px;border-bottom:1px solid var(--line);margin-top:0}
+.ld-brands.ctabs{margin-top:0}
+.ld-sum{border-bottom:1px solid var(--line);padding-bottom:14px}
+.ld-sum+.ld-sum{padding-top:0;border-top:0}
+.ld-sum.second b{font-size:17px}
+.ld-sum small{font-size:12.5px}
+.ld-sum i{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
+.ld-body{display:grid;gap:16px;padding:16px;background:var(--bg)}
+.ld-two{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start}
+@media (max-width:900px){.ld-two{grid-template-columns:1fr}}
+.ld-flag{margin-right:6px}
+.ld-note{padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.ld-filter{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
+.ld-chartnote{font-size:12.5px;color:var(--muted);margin-top:6px}
+.ld-st{font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:inherit}
+.ld-form .ld-fields{display:grid;gap:12px;margin:12px 0}
+.ld-actions{display:flex;gap:8px;margin-top:8px}
+.ld-saveerr{margin-top:10px}
+.ld-es{margin-bottom:8px}
+.ld-equip{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.ld-equip select{font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);max-width:100%}
+.ld-equip label+select{margin-right:10px}

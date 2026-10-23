@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lost Devices</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-patterns-v3.css">
+<link rel="stylesheet" href="lost.css">
+</head>
+<body>
+<main class="ld-main">
+  <header class="ld-head">
+    <div>
+      <div class="eyebrow">Equipment</div>
+      <h1>Lost devices</h1>
+    </div>
+    <span class="sub" id="ctx">Loading...</span>
+    <div class="tools">
+      <label class="sr" for="year">Year</label>
+      <select id="year" aria-label="Year"></select>
+      <label class="sr" for="theme">Theme</label>
+      <select id="theme" aria-label="Theme"><option value="auto">Theme: Auto</option><option value="light">Theme: Light</option><option value="dark">Theme: Dark</option></select>
+      <button type="button" class="btn primary" id="add" hidden>Add lost device</button>
+      <button type="button" class="btn" id="help">About</button>
+    </div>
+  </header>
+
+  <div id="demo-note" class="ld-note" hidden><b>Demo data.</b> Not connected to Zoho. Serials, customers and amounts are made up.</div>
+  <div id="err" class="err" role="alert" hidden style="padding:10px 16px"></div>
+
+  <div id="brands" class="ld-brands" aria-label="Brand"></div>
+
+  <div class="ld-equip" role="group" aria-label="Equipment filters">
+    <label for="f-mfr">Manufacturer</label><select id="f-mfr"><option value="">All manufacturers</option></select>
+    <label for="f-model">Device model</label><select id="f-model"><option value="">All models</option></select>
+  </div>
+
+  <section class="sum ld-sum" id="sum1" aria-label="Loss totals"></section>
+  <section class="sum ld-sum second" id="sum2" aria-label="More totals"></section>
+
+  <div class="ld-body">
+    <div class="ld-two">
+      <section class="card" aria-labelledby="h-trend">
+        <h2 id="h-trend">By month <em>Month the device was listed lost</em></h2>
+        <div id="trend"></div>
+        <div class="ld-chartnote" id="trend-note"></div>
+      </section>
+      <section class="card" aria-labelledby="h-cust">
+        <h2 id="h-cust">By customer <em>Select a customer to list its devices</em></h2>
+        <div id="cust"></div>
+      </section>
+    </div>
+
+    <section class="card" aria-labelledby="h-dev">
+      <h2 id="h-dev">Devices <em id="dev-sub"></em></h2>
+      <div class="ld-filter" id="active-customer"></div>
+      <div id="dev"></div>
+    </section>
+  </div>
+</main>
+
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="lost-model.js"></script>
+<script src="lost-view.js"></script>
+<script src="lost-edit-model.js"></script>
+<script src="lost-form.js"></script>
+<script src="demo-data.js"></script>
+<script src="lost.js"></script>
+</body>
+</html>
