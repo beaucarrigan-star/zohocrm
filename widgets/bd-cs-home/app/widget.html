@@ -10670,7 +10670,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.1.1 (v5.11 + S24 page shell, calendar and popouts, 22 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.2.0 (v6.1.1 + S26 month calendar, softer popouts, Contract Band links, 22 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11213,6 +11213,255 @@ html .jpk-pop-switch { font: inherit; font-size: inherit; color: var(--accent-in
   html[data-jpk-popouts="on"] .jpk-pop-shown { margin-right: 0; }
 }
 </style>
+<style id="jpk-pop-v2-css">
+/* jpk-pop-v2.css v0.2.0 (S26 v6.2, 22 Oct 2026): softer popouts, the month calendar and the Contract Band links. Pairs with jpk-pop.js v0.2.0.
+   Loads after jpk-pop.css and only re-styles it. Every rule is scoped under html[data-jpk-popouts="on"], so ?popouts=0 or ?shell=0
+   leave the page exactly as v6.1.1. Page tokens only (--surface, --surface-2, --line, --ink, --muted, --accent, --accent-soft, tints). */
+html[data-jpk-popouts="on"] {
+  --jpk-pr: 16px;
+  --jpk-pring: 0 0 0 1px light-dark(rgba(16, 24, 40, .08), rgba(255, 255, 255, .09));
+  --jpk-pshadow: 0 1px 2px rgba(16, 24, 40, .06), 0 14px 36px -10px rgba(16, 24, 40, .28), 0 36px 80px -28px rgba(16, 24, 40, .36);
+  --jpk-on-accent: light-dark(#FFFFFF, #0E1626);
+  --jpk-ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ---------- the shell: rounder, lifted, no hard frame ---------- */
+html[data-jpk-popouts="on"] .jpk-pop { background: light-dark(rgba(22, 25, 29, .40), rgba(0, 0, 0, .58)); }
+html[data-jpk-popouts="on"] .jpk-pop-panel { border: 0; border-radius: var(--jpk-pr); box-shadow: var(--jpk-pring), var(--jpk-pshadow); animation-duration: .2s; animation-timing-function: var(--jpk-ease); }
+html[data-jpk-popouts="on"] .peek .peek-panel { border-color: transparent; border-radius: var(--jpk-pr); box-shadow: var(--jpk-pring), var(--jpk-pshadow); }
+html[data-jpk-popouts="on"] .peek .pk-x { border-radius: 999px; border-color: transparent; }
+html[data-jpk-popouts="on"] .peek .pk-x:hover { background: var(--surface-2); border-color: transparent; }
+
+/* header: a real title, a soft count, a round close */
+html[data-jpk-popouts="on"] .jpk-pop-h { padding: 18px 14px 6px 24px; gap: 12px; }
+html[data-jpk-popouts="on"] .jpk-pop-t { font-family: var(--font-head, inherit); font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+html[data-jpk-popouts="on"] .jpk-pop-t:focus-visible { outline-offset: 4px; }
+html[data-jpk-popouts="on"] .jpk-pop-n { border: 0; background: var(--accent-soft); color: var(--accent-ink); padding: 2px 10px; }
+html[data-jpk-popouts="on"] .jpk-pop-x { width: 34px; height: 34px; border: 0; border-radius: 999px; color: var(--muted); transition: background .12s, color .12s; }
+html[data-jpk-popouts="on"] .jpk-pop-x:hover { background: var(--surface-2); color: var(--ink); border: 0; }
+html[data-jpk-popouts="on"] .jpk-pop-m { padding: 0 24px 14px; color: var(--muted); line-height: 1.45; max-width: 68ch; }
+html[data-jpk-popouts="on"] .jpk-pop-stale { margin: 0 24px 12px; border-radius: 10px; padding: 8px 12px; }
+html[data-jpk-popouts="on"] .jpk-pop-tools { padding: 0 24px 14px; }
+html[data-jpk-popouts="on"] .jpk-pop-chip { border-color: var(--line); background: var(--surface-2); padding: 3px 12px; transition: background .12s, border-color .12s, color .12s; }
+html[data-jpk-popouts="on"] .jpk-pop-chip:hover { border-color: var(--line-strong); color: var(--ink); }
+html[data-jpk-popouts="on"] .jpk-pop-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+html[data-jpk-popouts="on"] .jpk-pop-q { border-radius: 999px; border-color: var(--line); background: var(--surface-2); padding: 4px 14px; }
+html[data-jpk-popouts="on"] .jpk-pop-q:focus { background: var(--surface); border-color: var(--focus); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* list: a column header, rows as soft hover cards with inset hairlines */
+html[data-jpk-popouts="on"] .jpk-pop-body { border-top: 1px solid var(--line); padding: 0 12px 8px; }
+html[data-jpk-popouts="on"] .jpk-pop-hd { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--jpk-pop-gt); gap: 4px 14px; padding: 10px 12px 8px; background: var(--surface);
+  font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+html[data-jpk-popouts="on"] .jpk-pop-hd:empty, html[data-jpk-popouts="on"] .jpk-pop-hd[hidden] { display: none; }
+html[data-jpk-popouts="on"] .jpk-pop-list { padding-top: 4px; }
+html[data-jpk-popouts="on"] .jpk-pop-li { position: relative; }
+html[data-jpk-popouts="on"] .jpk-pop-li + .jpk-pop-li { border-top: 0; }
+html[data-jpk-popouts="on"] .jpk-pop-li + .jpk-pop-li::before { content: ""; position: absolute; left: 12px; right: 12px; top: 0; height: 1px; background: var(--line); transition: opacity .12s; }
+html[data-jpk-popouts="on"] .jpk-pop-li:hover::before, html[data-jpk-popouts="on"] .jpk-pop-li:hover + .jpk-pop-li::before,
+html[data-jpk-popouts="on"] .jpk-pop-li:focus-within::before, html[data-jpk-popouts="on"] .jpk-pop-li:focus-within + .jpk-pop-li::before { opacity: 0; }
+html[data-jpk-popouts="on"] .jpk-pop-row { padding: 12px; min-height: 54px; border-radius: 10px; transition: background .12s; }
+html[data-jpk-popouts="on"] .jpk-pop-row:focus-visible { outline-offset: -2px; }
+html[data-jpk-popouts="on"] .jpk-pop-chev { transition: transform .15s var(--jpk-ease), color .12s; }
+html[data-jpk-popouts="on"] .jpk-pop-row:hover .jpk-pop-chev { transform: translateX(3px); color: var(--ink-2); }
+html[data-jpk-popouts="on"] .jpk-pop-sub { display: block; margin-top: 1px; font-size: var(--fs-sm); color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-pop-li-rv .jpk-pop-chev { visibility: hidden; }
+html[data-jpk-popouts="on"] .jpk-pop-rv {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; min-height: 30px; padding: 3px 11px;
+  border-radius: 999px; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; text-decoration: none; color: var(--accent-ink);
+  background: var(--surface); border: 1px solid var(--line-strong); transition: background .12s, border-color .12s, color .12s;
+}
+html[data-jpk-popouts="on"] .jpk-pop-rv:hover { background: var(--accent); border-color: var(--accent); color: var(--jpk-on-accent); }
+html[data-jpk-popouts="on"] .jpk-pop-rv:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+html[data-jpk-popouts="on"] .jpk-pop-f { background: var(--surface-2); padding: 12px 24px; }
+html[data-jpk-popouts="on"] .jpk-pop-open { text-decoration: none; }
+html[data-jpk-popouts="on"] .jpk-pop-open:hover { text-decoration: underline; }
+html[data-jpk-popouts="on"] .jpk-pop-more, html[data-jpk-popouts="on"] .jpk-pop-retry { border-radius: 999px; }
+html[data-jpk-popouts="on"] .jpk-pop-state { padding: 22px 12px; }
+html[data-jpk-popouts="on"] .jpk-pop-empty { text-align: center; color: var(--muted); }
+
+/* status tags: a dot and a tint (on track, waiting, at risk) */
+html[data-jpk-popouts="on"] .jpk-st { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 999px; font-size: var(--fs-sm); font-weight: 600; line-height: 1.5;
+  background: var(--surface-2); color: var(--ink-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+html[data-jpk-popouts="on"] .jpk-st::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+html[data-jpk-popouts="on"] .jpk-st-bad { background: var(--bad-tint); color: var(--bad); }
+html[data-jpk-popouts="on"] .jpk-st-warn { background: var(--warn-tint); color: var(--warn); }
+html[data-jpk-popouts="on"] .jpk-st-good { background: var(--good-tint); color: var(--good); }
+
+/* ---------- the facts box and the contract box ---------- */
+html[data-jpk-popouts="on"] .peek .peek-panel.jpk-frame { max-width: 600px; }
+html[data-jpk-popouts="on"] .jpk-frame .pk-head { align-items: flex-start; gap: 12px; padding: 20px 14px 4px 24px; border-bottom: 0; }
+html[data-jpk-popouts="on"] .jpk-fh-tx { flex: 1 1 auto; min-width: 0; display: grid; gap: 3px; }
+html[data-jpk-popouts="on"] .jpk-frame .pk-id { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
+html[data-jpk-popouts="on"] .jpk-frame .pk-title { font-family: var(--font-head, inherit); font-size: 20px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere; }
+html[data-jpk-popouts="on"] .jpk-frame .rp-sub { color: var(--muted); font-size: var(--fs-md); white-space: normal; flex: none; }
+html[data-jpk-popouts="on"] .jpk-frame .pk-x { flex: none; width: 34px; height: 34px; margin: -4px 0 0 auto; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-frame .pk-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+html[data-jpk-popouts="on"] .jpk-frame .pk-x:hover { color: var(--ink); background: var(--surface-2); }
+html[data-jpk-popouts="on"] .jpk-frame .pk-body { padding: 14px 24px 20px; gap: 14px; }
+html[data-jpk-popouts="on"] .jpk-frame-x { padding: 0 24px 20px; }
+html[data-jpk-popouts="on"] .jpk-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+html[data-jpk-popouts="on"] .jpk-fact { min-width: 0; display: grid; gap: 4px; align-content: start; padding: 11px 14px 12px; border-radius: 12px; background: var(--surface-2); }
+html[data-jpk-popouts="on"] .jpk-fact dt { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: normal; }
+html[data-jpk-popouts="on"] .jpk-fact dd { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: var(--fs-base); font-weight: 500; color: var(--ink); }
+html[data-jpk-popouts="on"] .jpk-fact-rel { font-size: var(--fs-sm); font-weight: 400; color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-fact-wide { grid-column: 1 / -1; }
+html[data-jpk-popouts="on"] .jpk-facts-note { padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--line-strong); }
+html[data-jpk-popouts="on"] .jpk-frame .pk-foot { align-items: center; gap: 10px 14px; padding: 12px 16px 12px 24px; background: var(--surface-2); border-top: 1px solid var(--line); }
+html[data-jpk-popouts="on"] .jpk-frame .pk-foot .fine { color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-facts-acts { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+
+/* buttons inside the boxes */
+html[data-jpk-popouts="on"] .jpk-fbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 15px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: var(--fs-md); font-weight: 600; line-height: 1.2; white-space: nowrap; text-decoration: none;
+  color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); transition: background .12s, border-color .12s, color .12s;
+}
+html[data-jpk-popouts="on"] .jpk-fbtn:hover { background: var(--surface-2); text-decoration: none; }
+html[data-jpk-popouts="on"] .jpk-fbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+html[data-jpk-popouts="on"] .jpk-fbtn-p { color: var(--jpk-on-accent); background: var(--accent); border-color: var(--accent); }
+html[data-jpk-popouts="on"] .jpk-fbtn-p:hover { color: var(--jpk-on-accent); background: var(--accent-ink); border-color: var(--accent-ink); }
+
+/* the Contract Band strip: what review means, one clear button */
+html[data-jpk-popouts="on"] .jpk-review { display: flex; align-items: center; gap: 14px; padding: 14px 14px 14px 16px; border-radius: 14px; background: var(--accent-soft); }
+html[data-jpk-popouts="on"] .jpk-review-ic { flex: none; width: 38px; height: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--surface); color: var(--accent-ink); }
+html[data-jpk-popouts="on"] .jpk-review-ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+html[data-jpk-popouts="on"] .jpk-review-tx { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+html[data-jpk-popouts="on"] .jpk-review-tx b { font-weight: 600; color: var(--ink); }
+html[data-jpk-popouts="on"] .jpk-review-tx span { font-size: var(--fs-md); color: var(--ink-2); line-height: 1.4; }
+
+/* ---------- the calendar's Month button ---------- */
+html[data-jpk-popouts="on"] .jpk-mo-open {
+  flex: none; height: 32px; padding: 0 11px 0 9px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font: inherit; font-size: var(--fs-md); font-weight: 600; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--jpk-r-sm, 8px);
+}
+html[data-jpk-popouts="on"] .jpk-mo-open:hover { color: var(--ink); background: var(--surface-2); }
+html[data-jpk-popouts="on"] .jpk-mo-open:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* with the Month button the count drops under the heading, so the head stays one row in the side column */
+html[data-jpk-popouts="on"] .jpk-cal > .head.jpk-has-mo { flex-wrap: wrap; row-gap: 0; }
+html[data-jpk-popouts="on"] .jpk-cal > .head.jpk-has-mo .jpk-cal-meta { order: 10; flex: 1 0 100%; padding-left: 24px; margin-top: -2px; }
+html[data-jpk-popouts="on"] .jpk-mo-open svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- the month popout ---------- */
+html[data-jpk-popouts="on"] .jpk-mo[hidden] { display: none; }
+html[data-jpk-popouts="on"] .jpk-pop[data-jpk-mode="month"] .jpk-pop-panel { max-width: 1120px; height: min(880px, var(--jpk-pop-h, calc(100vh - 40px))); }
+html[data-jpk-popouts="on"] .jpk-pop[data-jpk-mode="month"] :is(.jpk-pop-n, .jpk-pop-m, .jpk-pop-stale, .jpk-pop-tools, .jpk-pop-body, .jpk-pop-f) { display: none; }
+html[data-jpk-popouts="on"] .jpk-mo { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+html[data-jpk-popouts="on"] .jpk-mo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 4px 24px 14px; flex: none; }
+html[data-jpk-popouts="on"] .jpk-mo-nav { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+html[data-jpk-popouts="on"] .jpk-mo-nav button {
+  min-width: 32px; height: 30px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: var(--fs-md); font-weight: 600; color: var(--ink-2); background: transparent; transition: background .12s, color .12s, box-shadow .12s;
+}
+html[data-jpk-popouts="on"] .jpk-mo-nav button:hover:not(:disabled) { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(16, 24, 40, .12); }
+html[data-jpk-popouts="on"] .jpk-mo-nav button:disabled { opacity: .45; cursor: default; }
+html[data-jpk-popouts="on"] .jpk-mo-nav svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+html[data-jpk-popouts="on"] .jpk-mo-st { font-size: var(--fs-md); color: var(--ink-2); }
+html[data-jpk-popouts="on"] .jpk-mo-key { display: inline-flex; gap: 14px; font-size: var(--fs-sm); color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-key i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 3px; background: var(--warn); vertical-align: -1px; }
+html[data-jpk-popouts="on"] .jpk-mo-key i.jpk-mo-lk { background: var(--accent); }
+html[data-jpk-popouts="on"] .jpk-mo-ol { margin-left: auto; font-size: var(--fs-md); font-weight: 600; color: var(--accent-ink); text-decoration: none; }
+html[data-jpk-popouts="on"] .jpk-mo-ol:hover { text-decoration: underline; text-underline-offset: 3px; }
+html[data-jpk-popouts="on"] .jpk-mo-wrap { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; border-top: 1px solid var(--line); }
+html[data-jpk-popouts="on"] .jpk-mo-cal { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 0 16px 18px 24px; overflow: auto; }
+html[data-jpk-popouts="on"] .jpk-mo-dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 12px 0 8px; flex: none;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-dow span { padding-left: 8px; }
+html[data-jpk-popouts="on"] .jpk-mo-grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: minmax(96px, 1fr); gap: 4px; transition: opacity .15s; }
+html[data-jpk-popouts="on"] .jpk-pop-panel[aria-busy="true"] .jpk-mo-grid { opacity: .7; }
+html[data-jpk-popouts="on"] .jpk-mo-cell {
+  position: relative; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 6px; overflow: hidden; cursor: pointer;
+  font: inherit; text-align: left; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  transition: border-color .12s, background .12s, box-shadow .12s;
+}
+html[data-jpk-popouts="on"] .jpk-mo-cell.jpk-mo-wk { background: light-dark(#FAFBFC, #1C1F24); }
+html[data-jpk-popouts="on"] .jpk-mo-cell:hover { border-color: var(--line-strong); }
+html[data-jpk-popouts="on"] .jpk-mo-cell.jpk-mo-out { background: transparent; border-color: transparent; color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-cell.jpk-mo-out:hover { border-color: var(--line); }
+html[data-jpk-popouts="on"] .jpk-mo-cell.jpk-mo-out .jpk-mo-ev { opacity: .6; }
+html[data-jpk-popouts="on"] .jpk-mo-cell[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); z-index: 1; }
+html[data-jpk-popouts="on"] .jpk-mo-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; z-index: 2; }
+html[data-jpk-popouts="on"] .jpk-mo-num { align-self: flex-start; min-width: 26px; height: 26px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; font-size: var(--fs-md); font-weight: 600; font-variant-numeric: tabular-nums; }
+html[data-jpk-popouts="on"] .jpk-mo-today .jpk-mo-num { background: var(--accent); color: var(--jpk-on-accent); }
+html[data-jpk-popouts="on"] .jpk-mo-evs { display: grid; gap: 2px; min-width: 0; }
+html[data-jpk-popouts="on"] .jpk-mo-ev { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 6px 2px 8px; border-radius: 5px;
+  font-size: 12px; line-height: 1.4; color: var(--ink); background: var(--warn-tint); box-shadow: inset 2px 0 0 var(--warn); }
+html[data-jpk-popouts="on"] .jpk-mo-ev.jpk-mo-lk { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+html[data-jpk-popouts="on"] .jpk-mo-ev.jpk-mo-ad { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--line-strong); font-weight: 600; }
+html[data-jpk-popouts="on"] .jpk-mo-ev:hover { filter: brightness(.97); }
+html[data-jpk-popouts="on"] .jpk-mo-et { margin-right: 4px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+html[data-jpk-popouts="on"] .jpk-mo-more { padding-left: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-dots { display: none; }
+html[data-jpk-popouts="on"] .jpk-mo-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--warn); }
+html[data-jpk-popouts="on"] .jpk-mo-dots i.jpk-mo-lk { background: var(--accent); }
+html[data-jpk-popouts="on"] .jpk-mo-dots i.jpk-mo-ad { background: var(--line-strong); }
+
+/* the selected day, beside the grid */
+html[data-jpk-popouts="on"] .jpk-mo-day { min-width: 0; min-height: 0; overflow: auto; padding: 18px 20px 22px; border-left: 1px solid var(--line); background: var(--surface-2); }
+html[data-jpk-popouts="on"] .jpk-mo-dh { margin: 0; font-family: var(--font-head, inherit); font-size: 17px; font-weight: 600; color: var(--ink); }
+html[data-jpk-popouts="on"] .jpk-mo-dm { margin: 2px 0 14px; font-size: var(--fs-sm); color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+html[data-jpk-popouts="on"] .jpk-mo-item { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; padding: 12px 12px 12px 14px; border-radius: 12px;
+  background: var(--surface); box-shadow: inset 3px 0 0 var(--warn), 0 0 0 1px var(--line); transition: box-shadow .15s; }
+html[data-jpk-popouts="on"] .jpk-mo-item.jpk-mo-lk { box-shadow: inset 3px 0 0 var(--accent), 0 0 0 1px var(--line); }
+html[data-jpk-popouts="on"] .jpk-mo-item.jpk-mo-ad { box-shadow: inset 3px 0 0 var(--line-strong), 0 0 0 1px var(--line); }
+html[data-jpk-popouts="on"] .jpk-mo-item.jpk-mo-hl { box-shadow: inset 3px 0 0 var(--accent), 0 0 0 2px var(--accent); }
+html[data-jpk-popouts="on"] .jpk-mo-item:focus { outline: none; }
+html[data-jpk-popouts="on"] .jpk-mo-item.jpk-mo-past .jpk-mo-tm, html[data-jpk-popouts="on"] .jpk-mo-item.jpk-mo-past .jpk-mo-t { color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-tm { font-size: var(--fs-md); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.35; }
+html[data-jpk-popouts="on"] .jpk-mo-tm span { display: block; font-weight: 400; font-size: var(--fs-sm); color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-main { min-width: 0; }
+html[data-jpk-popouts="on"] .jpk-mo-t { margin: 0; font-weight: 600; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+html[data-jpk-popouts="on"] .jpk-mo-s { margin: 3px 0 0; font-size: var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
+html[data-jpk-popouts="on"] .jpk-mo-a { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; }
+html[data-jpk-popouts="on"] .jpk-mo-chip {
+  display: inline-flex; align-items: center; min-height: 28px; max-width: 100%; padding: 3px 11px; border-radius: 999px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: inherit; font-size: var(--fs-sm); font-weight: 600; text-decoration: none; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line-strong);
+  transition: background .12s, border-color .12s, color .12s;
+}
+html[data-jpk-popouts="on"] .jpk-mo-chip:hover { border-color: var(--accent); color: var(--accent-ink); }
+html[data-jpk-popouts="on"] .jpk-mo-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+html[data-jpk-popouts="on"] .jpk-mo-chip.jpk-mo-join { color: var(--jpk-on-accent); background: var(--accent); border-color: var(--accent); }
+html[data-jpk-popouts="on"] .jpk-mo-chip.jpk-mo-join:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: var(--jpk-on-accent); }
+html[data-jpk-popouts="on"] .jpk-mo-nolk { align-self: center; font-size: var(--fs-sm); color: var(--warn); }
+html[data-jpk-popouts="on"] .jpk-mo-empty { display: block; padding: 22px 14px; text-align: center; font-size: var(--fs-md); color: var(--muted); border: 1px dashed var(--line-strong); border-radius: 12px; }
+
+@media (max-width: 900px) {
+  html[data-jpk-popouts="on"] .jpk-mo-wrap { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; align-content: start; overflow: auto; }
+  html[data-jpk-popouts="on"] .jpk-mo-cal, html[data-jpk-popouts="on"] .jpk-mo-day { overflow: visible; }
+  html[data-jpk-popouts="on"] .jpk-mo-day { border-left: 0; border-top: 1px solid var(--line); }
+  html[data-jpk-popouts="on"] .jpk-mo-grid { grid-auto-rows: minmax(78px, auto); }
+}
+@media (max-width: 640px) {
+  html[data-jpk-popouts="on"] .jpk-pop[data-jpk-mode="month"] .jpk-pop-panel { height: var(--jpk-pop-vh, 100vh); }
+  html[data-jpk-popouts="on"] .jpk-pop-h { padding: 10px 6px 6px 16px; }
+  html[data-jpk-popouts="on"] .jpk-pop-body { padding: 0 4px 8px; }
+  html[data-jpk-popouts="on"] .jpk-pop-hd { display: none; }
+  html[data-jpk-popouts="on"] .jpk-pop-li-rv .jpk-pop-row { padding-right: 96px; }
+  html[data-jpk-popouts="on"] .jpk-pop-f { background: var(--surface); }
+  html[data-jpk-popouts="on"] .jpk-facts { grid-template-columns: minmax(0, 1fr); }
+  html[data-jpk-popouts="on"] .jpk-review { flex-wrap: wrap; }
+  html[data-jpk-popouts="on"] .jpk-review .jpk-fbtn { width: 100%; min-height: 44px; }
+  html[data-jpk-popouts="on"] .jpk-frame .pk-foot { flex-direction: column; align-items: stretch; }
+  html[data-jpk-popouts="on"] .jpk-facts-acts .jpk-fbtn { flex: 1; min-height: 44px; }
+  html[data-jpk-popouts="on"] .jpk-mo-bar { padding: 2px 14px 12px; }
+  html[data-jpk-popouts="on"] .jpk-mo-key { display: none; }
+  html[data-jpk-popouts="on"] .jpk-mo-cal { padding: 0 8px 12px; }
+  html[data-jpk-popouts="on"] .jpk-mo-dow { gap: 2px; }
+  html[data-jpk-popouts="on"] .jpk-mo-dow span { padding-left: 0; text-align: center; }
+  html[data-jpk-popouts="on"] .jpk-mo-grid { grid-auto-rows: 54px; gap: 2px; }
+  html[data-jpk-popouts="on"] .jpk-mo-cell { align-items: center; justify-content: flex-start; gap: 4px; padding: 5px 2px; border-radius: 8px; }
+  html[data-jpk-popouts="on"] .jpk-mo-cell.jpk-mo-wk { background: var(--surface); }
+  html[data-jpk-popouts="on"] .jpk-mo-num { align-self: center; }
+  html[data-jpk-popouts="on"] .jpk-mo-evs { display: none; }
+  html[data-jpk-popouts="on"] .jpk-mo-dots { display: flex; gap: 3px; justify-content: center; }
+  html[data-jpk-popouts="on"] .jpk-mo-day { padding: 16px 14px 24px; }
+  html[data-jpk-popouts="on"] .jpk-mo-chip { min-height: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-jpk-popouts="on"] .jpk-pop-chev, html[data-jpk-popouts="on"] .jpk-mo-cell, html[data-jpk-popouts="on"] .jpk-mo-grid { transition: none; }
+}
+</style>
 <script id="jpk-shell-config">
 /* jpk-shell-config (CS): Beau CS Home v6.1. Spec section 7 with the section 11 decisions (S21 order: Numbers before Boards;
    Up-next above the tiles on narrow screens; step 4 "Close out" counts cases), brought in line with Beau's mockup (v6.0.1 fix list):
@@ -11226,7 +11475,7 @@ html .jpk-pop-switch { font: inherit; font-size: inherit; color: var(--accent-in
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.1.1',
+  build: 'Beau CS Home v6.2.0',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -12114,7 +12363,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.1.1',
+    build: 'Beau CS Home v6.2.0',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -13378,7 +13627,10 @@ window.JPK_SHELL = {
 })(typeof window !== 'undefined' ? window : this);
 </script>
 <script id="jpk-pop-js">
-/* jpk-pop.js v0.1.0 (S24 v6.1, 22 Oct 2026): popouts for Beau CS Home. Pairs with jpk-pop.css and jpk-shell.js (load after both).
+/* jpk-pop.js v0.2.0 (S26 v6.2, 22 Oct 2026; v0.1.0 S24 v6.1): popouts for Beau CS Home.
+   v0.2.0: the Month popout (Month button on the home calendar; a month grid and the chosen day's meetings, read with
+   jpkCalendar.load for the six weeks on screen, read-only), new box markup for the softer design (jpk-pop-v2.css), and every
+   contract or renewal box and list row links to the Contract Review Band (the contract record, where the band sits). Pairs with jpk-pop.css and jpk-shell.js (load after both).
    Design: S24-POPOUT-DESIGN-DRAFT.md as approved, with Beau's answers to its section 8 questions.
 
    What it does: a click on the home page that used to leave for a Zoho module or record opens a box on the page instead.
@@ -13396,7 +13648,7 @@ window.JPK_SHELL = {
    Globals: window.JPKPop = { version, on, open, close, state, peekRow, frame, closeFrame, defs, read, needsGo, demoRows }. */
 (function (root) {
   'use strict';
-  var VERSION = '0.1.0';
+  var VERSION = '0.2.0';
   var doc = root.document;
   if (!doc) return;
 
@@ -13453,6 +13705,8 @@ window.JPK_SHELL = {
   function tabUrl(m) { return known(m) ? CRM + slug(m) : ''; }
   function recUrl(m, id) { return known(m) && isId(id) ? CRM + slug(m) + '/' + id : ''; }
   function viewUrl(key) { var s = shell(), v = s && s.config && s.config.views && s.config.views[key]; return v && v.module && v.cvid && known(v.module) ? CRM + slug(v.module) + '/custom-view/' + v.cvid + '/list' : ''; }
+  /* the Contract Review Band lives on the contract record (related list); preview links a sample id so the button shows */
+  function contractHref(id) { return recUrl('Contracts', id) || (preview() && id && known('Contracts') ? CRM + slug('Contracts') + '/' + id : ''); }
   function nav(o) { var s = shell(); if (s) { o.at = Date.now(); s.lastNav = o; } }
   function toast(msg) { var s = shell(); if (s && s.toast) s.toast(msg); }
 
@@ -13549,7 +13803,8 @@ window.JPK_SHELL = {
     return [
       { label: 'Contract', get: function (r) { return r.Name || 'Contract'; }, main: true },
       { label: 'Customer', get: function (r) { return r['Account.Account_Name'] || (r.Account && r.Account.name) || ''; } },
-      { label: 'Ends', get: function (r) { var d = dayOf(r.Final_End_Date); if (!d) return ''; var n = daysBetween(d, new Date()); return fmtDay(r.Final_End_Date) + (n >= 0 ? ' (in ' + plural(n, 'day') + ')' : ' (' + plural(-n, 'day') + ' ago)'); } },
+      { label: 'Ends', get: function (r) { var d = dayOf(r.Final_End_Date); if (!d) return ''; var n = daysBetween(d, new Date()); return fmtDay(r.Final_End_Date) + (n >= 0 ? ' (in ' + plural(n, 'day') + ')' : ' (' + plural(-n, 'day') + ' ago)'); },
+        html: function (r) { var d = dayOf(r.Final_End_Date); if (!d) return ''; var n = daysBetween(d, new Date()); return esc(fmtDay(r.Final_End_Date)) + '<span class="jpk-pop-sub">' + esc(n === 0 ? 'today' : n > 0 ? 'in ' + plural(n, 'day') : plural(-n, 'day') + ' ago') + '</span>'; } },
       { label: 'Renewal', get: function (r) { return r.Renewal_Status || 'Not started'; }, filter: true }
     ];
   }
@@ -13572,7 +13827,7 @@ window.JPK_SHELL = {
       open: function () { var N = NT(), t = N && N.T && N.T[key]; return t ? N.viewUrl(t.view) : ''; },
       openLabel: 'Open the list in Zoho',
       expect: function () { return tileNumber(key); },
-      search: true
+      search: true, review: key !== 'myTasks'
     };
   }
   /* Queue rows (the page's own rules: open = not Closed or Resolved; Team = not Personal; Mine = owned by you) */
@@ -13648,13 +13903,15 @@ window.JPK_SHELL = {
       cols: [
         { label: 'Customer', get: function (r) { return r.customer; }, main: true },
         { label: 'Contract', get: function (r) { return r.name; } },
-        { label: 'Ends', get: function (r) { return r.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' (in ' + plural(r.days, 'day') + ')'; } },
+        { label: 'Ends', get: function (r) { return r.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' (in ' + plural(r.days, 'day') + ')'; },
+          html: function (r) { return esc(r.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })) + '<span class="jpk-pop-sub">in ' + esc(plural(r.days, 'day')) + '</span>'; } },
         { label: 'Status', get: function (r) { var ns = !r.status || /^not started$/i.test(r.status); return ns ? (r.days <= 60 ? 'At risk' : 'Not started') : 'On track'; }, filter: true }
       ],
       peek: function (r) { return { type: 'contract', id: r.id, title: r.name, sub: r.customer, row: r }; },
       open: function () { var N = NT(); return N && N.viewUrl ? N.viewUrl('renewals120') : tabUrl('Contracts'); },
       openLabel: 'Open Contracts in Zoho',
-      expect: function () { var s = shell(), r = s && s.data && s.data.renewals((s.config.cards.renewalDays) || 90); return Array.isArray(r) ? r.length : null; }
+      expect: function () { var s = shell(), r = s && s.data && s.data.renewals((s.config.cards.renewalDays) || 90); return Array.isArray(r) ? r.length : null; },
+      review: true
     },
     queueCases: {
       id: 'queueCases', kind: 'rows', title: function () { return scope() === 'team' ? 'All open cases' : 'My open cases'; },
@@ -13718,7 +13975,7 @@ window.JPK_SHELL = {
       open: function (o) { return o && o.href || ''; },
       openLabel: 'Open CS - Expired, Still Live in Zoho',
       expect: function () { var p = qa('#fu-list .stale')[0], m = /^(\d+) older contract/.exec(tx(p)); return m ? +m[1] : null; },
-      search: true
+      search: true, review: true
     }
   };
 
@@ -13790,15 +14047,19 @@ window.JPK_SHELL = {
     r.innerHTML = '<div class="jpk-pop-panel" role="dialog" aria-modal="true" aria-labelledby="jpk-pop-t" tabindex="-1">'
       + '<div class="jpk-pop-h"><h2 class="jpk-pop-t" id="jpk-pop-t" tabindex="-1"></h2><span class="jpk-pop-n" aria-label=""></span>'
       + '<button type="button" class="jpk-pop-x" data-jpk-px="close" aria-label="Close (Esc)" title="Close (Esc)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>'
+      + MONTH_HTML
       + '<p class="jpk-pop-m"></p><p class="jpk-pop-stale" role="status" hidden></p>'
       + '<div class="jpk-pop-tools" hidden><div class="jpk-pop-chips" role="group" aria-label="Filter this list"></div><input type="search" class="jpk-pop-q" aria-label="Filter this list" placeholder="Filter this list"></div>'
-      + '<div class="jpk-pop-body"><ul class="jpk-pop-list" aria-labelledby="jpk-pop-t"></ul><div class="jpk-pop-state" role="status"></div></div>'
+      + '<div class="jpk-pop-body"><div class="jpk-pop-hd" aria-hidden="true"></div><ul class="jpk-pop-list" aria-labelledby="jpk-pop-t"></ul><div class="jpk-pop-state" role="status"></div></div>'
       + '<div class="jpk-pop-f"><span class="jpk-pop-shown" aria-live="polite"></span><button type="button" class="jpk-pop-more" data-jpk-px="more" hidden></button><a class="jpk-pop-open" target="_top" data-jpk-oz="1">Open in Zoho</a></div>'
       + '</div>';
     doc.body.appendChild(r);
     E.panel = r.querySelector('.jpk-pop-panel'); E.t = r.querySelector('.jpk-pop-t'); E.n = r.querySelector('.jpk-pop-n'); E.m = r.querySelector('.jpk-pop-m');
     E.stale = r.querySelector('.jpk-pop-stale'); E.tools = r.querySelector('.jpk-pop-tools'); E.chips = r.querySelector('.jpk-pop-chips'); E.q = r.querySelector('.jpk-pop-q');
     E.list = r.querySelector('.jpk-pop-list'); E.state = r.querySelector('.jpk-pop-state'); E.shown = r.querySelector('.jpk-pop-shown'); E.more = r.querySelector('.jpk-pop-more'); E.open = r.querySelector('.jpk-pop-open');
+    E.body = r.querySelector('.jpk-pop-body'); E.hd = r.querySelector('.jpk-pop-hd'); E.mo = r.querySelector('.jpk-mo');
+    var ol = E.mo.querySelector('.jpk-mo-ol'), sc = shell() && shell().config && shell().config.calendar;
+    ol.href = String((sc && sc.outlookUrl) || 'https://outlook.office.com/calendar/view/day').replace(/\/view\/(day|week|workweek)\b/, '/view/month');
     r.addEventListener('click', onPopClick);
     E.q.addEventListener('input', function () { ST.q = E.q.value; ST.shown = 0; paint(true); });
     var back = E.back = mk('div', 'jpk-pop-back', { id: 'jpk-pop-back' });
@@ -13849,6 +14110,7 @@ window.JPK_SHELL = {
   /* ============================ list popout: open, load, paint ============================ */
   function open(id, opener, o) {
     if (!active()) return false;
+    if (id === 'calMonth') return openMonth(opener, o && o.day);
     var def = DEFS[id]; if (!def) return false;
     var pk = $('peek'); if (pk && !pk.hidden) return false;   /* entry points sit behind the peek while it is open */
     build();
@@ -13923,9 +14185,9 @@ window.JPK_SHELL = {
     E.n.hidden = ST.count == null;
     E.n.setAttribute('aria-label', ST.count == null ? '' : plural(ST.count, 'item'));
     E.panel.setAttribute('aria-busy', String(!!ST.loading));
-    if (ST.loading) { E.list.innerHTML = ''; E.state.innerHTML = '<span class="jpk-pop-spin" aria-hidden="true"></span>Loading the list.'; E.state.className = 'jpk-pop-state jpk-pop-loading'; E.tools.hidden = true; E.more.hidden = true; E.shown.textContent = ''; E.stale.hidden = true; return; }
+    if (ST.loading) { E.list.innerHTML = ''; E.hd.innerHTML = ''; E.state.innerHTML = '<span class="jpk-pop-spin" aria-hidden="true"></span>Loading the list.'; E.state.className = 'jpk-pop-state jpk-pop-loading'; E.tools.hidden = true; E.more.hidden = true; E.shown.textContent = ''; E.stale.hidden = true; return; }
     if (ST.error) {
-      E.list.innerHTML = ''; E.tools.hidden = true; E.more.hidden = true; E.shown.textContent = ''; E.stale.hidden = true;
+      E.list.innerHTML = ''; E.hd.innerHTML = ''; E.tools.hidden = true; E.more.hidden = true; E.shown.textContent = ''; E.stale.hidden = true;
       E.state.className = 'jpk-pop-state jpk-pop-err';
       E.state.innerHTML = 'Could not read this list: ' + esc(ST.error) + '. <button type="button" class="jpk-pop-retry" data-jpk-px="retry">Try again</button>';
       return;
@@ -13944,10 +14206,19 @@ window.JPK_SHELL = {
     ST.view = applyFilters();
     if (reset || !ST.shown) ST.shown = Math.min(cap, ST.view.length);
     var rows = ST.view.slice(0, ST.shown);
-    E.list.style.setProperty('--jpk-pop-gt', colsOf().map(function (c) { return c.main ? 'minmax(0, 2.2fr)' : 'minmax(0, 1.3fr)'; }).join(' ') + ' 14px');
+    var rv = !!def.review, gt = colsOf().map(function (c) { return c.main ? 'minmax(0, 2.2fr)' : 'minmax(0, 1.3fr)'; }).join(' ') + (rv ? ' 84px' : ' 14px');
+    E.body.style.setProperty('--jpk-pop-gt', gt); E.list.style.setProperty('--jpk-pop-gt', gt);
+    E.hd.innerHTML = rows.length ? colsOf().map(function (c) { return '<span>' + esc(c.label) + '</span>'; }).join('') + '<span></span>' : '';
     E.list.innerHTML = rows.map(function (r, i) {
-      var cs = colsOf().map(function (c, j) { var v = c.get(r); return '<span class="jpk-pop-c' + (c.main ? ' jpk-pop-main' : '') + '"' + (j ? ' data-l="' + esc(c.label) + '"' : '') + '>' + esc(v == null ? '' : v) + '</span>'; }).join('');
-      return '<li class="jpk-pop-li"><button type="button" class="jpk-pop-row" data-jpk-pi="' + i + '">' + cs + '<span class="jpk-pop-chev" aria-hidden="true">›</span></button></li>';
+      var cs = colsOf().map(function (c, j) {
+        var v = c.get(r), s = v == null ? '' : String(v), inner;
+        if (c.filter && s) { var tn = toneOf('status', s); inner = '<span class="jpk-st' + (tn ? ' jpk-st-' + tn : '') + '">' + esc(s) + '</span>'; }
+        else inner = c.html ? c.html(r) : esc(s);
+        return '<span class="jpk-pop-c' + (c.main ? ' jpk-pop-main' : '') + '"' + (j ? ' data-l="' + esc(c.label) + '"' : '') + '>' + inner + '</span>';
+      }).join('');
+      var href = rv ? contractHref(r.id) : '', nm = rv ? String(colsOf()[0].get(r) || 'this contract') : '';
+      return '<li class="jpk-pop-li' + (href ? ' jpk-pop-li-rv' : '') + '"><button type="button" class="jpk-pop-row" data-jpk-pi="' + i + '">' + cs + '<span class="jpk-pop-chev" aria-hidden="true">›</span></button>'
+        + (href ? '<a class="jpk-pop-rv" target="_top" data-jpk-oz="1" data-jpk-cta="review" href="' + esc(href) + '" aria-label="Review ' + esc(nm) + ' in the Contract Review Band" title="Opens the contract record, where the Contract Review Band is">Review ↗</a>' : '') + '</li>';
     }).join('');
     if (!ST.rows.length) { E.state.className = 'jpk-pop-state jpk-pop-empty'; E.state.textContent = def.empty ? def.empty(ST.o) : 'Nothing here.'; }
     else if (!ST.view.length) { E.state.className = 'jpk-pop-state jpk-pop-empty'; E.state.textContent = 'Nothing matches the filter.'; }
@@ -13977,6 +14248,7 @@ window.JPK_SHELL = {
     ST.open = false; ST.seq++;
     release();
     E.root.hidden = true; E.root.removeAttribute('data-jpk-list'); E.list.innerHTML = '';
+    if (E.root.getAttribute('data-jpk-mode') === 'month') { E.root.removeAttribute('data-jpk-mode'); E.mo.hidden = true; MO.seq++; MO.hl = null; }
     if (!frameOpen()) guardOff();
     doc.documentElement.classList.remove('jpk-pop-showing');
     hideBack();
@@ -13986,6 +14258,7 @@ window.JPK_SHELL = {
   function onPopClick(e) {
     var t = e.target;
     if (t === E.root) { closeList(true); return; }                     /* the backdrop */
+    if (monthOpen()) { var mb = t.closest && t.closest('[data-jpk-mx],[data-jpk-md]'); if (mb) { monthClick(mb, t); return; } }
     var b = t.closest && t.closest('[data-jpk-px],[data-jpk-pf],[data-jpk-pi],a[data-jpk-oz]');
     if (!b) return;
     if (b.hasAttribute('data-jpk-oz')) { ozClick(e, b, 'popout:' + ST.id); return; }
@@ -14036,10 +14309,21 @@ window.JPK_SHELL = {
     return false;
   }
   function detached(kind, id, key) { var li = doc.createElement('li'); li.setAttribute('data-kind', kind); li.setAttribute('data-id', String(id)); li.setAttribute('data-key', key); return li; }
+  var INGEST = { 'ingested': 'Verified', 'needs review': 'Needs review', 'failed': 'Ingest failed', 'ingest failed': 'Ingest failed', 'not ingested': 'Not ingested', 'backlog': 'Backlog' };
   function contractFacts(o) {
     var r = o.row || {};
-    return { type: 'facts', kind: 'Contract', module: 'Contracts', id: o.id, title: o.title, sub: o.sub, facts: [['Customer', o.sub || ''], ['Ends', fmtDay(r.Final_End_Date)], ['Renewal status', r.Renewal_Status || ''], ['Contract status', r.Contract_Status || '']],
-      href: recUrl('Contracts', o.id) || tabUrl('Contracts'), read: isId(o.id) && !r.Final_End_Date, fields: [['Customer', 'Account'], ['Ends', 'Final_End_Date'], ['Renewal status', 'Renewal_Status'], ['Contract status', 'Contract_Status']] };
+    var end = r.Final_End_Date || (r.end instanceof Date ? ymd(r.end) : '');              /* Contracts rows, or the Renewals card's own rows */
+    var ren = r.Renewal_Status || (r.end instanceof Date ? (r.status || 'Not started') : '');
+    var rec = contractHref(o.id);
+    return { type: 'facts', kind: 'Contract', module: 'Contracts', id: o.id, title: o.title, sub: o.sub,
+      facts: [['Customer', o.sub || ''], ['Ends', end ? fmtDay(end) : ''], ['Renewal status', ren], ['Contract status', r.Contract_Status || '']],
+      href: rec || tabUrl('Contracts'), review: rec || '',
+      read: isId(o.id), fields: [['Customer', 'Account'], ['Ends', 'Final_End_Date'], ['Renewal status', 'Renewal_Status'], ['Contract status', 'Contract_Status'], ['Review status', 'Ingest_Status'], ['Last verified', 'Last_Verified']],
+      xform: function (f, v, shown) {
+        if (f === 'Ingest_Status') return INGEST[String(v || '').trim().toLowerCase()] || shown || 'Not ingested';
+        if (f === 'Last_Verified') return shown || 'Not verified yet';
+        return shown;
+      } };
   }
   /* take #peek over: close what the page has in it first (an unsaved record peek keeps itself open and says why) */
   function takePeek() {
@@ -14052,10 +14336,31 @@ window.JPK_SHELL = {
     if (b && b.PK) b.PK.owner = null;
     return p;
   }
-  function head(kind, title, sub, href) {
-    return '<div class="pk-head"><span class="pk-id">' + esc(kind) + '</span><span class="pk-title">' + esc(title || kind) + '</span>' + (sub ? '<span class="rp-sub">' + esc(sub) + '</span>' : '')
-      + (href ? '<a class="pk-link jpk-oz" target="_top" href="' + esc(href) + '" data-jpk-oz="1">Open in Zoho ↗</a>' : '')
-      + '<button type="button" class="pk-x" data-jpk-fx="close" aria-label="Close" title="Close (Esc)">✕</button></div>';
+  function head(kind, title, sub) {
+    var t = title || kind, s = sub && String(sub).trim().toLowerCase() !== String(t).trim().toLowerCase() ? sub : '';
+    return '<div class="pk-head jpk-fh"><div class="jpk-fh-tx"><span class="pk-id">' + esc(kind) + '</span><span class="pk-title">' + esc(t) + '</span>' + (s ? '<span class="rp-sub">' + esc(s) + '</span>' : '') + '</div>'
+      + '<button type="button" class="pk-x" data-jpk-fx="close" aria-label="Close" title="Close (Esc)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>';
+  }
+  function ozBtn(href) { return href ? '<a class="jpk-fbtn jpk-oz" target="_top" href="' + esc(href) + '" data-jpk-oz="1">Open in Zoho ↗</a>' : ''; }
+  /* the Contract Review Band strip (contract and renewal boxes): the band is a related list on the contract record */
+  function reviewStrip(href) {
+    return '<div class="jpk-review"><span class="jpk-review-ic" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4.5 2.5h5L12.5 5.5v7.5a.5.5 0 0 1-.5.5h-7.5a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5z"/><path d="M9.5 2.5v3h3M6 9.5l1.5 1.5 3-3"/></svg></span>'
+      + '<span class="jpk-review-tx"><b>Contract review</b><span>Rate lines, clauses and documents are checked in the Contract Review Band on the record.</span></span>'
+      + '<a class="jpk-fbtn jpk-fbtn-p" target="_top" data-jpk-oz="1" data-jpk-cta="review" href="' + esc(href) + '" title="Opens the contract record, where the Contract Review Band is">Review in Contract Band ↗</a></div>';
+  }
+  function toneOf(label, v) {
+    if (!/status|renewal|review/i.test(label || '')) return '';
+    var s = String(v || '');
+    if (/at risk|fail|overdue|past end|expired|not renewing|rejected/i.test(s)) return 'bad';
+    if (/not started|needs|backlog|not ingested|not verified|awaiting|outreach|decision|pending/i.test(s)) return 'warn';
+    if (/on track|signed|renewed|verified|ingested|approved|terms agreed|sent for/i.test(s)) return 'good';
+    return '';
+  }
+  function relOf(label, v) {
+    if (!/^(Ends|Due|Last verified|Closing date|Opened|Created)$/.test(label || '')) return '';
+    var t = Date.parse(v); if (isNaN(t)) return '';
+    var n = daysBetween(new Date(t), new Date());
+    return n === 0 ? 'today' : n > 0 ? 'in ' + plural(n, 'day') : plural(-n, 'day') + ' ago';
   }
   function fmtVal(v, field) {
     if (v == null || v === '') return '';
@@ -14066,16 +14371,22 @@ window.JPK_SHELL = {
   }
   function factsHtml(list) {
     var rows = list.filter(function (f) { return f[1] != null && String(f[1]) !== ''; });
-    return rows.length ? '<dl class="pk-facts jpk-facts">' + rows.map(function (f) { return '<dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd>'; }).join('') + '</dl>' : '';
+    return rows.length ? '<dl class="pk-facts jpk-facts">' + rows.map(function (f, i) {
+      var tn = toneOf(f[0], f[1]), rel = relOf(f[0], f[1]), long = String(f[1]).length > 48 || /^(Next step|What it means|Detail)$/.test(f[0]);
+      var val = tn ? '<span class="jpk-st jpk-st-' + tn + '">' + esc(f[1]) + '</span>' : esc(f[1]);
+      var wide = long || (i === rows.length - 1 && rows.length % 2 === 1 && String(f[1]).length > 24);
+      return '<div class="jpk-fact' + (wide ? ' jpk-fact-wide' : '') + '"><dt>' + esc(f[0]) + '</dt><dd>' + val + (rel ? '<span class="jpk-fact-rel">' + esc(rel) + '</span>' : '') + '</dd></div>';
+    }).join('') + '</dl>' : '';
   }
   var FR = { seq: 0, from: null, back: null };
   /* the read-only facts peek */
   function frame(o, opener, extra) {
     var p = takePeek(); if (!p) return false;
     var seq = ++FR.seq; FR.from = o; FR.back = o.back || null;
-    var foot = '<span class="fine">Read-only' + (o.href ? '. Changes are made on the record (Open in Zoho)' : '') + '. Esc closes.</span>' + (o.back ? '<button type="button" class="btn" data-jpk-fx="back">' + esc(o.back.label) + '</button>' : '');
-    p.innerHTML = '<div class="peek-panel jpk-frame jpk-facts-panel" role="dialog" aria-label="' + esc(o.kind) + '" data-jpk-frame="facts">' + head(o.kind, o.title, o.sub, o.href)
-      + '<div class="pk-body">' + factsHtml(o.facts || []) + (o.note ? '<p class="jpk-facts-note">' + esc(o.note) + '</p>' : '') + '<p class="jpk-facts-st" role="status"></p></div>'
+    var foot = '<span class="fine">Read-only' + (o.href ? '. Changes are made on the record' : '') + '. Esc closes.</span>'
+      + '<span class="jpk-facts-acts">' + (o.back ? '<button type="button" class="jpk-fbtn" data-jpk-fx="back">' + esc(o.back.label) + '</button>' : '') + ozBtn(o.href) + '</span>';
+    p.innerHTML = '<div class="peek-panel jpk-frame jpk-facts-panel" role="dialog" aria-label="' + esc(o.kind) + '" data-jpk-frame="facts">' + head(o.kind, o.title, o.sub)
+      + '<div class="pk-body">' + factsHtml(o.facts || []) + (o.note ? '<p class="jpk-facts-note">' + esc(o.note) + '</p>' : '') + (o.review ? reviewStrip(o.review) : '') + '<p class="jpk-facts-st" role="status"></p></div>'
       + '<div class="pk-foot">' + foot + '</div></div>';
     show(p);
     var st = p.querySelector('.jpk-facts-st');
@@ -14083,7 +14394,7 @@ window.JPK_SHELL = {
       st.textContent = 'Reading the record.';
       getRecord(o.module, o.id).then(function (rec) {
         if (seq !== FR.seq || !frameOpen()) return;
-        var fl = (o.fields || []).map(function (f) { return [f[0], fmtVal(rec[f[1]], f[1])]; });
+        var fl = (o.fields || []).map(function (f) { var sh = fmtVal(rec[f[1]], f[1]); return [f[0], o.xform ? o.xform(f[1], rec[f[1]], sh) : sh]; });
         var have = {}; fl.forEach(function (f) { if (f[1]) have[f[0]] = 1; });
         var merged = fl.concat((o.facts || []).filter(function (f) { return !have[f[0]]; }));
         var title = rec.Account_Name && typeof rec.Account_Name === 'string' ? rec.Account_Name : rec.Full_Name || rec.Subject || rec.Deal_Name || rec.Name || o.title;
@@ -14101,9 +14412,11 @@ window.JPK_SHELL = {
     ++FR.seq; FR.from = o; FR.back = null;
     var module = kind === 'task' ? 'Tasks' : 'Contracts', label = kind === 'task' ? 'Task' : 'Contract';
     var href = recUrl(module, o.id) || tabUrl(module);
-    var note = kind === 'contract' ? 'Mark renewed is on the contract record (Open in Zoho).' : 'Open in Zoho for everything else on the task.';
-    p.innerHTML = '<div class="peek-panel jpk-frame" role="dialog" aria-label="' + label + '" data-jpk-frame="' + kind + '">' + head(label, o.title, o.sub, href)
-      + '<div class="pk-body"></div><div class="pk-foot"><span class="fine">' + esc(note) + ' Esc closes.</span></div></div>';
+    var note = kind === 'contract' ? 'Mark renewed is on the contract record.' : 'Open in Zoho for everything else on the task.';
+    var rv = kind === 'contract' ? contractHref(o.id) : '';
+    p.innerHTML = '<div class="peek-panel jpk-frame" role="dialog" aria-label="' + label + '" data-jpk-frame="' + kind + '">' + head(label, o.title, o.sub)
+      + '<div class="pk-body"></div>' + (rv ? '<div class="jpk-frame-x">' + reviewStrip(rv) + '</div>' : '')
+      + '<div class="pk-foot"><span class="fine">' + esc(note) + ' Esc closes.</span><span class="jpk-facts-acts">' + ozBtn(href) + '</span></div></div>';
     show(p);
     try { root.WorkBox.mountPeek(p, kind, String(o.id)); } catch (e) {}
     return true;
@@ -14147,6 +14460,176 @@ window.JPK_SHELL = {
       var row = ST.lastRow;
       root.requestAnimationFrame(function () { if (!ST.open || peekOpen()) return; var a = doc.activeElement; if (!a || !E.root.contains(a)) { var t = row && doc.contains(row) ? row : E.t; try { t.focus({ preventScroll: true }); } catch (e) { t.focus(); } } });
     }
+  }
+
+  /* ============================ month calendar (v0.2.0) ============================
+     The Month button on the home calendar opens this in the list popout's box (data-jpk-mode="month"), so Esc, the backdrop, the
+     focus trap, the inert page behind and the Back bar all work as they do for a list. Reads: jpkCalendar.load for the weeks on
+     screen (the same COQL on Events the home calendar runs, a wider range), once per month while the box is open. While a month
+     reads, the meetings the home calendar already holds are shown. No writes. Keys: arrows move the day, Home / End the week,
+     Page Up / Page Down the month, T today, Esc closes. */
+  var MO = { y: 0, m: 0, sel: '', hl: null, cache: {}, seq: 0, status: 'idle', err: '', evs: [] };
+  var MONTH_DEF = { id: 'calMonth', kind: 'month', cols: [], title: function () { return monthTitle(); } };
+  var NAV_SVG = { prev: '<path d="M10 3.5 5.5 8l4.5 4.5"/>', next: '<path d="M6 3.5 10.5 8 6 12.5"/>' };
+  var MONTH_HTML = '<div class="jpk-mo" hidden>'
+    + '<div class="jpk-mo-bar"><div class="jpk-mo-nav" role="group" aria-label="Change month">'
+    + '<button type="button" data-jpk-mx="prev" aria-label="Previous month" title="Previous month (Page Up)"><svg viewBox="0 0 16 16" aria-hidden="true">' + NAV_SVG.prev + '</svg></button>'
+    + '<button type="button" data-jpk-mx="today" title="Go to today (T)">Today</button>'
+    + '<button type="button" data-jpk-mx="next" aria-label="Next month" title="Next month (Page Down)"><svg viewBox="0 0 16 16" aria-hidden="true">' + NAV_SVG.next + '</svg></button></div>'
+    + '<span class="jpk-mo-st" role="status"></span>'
+    + '<span class="jpk-mo-key" aria-hidden="true"><span><i class="jpk-mo-lk"></i>Linked</span><span><i></i>Not linked</span></span>'
+    + '<a class="jpk-mo-ol" target="_blank" rel="noopener">Open Outlook ↗</a></div>'
+    + '<div class="jpk-mo-wrap"><div class="jpk-mo-cal"><div class="jpk-mo-dow" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>'
+    + '<div class="jpk-mo-grid" role="group"></div></div>'
+    + '<section class="jpk-mo-day" aria-label="Meetings on the chosen day"><h3 class="jpk-mo-dh"></h3><p class="jpk-mo-dm"></p><ul class="jpk-mo-list"></ul></section></div>'
+    + '</div>';
+  function cal() { var c = root.jpkCalendar; return c && typeof c.load === 'function' ? c : null; }
+  function monthOpen() { return !!(ST.open && ST.id === 'calMonth'); }
+  function calDay() { var s = shell(), st = s && s.calendar && s.calendar.state; return st && st.day || ''; }
+  function addD(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function gridFirst() { var f = new Date(MO.y, MO.m, 1); return addD(f, -f.getDay()); }
+  function gridWeeks() { var f = new Date(MO.y, MO.m, 1), n = new Date(MO.y, MO.m + 1, 0).getDate(); return Math.ceil((f.getDay() + n) / 7); }
+  function monthTitle() { return new Date(MO.y, MO.m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); }
+  function evAt(v) { var t = Date.parse(v); return isNaN(t) ? null : new Date(t); }
+  function shortTime(d) { var h = d.getHours(), m = d.getMinutes(), ap = h < 12 ? 'a' : 'p'; h = h % 12 || 12; return h + (m ? ':' + pad(m) : '') + ap; }
+  function longTime(d) { return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+  function evTone(e) { return e.allDay ? ' jpk-mo-ad' : (e.accountId || e.contactId) ? ' jpk-mo-lk' : ''; }
+  function homeEvents() { var s = shell(), st = s && s.calendar && s.calendar.state; return st && Array.isArray(st.events) ? st.events : []; }
+  function monthEvents() {
+    if (MO.status === 'ok') return MO.evs;
+    var a = gridFirst(), b = addD(a, gridWeeks() * 7);
+    return homeEvents().filter(function (e) { var s = evAt(e && e.start); return s && s >= a && s < b; });
+  }
+  function byDay(list) {
+    var m = {};
+    list.forEach(function (e) { var s = evAt(e.start); if (!s) return; var k = ymd(s); (m[k] = m[k] || []).push(e); });
+    Object.keys(m).forEach(function (k) { m[k].sort(function (a, b) { return (a.allDay === b.allDay ? 0 : a.allDay ? -1 : 1) || evAt(a.start) - evAt(b.start); }); });
+    return m;
+  }
+  function openMonth(opener, day) {
+    if (!active() || !cal()) return false;
+    var p = $('peek'); if (p && !p.hidden) return false;
+    build();
+    if (ST.open) closeList(false);
+    ++ST.seq;
+    ST.open = true; ST.id = 'calMonth'; ST.def = MONTH_DEF; ST.o = {}; ST.opener = opener || doc.activeElement; ST.rows = []; ST.view = []; ST.shown = 0; ST.count = null;
+    ST.error = null; ST.loading = false; ST.query = null; ST.filter = ''; ST.q = ''; ST.lastRow = null; ST.capped = false; ST.demo = false; ST.expect = null;
+    var base = (day && dayOf(day)) || new Date();
+    MO.y = base.getFullYear(); MO.m = base.getMonth(); MO.sel = ymd(base); MO.hl = null; MO.cache = {}; MO.status = 'idle'; MO.err = ''; MO.evs = [];
+    E.list.innerHTML = ''; E.hd.innerHTML = '';
+    E.root.setAttribute('data-jpk-list', 'calMonth'); E.root.setAttribute('data-jpk-mode', 'month');
+    E.mo.hidden = false; E.root.hidden = false;
+    doc.documentElement.classList.add('jpk-pop-showing');
+    place(); hold(); guardOn();
+    monthLoad(false);
+    focusSel();
+    nav({ id: 'calMonth', how: 'popout', popout: 'calMonth' });
+    return true;
+  }
+  function monthLoad(force) {
+    var key = MO.y + '-' + MO.m, seq = ++MO.seq;
+    if (!force && MO.cache[key]) { MO.evs = MO.cache[key]; MO.status = 'ok'; MO.err = ''; paintMonth(); return; }
+    MO.status = 'loading'; MO.err = ''; paintMonth();
+    var a = gridFirst(), w = gridWeeks(), range = { start: a, end: new Date(addD(a, w * 7).getTime() - 1), days: w * 7, owner: 'me' }, pr;
+    try { pr = Promise.resolve(cal().load(range)); } catch (e) { pr = Promise.reject(e); }
+    pr.then(function (list) {
+      if (seq !== MO.seq || !monthOpen()) return;
+      MO.evs = (Array.isArray(list) ? list : []).filter(function (e) { return e && evAt(e.start); }).sort(function (x, y) { return evAt(x.start) - evAt(y.start); });
+      MO.cache[key] = MO.evs; MO.status = 'ok'; paintMonth();
+    }, function (e) { if (seq !== MO.seq || !monthOpen()) return; MO.status = 'err'; MO.err = errText(e); paintMonth(); });
+  }
+  function paintMonth() {
+    if (!E.mo || !monthOpen()) return;
+    var f = doc.activeElement, inMo = !!(f && E.mo.contains(f)), fk = inMo && f.hasAttribute('data-jpk-md'), fm = inMo ? f.getAttribute('data-jpk-mx') : null;
+    E.t.textContent = monthTitle();
+    var list = monthEvents(), map = byDay(list), now = new Date(), today = ymd(now), ok = MO.status === 'ok';
+    var inMonth = list.filter(function (e) { var s = evAt(e.start); return s.getMonth() === MO.m && s.getFullYear() === MO.y; }).length;
+    E.n.hidden = true; E.n.textContent = '';
+    E.panel.setAttribute('aria-busy', String(MO.status === 'loading'));
+    var st = E.mo.querySelector('.jpk-mo-st');
+    st.className = 'jpk-mo-st' + (MO.status === 'err' ? ' jpk-pop-err' : '');
+    st.innerHTML = MO.status === 'loading' ? '<span class="jpk-pop-spin" aria-hidden="true"></span>Reading your meetings.'
+      : MO.status === 'err' ? 'Could not read the calendar: ' + esc(MO.err) + '. <button type="button" class="jpk-pop-retry" data-jpk-mx="retry">Try again</button>'
+      : ok ? (inMonth ? plural(inMonth, 'meeting') + ' this month' : 'No meetings this month') : '';
+    E.mo.querySelector('[data-jpk-mx="today"]').disabled = MO.sel === today && MO.y === now.getFullYear() && MO.m === now.getMonth();
+    var a = gridFirst(), weeks = gridWeeks(), html = '';
+    for (var i = 0; i < weeks * 7; i++) {
+      var d = addD(a, i), k = ymd(d), evs = map[k] || [], out = d.getMonth() !== MO.m, wk = d.getDay() === 0 || d.getDay() === 6, shown = evs.slice(0, 3), more = evs.length - shown.length;
+      var lab = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + (k === today ? ', today' : '') + ', ' + (evs.length ? plural(evs.length, 'meeting') : 'no meetings');
+      html += '<button type="button" class="jpk-mo-cell' + (out ? ' jpk-mo-out' : '') + (wk ? ' jpk-mo-wk' : '') + (k === today ? ' jpk-mo-today' : '') + '" data-jpk-md="' + k + '" aria-pressed="' + (k === MO.sel) + '" tabindex="' + (k === MO.sel ? '0' : '-1') + '" aria-label="' + esc(lab) + '">'
+        + '<span class="jpk-mo-num" aria-hidden="true">' + d.getDate() + '</span>'
+        + '<span class="jpk-mo-evs" aria-hidden="true">' + shown.map(function (e, j) { var s = evAt(e.start); return '<span class="jpk-mo-ev' + evTone(e) + '" data-jpk-mev="' + j + '" title="' + esc((e.allDay ? 'All day' : longTime(s)) + ' · ' + e.title) + '">' + (e.allDay ? '' : '<span class="jpk-mo-et">' + shortTime(s) + '</span>') + esc(e.title) + '</span>'; }).join('')
+        + (more > 0 ? '<span class="jpk-mo-more">+' + more + ' more</span>' : '') + '</span>'
+        + '<span class="jpk-mo-dots" aria-hidden="true">' + shown.map(function (e) { return '<i class="' + evTone(e).trim() + '"></i>'; }).join('') + '</span></button>';
+    }
+    var g = E.mo.querySelector('.jpk-mo-grid'); g.innerHTML = html; g.setAttribute('aria-label', monthTitle() + '. Arrow keys move the day, Page Up and Page Down the month.');
+    paintDay(map[MO.sel] || [], now, today);
+    if (fk) focusSel();
+    else if (fm) { var nb = E.mo.querySelector('[data-jpk-mx="' + fm + '"]'); if (nb && !nb.disabled) { try { nb.focus({ preventScroll: true }); } catch (e) { nb.focus(); } } else focusSel(); }
+  }
+  function paintDay(evs, now, today) {
+    var d = dayOf(MO.sel);
+    E.mo.querySelector('.jpk-mo-dh').textContent = d ? d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+    E.mo.querySelector('.jpk-mo-dm').textContent = (MO.sel === today ? 'Today · ' : '') + (evs.length ? plural(evs.length, 'meeting') : MO.status === 'loading' ? 'Reading.' : 'Nothing scheduled');
+    var ul = E.mo.querySelector('.jpk-mo-list');
+    if (!evs.length) { ul.innerHTML = MO.status === 'loading' ? '' : '<li class="jpk-mo-empty">' + (MO.status === 'err' ? 'The calendar could not be read.' : 'Nothing on this day.') + '</li>'; return; }
+    ul.innerHTML = evs.map(function (e, j) {
+      var s = evAt(e.start), en = evAt(e.end), past = (en || s) < now;
+      var tm = e.allDay ? 'All day' : esc(longTime(s)) + (en && !e.allDay ? '<span>' + esc(longTime(en)) + '</span>' : '');
+      var sub = [e.venue, e.recurring ? (e.recurrence || 'Repeats') : '', e.continued ? 'Continues' : ''].filter(Boolean).join(' · ');
+      var links = (e.accountId ? monthChip('account', e.accountId, e.accountName || 'Linked account') : '') + (e.contactId ? monthChip('contact', e.contactId, e.contactName || 'Linked contact') : '');
+      var acts = (e.joinUrl ? '<a class="jpk-mo-chip jpk-mo-join" href="' + esc(e.joinUrl) + '" target="_blank" rel="noopener">' + (/teams/i.test(e.joinUrl + ' ' + (e.venue || '')) ? 'Join Teams meeting' : /zoom/i.test(e.joinUrl) ? 'Join Zoom' : 'Join meeting') + '</a>' : '')
+        + (isId(e.id) ? '<a class="jpk-mo-chip" target="_top" data-jpk-oz="1" href="' + esc(recUrl('Events', e.id)) + '">Open in Zoho ↗</a>' : '');
+      return '<li class="jpk-mo-item' + evTone(e) + (past ? ' jpk-mo-past' : '') + (MO.hl === j ? ' jpk-mo-hl' : '') + '" data-jpk-mi="' + j + '" tabindex="-1">'
+        + '<div class="jpk-mo-tm">' + tm + '</div><div class="jpk-mo-main"><p class="jpk-mo-t">' + esc(e.title) + '</p>' + (sub ? '<p class="jpk-mo-s">' + esc(sub) + '</p>' : '')
+        + '<div class="jpk-mo-a">' + (links || '<span class="jpk-mo-nolk">Not linked to an account or contact</span>') + acts + '</div></div></li>';
+    }).join('');
+  }
+  function monthChip(type, id, name) { return '<button type="button" class="jpk-mo-chip" data-jpk-pk="' + type + ':' + esc(id) + '" data-jpk-title="' + esc(name) + '" title="' + esc(name) + '">' + esc(name) + '</button>'; }
+  function focusSel() { var c = E.mo && E.mo.querySelector('[data-jpk-md="' + MO.sel + '"]'); if (c) { try { c.focus({ preventScroll: true }); } catch (e) { c.focus(); } } }
+  function selectDay(k, hl) {
+    var d = dayOf(k); if (!d) return;
+    MO.sel = k; MO.hl = hl == null ? null : hl;
+    if (d.getMonth() !== MO.m || d.getFullYear() !== MO.y) { MO.y = d.getFullYear(); MO.m = d.getMonth(); monthLoad(false); } else paintMonth();
+    focusSel();
+    if (MO.hl != null) { var it = E.mo.querySelector('[data-jpk-mi="' + MO.hl + '"]'); if (it) { try { it.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); } catch (e) {} } }
+  }
+  function shiftMonth(n, keepDay) {
+    var d = dayOf(MO.sel) || new Date(), t = new Date(MO.y, MO.m + n, 1), last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate(), now = new Date();
+    MO.y = t.getFullYear(); MO.m = t.getMonth(); MO.hl = null;
+    MO.sel = ymd(new Date(MO.y, MO.m, keepDay ? Math.min(d.getDate(), last) : (MO.y === now.getFullYear() && MO.m === now.getMonth() ? now.getDate() : 1)));
+    monthLoad(false);
+  }
+  function goToday() { var n = new Date(); MO.y = n.getFullYear(); MO.m = n.getMonth(); MO.sel = ymd(n); MO.hl = null; monthLoad(false); focusSel(); }
+  function monthClick(b, t) {
+    var w = b.getAttribute('data-jpk-mx');
+    if (w === 'prev' || w === 'next') { shiftMonth(w === 'prev' ? -1 : 1, false); return; }
+    if (w === 'today') { goToday(); return; }
+    if (w === 'retry') { monthLoad(true); focusSel(); return; }
+    var k = b.getAttribute('data-jpk-md'); if (!k) return;
+    var ev = t.closest && t.closest('[data-jpk-mev]');
+    selectDay(k, ev ? +ev.getAttribute('data-jpk-mev') : null);
+  }
+  function monthKey(e, t, k, single) {
+    var stopIt = function () { e.preventDefault(); e.stopImmediatePropagation(); };
+    if (k === 'Escape') { stopIt(); closeList(true); return; }
+    if (k === 'Tab') { trap(e); return; }
+    var cell = t && t.closest ? t.closest('[data-jpk-md]') : null, d = dayOf(MO.sel) || new Date();
+    var step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[k];
+    if (cell && step) { stopIt(); selectDay(ymd(addD(d, step)), null); return; }
+    if (cell && (k === 'Home' || k === 'End')) { stopIt(); selectDay(ymd(addD(d, k === 'Home' ? -d.getDay() : 6 - d.getDay())), null); return; }
+    if (k === 'PageUp' || k === 'PageDown') { stopIt(); shiftMonth(k === 'PageUp' ? -1 : 1, true); focusSel(); return; }
+    if (single) { stopIt(); if (k === 't' || k === 'T') goToday(); return; }
+    if (k === 'Enter' || k === ' ') e.stopImmediatePropagation();
+  }
+  /* the Month button, first in the home calendar's day arrows */
+  function monthButton() {
+    var c = $('jpk-cal'), nv = c && c.querySelector('.jpk-cal-nav');
+    if (!nv || nv.querySelector('.jpk-mo-open') || !cal()) return;
+    var b = mk('button', 'jpk-mo-open', { type: 'button', 'data-jpk-pop': 'calMonth', title: 'See the whole month', 'aria-label': 'See the whole month', 'aria-haspopup': 'dialog' });
+    b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3M5.2 9h.6M7.7 9h.6M10.2 9h.6M5.2 11.2h.6M7.7 11.2h.6"/></svg><span>Month</span>';
+    nv.insertBefore(b, nv.firstChild);
+    var hd = c.querySelector('.jpk-cal-head'); if (hd) hd.classList.add('jpk-has-mo');
   }
 
   /* ============================ entry points on the page (one capture listener) ============================ */
@@ -14246,9 +14729,10 @@ window.JPK_SHELL = {
     if ((b = t.closest('#peek .dpop a.st-btn[target="_top"]'))) { if (spareAlertGo(b)) stop(); return; }
     if (peekOpen()) return;
     /* shell-made controls */
-    if ((b = t.closest('[data-jpk-pop]'))) { stop(); open(b.getAttribute('data-jpk-pop'), b); return; }
+    if ((b = t.closest('[data-jpk-pop]'))) { stop(); var pid = b.getAttribute('data-jpk-pop'); open(pid, b, pid === 'calMonth' ? { day: calDay() } : undefined); return; }
     if ((b = t.closest('[data-jpk-pk]'))) {
       stop(); var o = pkSpec(b); if (!o) return;
+      if (monthOpen() && E.root.contains(b)) ST.lastRow = b;
       if (peekRow(o, b)) { nav({ id: 'pk:' + b.getAttribute('data-jpk-pk'), how: 'peek', peek: o.type === 'rp' ? 'record' : o.type }); return; }
       leave(o.href || (o.type === 'contract' ? recUrl('Contracts', o.id) : ''), 'pk:' + b.getAttribute('data-jpk-pk'));   /* no box could open: the record, as v6.0.3 */
       return;
@@ -14303,6 +14787,7 @@ window.JPK_SHELL = {
     }
     if (peekOpen()) return;                                         /* the page's own peeks keep their keys (Esc closes them) */
     if (ST.open) {
+      if (monthOpen()) { monthKey(e, t, k, single); return; }
       if (k === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); if (typing(t) && t.value) { t.value = ''; ST.q = ''; ST.shown = 0; paint(true); return; } closeList(true); return; }
       if (k === 'Tab') { trap(e); return; }
       if (typing(t)) return;
@@ -14324,7 +14809,7 @@ window.JPK_SHELL = {
     }
   }
   function trap(e) {
-    var f = qa('button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])', E.panel).filter(function (n) { return !n.hidden && n.getClientRects().length > 0; });
+    var f = qa('button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])', E.panel).filter(function (n) { return !n.hidden && n.getClientRects().length > 0 && n.getAttribute('tabindex') !== '-1'; });
     if (!f.length) { e.preventDefault(); return; }
     var a = doc.activeElement, first = f[0], last = f[f.length - 1], within = E.panel.contains(a);
     if (e.shiftKey) { if (!within || a === first || a === E.t) { e.preventDefault(); last.focus(); } }
@@ -14351,6 +14836,8 @@ window.JPK_SHELL = {
   function unmountPop() {
     if (ST.open) closeList(false);
     if (frameOpen()) closeFrame(false);
+    qa('.jpk-mo-open').forEach(function (n) { n.parentNode.removeChild(n); });
+    qa('.jpk-has-mo').forEach(function (n) { n.classList.remove('jpk-has-mo'); });
     var b = doc.querySelector('.jpk-pop-switch'); if (b) { var prev = b.previousSibling; b.parentNode.removeChild(b); if (prev && prev.nodeType === 3 && prev.textContent === ' ') prev.parentNode.removeChild(prev); }
     doc.documentElement.removeAttribute('data-jpk-popouts');
   }
@@ -14361,7 +14848,8 @@ window.JPK_SHELL = {
     open: function (id, opener, o) { return open(id, opener || null, o); },
     close: function () { if (frameOpen()) closeFrame(true); else closePeekLayer(); closeList(true); },
     state: function () { return { open: ST.open, id: ST.id, count: ST.count, shown: ST.shown, view: ST.view.length, expect: ST.expect, error: ST.error, loading: ST.loading, query: ST.query, capped: ST.capped, demo: ST.demo, frame: frameOpen() ? (pk().querySelector('.jpk-frame').getAttribute('data-jpk-frame')) : null }; },
-    peekRow: peekRow, frame: frame, closeFrame: closeFrame, needsGo: needsGo, stripSelect: stripSelect, tileQuery: tileQuery, _unmount: unmountPop
+    peekRow: peekRow, frame: frame, closeFrame: closeFrame, needsGo: needsGo, stripSelect: stripSelect, tileQuery: tileQuery, _unmount: unmountPop,
+    month: function (day, opener) { return openMonth(opener || null, day); }, monthState: function () { return { open: monthOpen(), y: MO.y, m: MO.m, sel: MO.sel, status: MO.status, err: MO.err, n: MO.evs.length }; }
   };
   if (!ON) {
     var offBoot = function () { footerLink(); root.addEventListener('jpk:mounted', footerLink); };
@@ -14378,6 +14866,7 @@ window.JPK_SHELL = {
     if (doc.documentElement.getAttribute('data-jpk-popouts') === 'on') return;
     doc.documentElement.setAttribute('data-jpk-popouts', 'on');
     footerLink();
+    monthButton();
     var p = pk();
     if (p && !observed) try { new MutationObserver(onPeekChange).observe(p, { attributes: true, attributeFilter: ['hidden'] }); observed = true; } catch (e) {}
     try { var s = shell(); if (s && s.needs && s.needs.render) s.needs.render(); if (s && s.calendar && s.calendar.render) s.calendar.render(); if (s && s.cards && s.cards.render) s.cards.render(); } catch (e) {}
