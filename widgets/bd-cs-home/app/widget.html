@@ -10670,7 +10670,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.2.0 (v6.1.1 + S26 month calendar, softer popouts, Contract Band links, 22 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.3.0 (v6.2.0 + S26b add meetings from the calendar, 22 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11462,6 +11462,64 @@ html[data-jpk-popouts="on"] .jpk-mo-empty { display: block; padding: 22px 14px; 
   html[data-jpk-popouts="on"] .jpk-pop-chev, html[data-jpk-popouts="on"] .jpk-mo-cell, html[data-jpk-popouts="on"] .jpk-mo-grid { transition: none; }
 }
 </style>
+<style id="jpk-addmeeting-css">
+/* jpk-addmeeting.css v0.3.0 (S26b v6.3, 22 Oct 2026): the New meeting form in the month popout and the calendar's + Add meeting. */
+html[data-jpk-popouts="on"] .jpk-cal-add { font: inherit; font-size: var(--fs-md); font-weight: 600; padding: 0; margin-right: 6px; color: var(--accent-ink); background: none; border: 0; cursor: pointer; }
+html[data-jpk-popouts="on"] .jpk-cal-add:hover { text-decoration: underline; text-underline-offset: 3px; }
+html[data-jpk-popouts="on"] .jpk-cal-add:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+html[data-jpk-popouts="on"] .jpk-mo-newbtn[hidden], html[data-jpk-popouts="on"] .jpk-mo-add[hidden], html[data-jpk-popouts="on"] .jpk-mo-form[hidden],
+html[data-jpk-popouts="on"] .jpk-mo-view[hidden], html[data-jpk-popouts="on"] .jpk-mo-times[hidden], html[data-jpk-popouts="on"] .jpk-mo-res[hidden], html[data-jpk-popouts="on"] .jpk-mo-form [hidden] { display: none; }
+html[data-jpk-popouts="on"] .jpk-mo-newbtn { min-height: 34px; padding: 5px 14px 5px 11px; }
+html[data-jpk-popouts="on"] .jpk-mo-newbtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+html[data-jpk-popouts="on"] .jpk-mo-ol { margin-left: auto; }
+html[data-jpk-popouts="on"] .jpk-mo-dhead { display: flex; align-items: flex-start; gap: 10px; }
+html[data-jpk-popouts="on"] .jpk-mo-dhead > div { flex: 1 1 auto; min-width: 0; }
+html[data-jpk-popouts="on"] .jpk-mo-add { flex: none; margin-top: 1px; min-height: 30px; padding: 3px 12px; border-radius: 999px; cursor: pointer; font: inherit; font-size: var(--fs-sm); font-weight: 600;
+  color: var(--accent-ink); background: var(--surface); border: 1px solid var(--line-strong); transition: background .12s, border-color .12s, color .12s; }
+html[data-jpk-popouts="on"] .jpk-mo-add:hover { background: var(--accent); border-color: var(--accent); color: var(--jpk-on-accent); }
+html[data-jpk-popouts="on"] .jpk-mo-add:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+html[data-jpk-popouts="on"] .jpk-mo-form { display: grid; gap: 12px; }
+html[data-jpk-popouts="on"] .jpk-mo-fhead { display: flex; align-items: center; gap: 8px; }
+html[data-jpk-popouts="on"] .jpk-mo-fhead .jpk-mo-dh { flex: 1 1 auto; }
+html[data-jpk-popouts="on"] .jpk-mo-fhead .jpk-mo-dh:focus { outline: none; }
+html[data-jpk-popouts="on"] .jpk-mo-fx { flex: none; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+html[data-jpk-popouts="on"] .jpk-mo-fx:hover { background: var(--surface); color: var(--ink); }
+html[data-jpk-popouts="on"] .jpk-mo-fx svg, html[data-jpk-popouts="on"] .jpk-mo-lkc svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+html[data-jpk-popouts="on"] .jpk-mo-fl { display: grid; gap: 5px; min-width: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--ink-2); }
+html[data-jpk-popouts="on"] .jpk-mo-opt { font-weight: 400; color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-form :is(input[type="text"], input[type="date"], input[type="time"], input[type="search"], select, textarea) {
+  width: 100%; min-width: 0; min-height: 38px; padding: 7px 11px; font: inherit; font-size: var(--fs-md); font-weight: 400; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; box-sizing: border-box; transition: border-color .12s, box-shadow .12s; }
+html[data-jpk-popouts="on"] .jpk-mo-form textarea { resize: vertical; min-height: 72px; line-height: 1.4; }
+html[data-jpk-popouts="on"] .jpk-mo-form :is(input, select, textarea):focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--accent-soft); }
+html[data-jpk-popouts="on"] .jpk-mo-frow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: end; }
+html[data-jpk-popouts="on"] .jpk-mo-chk { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; font-size: var(--fs-md); color: var(--ink); cursor: pointer; }
+html[data-jpk-popouts="on"] .jpk-mo-chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+html[data-jpk-popouts="on"] .jpk-mo-lkf { position: relative; }
+html[data-jpk-popouts="on"] .jpk-mo-lkv:empty { display: none; }
+html[data-jpk-popouts="on"] .jpk-mo-lkc { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 4px 4px 4px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); font-size: var(--fs-md); font-weight: 600; }
+html[data-jpk-popouts="on"] .jpk-mo-lkc button { flex: none; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+html[data-jpk-popouts="on"] .jpk-mo-lkc button:hover { color: var(--bad); }
+html[data-jpk-popouts="on"] .jpk-mo-rk { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--accent-ink); }
+html[data-jpk-popouts="on"] .jpk-mo-rs { font-weight: 400; font-size: var(--fs-sm); color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-res { list-style: none; margin: 4px 0 0; padding: 4px; display: grid; gap: 2px; max-height: 236px; overflow: auto; border-radius: 12px; background: var(--surface); box-shadow: var(--jpk-pring), 0 12px 28px -10px rgba(16, 24, 40, .3); }
+html[data-jpk-popouts="on"] .jpk-mo-res button { width: 100%; display: grid; grid-template-columns: 62px minmax(0, 1fr); column-gap: 8px; align-items: baseline; padding: 8px 10px; border: 0; border-radius: 8px; background: none; text-align: left; cursor: pointer; font: inherit; font-size: var(--fs-md); color: var(--ink); }
+html[data-jpk-popouts="on"] .jpk-mo-res button:hover, html[data-jpk-popouts="on"] .jpk-mo-res button:focus-visible { background: var(--surface-2); outline: none; }
+html[data-jpk-popouts="on"] .jpk-mo-res .jpk-mo-rs { grid-column: 2; }
+html[data-jpk-popouts="on"] .jpk-mo-rnone { padding: 8px 10px; font-size: var(--fs-md); color: var(--muted); }
+html[data-jpk-popouts="on"] .jpk-mo-ferr { margin: 0; font-size: var(--fs-md); color: var(--bad); }
+html[data-jpk-popouts="on"] .jpk-mo-ferr:empty { display: none; }
+html[data-jpk-popouts="on"] .jpk-mo-facts { display: flex; justify-content: flex-end; gap: 8px; }
+html[data-jpk-popouts="on"] .jpk-mo-facts button[type="submit"]:disabled { opacity: .7; cursor: progress; }
+html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); color: var(--muted); line-height: 1.4; }
+@media (max-width: 640px) {
+  html[data-jpk-popouts="on"] .jpk-mo-newbtn { order: 5; width: 100%; min-height: 44px; }
+  html[data-jpk-popouts="on"] .jpk-mo-form :is(input[type="text"], input[type="date"], input[type="time"], input[type="search"], select, textarea) { min-height: 44px; font-size: 16px; }
+  html[data-jpk-popouts="on"] .jpk-mo-facts .jpk-fbtn { flex: 1; min-height: 44px; }
+  html[data-jpk-popouts="on"] .jpk-mo-add { min-height: 36px; }
+  html[data-jpk-popouts="on"] .jpk-mo-day { background: var(--surface); }
+}
+</style>
 <script id="jpk-shell-config">
 /* jpk-shell-config (CS): Beau CS Home v6.1. Spec section 7 with the section 11 decisions (S21 order: Numbers before Boards;
    Up-next above the tiles on narrow screens; step 4 "Close out" counts cases), brought in line with Beau's mockup (v6.0.1 fix list):
@@ -11475,7 +11533,7 @@ html[data-jpk-popouts="on"] .jpk-mo-empty { display: block; padding: 22px 14px; 
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.2.0',
+  build: 'Beau CS Home v6.3.0',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -11490,7 +11548,7 @@ window.JPK_SHELL = {
     { id: 'approveCollections', label: 'Approve collections email', kind: 'agendaRecordOrTab', module: 'Collection_Requests', view: 'collectionsApproval', popout: 'collectionsApprove', icon: 'mail', tip: 'Opens the collection request waiting for approval, or the Needs Approval list when there are several.', popTip: 'Shows the collections emails waiting for approval in a box on this page.' },
     { id: 'logLostDevice', label: 'Log lost device', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab28', hideWhenMissing: true, icon: 'search', tip: 'Opens Lost Devices.' },
     { id: 'billingCheck', label: 'Admin Processes', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab24', profiles: ['Administrator'], icon: 'check', tip: 'Opens the Admin Processes tab.' },
-    { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'zoho', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens the new meeting form in Zoho CRM.' }
+    { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'zoho', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens the new meeting form in Zoho CRM.', popout: 'calMonthNew', popTip: 'Adds a meeting to your Zoho CRM calendar from a box on this page.' }
   ],
   needs: { cap: 8, lostDevices: false, renewalDays: 60 },
   cards: { renewalDays: 90, rows: 3, lostDevices: false },
@@ -12363,7 +12421,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.2.0',
+    build: 'Beau CS Home v6.3.0',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -13627,7 +13685,10 @@ window.JPK_SHELL = {
 })(typeof window !== 'undefined' ? window : this);
 </script>
 <script id="jpk-pop-js">
-/* jpk-pop.js v0.2.0 (S26 v6.2, 22 Oct 2026; v0.1.0 S24 v6.1): popouts for Beau CS Home.
+/* jpk-pop.js v0.3.0 (S26b v6.3, 22 Oct 2026; v0.2.0 S26 v6.2; v0.1.0 S24 v6.1): popouts for Beau CS Home.
+   v0.3.0: add a meeting from the calendar. The form sits in the month popout's day pane (New meeting in the bar, + Add meeting on
+   the day, + Add meeting under the home calendar, and the New meeting quick action). Save = one insertRecord on Events (owner = the
+   signed-in user, workflow trigger on); the home calendar and the month re-read after it. JPK_SHELL.popouts.create = false hides it.
    v0.2.0: the Month popout (Month button on the home calendar; a month grid and the chosen day's meetings, read with
    jpkCalendar.load for the six weeks on screen, read-only), new box markup for the softer design (jpk-pop-v2.css), and every
    contract or renewal box and list row links to the Contract Review Band (the contract record, where the band sits). Pairs with jpk-pop.css and jpk-shell.js (load after both).
@@ -13648,13 +13709,13 @@ window.JPK_SHELL = {
    Globals: window.JPKPop = { version, on, open, close, state, peekRow, frame, closeFrame, defs, read, needsGo, demoRows }. */
 (function (root) {
   'use strict';
-  var VERSION = '0.2.0';
+  var VERSION = '0.3.0';
   var doc = root.document;
   if (!doc) return;
 
   /* ============================ config and switch ============================ */
   var SC = root.JPK_SHELL || {};
-  var PDEF = { enabled: true, cap: 50, maxPages: 3, pageSize: 200, timeoutMs: 15000, inFlight: 2, contractPeek: 'workbox' };
+  var PDEF = { enabled: true, cap: 50, maxPages: 3, pageSize: 200, timeoutMs: 15000, inFlight: 2, contractPeek: 'workbox', create: true, meetingMin: 30, venue: 'Client location' };
   var P = {}, k;
   for (k in PDEF) P[k] = PDEF[k];
   if (SC.popouts && typeof SC.popouts === 'object') for (k in SC.popouts) if (Object.prototype.hasOwnProperty.call(PDEF, k)) P[k] = SC.popouts[k];
@@ -14058,6 +14119,7 @@ window.JPK_SHELL = {
     E.stale = r.querySelector('.jpk-pop-stale'); E.tools = r.querySelector('.jpk-pop-tools'); E.chips = r.querySelector('.jpk-pop-chips'); E.q = r.querySelector('.jpk-pop-q');
     E.list = r.querySelector('.jpk-pop-list'); E.state = r.querySelector('.jpk-pop-state'); E.shown = r.querySelector('.jpk-pop-shown'); E.more = r.querySelector('.jpk-pop-more'); E.open = r.querySelector('.jpk-pop-open');
     E.body = r.querySelector('.jpk-pop-body'); E.hd = r.querySelector('.jpk-pop-hd'); E.mo = r.querySelector('.jpk-mo');
+    E.mo.querySelector('.jpk-mo-day').insertAdjacentHTML('beforeend', FORM_HTML);
     var ol = E.mo.querySelector('.jpk-mo-ol'), sc = shell() && shell().config && shell().config.calendar;
     ol.href = String((sc && sc.outlookUrl) || 'https://outlook.office.com/calendar/view/day').replace(/\/view\/(day|week|workweek)\b/, '/view/month');
     r.addEventListener('click', onPopClick);
@@ -14110,7 +14172,8 @@ window.JPK_SHELL = {
   /* ============================ list popout: open, load, paint ============================ */
   function open(id, opener, o) {
     if (!active()) return false;
-    if (id === 'calMonth') return openMonth(opener, o && o.day);
+    if (id === 'calMonth') return openMonth(opener, o && o.day, o && o.add);
+    if (id === 'calMonthNew') return openMonth(opener, (o && o.day) || ymd(new Date()), true);
     var def = DEFS[id]; if (!def) return false;
     var pk = $('peek'); if (pk && !pk.hidden) return false;   /* entry points sit behind the peek while it is open */
     build();
@@ -14248,7 +14311,7 @@ window.JPK_SHELL = {
     ST.open = false; ST.seq++;
     release();
     E.root.hidden = true; E.root.removeAttribute('data-jpk-list'); E.list.innerHTML = '';
-    if (E.root.getAttribute('data-jpk-mode') === 'month') { E.root.removeAttribute('data-jpk-mode'); E.mo.hidden = true; MO.seq++; MO.hl = null; }
+    if (E.root.getAttribute('data-jpk-mode') === 'month') { E.root.removeAttribute('data-jpk-mode'); E.mo.hidden = true; MO.seq++; MO.hl = null; formClose(false); }
     if (!frameOpen()) guardOff();
     doc.documentElement.classList.remove('jpk-pop-showing');
     hideBack();
@@ -14478,10 +14541,13 @@ window.JPK_SHELL = {
     + '<button type="button" data-jpk-mx="next" aria-label="Next month" title="Next month (Page Down)"><svg viewBox="0 0 16 16" aria-hidden="true">' + NAV_SVG.next + '</svg></button></div>'
     + '<span class="jpk-mo-st" role="status"></span>'
     + '<span class="jpk-mo-key" aria-hidden="true"><span><i class="jpk-mo-lk"></i>Linked</span><span><i></i>Not linked</span></span>'
-    + '<a class="jpk-mo-ol" target="_blank" rel="noopener">Open Outlook ↗</a></div>'
+    + '<a class="jpk-mo-ol" target="_blank" rel="noopener">Open Outlook ↗</a>'
+    + '<button type="button" class="jpk-fbtn jpk-fbtn-p jpk-mo-newbtn" data-jpk-mx="new" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>New meeting</button></div>'
     + '<div class="jpk-mo-wrap"><div class="jpk-mo-cal"><div class="jpk-mo-dow" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>'
     + '<div class="jpk-mo-grid" role="group"></div></div>'
-    + '<section class="jpk-mo-day" aria-label="Meetings on the chosen day"><h3 class="jpk-mo-dh"></h3><p class="jpk-mo-dm"></p><ul class="jpk-mo-list"></ul></section></div>'
+    + '<section class="jpk-mo-day" aria-label="Meetings on the chosen day"><div class="jpk-mo-view">'
+    + '<div class="jpk-mo-dhead"><div><h3 class="jpk-mo-dh"></h3><p class="jpk-mo-dm"></p></div><button type="button" class="jpk-mo-add" data-jpk-mx="new" hidden>+ Add meeting</button></div>'
+    + '<ul class="jpk-mo-list"></ul></div></section></div>'
     + '</div>';
   function cal() { var c = root.jpkCalendar; return c && typeof c.load === 'function' ? c : null; }
   function monthOpen() { return !!(ST.open && ST.id === 'calMonth'); }
@@ -14506,7 +14572,7 @@ window.JPK_SHELL = {
     Object.keys(m).forEach(function (k) { m[k].sort(function (a, b) { return (a.allDay === b.allDay ? 0 : a.allDay ? -1 : 1) || evAt(a.start) - evAt(b.start); }); });
     return m;
   }
-  function openMonth(opener, day) {
+  function openMonth(opener, day, add) {
     if (!active() || !cal()) return false;
     var p = $('peek'); if (p && !p.hidden) return false;
     build();
@@ -14521,9 +14587,12 @@ window.JPK_SHELL = {
     E.mo.hidden = false; E.root.hidden = false;
     doc.documentElement.classList.add('jpk-pop-showing');
     place(); hold(); guardOn();
+    var canAdd = canCreate();
+    qa('[data-jpk-mx="new"]', E.mo).forEach(function (n) { n.hidden = !canAdd; });
     monthLoad(false);
     focusSel();
-    nav({ id: 'calMonth', how: 'popout', popout: 'calMonth' });
+    if (add && canAdd) formOpen(MO.sel);
+    nav({ id: add ? 'calMonthNew' : 'calMonth', how: 'popout', popout: 'calMonth' });
     return true;
   }
   function monthLoad(force) {
@@ -14590,6 +14659,7 @@ window.JPK_SHELL = {
   function selectDay(k, hl) {
     var d = dayOf(k); if (!d) return;
     MO.sel = k; MO.hl = hl == null ? null : hl;
+    if (FM.open) { var fd = FM.el.querySelector('[name="d"]'); if (fd) fd.value = k; }
     if (d.getMonth() !== MO.m || d.getFullYear() !== MO.y) { MO.y = d.getFullYear(); MO.m = d.getMonth(); monthLoad(false); } else paintMonth();
     focusSel();
     if (MO.hl != null) { var it = E.mo.querySelector('[data-jpk-mi="' + MO.hl + '"]'); if (it) { try { it.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); } catch (e) {} } }
@@ -14606,12 +14676,24 @@ window.JPK_SHELL = {
     if (w === 'prev' || w === 'next') { shiftMonth(w === 'prev' ? -1 : 1, false); return; }
     if (w === 'today') { goToday(); return; }
     if (w === 'retry') { monthLoad(true); focusSel(); return; }
+    if (w === 'new') { formOpen(MO.sel); return; }
+    if (w === 'fcancel') { formClose(true); return; }
+    if (w === 'pick') { formPick(+b.getAttribute('data-i')); return; }
+    if (w === 'unpick') { FM.link = null; formLinkPaint(); var q = FM.el.querySelector('[name="q"]'); if (q) q.focus(); return; }
     var k = b.getAttribute('data-jpk-md'); if (!k) return;
     var ev = t.closest && t.closest('[data-jpk-mev]');
     selectDay(k, ev ? +ev.getAttribute('data-jpk-mev') : null);
   }
   function monthKey(e, t, k, single) {
     var stopIt = function () { e.preventDefault(); e.stopImmediatePropagation(); };
+    if (FM.open && t && FM.el.contains(t)) {
+      if (k === 'Escape') { stopIt(); if (FM.res.length) { FM.res = []; formResPaint(); FM.el.querySelector('[name="q"]').focus(); return; } formClose(true); return; }
+      if (k === 'Tab') { trap(e); return; }
+      if (k === 'ArrowDown' && t.name === 'q' && FM.res.length) { stopIt(); var r0 = FM.el.querySelector('[data-jpk-mx="pick"]'); if (r0) r0.focus(); return; }
+      if ((k === 'ArrowDown' || k === 'ArrowUp') && t.getAttribute('data-jpk-mx') === 'pick') { stopIt(); var all = qa('[data-jpk-mx="pick"]', FM.el), ix = all.indexOf(t) + (k === 'ArrowDown' ? 1 : -1); if (ix < 0) FM.el.querySelector('[name="q"]').focus(); else if (all[ix]) all[ix].focus(); return; }
+      e.stopImmediatePropagation();                       /* the page's single-key shortcuts never see form typing */
+      return;
+    }
     if (k === 'Escape') { stopIt(); closeList(true); return; }
     if (k === 'Tab') { trap(e); return; }
     var cell = t && t.closest ? t.closest('[data-jpk-md]') : null, d = dayOf(MO.sel) || new Date();
@@ -14630,6 +14712,196 @@ window.JPK_SHELL = {
     b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3M5.2 9h.6M7.7 9h.6M10.2 9h.6M5.2 11.2h.6M7.7 11.2h.6"/></svg><span>Month</span>';
     nv.insertBefore(b, nv.firstChild);
     var hd = c.querySelector('.jpk-cal-head'); if (hd) hd.classList.add('jpk-has-mo');
+    var ft = c.querySelector('.jpk-cal-foot');
+    if (ft && canCreate() && !ft.querySelector('.jpk-cal-add')) {
+      var a = mk('button', 'jpk-cal-add', { type: 'button', 'data-jpk-pop': 'calMonth', 'data-jpk-new': '1', 'aria-haspopup': 'dialog', title: 'Add a meeting to your Zoho CRM calendar' });
+      a.textContent = '+ Add meeting';
+      ft.insertBefore(a, ft.firstChild);
+    }
+  }
+
+  /* ============================ add a meeting (v0.3.0) ============================
+     One insertRecord on Events with: Event_Title, Start_DateTime, End_DateTime, All_day, Meeting_Venue__s (required by Zoho; the
+     synced meetings use "Client location"), Venue, Description, What_Id + $se_module (account) and/or Who_Id (contact). Owner is
+     the signed-in user (Zoho's default for a record made from a widget). The account and contact search is read-only COQL (8 each).
+     Preview and ?preview=1 never write: the meeting is shown in the month for this visit only. */
+  var VENUES = ['Client location', 'In-office', 'Online'];
+  var FM = { open: false, el: null, link: null, res: [], seq: 0, busy: false, timer: null };
+  var FORM_HTML = '<form class="jpk-mo-form" hidden novalidate aria-labelledby="jpk-mo-fh">'
+    + '<div class="jpk-mo-fhead"><h3 id="jpk-mo-fh" class="jpk-mo-dh" tabindex="-1">New meeting</h3><button type="button" class="jpk-mo-fx" data-jpk-mx="fcancel" aria-label="Cancel the new meeting" title="Cancel (Esc)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>'
+    + '<label class="jpk-mo-fl">Title<input name="t" type="text" maxlength="255" autocomplete="off" placeholder="e.g. Polk County renewal call" required></label>'
+    + '<div class="jpk-mo-frow"><label class="jpk-mo-fl">Date<input name="d" type="date" required></label><label class="jpk-mo-chk"><input name="ad" type="checkbox"> All day</label></div>'
+    + '<div class="jpk-mo-frow jpk-mo-times"><label class="jpk-mo-fl">Starts<input name="s" type="time" step="300" required></label><label class="jpk-mo-fl">Ends<input name="e" type="time" step="300" required></label></div>'
+    + '<div class="jpk-mo-frow"><label class="jpk-mo-fl">Meeting type<select name="mv"></select></label></div>'
+    + '<label class="jpk-mo-fl"><span>Location or link <span class="jpk-mo-opt">optional</span></span><input name="v" type="text" maxlength="255" autocomplete="off" placeholder="Room, address or Teams link"></label>'
+    + '<div class="jpk-mo-fl jpk-mo-lkf"><span id="jpk-mo-lkl">Link to an account or contact <span class="jpk-mo-opt">optional</span></span><div class="jpk-mo-lkv"></div>'
+    + '<input name="q" type="search" autocomplete="off" placeholder="Search accounts and contacts" aria-labelledby="jpk-mo-lkl" aria-controls="jpk-mo-res"><ul class="jpk-mo-res" id="jpk-mo-res" role="listbox" aria-label="Matches" hidden></ul></div>'
+    + '<label class="jpk-mo-fl"><span>Notes <span class="jpk-mo-opt">optional</span></span><textarea name="n" rows="3" maxlength="32000"></textarea></label>'
+    + '<p class="jpk-mo-ferr" role="alert"></p>'
+    + '<div class="jpk-mo-facts"><button type="button" class="jpk-fbtn" data-jpk-mx="fcancel">Cancel</button><button type="submit" class="jpk-fbtn jpk-fbtn-p">Add meeting</button></div>'
+    + '<p class="jpk-mo-fine">Saved to your Zoho CRM calendar. Invite people from Outlook or Zoho; the Outlook sync decides whether it shows in Outlook.</p>'
+    + '</form>';
+  function canCreate() { return P.create !== false && (preview() || !!(root.ZOHO && root.ZOHO.CRM && root.ZOHO.CRM.API && typeof root.ZOHO.CRM.API.insertRecord === 'function')); }
+  function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function atTime(day, t) { var dd = dayOf(day), m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); if (!dd || !m) return null; return new Date(dd.getFullYear(), dd.getMonth(), dd.getDate(), +m[1], +m[2], 0); }
+  function isoAt(d) { var o = -d.getTimezoneOffset(), sg = o >= 0 ? '+' : '-'; o = Math.abs(o); return ymd(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00' + sg + pad(Math.floor(o / 60)) + ':' + pad(o % 60); }
+  /* the next half hour today (at least 15 minutes out), else 9:00 */
+  function defaultStart(day) {
+    var now = new Date();
+    if (day === ymd(now)) { var t = new Date(now.getTime() + 15 * 60000); t.setSeconds(0, 0); t.setMinutes(t.getMinutes() + (30 - t.getMinutes() % 30) % 30); if (ymd(t) === day && t.getHours() < 23) return hm(t); }
+    return '09:00';
+  }
+  function formEl() {
+    if (FM.el) return FM.el;
+    var f = FM.el = E.mo.querySelector('.jpk-mo-form');
+    f.querySelector('[name="mv"]').innerHTML = VENUES.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('');
+    f.addEventListener('submit', function (ev) { ev.preventDefault(); formSave(); });
+    f.addEventListener('input', function (ev) {
+      var n = ev.target && ev.target.name;
+      if (n === 'q') formSearch(ev.target.value);
+      if (n === 's') { var s = atTime('2000-01-01', ev.target.value); if (s && FM.dur != null) { var en = new Date(s.getTime() + FM.dur * 60000); if (ymd(en) === '2000-01-01') f.querySelector('[name="e"]').value = hm(en); } }
+      if (n === 'e') { var a = atTime('2000-01-01', f.querySelector('[name="s"]').value), b = atTime('2000-01-01', ev.target.value); if (a && b && b > a) FM.dur = (b - a) / 60000; }
+      if (n === 'ad') formAllDay();
+      formErr('');
+    });
+    f.addEventListener('change', function (ev) { if (ev.target && ev.target.name === 'ad') formAllDay(); });
+    return f;
+  }
+  function formAllDay() { var f = FM.el, on = f.querySelector('[name="ad"]').checked; f.querySelector('.jpk-mo-times').hidden = on; }
+  function formErr(m) { var p = FM.el && FM.el.querySelector('.jpk-mo-ferr'); if (p) p.textContent = m || ''; }
+  function formOpen(day) {
+    if (!monthOpen() || !canCreate()) return;
+    var f = formEl(), first = !FM.open;
+    if (first) {
+      f.reset(); FM.link = null; FM.res = []; FM.busy = false; FM.dur = P.meetingMin || 30;
+      f.querySelector('[name="mv"]').value = VENUES.indexOf(P.venue) >= 0 ? P.venue : VENUES[0];
+      var s = defaultStart(day), st = atTime(day, s);
+      f.querySelector('[name="s"]').value = s;
+      f.querySelector('[name="e"]').value = st ? hm(new Date(st.getTime() + FM.dur * 60000)) : '09:30';
+      formAllDay(); formLinkPaint(); formResPaint(); formErr('');
+    }
+    f.querySelector('[name="d"]').value = day;
+    FM.open = true; f.hidden = false;
+    E.mo.querySelector('.jpk-mo-view').hidden = true;
+    E.mo.classList.add('jpk-mo-adding');
+    var t = f.querySelector('[name="t"]');
+    try { f.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    try { t.focus({ preventScroll: false }); } catch (e) { t.focus(); }
+  }
+  function formClose(refocus) {
+    if (!FM.open) return;
+    FM.open = false; FM.seq++; clearTimeout(FM.timer);
+    if (FM.el) FM.el.hidden = true;
+    if (E.mo) { E.mo.querySelector('.jpk-mo-view').hidden = false; E.mo.classList.remove('jpk-mo-adding'); }
+    if (refocus) { var a = E.mo && E.mo.querySelector('.jpk-mo-add:not([hidden])'); if (a) a.focus(); else focusSel(); }
+  }
+  function formValues() {
+    var f = FM.el, g = function (n) { var x = f.querySelector('[name="' + n + '"]'); return x ? (x.type === 'checkbox' ? x.checked : String(x.value || '').trim()) : ''; };
+    return { title: g('t'), day: g('d'), allDay: g('ad'), start: g('s'), end: g('e'), mv: g('mv'), venue: g('v'), notes: g('n'), link: FM.link };
+  }
+  /* -> { data } or { error, field } */
+  function formData(v) {
+    if (!v.title) return { error: 'Give the meeting a title.', field: 't' };
+    if (!dayOf(v.day)) return { error: 'Pick a date.', field: 'd' };
+    var s, e;
+    if (v.allDay) { var d0 = dayOf(v.day); s = d0; e = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate(), 23, 59, 0); }
+    else {
+      s = atTime(v.day, v.start); e = atTime(v.day, v.end);
+      if (!s) return { error: 'Pick a start time.', field: 's' };
+      if (!e) return { error: 'Pick an end time.', field: 'e' };
+      if (e <= s) return { error: 'The meeting has to end after it starts.', field: 'e' };
+    }
+    var data = { Event_Title: v.title.slice(0, 255), Start_DateTime: isoAt(s), End_DateTime: isoAt(e), All_day: !!v.allDay, Meeting_Venue__s: v.mv || VENUES[0] };
+    if (v.venue) data.Venue = v.venue.slice(0, 255);
+    if (v.notes) data.Description = v.notes;
+    var L = v.link;
+    if (L && L.type === 'account') { data.What_Id = { id: String(L.id) }; data.$se_module = 'Accounts'; }
+    if (L && L.type === 'contact') { data.Who_Id = { id: String(L.id) }; if (L.accountId) { data.What_Id = { id: String(L.accountId) }; data.$se_module = 'Accounts'; } }
+    return { data: data, s: s, e: e };
+  }
+  var CREATES = [];   /* test hook: every insert this file asked for */
+  function insertEvent(data) {
+    CREATES.push(data);
+    if (preview()) return new Promise(function (res) { setTimeout(function () { res('preview-' + CREATES.length); }, 250); });
+    return timeout(root.ZOHO.CRM.API.insertRecord({ Entity: 'Events', APIData: data, Trigger: ['workflow'] }), 20000).then(function (r) {
+      var x = r && r.data && r.data[0];
+      if (x && String(x.code).toUpperCase() === 'SUCCESS' && x.details && x.details.id) return String(x.details.id);
+      var why = x && (x.message || x.code) || 'Zoho did not say why';
+      if (x && x.details && x.details.api_name) why += ' (' + x.details.api_name + ')';
+      throw new Error(why);
+    });
+  }
+  function formSave() {
+    if (FM.busy) return;
+    var v = formValues(), out = formData(v);
+    if (out.error) { formErr(out.error); var fx = FM.el.querySelector('[name="' + out.field + '"]'); if (fx) fx.focus(); return; }
+    FM.busy = true; formErr('');
+    var btn = FM.el.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Adding…';
+    var done = function () { FM.busy = false; btn.disabled = false; btn.textContent = 'Add meeting'; };
+    insertEvent(out.data).then(function (id) {
+      done();
+      var L = v.link || {};
+      var ev = { id: id, title: out.data.Event_Title, start: out.data.Start_DateTime, end: out.data.End_DateTime, allDay: !!v.allDay, venue: v.venue || '', joinUrl: /^https?:\/\//i.test(v.venue) ? v.venue : '',
+        accountId: L.type === 'account' ? String(L.id) : L.accountId ? String(L.accountId) : '', accountName: L.type === 'account' ? L.name : L.accountName || '',
+        contactId: L.type === 'contact' ? String(L.id) : '', contactName: L.type === 'contact' ? L.name : '', attendees: [], recurring: false, recurrence: '', added: true };
+      var key = out.s.getFullYear() + '-' + out.s.getMonth();
+      if (MO.cache[key] && MO.cache[key].indexOf(ev) < 0) { MO.cache[key] = MO.cache[key].concat([ev]).sort(function (a, b) { return evAt(a.start) - evAt(b.start); }); }
+      formClose(false);
+      var k = ymd(out.s);
+      MO.y = out.s.getFullYear(); MO.m = out.s.getMonth(); MO.sel = k;
+      monthLoad(false);
+      var list = byDay(monthEvents())[k] || []; MO.hl = list.indexOf(list.filter(function (x) { return x === ev; })[0]); if (MO.hl < 0) MO.hl = null;
+      paintMonth(); focusSel();
+      toast('Meeting added: ' + ev.title + (preview() ? ' (preview, not saved)' : ''));
+      nav({ id: 'calMonth:add', how: 'create', module: 'Events', recId: id });
+      if (!preview()) {
+        setTimeout(function () { if (monthOpen() && MO.y === out.s.getFullYear() && MO.m === out.s.getMonth()) monthLoad(true); }, 1200);   /* the real record, with Zoho's own values */
+        try { var s = shell(); if (s && s.calendar && s.calendar.reload) s.calendar.reload(); } catch (e) {}
+      }
+    }, function (e) { done(); formErr('Zoho did not save the meeting: ' + errText(e) + '. Nothing was added.'); });
+  }
+  /* account and contact search: read-only COQL, 8 of each; preview searches the accounts the page loaded */
+  function formSearch(term) {
+    clearTimeout(FM.timer);
+    var t = String(term || '').trim(), seq = ++FM.seq;
+    if (t.length < 2) { FM.res = []; formResPaint(); return; }
+    FM.timer = setTimeout(function () {
+      var q = t.replace(/'/g, "''").replace(/[%_]/g, ' ');
+      var run;
+      if (preview()) {
+        var b = bd(), D = b && b.D, pool = [].concat((D && D.accounts) || [], (D && D.sirona) || [], (D && D.tdp) || []), lt = t.toLowerCase();
+        run = Promise.resolve(pool.filter(function (a) { return String(a.Account_Name || '').toLowerCase().indexOf(lt) >= 0; }).slice(0, 8).map(function (a) { return { type: 'account', id: String(a.id), name: a.Account_Name }; }));
+      } else {
+        var pa = read("select id, Account_Name from Accounts where Account_Name like '%" + q + "%' order by Account_Name asc", 1).then(function (r) { return r.rows.slice(0, 8).map(function (a) { return { type: 'account', id: String(a.id), name: a.Account_Name }; }); }, function () { return []; });
+        var pc = read("select id, Full_Name, Email, Account_Name from Contacts where ((Last_Name like '%" + q + "%' or First_Name like '%" + q + "%') or Email like '%" + q + "%') order by Last_Name asc", 1).then(function (r) {
+          return r.rows.slice(0, 8).map(function (c) { var acc = c.Account_Name; return { type: 'contact', id: String(c.id), name: c.Full_Name || c.Email || 'Contact', email: c.Email || '', accountId: acc && acc.id ? String(acc.id) : '', accountName: acc && acc.name || '' }; });
+        }, function () { return []; });
+        run = Promise.all([pa, pc]).then(function (x) { return x[0].concat(x[1]); });
+      }
+      run.then(function (rows) { if (seq !== FM.seq || !FM.open) return; FM.res = rows; formResPaint(rows.length ? '' : 'No matches.'); });
+    }, 250);
+  }
+  function formResPaint(empty) {
+    var ul = FM.el && FM.el.querySelector('.jpk-mo-res'); if (!ul) return;
+    ul.hidden = !FM.res.length && !empty;
+    ul.innerHTML = FM.res.length ? FM.res.map(function (r, i) {
+      return '<li><button type="button" role="option" data-jpk-mx="pick" data-i="' + i + '"><span class="jpk-mo-rk">' + (r.type === 'account' ? 'Account' : 'Contact') + '</span><span class="jpk-mo-rn">' + esc(r.name) + '</span>'
+        + (r.type === 'contact' && (r.accountName || r.email) ? '<span class="jpk-mo-rs">' + esc(r.accountName || r.email) + '</span>' : '') + '</button></li>';
+    }).join('') : empty ? '<li class="jpk-mo-rnone">' + esc(empty) + '</li>' : '';
+  }
+  function formPick(i) {
+    var r = FM.res[i]; if (!r) return;
+    FM.link = r; FM.res = [];
+    var q = FM.el.querySelector('[name="q"]'); q.value = '';
+    formResPaint(); formLinkPaint();
+    var x = FM.el.querySelector('[data-jpk-mx="unpick"]'); if (x) x.focus();
+  }
+  function formLinkPaint() {
+    var box = FM.el.querySelector('.jpk-mo-lkv'), q = FM.el.querySelector('[name="q"]'), L = FM.link;
+    q.hidden = !!L;
+    box.innerHTML = L ? '<span class="jpk-mo-lkc"><span class="jpk-mo-rk">' + (L.type === 'account' ? 'Account' : 'Contact') + '</span>' + esc(L.name)
+      + (L.type === 'contact' && L.accountName ? '<span class="jpk-mo-rs">and ' + esc(L.accountName) + '</span>' : '')
+      + '<button type="button" data-jpk-mx="unpick" aria-label="Remove the link to ' + esc(L.name) + '" title="Remove"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></span>' : '';
   }
 
   /* ============================ entry points on the page (one capture listener) ============================ */
@@ -14729,7 +15001,7 @@ window.JPK_SHELL = {
     if ((b = t.closest('#peek .dpop a.st-btn[target="_top"]'))) { if (spareAlertGo(b)) stop(); return; }
     if (peekOpen()) return;
     /* shell-made controls */
-    if ((b = t.closest('[data-jpk-pop]'))) { stop(); var pid = b.getAttribute('data-jpk-pop'); open(pid, b, pid === 'calMonth' ? { day: calDay() } : undefined); return; }
+    if ((b = t.closest('[data-jpk-pop]'))) { stop(); var pid = b.getAttribute('data-jpk-pop'); open(pid, b, pid === 'calMonth' ? { day: calDay(), add: b.hasAttribute('data-jpk-new') } : undefined); return; }
     if ((b = t.closest('[data-jpk-pk]'))) {
       stop(); var o = pkSpec(b); if (!o) return;
       if (monthOpen() && E.root.contains(b)) ST.lastRow = b;
@@ -14836,7 +15108,7 @@ window.JPK_SHELL = {
   function unmountPop() {
     if (ST.open) closeList(false);
     if (frameOpen()) closeFrame(false);
-    qa('.jpk-mo-open').forEach(function (n) { n.parentNode.removeChild(n); });
+    qa('.jpk-mo-open, .jpk-cal-add').forEach(function (n) { n.parentNode.removeChild(n); });
     qa('.jpk-has-mo').forEach(function (n) { n.classList.remove('jpk-has-mo'); });
     var b = doc.querySelector('.jpk-pop-switch'); if (b) { var prev = b.previousSibling; b.parentNode.removeChild(b); if (prev && prev.nodeType === 3 && prev.textContent === ' ') prev.parentNode.removeChild(prev); }
     doc.documentElement.removeAttribute('data-jpk-popouts');
@@ -14849,7 +15121,7 @@ window.JPK_SHELL = {
     close: function () { if (frameOpen()) closeFrame(true); else closePeekLayer(); closeList(true); },
     state: function () { return { open: ST.open, id: ST.id, count: ST.count, shown: ST.shown, view: ST.view.length, expect: ST.expect, error: ST.error, loading: ST.loading, query: ST.query, capped: ST.capped, demo: ST.demo, frame: frameOpen() ? (pk().querySelector('.jpk-frame').getAttribute('data-jpk-frame')) : null }; },
     peekRow: peekRow, frame: frame, closeFrame: closeFrame, needsGo: needsGo, stripSelect: stripSelect, tileQuery: tileQuery, _unmount: unmountPop,
-    month: function (day, opener) { return openMonth(opener || null, day); }, monthState: function () { return { open: monthOpen(), y: MO.y, m: MO.m, sel: MO.sel, status: MO.status, err: MO.err, n: MO.evs.length }; }
+    month: function (day, opener, add) { return openMonth(opener || null, day, add); }, form: function () { return FM.open ? formValues() : null; }, creates: function () { return CREATES; }, monthState: function () { return { open: monthOpen(), y: MO.y, m: MO.m, sel: MO.sel, status: MO.status, err: MO.err, n: MO.evs.length }; }
   };
   if (!ON) {
     var offBoot = function () { footerLink(); root.addEventListener('jpk:mounted', footerLink); };
