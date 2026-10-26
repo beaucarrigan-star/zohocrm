@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EM Margins</title>
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-patterns-v3.css">
+<link rel="stylesheet" href="margins.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Equipment</div>
+      <h1>EM Margins</h1>
+      <div class="muted sm sub">View only. Customer rate against vendor cost for every verified contract line.</div>
+    </div>
+    <div class="actions">
+      <label class="tool-chk" for="hide-test"><input type="checkbox" id="hide-test" checked> Hide TEST</label>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="theme" aria-label="Theme: Auto">Theme: Auto</button>
+    </div>
+  </header>
+  <div id="demo-banner" class="demo-banner" role="note" hidden><b>Demo data.</b> These rows are made up. Inside Zoho this page reads EM Margin.</div>
+  <div id="load-err" class="err-box" role="alert" hidden></div>
+
+  <section class="totals" aria-label="Totals"><div class="tiles" id="totals"></div></section>
+
+  <div id="tabs"></div>
+
+  <section class="card" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;border-top:0">
+    <div data-pane="margins" class="pane">
+      <div class="toolbar">
+        <label>Vendor <select id="f-vendor" aria-label="Filter by vendor"><option value="">All vendors</option></select></label>
+        <label>Device <select id="f-device" aria-label="Filter by device"><option value="">All devices</option></select></label>
+        <span class="tierpills" id="f-tiers" role="group" aria-label="Filter by tier"></span>
+      </div>
+      <div id="t-margins"></div>
+    </div>
+    <div data-pane="waiting" class="pane">
+      <div id="t-waiting"></div>
+    </div>
+    <div data-pane="customers" class="pane">
+      <div id="t-customers"></div>
+    </div>
+  </section>
+  <p class="foot" id="foot"></p>
+</main>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="margins-model.js"></script>
+<script src="demo-data.js"></script>
+<script src="margins.js"></script>
+<script src="jpk-intro.js"
+  data-what="Margin on every verified customer contract line: customer rate vs vendor cost, lowest first, plus what is still waiting."
+  data-fed="EM Margin rows (filled automatically when a customer contract and its vendor pricing contract are verified in Contract Review)."
+  data-feeds="Nothing (read-only). Account margin fields are filled by the same automation."></script>
+</body>
+</html>
