@@ -10760,7 +10760,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.9.0 (v6.8.0 + S33 declutter, 23 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.10.0 (v6.9.0 + S34 inbound triage actions, 26 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11644,7 +11644,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.9.0',
+  build: 'Beau CS Home v6.10.0',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -12572,7 +12572,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.9.0',
+    build: 'Beau CS Home v6.10.0',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -18535,5 +18535,614 @@ html[data-s33="on"] #s28-support .s28-view { width: auto; }
 
 </script>
 <!-- jpk-s33:end -->
+<!-- jpk-s34:start -->
+<style id="jpk-s34-css">
+/* jpk-s34.css (S34 v6.10.0, 26 Oct 2026): Inbound triage actions on the Support tab. Pairs with jpk-s34.js.
+   Everything is scoped to the Inbound triage view (#s28-p-triage), the account search box (#s34-acct) and the toast (#s34-toast).
+   ?s34=0 turns the layer off and the view is the read-only v6.9.0 list again. */
+
+/* ---------- the bar above the table: counter, select all, bulk buttons ---------- */
+#s28-p-triage .s34-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 18px 10px; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); color: var(--ink-2); }
+#s28-p-triage .s34-bar[hidden] { display: none; }
+#s28-p-triage .s34-count { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+#s28-p-triage .s34-count b { color: var(--ink); font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
+#s28-p-triage .s34-count .s34-zero { color: var(--good); }
+#s28-p-triage .s34-count .s34-dim { color: var(--muted); }
+#s28-p-triage .s34-sp { flex: 1 1 auto; }
+#s28-p-triage .s34-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+#s28-p-triage .s34-bulk { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+#s28-p-triage .s34-bulk[hidden], #s28-p-triage .s34-all[hidden] { display: none; }
+
+/* ---------- buttons (rows, bar, popout) ---------- */
+.s34-btn { font: inherit; font-size: var(--fs-sm); font-weight: 600; line-height: 1.2; padding: 4px 10px; min-height: 28px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; white-space: nowrap; }
+.s34-btn:hover { background: var(--surface-2); }
+.s34-btn:focus-visible, .s34-lnk:focus-visible, .s34-chk:focus-visible { outline: 2px solid var(--focus, var(--jp)); outline-offset: 2px; }
+.s34-btn.s34-pri { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.s34-btn.s34-pri:hover { opacity: .9; }
+.s34-btn.s34-sure { background: var(--warn-tint); border-color: var(--warn); color: var(--ink); }
+.s34-btn[disabled] { opacity: .45; cursor: default; }
+.s34-lnk { font: inherit; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); background: none; border: 0; padding: 0 2px; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.s34-lnk:hover { color: var(--ink); }
+
+/* ---------- table cells ---------- */
+#s28-p-triage .s28-t td.s34-selc, #s28-p-triage .s28-t th.s34-selc { width: 28px; padding-right: 0; text-align: center; }
+#s28-p-triage .s34-chk { width: 16px; height: 16px; margin: 2px 0 0; cursor: pointer; accent-color: var(--ink); }
+#s28-p-triage .s28-t td.s34-actc { white-space: nowrap; text-align: right; }
+#s28-p-triage .s34-acts { display: inline-flex; gap: 6px; }
+#s28-p-triage .s34-acct { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+#s28-p-triage .s34-done { display: block; font-size: var(--fs-xs); color: var(--muted); text-align: right; line-height: 1.4; }
+#s28-p-triage .s34-done b { color: var(--ink-2); font-weight: 600; }
+#s28-p-triage .s28-t tr.s34-on td { background: var(--jp-tint); }
+#s28-p-triage .s28-t tr.s34-busy { opacity: .5; }
+#s28-p-triage .s28-t tr.s34-gone td { opacity: .55; }
+
+/* ---------- popout actions ---------- */
+.s28-pop .s34-px { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 10px; margin-top: 4px; border-top: 1px solid var(--line); }
+.s28-pop .s34-px .s34-pxn { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--muted); }
+
+/* ---------- account search box ---------- */
+#s34-acct { position: fixed; z-index: 2147483000; width: 300px; max-width: calc(100vw - 24px); padding: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow, 0 8px 24px rgba(0,0,0,.18)); font-size: var(--fs-sm); }
+#s34-acct[hidden] { display: none; }
+#s34-acct label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
+#s34-acct input { box-sizing: border-box; width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); }
+#s34-acct ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 240px; overflow: auto; }
+#s34-acct li button { display: block; width: 100%; text-align: left; font: inherit; padding: 6px 8px; border: 0; border-radius: 6px; background: none; color: var(--ink); cursor: pointer; }
+#s34-acct li button:hover, #s34-acct li button:focus-visible { background: var(--surface-2); outline: none; }
+#s34-acct li .s34-ty { display: block; font-size: var(--fs-xs); color: var(--muted); }
+#s34-acct .s34-msg { margin: 8px 2px 0; font-size: var(--fs-xs); color: var(--muted); }
+#s34-acct .s34-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+
+/* ---------- toast with Undo ---------- */
+#s34-toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 2147483001; display: flex; align-items: center; gap: 14px; max-width: calc(100vw - 32px); padding: 10px 14px; border-radius: 8px; background: var(--ink); color: var(--surface); font-size: var(--fs-sm); box-shadow: var(--shadow, 0 8px 24px rgba(0,0,0,.25)); }
+#s34-toast[hidden] { display: none; }
+#s34-toast.s34-err { background: var(--bad); }
+#s34-toast button { font: inherit; font-weight: 700; color: inherit; background: none; border: 0; text-decoration: underline; cursor: pointer; padding: 0; }
+
+@media (max-width: 640px) {
+  #s28-p-triage .s34-bar { padding-left: 12px; padding-right: 12px; }
+  /* narrow screens: the row buttons move into the row popout (and the bulk bar); the Addressed column stays */
+  #s28-p-triage .s28-t td.s34-opc, #s28-p-triage .s28-t th.s34-opc { display: none; }
+  #s28-p-triage .s28-t td.s34-actc { white-space: normal; }
+}
+@media (prefers-reduced-motion: no-preference) { .s34-btn { transition: background-color .12s; } }
+
+</style>
+<script id="jpk-s34">
+/* jpk-s34.js (S34 v6.10.0, 26 Oct 2026): work Inbound triage from the Support tab. One layer on top of S28 (and S27, S33).
+   What it adds to Support > Inbound triage, for Beau (or the Administrator profile) only; everyone else keeps the read-only list:
+     - per row: Link account (search box), Mark read, Remove from triage; in the row popout: Mark read, Remove from triage
+     - bulk: tick rows (or Select all shown), then Mark read / Remove from triage; a second click confirms when more than one
+     - Undo on every change (toast), Reopen on any addressed email
+     - an Addressed chip: what was done, by whom and when; a counter: Open N (need a look / noise) and Addressed today
+   The rules (Beau, 26 Oct 2026):
+     - an email is addressed only when it is marked read or removed from triage; linking an account alone does not address it
+     - Mark read     -> Marked_Read = true, Triage_Status = Addressed, Addressed_Action = Marked read,         Addressed_By, Addressed_On
+     - Remove        -> (Marked_Read unchanged) Triage_Status = Addressed, Addressed_Action = Removed from triage, Addressed_By, Addressed_On
+     - Reopen        -> Triage_Status = Open, Addressed_* cleared, Marked_Read = false
+     - Outlook is never touched; nothing is deleted. Writes are ZOHO.CRM.API.updateRecord on Support_Emails only (and the Account lookup), no workflows.
+   Scope is the S28 view's own (Direction In and no Case), so the chip counts match v6.9.0; the chips now count open emails only.
+   Reads: open emails in full (up to 2000), addressed emails (up to 1000, newest first). If those reads fail, the S28 read-only list loads instead.
+   Off switch: ?s34=0. Preview (?preview=1): sample rows, writes are recorded, not sent. ?s34demo=fail | partial makes sample writes fail. ?asuser=1 previews a non-admin. */
+(function (root) {
+  'use strict';
+  var doc = root.document;
+  if (!doc || root.JPKS34) return;
+  if (/[?&]s34=0/.test(root.location.search)) return;
+  var VERSION = '1.0.0';
+  var BEAU_ID = '6715134000000503001';
+  var MODULE = 'Support_Emails';
+  var F = 'Name, Sender_Name, Sender_Email, Direction, Created_Time, Topic, Intake_Result, Account, Case, Marked_Read, Triage_Status, Addressed_Action, Addressed_By, Addressed_On';
+  var Q_OPEN = "select " + F + " from Support_Emails where ((Direction = 'In' and Case is null) and Marked_Read = false) and (Triage_Status is null or Triage_Status != 'Addressed') order by Created_Time desc";
+  var Q_DONE = "select " + F + " from Support_Emails where (Direction = 'In' and Case is null) and (Marked_Read = true or Triage_Status = 'Addressed') order by Created_Time desc";
+  var CHUNK = 100;
+  var CALLS = [];                                               /* test hook: every write this file made */
+  var API = { live: false, preview: true };
+
+  function $(id) { return doc.getElementById(id); }
+  function qa(s, r) { try { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); } catch (e) { return []; } }
+  function mk(tag, cls, attrs) { var n = doc.createElement(tag); if (cls) n.className = cls; if (attrs) for (var a in attrs) n.setAttribute(a, attrs[a]); return n; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function param(n) { var m = new RegExp('[?&]' + n + '=([^&#]*)').exec(root.location.search); return m ? decodeURIComponent(m[1]) : null; }
+  function decode(s) { if (s == null) return ''; s = String(s); if (s.indexOf('&') < 0) return s; try { return new DOMParser().parseFromString(s, 'text/html').documentElement.textContent || ''; } catch (e) { return s; } }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function nm(v) { return v && typeof v === 'object' ? (v.name || v.full_name || '') : ''; }
+  function stamp(s) { var t = Date.parse(s); return isNaN(t) ? null : new Date(t); }
+  function fmtShort(s) { var d = stamp(s); return d ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
+  function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  /* Zoho datetime: yyyy-MM-ddTHH:mm:ss+hh:mm in the browser's own zone */
+  function zdt(d) {
+    var o = -d.getTimezoneOffset(), sg = o >= 0 ? '+' : '-'; o = Math.abs(o);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + sg + pad(Math.floor(o / 60)) + ':' + pad(o % 60);
+  }
+  function rowsOf(resp) {
+    if (!resp) return [];
+    if (Array.isArray(resp)) return resp;
+    if (Array.isArray(resp.data)) return resp.data;
+    if (resp.data && Array.isArray(resp.data.data)) return resp.data.data;
+    return [];
+  }
+  function errJson(e) { try { return JSON.stringify(e && (e.data || e.message || e.code) ? { c: e.code, m: e.message, d: e.data } : e); } catch (x) { return String(e); } }
+  function isPerm(e) { return /NO_PERMISSION|PERMISSION|NOT_ALLOWED|NO_ACCESS|AUTHORI[SZ]|not allowed/i.test(errJson(e) + ' ' + String(e && e.message || '')); }
+  function isEmpty(e) { return /\b204\b|no content|empty response|NO_CONTENT/i.test(errJson(e) + ' ' + String(e && e.message || '')); }
+  function errText(e) {
+    if (isPerm(e)) return 'your profile cannot change these emails';
+    var m = e && (e.message || (e.data && e.data[0] && e.data[0].message) || e.code) || 'unknown error'; return String(m).slice(0, 140);
+  }
+  function withTimeout(p, ms, label) {
+    return new Promise(function (res, rej) {
+      var t = setTimeout(function () { rej(new Error((label || 'request') + ' timed out')); }, ms || 20000);
+      Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); });
+    });
+  }
+
+  /* ============================ the rules ============================ */
+  function isAddr(r) { return !!r && (r.Triage_Status === 'Addressed' || r.Marked_Read === true); }
+  function patchRead(me, now) { return { Marked_Read: true, Triage_Status: 'Addressed', Addressed_Action: 'Marked read', Addressed_By: { id: me.id }, Addressed_On: zdt(now) }; }
+  function patchRemove(me, now) { return { Triage_Status: 'Addressed', Addressed_Action: 'Removed from triage', Addressed_By: { id: me.id }, Addressed_On: zdt(now) }; }
+  function patchReopen() { return { Marked_Read: false, Triage_Status: 'Open', Addressed_Action: null, Addressed_By: null, Addressed_On: null }; }
+  function snap(r) { return { Marked_Read: r.Marked_Read === true, Triage_Status: r.Triage_Status || null, Addressed_Action: r.Addressed_Action || null, Addressed_By: r.Addressed_By && r.Addressed_By.id ? { id: r.Addressed_By.id, name: nm(r.Addressed_By) } : null, Addressed_On: r.Addressed_On || null }; }
+  function snapPatch(s) { return { Marked_Read: s.Marked_Read, Triage_Status: s.Triage_Status, Addressed_Action: s.Addressed_Action, Addressed_By: s.Addressed_By ? { id: s.Addressed_By.id } : null, Addressed_On: s.Addressed_On }; }
+
+  /* ============================ who is signed in ============================ */
+  var ME = null;                                                /* { id, name, admin } once known */
+  function knowMe() {
+    if (ME) return ME;
+    if (API.preview) { var na = /[?&]asuser=1/.test(root.location.search); ME = na ? { id: '1000', name: 'Stacey Loosen', admin: false } : { id: BEAU_ID, name: 'Beau Carrigan', admin: true }; return ME; }
+    var u = root.__bdcsUser;
+    if (u === undefined) return null;
+    if (!u || !u.id) { ME = { id: '', name: '', admin: false }; return ME; }
+    var prof = u.profile && (u.profile.name || u.profile) || '';
+    ME = { id: String(u.id), name: u.full_name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || '', admin: String(u.id) === BEAU_ID || /^administrator$/i.test(String(prof)) };
+    return ME;
+  }
+  function canWrite() { var m = knowMe(); return !!(m && m.admin && m.id); }
+
+  /* user names for Addressed By (COQL returns user lookups without a name) */
+  var USERS = {}, usersAsked = false;
+  function userName(u) {
+    if (!u) return '';
+    var id = String(u.id || ''), n = nm(u);
+    if (n) return n;
+    if (USERS[id]) return USERS[id];
+    if (ME && ME.id === id && ME.name) return ME.name;
+    if (id === BEAU_ID) return 'Beau Carrigan';
+    askUsers();
+    return 'another user';
+  }
+  function askUsers() {
+    if (usersAsked || !API.live) return; usersAsked = true;
+    try {
+      withTimeout(root.ZOHO.CRM.API.getAllUsers({ Type: 'AllUsers' }), 15000, 'users').then(function (r) {
+        (r && r.users || []).forEach(function (x) { USERS[String(x.id)] = x.full_name || x.email || ''; });
+        if (V && V.state === 'ready') V.paintTable();
+      }, function () {});
+    } catch (e) {}
+  }
+
+  /* ============================ reads ============================ */
+  function coqlAll(base, max) {
+    var out = [], size = 200, limit = max || 2000;
+    var step = function (p) {
+      return withTimeout(root.ZOHO.CRM.API.coql({ select_query: base + ' limit ' + size + ' offset ' + (p * size) }), 20000, 'query').then(rowsOf, function (e) { if (isEmpty(e) && !isPerm(e)) return []; throw e; }).then(function (rows) {
+        out = out.concat(rows);
+        if (rows.length < size || out.length >= limit) return out;
+        return step(p + 1);
+      });
+    };
+    return step(0);
+  }
+  var READ_FALLBACK = false;                                    /* true when the new reads failed and the S28 list was loaded instead */
+  function wrapLoad(s) {
+    var orig = s.load;
+    s.load = function () {
+      if (!API.live) {
+        return Promise.resolve(orig()).then(function (rows) {
+          rows = rows || [];
+          rows.forEach(function (r) { if (!('Marked_Read' in r)) r.Marked_Read = false; if (!('Triage_Status' in r)) r.Triage_Status = null; });
+          /* one sample email already addressed, so the Addressed chip has something to show */
+          var d = rows.filter(function (r) { return r.id === 'm11'; })[0];
+          if (d && !d._s34) { d._s34 = 1; d.Marked_Read = true; d.Triage_Status = 'Addressed'; d.Addressed_Action = 'Marked read'; d.Addressed_By = { id: BEAU_ID, name: 'Beau Carrigan' }; d.Addressed_On = zdt(new Date(Date.now() - 2 * 36e5)); }
+          return rows;
+        });
+      }
+      READ_FALLBACK = false;
+      return Promise.all([coqlAll(Q_OPEN, 2000), coqlAll(Q_DONE, 1000)]).then(function (res) {
+        var seen = {}, out = [];
+        res[0].concat(res[1]).forEach(function (r) { if (!seen[r.id]) { seen[r.id] = 1; out.push(r); } });
+        return out;
+      }, function (e) {
+        READ_FALLBACK = true;                                   /* e.g. a profile that cannot read the new fields: show the read-only list */
+        try { root.console && console.warn && console.warn('[jpk-s34] triage read fell back to the read-only list:', errJson(e)); } catch (x) {}
+        return orig();
+      });
+    };
+  }
+
+  /* ============================ writes ============================ */
+  var DEMO = param('s34demo') || '';
+  function sendChunk(rows) {
+    CALLS.push({ fn: 'updateRecord', module: MODULE, data: JSON.parse(JSON.stringify(rows)), demo: !API.live });
+    if (!API.live) {
+      return new Promise(function (res, rej) {
+        setTimeout(function () {
+          if (DEMO === 'fail') { rej({ code: 'NO_PERMISSION', message: 'permission denied', data: [{ code: 'NO_PERMISSION', message: 'permission denied' }] }); return; }
+          res({ data: rows.map(function (r, i) { return DEMO === 'partial' && i === 1 ? { code: 'INVALID_DATA', status: 'error', message: 'invalid data', details: { id: r.id } } : { code: 'SUCCESS', status: 'success', details: { id: r.id } }; }) });
+        }, 150);
+      });
+    }
+    return withTimeout(root.ZOHO.CRM.API.updateRecord({ Entity: MODULE, APIData: rows, Trigger: [] }), 30000, 'save');
+  }
+  /* patches: [{ id, ...fields }]. Resolves { ok: [ids], bad: [{ id, msg }] }; never rejects. */
+  function send(patches) {
+    var ok = [], bad = [], i = 0, chunks = [];
+    for (i = 0; i < patches.length; i += CHUNK) chunks.push(patches.slice(i, i + CHUNK));
+    var chain = Promise.resolve();
+    chunks.forEach(function (c) {
+      chain = chain.then(function () {
+        return sendChunk(c).then(function (resp) {
+          var d = rowsOf(resp);
+          c.forEach(function (p, ix) {
+            var x = d[ix];
+            if (x && (x.code === 'SUCCESS' || x.status === 'success')) ok.push(String(p.id));
+            else bad.push({ id: String(p.id), msg: x ? errText(x) : 'no reply from Zoho' });
+          });
+        }, function (e) { c.forEach(function (p) { bad.push({ id: String(p.id), msg: errText(e) }); }); });
+      });
+    });
+    return chain.then(function () { return { ok: ok, bad: bad }; });
+  }
+
+  /* ============================ state ============================ */
+  var V = null, P = null, S28 = null;                           /* the triage View, its prototype, window.JPKS28 */
+  var SEL = {};                                                 /* id -> true */
+  var BUSY = {};                                                /* id -> true while a write is out */
+  var lastChip = null;
+  function byId(id) { var rows = (V && V.rows) || []; for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === String(id)) return rows[i]; return null; }
+  function openRows() { return ((V && V.rows) || []).filter(function (r) { return !isAddr(r); }); }
+  function doneRows() { return ((V && V.rows) || []).filter(isAddr); }
+  function shown() { return V ? V.filtered().slice(0, V.s.max || 500) : []; }
+  function selIds() { var vis = {}; shown().forEach(function (r) { vis[String(r.id)] = 1; }); return Object.keys(SEL).filter(function (k) { return SEL[k] && vis[k] && !isAddr(byId(k)) && !BUSY[k]; }); }
+  function tIsNoise(r) { var c = V && V.s.chips && V.s.chips.filter(function (x) { return x.id === 'noise'; })[0]; return c ? !!c.s34orig(r, V) : false; }
+  function repaint() { if (!V || !V.wrap) return; V.paintTable(); V.paintCounts(); try { root.dispatchEvent(new Event('jpk-s34-change')); } catch (e) {} }
+
+  /* ============================ actions ============================ */
+  function apply(ids, kind, done) {
+    ids = ids.filter(function (id) { var r = byId(id); return r && !BUSY[id]; });
+    if (!ids.length) return;
+    var me = knowMe();
+    if (!canWrite()) { toast('Only Beau (or the Administrator profile) can change triage here. Nothing changed.', null, true); return; }
+    var now = new Date(), prev = {}, patches = [];
+    ids.forEach(function (id) {
+      var r = byId(id), p;
+      if (kind === 'read') p = patchRead(me, now);
+      else if (kind === 'remove') p = patchRemove(me, now);
+      else if (kind === 'reopen') p = patchReopen();
+      else if (kind === 'undo') p = snapPatch(done.prev[id]);
+      else if (kind === 'link') p = { Account: done.acct ? { id: done.acct.id } : null };
+      else if (kind === 'unlink') p = { Account: done.prev[id] ? { id: done.prev[id].id } : null };
+      prev[id] = kind === 'link' || kind === 'unlink' ? (r.Account && r.Account.id ? { id: r.Account.id, name: nm(r.Account) } : null) : snap(r);
+      patches.push(Object.assign({ id: id }, p));
+      BUSY[id] = true;
+    });
+    repaint();
+    status(ids.length > 1 ? 'Saving ' + plural(ids.length, 'email') + '…' : 'Saving…');
+    send(patches).then(function (res) {
+      res.ok.concat(res.bad.map(function (b) { return b.id; })).forEach(function (id) { delete BUSY[id]; });
+      res.ok.forEach(function (id) {
+        var r = byId(id), p = patches.filter(function (x) { return String(x.id) === id; })[0]; if (!r || !p) return;
+        if (kind === 'link') r.Account = done.acct ? { id: done.acct.id, name: done.acct.name } : null;
+        else if (kind === 'unlink') r.Account = done.prev[id] ? { id: done.prev[id].id, name: done.prev[id].name } : null;
+        else {
+          ['Marked_Read', 'Triage_Status', 'Addressed_Action', 'Addressed_On'].forEach(function (k) { if (k in p) r[k] = p[k]; });
+          if ('Addressed_By' in p) r.Addressed_By = p.Addressed_By ? (kind === 'undo' ? done.prev[id].Addressed_By : { id: me.id, name: me.name }) : null;
+        }
+        delete SEL[id];
+      });
+      repaint();
+      status('');
+      var n = res.ok.length, label = '';
+      if (kind === 'read') label = 'Marked read: ' + plural(n, 'email');
+      else if (kind === 'remove') label = 'Removed from triage: ' + plural(n, 'email');
+      else if (kind === 'reopen') label = 'Reopened: ' + plural(n, 'email');
+      else if (kind === 'undo') label = 'Undone: ' + plural(n, 'email') + ' back as before';
+      else if (kind === 'link') label = (done.acct ? 'Linked to ' + done.acct.name : 'Account cleared') + '. Still open until marked read or removed.';
+      else if (kind === 'unlink') label = 'Account link undone.';
+      if (res.bad.length) {
+        var why = res.bad[0].msg;
+        toast((n ? label + '. ' : '') + plural(res.bad.length, 'email') + ' not saved: ' + why + '.', n && kind !== 'undo' && kind !== 'unlink' ? undoFn(kind, res.ok, prev) : null, true);
+      } else if (n) {
+        toast(label, kind === 'undo' || kind === 'unlink' ? null : undoFn(kind, res.ok, prev));
+      }
+    });
+  }
+  function undoFn(kind, ids, prev) {
+    var keep = {}; ids.forEach(function (id) { keep[id] = prev[id]; });
+    if (kind === 'link') return function () { apply(ids, 'unlink', { prev: keep }); };
+    return function () { apply(ids, 'undo', { prev: keep }); };
+  }
+
+  /* two-step confirm for bulk: the first click arms the button for 5 s */
+  var armed = null, armT = 0;
+  function bulk(kind, btn) {
+    var ids = selIds(); if (!ids.length) return;
+    if (ids.length > 1 && armed !== kind) {
+      armed = kind; clearTimeout(armT);
+      btn.classList.add('s34-sure'); btn.textContent = (kind === 'read' ? 'Confirm: mark ' : 'Confirm: remove ') + plural(ids.length, 'email');
+      armT = setTimeout(function () { armed = null; paintBar(); }, 5000);
+      return;
+    }
+    armed = null; clearTimeout(armT);
+    apply(ids, kind);
+  }
+
+  /* ============================ toast and status ============================ */
+  var TT = 0;
+  function toast(msg, undo, err) {
+    var t = $('s34-toast');
+    if (!t) { t = mk('div', '', { id: 's34-toast', role: 'status', 'aria-live': 'polite', hidden: '' }); doc.body.appendChild(t); }
+    t.className = err ? 's34-err' : '';
+    t.innerHTML = '<span></span>';
+    t.firstChild.textContent = msg;
+    if (undo) {
+      var b = mk('button', '', { type: 'button' }); b.textContent = 'Undo';
+      b.addEventListener('click', function () { hideToast(); undo(); });
+      t.appendChild(b);
+    }
+    var x = mk('button', '', { type: 'button', 'aria-label': 'Dismiss' }); x.textContent = '✕'; x.style.textDecoration = 'none';
+    x.addEventListener('click', hideToast); t.appendChild(x);
+    t.hidden = false;
+    clearTimeout(TT); TT = setTimeout(hideToast, undo ? 15000 : (err ? 12000 : 5000));
+  }
+  function hideToast() { var t = $('s34-toast'); if (t) t.hidden = true; clearTimeout(TT); }
+  function status(msg) { var b = V && V.host && V.host.querySelector('.s34-st'); if (b) b.textContent = msg; }
+
+  /* ============================ the bar ============================ */
+  var BAR = null;
+  function buildBar() {
+    if (!V || !V.host || (BAR && V.host.contains(BAR))) return;
+    BAR = mk('div', 's34-bar', { 'data-s34-bar': '1' });
+    BAR.innerHTML = '<span class="s34-count" data-s34-count></span><span class="s34-sp"></span>'
+      + '<label class="s34-all" hidden><input type="checkbox" class="s34-chk" data-s34-all="1"> <span data-s34-alln>Select all shown</span></label>'
+      + '<span class="s34-bulk" hidden><button type="button" class="s34-btn s34-pri" data-s34-bulk="read" disabled>Mark read</button><button type="button" class="s34-btn" data-s34-bulk="remove" disabled>Remove from triage</button></span>'
+      + '<button type="button" class="s34-lnk" data-s34-refresh="1" title="Read the inbox list again">Refresh</button>'
+      + '<span class="s34-st sr-only" role="status" aria-live="polite"></span>';
+    V.host.insertBefore(BAR, V.wrap);
+  }
+  function paintBar() {
+    if (!V || !V.host) return;
+    buildBar();
+    var ready = V.state === 'ready', cw = canWrite() && !READ_FALLBACK, addrChip = V.chip === 'addressed';
+    BAR.hidden = !ready;
+    if (!ready) return;
+    var open = openRows(), noise = open.filter(tIsNoise).length, today = new Date();
+    var doneToday = doneRows().filter(function (r) { var d = stamp(r.Addressed_On); return d && sameDay(d, today); }).length;
+    var c = BAR.querySelector('[data-s34-count]');
+    if (READ_FALLBACK) c.innerHTML = '<span class="s34-dim">Read-only list: the triage fields could not be read, so marking and removing are off.</span>';
+    else c.innerHTML = (open.length ? '<b>Open ' + open.length + '</b>' : '<b class="s34-zero">Open 0 ✓</b>')
+      + '<span class="s34-dim">' + (open.length - noise) + (open.length - noise === 1 ? ' needs' : ' need') + ' a look · ' + noise + ' noise</span>'
+      + '<span>Addressed today <b>' + doneToday + '</b></span>';
+    var all = BAR.querySelector('.s34-all'), bk = BAR.querySelector('.s34-bulk');
+    all.hidden = bk.hidden = !cw || addrChip;
+    if (!cw || addrChip) return;
+    var vis = shown().filter(function (r) { return !isAddr(r); }), ids = selIds();
+    var box = BAR.querySelector('[data-s34-all]');
+    box.checked = !!vis.length && ids.length === vis.length;
+    box.indeterminate = ids.length > 0 && ids.length < vis.length;
+    box.disabled = !vis.length;
+    BAR.querySelector('[data-s34-alln]').textContent = 'Select all shown (' + vis.length + ')';
+    qa('[data-s34-bulk]', BAR).forEach(function (b) {
+      var k = b.getAttribute('data-s34-bulk');
+      if (armed === k && ids.length > 1) return;                /* keep the armed label */
+      b.classList.remove('s34-sure');
+      b.disabled = !ids.length;
+      b.textContent = (k === 'read' ? 'Mark read' : 'Remove from triage') + (ids.length ? ' (' + ids.length + ')' : '');
+    });
+  }
+
+  /* ============================ columns ============================ */
+  var ORIG = null;                                              /* the S28 columns */
+  function addrCell(r) {
+    var act = r.Addressed_Action || (r.Marked_Read ? 'Marked read' : 'Addressed');
+    var who = r.Addressed_By ? userName(r.Addressed_By) : '', when = r.Addressed_On ? fmtShort(r.Addressed_On) : '';
+    var line = '<b>' + esc(act) + '</b>' + (who ? ' · ' + esc(who) : '') + (when ? ' · ' + esc(when) : (!r.Addressed_On && r.Marked_Read ? ' · before triage' : ''));
+    return '<span class="s34-done">' + line + '</span>' + (canWrite() && !READ_FALLBACK ? '<button type="button" class="s34-lnk" data-s34-act="reopen" data-s34-id="' + esc(r.id) + '">Reopen</button>' : '');
+  }
+  function colsFor(v) {
+    var cw = canWrite() && !READ_FALLBACK, addrChip = v.chip === 'addressed';
+    var cols = ORIG.map(function (c) {
+      if (c.k !== 'acct' || !cw) return c;
+      return Object.assign({}, c, { html: function (r) {
+        var a = nm(r.Account), busy = BUSY[r.id];
+        return '<span class="s34-acct">' + (a ? esc(a) : '<span class="mute">—</span>') + (busy ? '' : '<button type="button" class="s34-lnk" data-s34-link="' + esc(r.id) + '" aria-label="' + (a ? 'Change account for ' : 'Link an account to ') + esc(decode(r.Name)) + '">' + (a ? 'Change' : 'Link') + '</button>') + '</span>';
+      } });
+    });
+    if (addrChip) {
+      cols.push({ k: 's34done', label: 'Addressed', cls: 's34-actc', html: addrCell });
+      return cols;
+    }
+    if (!cw) return cols;
+    cols.unshift({ k: 's34sel', label: '', cls: 's34-selc', html: function (r) {
+      return BUSY[r.id] ? '' : '<input type="checkbox" class="s34-chk" data-s34-sel="' + esc(r.id) + '"' + (SEL[r.id] ? ' checked' : '') + ' aria-label="Select: ' + esc(decode(r.Name) || 'email') + '">';
+    } });
+    cols.push({ k: 's34act', label: '', cls: 's34-actc s34-opc', html: function (r) {
+      if (BUSY[r.id]) return '<span class="s34-done">Saving…</span>';
+      if (isAddr(r)) return addrCell(r);
+      var t = esc(decode(r.Name) || 'email');
+      return '<span class="s34-acts"><button type="button" class="s34-btn s34-pri" data-s34-act="read" data-s34-id="' + esc(r.id) + '" aria-label="Mark read: ' + t + '">Mark read</button>'
+        + '<button type="button" class="s34-btn" data-s34-act="remove" data-s34-id="' + esc(r.id) + '" aria-label="Remove from triage: ' + t + '">Remove</button></span>';
+    } });
+    return cols;
+  }
+
+  /* ============================ account search box ============================ */
+  var AC = { id: null, seq: 0, t: 0, opener: null };
+  function acctBox() {
+    var b = $('s34-acct'); if (b) return b;
+    b = mk('div', '', { id: 's34-acct', role: 'dialog', 'aria-label': 'Link an account', hidden: '' });
+    b.innerHTML = '<label for="s34-acct-q">Link an account</label><input type="text" id="s34-acct-q" autocomplete="off" placeholder="Type 2+ letters of the account name">'
+      + '<ul role="listbox" aria-label="Accounts"></ul><p class="s34-msg" role="status" aria-live="polite"></p>'
+      + '<div class="s34-foot"><button type="button" class="s34-lnk" data-s34-clear="1">Clear the account</button><button type="button" class="s34-lnk" data-s34-close="1">Cancel</button></div>';
+    doc.body.appendChild(b);
+    b.querySelector('input').addEventListener('input', function (e) { clearTimeout(AC.t); var v = e.target.value; AC.t = setTimeout(function () { search(v); }, 250); });
+    root.addEventListener('keydown', function (e) {             /* window capture: the page's own key maps may stop Escape before it bubbles here */
+      var bx = $('s34-acct'); if (e.key !== 'Escape' || !bx || bx.hidden) return;
+      e.preventDefault(); e.stopImmediatePropagation(); closeAcct(true);
+    }, true);
+    b.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        var items = qa('li button', b); if (!items.length) return; e.preventDefault();
+        var i = items.indexOf(doc.activeElement), n = e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : (i <= 0 ? -1 : i - 1);
+        if (n < 0) b.querySelector('input').focus(); else items[n].focus();
+      }
+    });
+    b.addEventListener('click', function (e) {
+      var t = e.target, el;
+      if ((el = t.closest('[data-s34-pick]'))) { var id = AC.id; closeAcct(false); apply([id], 'link', { acct: { id: el.getAttribute('data-s34-pick'), name: el.getAttribute('data-s34-name') } }); return; }
+      if (t.closest('[data-s34-clear]')) { var id2 = AC.id; var r = byId(id2); closeAcct(false); if (r && r.Account) apply([id2], 'link', { acct: null }); return; }
+      if (t.closest('[data-s34-close]')) closeAcct(true);
+    });
+    doc.addEventListener('mousedown', function (e) { var bx = $('s34-acct'); if (bx && !bx.hidden && !bx.contains(e.target) && !(e.target.closest && e.target.closest('[data-s34-link]'))) closeAcct(false); }, true);
+    root.addEventListener('scroll', function () { var bx = $('s34-acct'); if (bx && !bx.hidden && !bx.contains(doc.activeElement)) closeAcct(false); }, true);
+    return b;
+  }
+  function openAcct(id, btn) {
+    var r = byId(id); if (!r) return;
+    var b = acctBox();
+    AC.id = String(id); AC.opener = btn; AC.seq++;
+    b.querySelector('ul').innerHTML = '';
+    b.querySelector('.s34-msg').textContent = r.Account ? 'Now linked to ' + nm(r.Account) + '.' : 'Linking an account does not address the email.';
+    b.querySelector('[data-s34-clear]').hidden = !r.Account;
+    var inp = b.querySelector('input'); inp.value = '';
+    b.hidden = false;
+    var rc = btn.getBoundingClientRect(), w = b.offsetWidth, h = 320;
+    var left = Math.max(12, Math.min(rc.right - w, root.innerWidth - w - 12));
+    var top = rc.bottom + 6; if (top + h > root.innerHeight && rc.top - h - 6 > 0) top = rc.top - h - 6;
+    b.style.left = left + 'px'; b.style.top = Math.max(8, top) + 'px';
+    try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
+  }
+  function closeAcct(refocus) {
+    var b = $('s34-acct'); if (!b || b.hidden) return;
+    b.hidden = true; AC.seq++;
+    var op = AC.opener; AC.opener = null; AC.id = null;
+    if (refocus && op && doc.contains(op)) { try { op.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  var DEMO_ACCTS = [['a1', 'Racine County Pretrial Program', 'Customer'], ['a2', 'Ramsey County Pretrial Program', 'Customer'], ['a3', 'Rock County Pretrial Program', 'Customer'], ['a4', 'Wood Co HHS', 'Customer'], ['a5', 'Dane County Sheriff', 'Prospect'], ['a6', 'Polk Co Sheriff', 'Customer']];
+  function search(text) {
+    var b = $('s34-acct'); if (!b || b.hidden) return;
+    var qv = String(text || '').trim(), seq = ++AC.seq, ul = b.querySelector('ul'), msg = b.querySelector('.s34-msg');
+    if (qv.length < 2) { ul.innerHTML = ''; msg.textContent = 'Type at least 2 letters.'; return; }
+    msg.textContent = 'Searching…';
+    var safe = qv.replace(/\\/g, '').replace(/'/g, "\\'").replace(/%/g, '');
+    var p = API.live
+      ? withTimeout(root.ZOHO.CRM.API.coql({ select_query: "select id, Account_Name, Account_Type, Billing_State from Accounts where Account_Name like '%" + safe + "%' order by Account_Name limit 15 offset 0" }), 15000, 'search').then(rowsOf, function (e) { if (isEmpty(e) && !isPerm(e)) return []; throw e; })
+      : new Promise(function (res) { setTimeout(function () { res(DEMO_ACCTS.filter(function (a) { return a[1].toLowerCase().indexOf(qv.toLowerCase()) >= 0; }).map(function (a) { return { id: a[0], Account_Name: a[1], Account_Type: a[2] }; })); }, 120); });
+    p.then(function (rows) {
+      if (seq !== AC.seq || b.hidden) return;
+      ul.innerHTML = rows.map(function (a) {
+        var sub = [a.Account_Type, a.Billing_State].filter(function (x) { return x && x !== '-None-'; }).join(' · ');
+        return '<li><button type="button" role="option" data-s34-pick="' + esc(a.id) + '" data-s34-name="' + esc(a.Account_Name) + '">' + esc(a.Account_Name) + (sub ? '<span class="s34-ty">' + esc(sub) + '</span>' : '') + '</button></li>';
+      }).join('');
+      msg.textContent = rows.length ? (rows.length === 15 ? 'First 15 matches. Keep typing to narrow.' : plural(rows.length, 'match', 'matches') + '.') : 'No account matches “' + qv + '”.';
+    }, function (e) { if (seq !== AC.seq) return; ul.innerHTML = ''; msg.textContent = 'Could not search accounts: ' + errText(e) + '.'; });
+  }
+
+  /* ============================ clicks ============================ */
+  function onHostClick(e) {
+    var t = e.target, el;
+    if (!t.closest) return;
+    if ((el = t.closest('[data-s34-act]'))) { e.preventDefault(); e.stopPropagation(); apply([el.getAttribute('data-s34-id')], el.getAttribute('data-s34-act')); return; }
+    if ((el = t.closest('[data-s34-link]'))) { e.preventDefault(); e.stopPropagation(); var bx = $('s34-acct'); if (bx && !bx.hidden && AC.id === el.getAttribute('data-s34-link')) closeAcct(true); else openAcct(el.getAttribute('data-s34-link'), el); return; }
+    if ((el = t.closest('[data-s34-sel]'))) { e.stopPropagation(); SEL[el.getAttribute('data-s34-sel')] = el.checked; markRows(); paintBar(); return; }
+    if (t.closest('td.s34-selc')) { e.stopPropagation(); var cb = t.closest('td').querySelector('[data-s34-sel]'); if (cb && t !== cb) { cb.checked = !cb.checked; SEL[cb.getAttribute('data-s34-sel')] = cb.checked; markRows(); paintBar(); } return; }
+    if ((el = t.closest('[data-s34-all]'))) { e.stopPropagation(); var on = el.checked; SEL = {}; if (on) shown().forEach(function (r) { if (!isAddr(r) && !BUSY[r.id]) SEL[r.id] = true; }); armed = null; V.paintTable(); return; }
+    if ((el = t.closest('[data-s34-bulk]'))) { e.preventDefault(); e.stopPropagation(); bulk(el.getAttribute('data-s34-bulk'), el); return; }
+    if (t.closest('[data-s34-refresh]')) { e.preventDefault(); e.stopPropagation(); SEL = {}; V.state = 'idle'; V.load(true); return; }
+    if (t.closest('.s34-bar') || t.closest('td.s34-actc')) e.stopPropagation();   /* the bar and the action cell never open the popout */
+  }
+  function markRows() {
+    qa('tbody tr[data-i]', V.wrap).forEach(function (tr) {
+      var r = (V.rows || [])[+tr.getAttribute('data-i')]; if (!r) return;
+      tr.classList.toggle('s34-on', !!SEL[r.id]);
+      tr.classList.toggle('s34-busy', !!BUSY[r.id]);
+    });
+  }
+
+  /* popout: Mark read / Remove from triage under the message */
+  function popExtra(r) {
+    if (!canWrite() || READ_FALLBACK) return '';
+    if (isAddr(r)) return '<div class="s34-px"><span class="s34-pxn">' + esc(r.Addressed_Action || 'Addressed') + (r.Addressed_By ? ' by ' + esc(userName(r.Addressed_By)) : '') + (r.Addressed_On ? ', ' + esc(fmtShort(r.Addressed_On)) : '') + '.</span><button type="button" class="s34-btn" data-s34-pop="reopen" data-s34-id="' + esc(r.id) + '">Reopen</button></div>';
+    return '<div class="s34-px"><span class="s34-pxn">Marking read or removing records who did it and when. Outlook is not changed.</span>'
+      + '<button type="button" class="s34-btn s34-pri" data-s34-pop="read" data-s34-id="' + esc(r.id) + '">Mark read</button>'
+      + '<button type="button" class="s34-btn" data-s34-pop="remove" data-s34-id="' + esc(r.id) + '">Remove from triage</button></div>';
+  }
+  function onDocClick(e) {
+    var el = e.target && e.target.closest && e.target.closest('[data-s34-pop]'); if (!el) return;
+    e.preventDefault(); e.stopPropagation();
+    var id = el.getAttribute('data-s34-id'), k = el.getAttribute('data-s34-pop');
+    if (S28 && S28.closePop) S28.closePop(false);
+    apply([id], k);
+  }
+
+  /* ============================ hook into the S28 view ============================ */
+  function hook() {
+    S28 = root.JPKS28;
+    V = S28 && S28.views && S28.views.triage;
+    if (!V || !V.s || V.s._s34) return !!(V && V.s && V.s._s34);
+    API.live = !!S28.live; API.preview = !API.live;
+    P = Object.getPrototypeOf(V);
+    var s = V.s; s._s34 = 1;
+    ORIG = s.cols.slice();
+    wrapLoad(s);
+    /* chips count and show open emails only; Addressed is its own chip */
+    s.chips.forEach(function (c) { var t = c.test; c.s34orig = t; c.test = function (r, v) { return !isAddr(r) && t(r, v); }; if (c.id === 'all') c.label = 'All open'; });
+    s.chips.push({ id: 'addressed', label: 'Addressed', test: isAddr, s34orig: isAddr });
+    var origPop = s.popout;
+    s.popout = function (r, v, tr) { var o = origPop(r, v, tr); if (o && !o.then) o.extra = popExtra(r); return o; };
+    var origRowClass = s.rowClass;
+    s.rowClass = function (r) { return [origRowClass ? origRowClass(r) : '', SEL[r.id] ? 's34-on' : '', BUSY[r.id] ? 's34-busy' : ''].join(' ').trim(); };
+    V.base = function () { return P.base.call(this).filter(function (r) { return !isAddr(r); }); };
+    V.filtered = function () {
+      if (this.chip !== 'addressed') return P.filtered.call(this);
+      var qv = this.q.trim().toLowerCase(), sp = this.s;
+      var out = (this.rows || []).filter(isAddr).filter(function (r) { return !qv || String(sp.search(r) || '').toLowerCase().indexOf(qv) >= 0; });
+      var key = function (r) { var d = stamp(r.Addressed_On); return d ? d.getTime() : 0; };
+      return out.sort(function (a, b) { return key(b) - key(a); });
+    };
+    V.paintCounts = function () {
+      P.paintCounts.call(this);
+      var el = this.bar && this.bar.querySelector('[data-s28-n="addressed"]'); if (el) el.textContent = this.state === 'ready' ? String(doneRows().length) : '';
+      paintBar();
+    };
+    V.paintTable = function () {
+      if (this.chip !== lastChip) { lastChip = this.chip; SEL = {}; armed = null; }
+      if (ORIG) this.s.cols = colsFor(this);
+      P.paintTable.call(this);
+      markRows(); paintBar();
+    };
+    if (V.host) {
+      V.host.addEventListener('click', onHostClick, true);
+      buildBar();
+      if (V.bar) { V.buildBar(); }
+      if (V.state === 'ready' || V.state === 'loading') { V.seq++; V.state = 'idle'; if (V.host && !V.host.hidden) V.load(true); }
+      else V.paintTable();
+    }
+    doc.addEventListener('click', onDocClick, true);
+    /* the Support band text: say what can be done here */
+    var meta = $('s28-support-meta');
+    var setMeta = function () { if (meta && canWrite()) meta.textContent = 'Cases, vendor issues and knowledge are read-only. In Inbound triage you can link an account, mark read or remove from triage here; Outlook is not changed.'; };
+    setMeta();
+    /* the signed-in user can arrive after the list: repaint once it does */
+    if (!knowMe()) { var tries = 0, w = setInterval(function () { if (knowMe() || ++tries > 80) { clearInterval(w); setMeta(); if (V.state === 'ready') repaint(); } }, 250); }
+    root.JPKS34 = { version: VERSION, calls: CALLS, view: V, isAddr: isAddr, canWrite: canWrite, me: function () { return knowMe(); }, sel: function () { return selIds(); }, zdt: zdt, apply: apply, live: API.live, fallback: function () { return READ_FALLBACK; },
+      patches: { read: patchRead, remove: patchRemove, reopen: patchReopen } };
+    return true;
+  }
+  root.JPKS34 = { version: VERSION, calls: CALLS, pending: true };
+  if (!hook()) { var n = 0, iv = setInterval(function () { if (hook() || ++n > 240) clearInterval(iv); }, 250); }
+})(window);
+
+</script>
+<!-- jpk-s34:end -->
 </body>
 </html>
