@@ -10760,7 +10760,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.11.0 (v6.10.0 + S35 guide blurb line, 26 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.11.0 (v6.10.0 + S36 voice typing in New meeting, 26 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -19144,155 +19144,139 @@ html[data-s33="on"] #s28-support .s28-view { width: auto; }
 
 </script>
 <!-- jpk-s34:end -->
-<!-- jpk-s35:start -->
-<script id="jpk-s35" data-id="home-cs" data-mode="line" data-after="#jpk-head #jpk-counts" data-foot="footer.foot-note" data-what="Your day on the customer side: what needs you today, renewals coming up, deals past close, the health of every EM customer, and your calendar. Tabs take you to the work; nothing here is the system of record.">
-if (/[?&]s35=0\b/.test(location.search)) { /* S35 off switch */ } else
-/* jpk-intro.js v1.1.0 (S35, 26 Oct 2026). "What this does" strip for JusticePoint widgets.
-   Standalone: no dependencies, no network. Works with or without jpk.js/jpk.css.
-   v1.1.0 adds, over v1.0.0 (same tag still works):
-     - Hide is remembered per browser and per page (browser storage; if storage is blocked
-       it falls back to hiding for the visit only).
-     - If the wording changes, a hidden strip shows again once.
-     - When hidden, a small "About this page" link sits at the foot of the page; it brings the strip back.
-     - data-mode="line": one line, no labels, for home pages (placed under the greeting).
-   Tag:
-     <script src="jpk-intro.js"
-       data-id="records"                      (storage key; defaults to the page file name)
-       data-what="What it is for."            (required)
-       data-fed="Fed by."  data-feeds="Feeds." (optional; not shown in line mode)
-       data-mode="line"                       (optional; homes)
-       data-after="#greeting"                 (optional; CSS selector to place after, else top of main/.wrap/body)
-       data-foot="#foot"><\/script>            (optional; where the About link goes, else footer/.foot/end of main)
-   The element ids are jpk-intro and jpk-intro-about. Plain text only; read by screen readers. */
-(function () {
+<!-- jpk-s36:start -->
+<style id="jpk-s36-css">
+/* jpk-s36.css (S36, 26 Oct 2026): mic button in the New meeting form */
+.jpk-mic-wrap { position: relative; display: block; min-width: 0; }
+.jpk-mic-wrap > input, .jpk-mic-wrap > textarea { width: 100%; box-sizing: border-box; padding-right: 46px !important; }
+.jpk-mic { position: absolute; right: 6px; top: 6px; width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--line, #c9ced6);
+  background: var(--surface, #fff); color: var(--ink-2, #444); display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; line-height: 0; }
+.jpk-mic:hover { border-color: var(--accent, #2f5bd3); color: var(--accent, #2f5bd3); }
+.jpk-mic:focus-visible { outline: 2px solid var(--accent, #2f5bd3); outline-offset: 2px; }
+.jpk-mic svg { width: 16px; height: 16px; }
+.jpk-mic[aria-pressed="true"] { background: #c62828; border-color: #c62828; color: #fff; animation: jpk-mic-pulse 1.2s ease-in-out infinite; }
+@keyframes jpk-mic-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, .45); } 50% { box-shadow: 0 0 0 6px rgba(198, 40, 40, 0); } }
+@media (prefers-reduced-motion: reduce) { .jpk-mic[aria-pressed="true"] { animation: none; } }
+.jpk-mic-msg { margin: 4px 0 0; font-size: 12px; font-weight: 400; color: var(--ink-3, #666); min-height: 0; }
+.jpk-mic-msg:empty { display: none; }
+.jpk-mic-msg.is-warn { color: var(--warn-ink, #8a4b00); }
+</style>
+<script id="jpk-s36">
+/* jpk-s36.js v1.0.0 (S36, 26 Oct 2026): voice typing for the New meeting form's Title and Notes.
+   Uses the browser's SpeechRecognition (Chrome / Edge). No Zoho calls, no writes; the form's Add meeting button saves as before.
+   If speech is unavailable or the microphone is blocked in Zoho's frame, the button explains and points to Windows key + H. */
+(function (root) {
   'use strict';
-  var s = document.currentScript;
-  if (!s) return;
-  var what = s.getAttribute('data-what');
-  if (!what) return;
-  var fed = s.getAttribute('data-fed');
-  var feeds = s.getAttribute('data-feeds');
-  var mode = s.getAttribute('data-mode') === 'line' ? 'line' : 'strip';
-  var after = s.getAttribute('data-after');
-  var footSel = s.getAttribute('data-foot');
-  var pid = s.getAttribute('data-id') ||
-    ((location.pathname.split('/').pop() || 'page').replace(/\.html?$/, ''));
-  var KEY = 'jpk-intro-hidden:' + pid;
+  var doc = root.document;
+  if (!doc || root.JPKS36) return;
+  if (/[?&]s36=0\b/.test(root.location.search)) { root.JPKS36 = { version: '1.0.0', off: true }; return; }
+  var VERSION = '1.0.0';
+  var SR = root.SpeechRecognition || root.webkitSpeechRecognition || null;
+  var MIC = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2z"/></svg>';
+  var FALLBACK = 'Use Windows key + H (Mac: press Fn twice) to type by voice.';
+  var active = null;   /* { rec, btn, field, base, msg } */
 
-  // Short stable fingerprint of the wording, so changed wording shows again.
-  function sig(str) {
-    var h = 5381;
-    for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
-    return (h >>> 0).toString(36);
+  function say(msg, text, warn) { if (!msg) return; msg.textContent = text || ''; msg.classList.toggle('is-warn', !!warn); }
+  function fire(field) { try { field.dispatchEvent(new Event('input', { bubbles: true })); field.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} }
+  function tidy(text, isTitle) {
+    var t = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!t) return '';
+    if (isTitle) { t = t.replace(/[.\s]+$/, ''); t = t.charAt(0).toUpperCase() + t.slice(1); }
+    return t;
   }
-  var SIG = sig([mode, what, fed || '', feeds || ''].join('\u0001'));
+  function joinText(base, add) { if (!add) return base; if (!base) return add; return base + (/\s$/.test(base) ? '' : ' ') + add; }
 
-  function store(fn) { try { return fn(window.localStorage); } catch (e) { return null; } }
-  function isHidden() { return store(function (ls) { return ls.getItem(KEY); }) === SIG; }
-  function setHidden(on) {
-    store(function (ls) { if (on) ls.setItem(KEY, SIG); else ls.removeItem(KEY); });
-  }
-
-  function run() {
-    if (document.getElementById('jpk-intro')) return;
-    var css = document.createElement('style');
-    css.id = 'jpk-intro-css';
-    css.textContent =
-      '#jpk-intro{margin:0 0 10px;padding:8px 12px;border:1px solid rgba(128,128,128,.35);border-radius:8px;' +
-      'background:rgba(128,128,128,.08);font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:inherit;display:flex;gap:10px;align-items:flex-start}' +
-      '#jpk-intro .ji-t{flex:1;min-width:0;overflow-wrap:anywhere}#jpk-intro b{font-weight:600}' +
-      '#jpk-intro .ji-l{display:block;opacity:.85;margin-top:2px}' +
-      '#jpk-intro.ji-line{margin:2px 0 8px;padding:0;border:0;background:none;align-items:baseline;opacity:.85;font-family:inherit}' +
-      '#jpk-intro button,#jpk-intro-about{flex:none;font:inherit;color:inherit;background:none;border:0;cursor:pointer;opacity:.7;padding:0 4px;min-height:24px;text-decoration:underline}' +
-      '#jpk-intro button:hover,#jpk-intro button:focus-visible,#jpk-intro-about:hover,#jpk-intro-about:focus-visible{opacity:1}' +
-      '#jpk-intro-about{font:12px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;margin:6px 0}' +
-      '#jpk-intro[hidden],#jpk-intro-about[hidden]{display:none}';
-    document.head.appendChild(css);
-
-    var box = document.createElement('div');
-    box.id = 'jpk-intro';
-    box.setAttribute('role', 'note');
-    box.setAttribute('aria-label', 'About this page');
-    if (mode === 'line') box.className = 'ji-line';
-    var t = document.createElement('div');
-    t.className = 'ji-t';
-    if (mode === 'line') {
-      t.textContent = what;
-    } else {
-      var line = function (label, text, first) {
-        var d = document.createElement(first ? 'div' : 'span');
-        if (!first) d.className = 'ji-l';
-        var b = document.createElement('b');
-        b.textContent = label;
-        d.appendChild(b);
-        d.appendChild(document.createTextNode(' ' + text));
-        t.appendChild(d);
-      };
-      line('What this does:', what, true);
-      if (fed) line('Fed by:', fed);
-      if (feeds) line('Feeds:', feeds);
-    }
-    var x = document.createElement('button');
-    x.type = 'button';
-    x.textContent = 'Hide';
-    x.setAttribute('aria-label', 'Hide the note about this page');
-    box.appendChild(t);
-    box.appendChild(x);
-
-    var about = document.createElement('button');
-    about.type = 'button';
-    about.id = 'jpk-intro-about';
-    about.textContent = 'About this page';
-
-    function show(on) {
-      box.hidden = !on;
-      about.hidden = on;
-    }
-    x.addEventListener('click', function () { setHidden(true); show(false); about.focus(); });
-    about.addEventListener('click', function () { setHidden(false); show(true); x.focus(); });
-
-    function q(sel) { if (!sel) return null; try { return document.querySelector(sel); } catch (e) { return null; } }
-    function host() { return document.querySelector('main') || document.querySelector('.wrap') || document.body; }
-    function placeBox() {
-      var anchor = q(after);
-      if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(box, anchor.nextSibling);
-      else { var h = host(); h.insertBefore(box, h.firstChild); }
-    }
-    function placeAbout() {
-      var foot = q(footSel) || (footSel ? null : (document.querySelector('footer') || document.querySelector('.foot')));
-      (foot || host()).appendChild(about);
-    }
-    placeBox();
-    placeAbout();
-    show(!isHidden());
-
-    // Pages that redraw their main area or header by script would drop the strip; put it back.
-    var busy = false;
-    new MutationObserver(function () {
-      if (busy || (box.isConnected && about.isConnected)) return;
-      busy = true;
-      if (!box.isConnected) placeBox();
-      if (!about.isConnected) placeAbout();
-      busy = false;
-    }).observe(document.body, { childList: true, subtree: true });
+  function stop(keepMsg) {
+    var a = active; if (!a) return;
+    active = null;
+    try { a.rec.onresult = a.rec.onerror = a.rec.onend = null; a.rec.stop(); } catch (e) {}
+    a.btn.setAttribute('aria-pressed', 'false');
+    a.btn.setAttribute('aria-label', a.btn.getAttribute('data-label'));
+    if (!keepMsg) say(a.msg, '');
   }
 
-  // With data-after, wait (up to 15 s) for the anchor, since home headers are painted by script.
-  function start() {
-    if (!after) return run();
-    var found = function () { try { return document.querySelector(after); } catch (e) { return null; } };
-    if (found()) return run();
-    var done = false;
-    var mo = new MutationObserver(function () { if (!done && found()) { done = true; mo.disconnect(); run(); } });
-    mo.observe(document.body, { childList: true, subtree: true });
-    setTimeout(function () { if (!done) { done = true; mo.disconnect(); run(); } }, 15000);
+  function start(btn) {
+    var wrap = btn.parentNode, field = wrap.querySelector('input, textarea'), msg = wrap.parentNode.querySelector('.jpk-mic-msg');
+    if (active && active.btn === btn) { stop(); return; }
+    stop();
+    if (!SR) { say(msg, 'Voice typing isn’t available in this browser. ' + FALLBACK, true); return; }
+    var isTitle = field.name === 't', max = parseInt(field.getAttribute('maxlength'), 10) || 32000;
+    var rec; try { rec = new SR(); } catch (e) { say(msg, 'Voice typing couldn’t start here. ' + FALLBACK, true); return; }
+    rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = !isTitle; rec.maxAlternatives = 1;
+    var a = { rec: rec, btn: btn, field: field, msg: msg, base: field.value, heard: false };
+    active = a;
+    btn.setAttribute('aria-pressed', 'true');
+    btn.setAttribute('aria-label', 'Stop voice typing');
+    say(msg, isTitle ? 'Listening… say the meeting title.' : 'Listening… click the mic again when you’re done.');
+    rec.onresult = function (ev) {
+      if (active !== a) return;
+      var fin = '', interim = '';
+      for (var i = 0; i < ev.results.length; i++) { var r = ev.results[i]; if (r.isFinal) fin += r[0].transcript + ' '; else interim += r[0].transcript + ' '; }
+      var heard = tidy(fin + interim, isTitle && !a.base);
+      if (heard) a.heard = true;
+      field.value = joinText(a.base, heard).slice(0, max);
+      fire(field);
+    };
+    rec.onerror = function (ev) {
+      if (active !== a) return;
+      var c = ev && ev.error, text;
+      if (c === 'not-allowed' || c === 'service-not-allowed') text = 'The microphone is blocked for this page (Zoho or the browser). ' + FALLBACK;
+      else if (c === 'no-speech') text = 'Didn’t hear anything. Click the mic and try again.';
+      else if (c === 'audio-capture') text = 'No microphone found. ' + FALLBACK;
+      else if (c === 'network') text = 'Voice typing needs an internet connection. ' + FALLBACK;
+      else if (c === 'aborted') text = '';
+      else text = 'Voice typing stopped (' + (c || 'unknown') + '). ' + FALLBACK;
+      stop(true); say(msg, text, !!text && c !== 'no-speech');
+    };
+    rec.onend = function () {
+      if (active !== a) return;
+      stop(true);
+      if (a.heard) { field.value = isTitle ? tidy(field.value, true).slice(0, max) : field.value.trim(); fire(field); say(msg, 'Got it. Check it, then pick the time.'); field.focus(); }
+      else say(msg, '');
+    };
+    try { rec.start(); } catch (e) { stop(true); say(msg, 'Voice typing couldn’t start here. ' + FALLBACK, true); }
   }
 
-  if (document.body) start();
-  else document.addEventListener('DOMContentLoaded', start);
-})();
+  function addMic(field, label) {
+    if (!field || field.getAttribute('data-jpk-mic')) return false;
+    field.setAttribute('data-jpk-mic', '1');
+    var wrap = doc.createElement('span'); wrap.className = 'jpk-mic-wrap';
+    field.parentNode.insertBefore(wrap, field); wrap.appendChild(field);
+    var btn = doc.createElement('button');
+    btn.type = 'button'; btn.className = 'jpk-mic'; btn.innerHTML = MIC;
+    btn.setAttribute('aria-pressed', 'false'); btn.setAttribute('aria-label', label); btn.setAttribute('data-label', label); btn.title = label;
+    wrap.appendChild(btn);
+    var msg = doc.createElement('p'); msg.className = 'jpk-mic-msg'; msg.setAttribute('role', 'status'); msg.setAttribute('aria-live', 'polite');
+    wrap.parentNode.insertBefore(msg, wrap.nextSibling);
+    /* a button inside a <label> would also focus the field; keep the click to the mic only */
+    btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); start(btn); });
+    return true;
+  }
 
+  function scan(rootNode) {
+    var n = 0, scope = rootNode && rootNode.querySelectorAll ? rootNode : doc;
+    Array.prototype.forEach.call(scope.querySelectorAll('form input[name="t"][maxlength="255"]'), function (t) {
+      var form = t.form || t.closest('form'); if (!form) return;
+      if (addMic(t, 'Say the title')) n++;
+      var notes = form.querySelector('textarea[name="n"]');
+      if (notes && addMic(notes, 'Say the notes')) n++;
+    });
+    /* a form that closes stops listening */
+    if (active && !doc.contains(active.field)) stop();
+    return n;
+  }
+
+  function boot() {
+    scan(doc);
+    try { new MutationObserver(function () { scan(doc); }).observe(doc.body, { childList: true, subtree: true }); } catch (e) { setInterval(function () { scan(doc); }, 1000); }
+    doc.addEventListener('keydown', function (e) { if (e.key === 'Escape' && active) stop(); }, true);
+  }
+  root.JPKS36 = { version: VERSION, supported: !!SR, scan: scan, stop: stop, tidy: tidy };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
+})(window);
 </script>
-<!-- jpk-s35:end -->
+<!-- jpk-s36:end -->
 </body>
 </html>
