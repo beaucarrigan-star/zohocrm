@@ -1,0 +1,37 @@
+/* EM Margins: page-specific styles on top of jpk.css, jpk-theme-v3.css, jpk-patterns-v3.css. Tokens only, so light and dark both work. */
+html,body{max-width:100%;overflow-x:hidden}
+.wrap{padding-bottom:28px}
+.rec .sub{max-width:70ch}
+.demo-banner{margin-top:10px;padding:8px 12px;border:1px solid var(--line-strong);border-left:3px solid var(--warn);border-radius:var(--r);background:var(--warn-soft);color:var(--ink);font-size:13px}
+.demo-banner b{color:var(--warn)}
+.tool-chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;min-height:32px;cursor:pointer}
+.tool-chk input{width:16px;height:16px;accent-color:var(--accent);margin:0}
+.totals{margin-top:12px}
+.totals .tile b{display:block;margin-top:2px}
+.totals .tile i{font-style:normal}
+.totals .tile .warnv{color:var(--warn)}
+.pane .toolbar{margin-bottom:12px}
+.toolbar label{font-size:12.5px;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.toolbar select{min-height:30px;max-width:100%}
+.tierpills{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tierpills .lbl{font-size:12.5px;color:var(--muted)}
+/* tier chip: text and background are both set, so it reads in light and dark without a row tint */
+.tierchip .chip{padding:2px 9px;border-radius:99px;font-weight:600;font-size:12px;border:1px solid transparent;gap:0}
+.tierchip .chip::before{display:none}
+.tierchip .chip.good{background:var(--good-soft);color:var(--good)}
+.tierchip .chip.warn{background:var(--warn-soft);color:var(--warn)}
+.tierchip .chip.bad{background:var(--bad-soft);color:var(--bad)}
+.tierchip .chip:not(.good):not(.warn):not(.bad):not(.info){background:var(--surface2);color:var(--ink);border-color:var(--line-strong)}
+td .btn.sm{white-space:nowrap}
+td.why{min-width:180px}
+.dl-links{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+.dl-links .btn{min-height:32px}
+.dl dd.pre{font-weight:500;white-space:pre-wrap}
+.foot{margin-top:14px;color:var(--muted);font-size:12.5px}
+.err-box{margin-top:12px;padding:10px 14px;border:1px solid var(--bad);border-left-width:4px;border-radius:var(--r);background:var(--bad-soft);color:var(--ink);font-size:13px}
+@media (max-width:600px){
+  .tool-chk,.toolbar select{min-height:40px}
+  .tierpills .pill{min-height:36px}
+  .dl{grid-template-columns:1fr}
+  .dl dt{margin-top:6px}
+}
