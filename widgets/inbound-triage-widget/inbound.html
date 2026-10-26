@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inbound email triage</title>
+<style>body{margin:0;background:#fff;font-family:system-ui,sans-serif}#root{min-height:100vh}.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:8px 14px;border-radius:6px;font-size:13px;z-index:9;display:flex;gap:12px;align-items:center}.toast button{background:none;border:0;color:#93c5fd;cursor:pointer;font:inherit}.demo{background:#fef3c7;color:#92400e;padding:4px 12px;font-size:12px}</style>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+</head><body><div id="demo" class="demo" hidden>Demo data (not connected to Zoho)</div><div id="root"></div>
+<script>
+/* Inbound triage model (pure logic, no DOM). UMD: window.InboundTriage / module.exports */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.InboundTriage = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var CONFIG = {
+    // Blank-Intake-Result rows are imported history, EXCEPT rows created on/after this (fallback-path rows).
+    FLOW_START: '2026-10-26T00:00:00',
+    INTERNAL_DOMAINS: ['differenceprinciple.org', 'justicepoint.org', 'sironarecovery.org', 'sironarecoverynetwork.org'],
+    OUT_OF_TRIAGE_RESULTS: ['Case created', 'Added to existing case', 'Agent reply'],
+    NOISE_RESULTS: ['Automated report', 'Ignored'],
+    VENDOR_RESULTS: ['Vendor notice'],
+    STAFF_RESULTS: ['Internal']
+  };
+
+  var GROUPS = ['Customers', 'Vendors', 'Staff', 'Noise'];
+
+  function lc(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
+  function domainOf(email) { var m = lc(email).split('@'); return m.length > 1 ? m[m.length - 1] : ''; }
+  function hasAccount(r) { return !!(r && r.Account && (r.Account.id || r.Account.name)); }
+
+  function isHistorical(r) {
+    if (lc(r.Source) === 'historical import') return true;
+    if (!r.Intake_Result) {
+      var t = Date.parse(r.Created_Time || r.Received_At || '');
+      var start = Date.parse(CONFIG.FLOW_START);
+      if (isNaN(t)) return true;
+      return t < start;
+    }
+    return false;
+  }
+
+  function inTriageScope(r) {
+    if (!r || r.Direction !== 'In') return false;
+    if (CONFIG.OUT_OF_TRIAGE_RESULTS.indexOf(r.Intake_Result) >= 0) return false;
+    if (isHistorical(r)) return false;
+    return true;
+  }
+
+  function group(r) {
+    var res = r.Intake_Result;
+    if (CONFIG.NOISE_RESULTS.indexOf(res) >= 0) return 'Noise';
+    if (CONFIG.VENDOR_RESULTS.indexOf(res) >= 0) return 'Vendors';
+    if (CONFIG.STAFF_RESULTS.indexOf(res) >= 0) return 'Staff';
+    if (hasAccount(r)) return 'Customers';
+    if (CONFIG.INTERNAL_DOMAINS.indexOf(domainOf(r.Sender_Email)) >= 0) return 'Staff';
+    return 'Customers';
+  }
+
+  // Addressed = marked read OR removed from triage. Linking an account alone does not address.
+  function isAddressed(r) {
+    return r.Triage_Status === 'Addressed' || r.Marked_Read === true;
+  }
+
+  function iso(now) { return (now instanceof Date ? now : new Date(now || Date.now())).toISOString(); }
+  function zohoTime(now) { // Zoho datetime: yyyy-MM-ddTHH:mm:ss+00:00
+    return iso(now).replace(/\.\d+Z$/, '+00:00');
+  }
+
+  function addressPatch(action, userId, now) {
+    var base = {
+      Triage_Status: 'Addressed',
+      Addressed_By: { id: userId },
+      Addressed_On: zohoTime(now)
+    };
+    if (action === 'read') { base.Addressed_Action = 'Marked read'; base.Marked_Read = true; }
+    else if (action === 'remove') { base.Addressed_Action = 'Removed from triage'; }
+    else throw new Error('Unknown action: ' + action);
+    return base;
+  }
+
+  function reopenPatch() {
+    return { Triage_Status: 'Open', Addressed_Action: null, Addressed_By: null, Addressed_On: null, Marked_Read: false };
+  }
+
+  function sameLocalDay(a, b) {
+    var f = function (d) { return new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); };
+    return f(a) === f(b);
+  }
+
+  function build(rows, opts) {
+    opts = opts || {};
+    var now = opts.now || Date.now();
+    var seen = {}, scoped = [];
+    (rows || []).forEach(function (r) {
+      if (!inTriageScope(r)) return;
+      if (r.Message_ID) { if (seen[r.Message_ID]) return; seen[r.Message_ID] = 1; }
+      scoped.push(r);
+    });
+    var open = [], addressed = [];
+    scoped.forEach(function (r) { (isAddressed(r) ? addressed : open).push(r); });
+    var byGroup = {}; GROUPS.forEach(function (g) { byGroup[g] = 0; });
+    open.forEach(function (r) { byGroup[group(r)]++; });
+    var today = addressed.filter(function (r) { return r.Addressed_On && sameLocalDay(r.Addressed_On, now); }).length;
+    var time = function (r) { return Date.parse(r.Received_At || r.Created_Time || '') || 0; };
+    open.sort(function (a, b) { return time(a) - time(b); });          // oldest first
+    addressed.sort(function (a, b) { return (Date.parse(b.Addressed_On || '') || 0) - (Date.parse(a.Addressed_On || '') || 0); });
+    return { open: open, addressed: addressed, byGroup: byGroup, openCount: open.length, addressedToday: today };
+  }
+
+  function filterOpen(open, groupName, showNoise) {
+    return open.filter(function (r) {
+      var g = group(r);
+      if (groupName && groupName !== 'All') return g === groupName;
+      return showNoise ? true : g !== 'Noise';
+    });
+  }
+
+  return {
+    CONFIG: CONFIG, GROUPS: GROUPS, group: group, inTriageScope: inTriageScope, isHistorical: isHistorical,
+    isAddressed: isAddressed, addressPatch: addressPatch, reopenPatch: reopenPatch, build: build,
+    filterOpen: filterOpen, zohoTime: zohoTime
+  };
+});
+/* Fictional demo rows (demo mode only). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.InboundTriageDemo = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  function make(now) {
+    var H = 3600e3, iso = function (h) { return new Date(now - h * H).toISOString(); };
+    var r = function (id, o) {
+      return Object.assign({ id: 'd' + id, Direction: 'In', Intake_Result: 'Left for review', Source: 'Flow', Message_ID: 'demo-' + id,
+        Created_Time: iso(5), Received_At: iso(5), Marked_Read: false, Triage_Status: 'Open' }, o);
+    };
+    return [
+      r(1, { Name: 'Question about monthly report', Sender_Name: 'Pat Rivera', Sender_Email: 'pat@democounty.example', Account: { id: 'a1', name: 'Demo County' }, Received_At: iso(30) }),
+      r(2, { Name: 'Invoice for October', Sender_Name: 'Acme Hosting', Sender_Email: 'billing@acme-hosting.example', Intake_Result: 'Vendor notice', Received_At: iso(20) }),
+      r(3, { Name: 'Team lunch Friday', Sender_Name: 'Sam Lee', Sender_Email: 'sam@differenceprinciple.org', Received_At: iso(8) }),
+      r(4, { Name: 'Nightly job report', Sender_Name: 'Scheduler', Sender_Email: 'noreply@jobs.example', Intake_Result: 'Automated report', Received_At: iso(3) }),
+      r(5, { Name: 'Device not charging', Sender_Name: 'Jo Park', Sender_Email: 'jo@sampleprobation.example', Intake_Result: null, Received_At: iso(2) }),
+      r(6, { Name: 'Thanks, all set', Sender_Name: 'Kim Ortiz', Sender_Email: 'kim@demoreentry.example', Marked_Read: true, Triage_Status: 'Addressed', Addressed_Action: 'Marked read', Addressed_By: { id: 'u1', name: 'Demo User' }, Addressed_On: iso(1) })
+    ];
+  }
+  return { make: make };
+});
+window.RecModules=window.RecModules||{};
+/* Inbound triage view for the Support tab.
+   Registers window.RecModules.inbound ("Inbound email triage").
+   Open / Addressed tabs, Customers / Vendors / Staff / Noise groups, Mark read, Remove from triage (+ Undo),
+   bulk actions, audit list. Emails are never deleted or changed in Outlook; nothing is deleted in Zoho. */
+(function () {
+  'use strict';
+  var T = window.InboundTriage;
+  var FIELDS = 'id, Name, Sender_Email, Sender_Name, Recipient_Email, Topic, Direction, Intake_Result, Marked_Read, Source, ' +
+    'Received_At, Created_Time, Message_ID, Account, Case, Thread_Link, Triage_Status, Addressed_Action, Addressed_By, Addressed_On';
+  var PAGE = 200, CAP = 5000;
+
+  function fmt(s) {
+    if (!s) return '';
+    var d = new Date(s); if (isNaN(d)) return '';
+    return d.toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+  function nm(v) { return v && (v.name || v.full_name) || ''; }
+
+  function getMe(X) {
+    var u = X.me || X.user || X.currentUser;
+    if (typeof u === 'function') u = u();
+    if (u && (u.id || (u.then))) return Promise.resolve(u);
+    if (X.userId) return Promise.resolve({ id: X.userId, name: X.userName || '' });
+    try {
+      return ZOHO.CRM.CONFIG.getCurrentUser().then(function (r) {
+        var x = r && r.users && r.users[0]; return x ? { id: x.id, name: x.full_name } : null;
+      });
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  function loadAll(X) {
+    var all = [];
+    function page(off) {
+      var q = 'select ' + FIELDS + " from Support_Emails where Direction = 'In' order by id desc limit " + off + ', ' + PAGE;
+      return Promise.resolve(X.coql(q)).then(function (rows) {
+        rows = rows || [];
+        all = all.concat(rows);
+        if (rows.length === PAGE && all.length < CAP) return page(off + PAGE);
+        return all;
+      });
+    }
+    return page(0);
+  }
+
+  function render(root, X) {
+    var S = { linking: null, hits: [], rows: [], tab: 'open', grp: 'All', noise: false, sel: {}, me: null, busy: false };
+    var esc = X.esc || function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+    root.innerHTML = '<div class="it-wrap"><div class="it-loading">Loading inbound email…</div></div>';
+
+    function byId(id) { for (var i = 0; i < S.rows.length; i++) if (String(S.rows[i].id) === String(id)) return S.rows[i]; }
+
+    function write(ids, action) {
+      if (S.busy || !ids.length) return;
+      if (!S.me || !S.me.id) { X.toast && X.toast('Could not tell who you are in Zoho — nothing changed.'); return; }
+      S.busy = true;
+      var prev = ids.map(function (id) { var r = byId(id); return { id: id, snap: JSON.parse(JSON.stringify(r)) }; });
+      var patch = T.addressPatch(action, S.me.id, new Date());
+      var chain = Promise.resolve();
+      ids.forEach(function (id) {
+        chain = chain.then(function () {
+          var r = byId(id);
+          return Promise.resolve(X.update('Support_Emails', id, patch)).then(function () {
+            r.Triage_Status = 'Addressed'; r.Addressed_Action = patch.Addressed_Action;
+            r.Addressed_By = { id: S.me.id, name: S.me.name }; r.Addressed_On = patch.Addressed_On;
+            if (action === 'read') r.Marked_Read = true;
+          });
+        });
+      });
+      chain.then(function () {
+        S.busy = false; S.sel = {}; draw();
+        var label = (action === 'read' ? 'Marked read: ' : 'Removed from triage: ') + ids.length + ' email' + (ids.length === 1 ? '' : 's');
+        var undo = function () {
+          var rp = T.reopenPatch(), c2 = Promise.resolve();
+          prev.forEach(function (p) {
+            c2 = c2.then(function () {
+              return Promise.resolve(X.update('Support_Emails', p.id, rp)).then(function () {
+                var r = byId(p.id); if (r) { Object.keys(p.snap).forEach(function (k) { r[k] = p.snap[k]; }); }
+              });
+            });
+          });
+          return c2.then(draw);
+        };
+        if (X.toastUndo) X.toastUndo(label, undo); else if (X.toast) X.toast(label);
+      }).catch(function (e) {
+        S.busy = false; draw();
+        X.toast && X.toast('Something failed — ' + (e && e.message || e) + '. Check the list; some may have saved.');
+      });
+    }
+
+    function searchAccounts(q) {
+      q = String(q || '').trim().replace(/'/g, "\\'");
+      if (q.length < 2) return Promise.resolve([]);
+      if (!X.coql) return Promise.resolve([{ id: 'demo1', Account_Name: q + ' (demo account)' }]);
+      return Promise.resolve(X.coql("select id, Account_Name from Accounts where Account_Name like '%" + q + "%' limit 0, 10")).then(function (r) { return r || []; }, function () { return []; });
+    }
+    function linkAccount(id, acc) {
+      var r = byId(id); if (!r || S.busy) return;
+      var before = r.Account ? { id: r.Account.id, name: r.Account.name } : null;
+      Promise.resolve(X.update('Support_Emails', id, { Account: { id: acc.id } })).then(function () {
+        r.Account = acc; S.linking = null; S.hits = []; draw();
+        var undo = function () {
+          return Promise.resolve(X.update('Support_Emails', id, { Account: before ? { id: before.id } : null })).then(function () { r.Account = before; draw(); });
+        };
+        var msg = 'Linked to ' + acc.name + ' (still open until marked read or removed)';
+        if (X.toastUndo) X.toastUndo(msg, undo); else if (X.toast) X.toast(msg);
+      }).catch(function (e) { X.toast && X.toast('Could not link: ' + (e && e.message || e)); });
+    }
+
+    function pill(txt, cls) { return '<span class="it-pill ' + (cls || '') + '">' + esc(txt) + '</span>'; }
+
+    function rowHtml(r, addressed) {
+      var g = T.group(r), chk = S.sel[r.id] ? ' checked' : '';
+      var who = r.Sender_Name || r.Sender_Email || '';
+      var acct = nm(r.Account);
+      var h = '<tr data-id="' + esc(r.id) + '">';
+      if (!addressed) h += '<td><input type="checkbox" class="it-chk" data-id="' + esc(r.id) + '"' + chk + '></td>';
+      h += '<td class="it-when">' + esc(fmt(r.Received_At || r.Created_Time)) + '</td>';
+      h += '<td><div class="it-who">' + esc(who) + '</div><div class="it-sub">' + esc(r.Sender_Email || '') + '</div></td>';
+      h += '<td class="it-subj">' + esc(r.Name || '(no subject)') + '</td>';
+      h += '<td>' + pill(g, 'g-' + g.toLowerCase()) + '</td>';
+      if (String(S.linking) === String(r.id)) {
+        h += '<td><input class="it-search" id="it-search" placeholder="Search accounts…" autocomplete="off"><div class="it-hits">' +
+          S.hits.map(function (a) { return '<button class="it-hit" data-acc="' + esc(a.id) + '" data-name="' + esc(a.Account_Name) + '" data-id="' + esc(r.id) + '">' + esc(a.Account_Name) + '</button>'; }).join('') +
+          '</div><a href="#" class="it-cancel">Cancel</a></td>';
+      } else {
+        h += '<td>' + (acct ? esc(acct) : '<span class="it-muted">No account</span>') + ' <a href="#" class="it-link" data-id="' + esc(r.id) + '">' + (acct ? 'Change' : 'Link account') + '</a></td>';
+      }
+      if (addressed) {
+        h += '<td>' + esc(r.Addressed_Action || (r.Marked_Read ? 'Marked read' : '')) + '</td>';
+        h += '<td>' + esc(nm(r.Addressed_By) || '—') + '</td><td class="it-when">' + esc(fmt(r.Addressed_On)) + '</td>';
+        h += '<td><a href="#" class="it-reopen" data-id="' + esc(r.id) + '">Reopen</a></td>';
+      } else {
+        h += '<td class="it-acts"><button class="it-btn" data-act="read" data-id="' + esc(r.id) + '">Mark read</button> ' +
+          '<button class="it-btn ghost" data-act="remove" data-id="' + esc(r.id) + '">Remove</button></td>';
+      }
+      return h + '</tr>';
+    }
+
+    function draw() {
+      var b = T.build(S.rows, { now: Date.now() });
+      var list = S.tab === 'open' ? T.filterOpen(b.open, S.grp, S.noise) : b.addressed;
+      var addressed = S.tab === 'addressed';
+      var selIds = Object.keys(S.sel).filter(function (k) { return S.sel[k] && list.some(function (r) { return String(r.id) === k; }); });
+
+      var h = '<div class="it-wrap">';
+      h += '<div class="it-head"><div class="it-count"><b>Open ' + b.openCount + '</b> · Addressed today ' + b.addressedToday + '</div>';
+      h += '<div class="it-tabs"><button class="it-tab' + (!addressed ? ' on' : '') + '" data-tab="open">Open (' + b.openCount + ')</button>' +
+        '<button class="it-tab' + (addressed ? ' on' : '') + '" data-tab="addressed">Addressed (' + b.addressed.length + ')</button></div></div>';
+      h += '<div class="it-note">Marking read or removing never touches Outlook. Linking an account alone does not address an email.</div>';
+
+      if (!addressed) {
+        h += '<div class="it-groups">';
+        ['All'].concat(T.GROUPS).forEach(function (g) {
+          var n = g === 'All' ? (S.noise ? b.openCount : b.openCount - b.byGroup.Noise) : b.byGroup[g];
+          h += '<button class="it-grp' + (S.grp === g ? ' on' : '') + '" data-grp="' + g + '">' + g + ' (' + n + ')</button>';
+        });
+        h += '<label class="it-noise"><input type="checkbox" id="it-noise"' + (S.noise ? ' checked' : '') + '> Show noise in All</label></div>';
+        h += '<div class="it-bulk"><label><input type="checkbox" id="it-all"> Select all shown (' + list.length + ')</label>' +
+          '<button class="it-btn" data-bulk="read"' + (selIds.length ? '' : ' disabled') + '>Mark read (' + selIds.length + ')</button>' +
+          '<button class="it-btn ghost" data-bulk="remove"' + (selIds.length ? '' : ' disabled') + '>Remove from triage (' + selIds.length + ')</button></div>';
+      }
+
+      if (!list.length) {
+        h += '<div class="it-empty">' + (addressed ? 'Nothing addressed yet.' : 'Nothing open here. ✓') + '</div>';
+      } else {
+        h += '<table class="it-table"><thead><tr>' + (addressed ? '' : '<th></th>') +
+          '<th>Received</th><th>From</th><th>Subject</th><th>Group</th><th>Account</th>' +
+          (addressed ? '<th>Action</th><th>By</th><th>On</th><th></th>' : '<th></th>') + '</tr></thead><tbody>';
+        list.slice(0, 500).forEach(function (r) { h += rowHtml(r, addressed); });
+        h += '</tbody></table>';
+        if (list.length > 500) h += '<div class="it-note">Showing the first 500 of ' + list.length + '.</div>';
+      }
+      h += '</div>';
+      root.innerHTML = h;
+      bind(list);
+    }
+
+    function bind(list) {
+      function all(sel) { return Array.prototype.slice.call(root.querySelectorAll(sel)); }
+      function on(sel, ev, fn) { all(sel).forEach(function (el) { el.addEventListener(ev, function (e) { fn(el, e); }); }); }
+      on('.it-tab', 'click', function (el) { S.tab = el.getAttribute('data-tab'); S.sel = {}; draw(); });
+      on('.it-grp', 'click', function (el) { S.grp = el.getAttribute('data-grp'); S.sel = {}; draw(); });
+      on('#it-noise', 'change', function (el) { S.noise = el.checked; draw(); });
+      on('.it-chk', 'change', function (el) { S.sel[el.getAttribute('data-id')] = el.checked; draw(); });
+      on('#it-all', 'change', function (el) { S.sel = {}; if (el.checked) list.forEach(function (r) { S.sel[r.id] = true; }); draw(); });
+      on('[data-act]', 'click', function (el) { write([el.getAttribute('data-id')], el.getAttribute('data-act')); });
+      on('[data-bulk]', 'click', function (el) {
+        var ids = Object.keys(S.sel).filter(function (k) { return S.sel[k]; });
+        if (ids.length > 1 && !window.confirm((el.getAttribute('data-bulk') === 'read' ? 'Mark read ' : 'Remove from triage ') + ids.length + ' emails? You can undo right after.')) return;
+        write(ids, el.getAttribute('data-bulk'));
+      });
+      on('.it-link', 'click', function (el, e) {
+        e.preventDefault(); S.linking = el.getAttribute('data-id'); S.hits = []; draw();
+        var i = root.querySelector('#it-search'); if (i) i.focus();
+      });
+      on('.it-cancel', 'click', function (el, e) { e.preventDefault(); S.linking = null; S.hits = []; draw(); });
+      var box = root.querySelector('#it-search');
+      if (box) {
+        var tm;
+        box.addEventListener('input', function () {
+          clearTimeout(tm);
+          tm = setTimeout(function () { searchAccounts(box.value).then(function (hits) {
+            S.hits = hits; var v = box.value; draw(); var b2 = root.querySelector('#it-search'); if (b2) { b2.value = v; b2.focus(); }
+          }); }, 300);
+        });
+      }
+      on('.it-hit', 'click', function (el) { linkAccount(el.getAttribute('data-id'), { id: el.getAttribute('data-acc'), name: el.getAttribute('data-name') }); });
+      on('.it-reopen', 'click', function (el, e) {
+        e.preventDefault();
+        var id = el.getAttribute('data-id'), r = byId(id); if (!r) return;
+        Promise.resolve(X.update('Support_Emails', id, T.reopenPatch())).then(function () {
+          Object.assign(r, T.reopenPatch()); draw(); X.toast && X.toast('Reopened.');
+        });
+      });
+    }
+
+    var data = X.isLive === false || (typeof X.isLive === 'function' && !X.isLive())
+      ? Promise.resolve(window.InboundTriageDemo ? window.InboundTriageDemo.make(Date.now()) : [])
+      : loadAll(X);
+    Promise.all([data, getMe(X)]).then(function (res) {
+      S.rows = res[0]; S.me = res[1]; draw();
+    }).catch(function (e) {
+      root.innerHTML = '<div class="it-wrap"><div class="it-empty">Could not load inbound email: ' + esc(e && e.message || e) + '</div></div>';
+    });
+  }
+
+  var css = document.createElement('style');
+  css.textContent =
+    '.it-wrap{font:13px/1.4 system-ui,sans-serif;padding:12px;color:#1f2937}' +
+    '.it-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}' +
+    '.it-count{font-size:15px}.it-tabs,.it-groups,.it-bulk{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}' +
+    '.it-tab,.it-grp,.it-btn{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font:inherit}' +
+    '.it-tab.on,.it-grp.on{background:#1e3a5f;color:#fff;border-color:#1e3a5f}.it-btn:disabled{opacity:.45;cursor:default}' +
+    '.it-btn.ghost{background:#f8fafc}.it-note,.it-muted,.it-sub{color:#64748b;font-size:12px}.it-note{margin:4px 0}' +
+    '.it-table{width:100%;border-collapse:collapse;margin-top:6px}.it-table th{text-align:left;font-size:11px;color:#64748b;border-bottom:1px solid #e2e8f0;padding:4px 6px}' +
+    '.it-table td{padding:6px;border-bottom:1px solid #f1f5f9;vertical-align:top}.it-when{white-space:nowrap}.it-acts{white-space:nowrap}' +
+    '.it-pill{border-radius:10px;padding:1px 8px;font-size:11px;background:#e2e8f0}.g-vendors{background:#fef3c7}.g-staff{background:#dbeafe}.g-noise{background:#e5e7eb;color:#6b7280}.g-customers{background:#dcfce7}' +
+    '.it-search{width:150px;padding:3px 6px}.it-hits{display:flex;flex-direction:column;gap:2px;margin:3px 0}.it-hit{text-align:left;border:1px solid #e2e8f0;background:#f8fafc;border-radius:4px;padding:3px 6px;cursor:pointer;font:inherit}' +
+    '.it-empty,.it-loading{padding:24px;text-align:center;color:#64748b}';
+  document.head.appendChild(css);
+
+  window.RecModules = window.RecModules || {};
+  window.RecModules.inbound = { key: 'inbound', title: 'Inbound email triage', entity: 'Support_Emails', custom: true, render: render };
+})();
+
+</script>
+<script>
+(function(){
+  var demo = /[?&]demo=1/.test(location.search) || typeof ZOHO === 'undefined';
+  var root = document.getElementById('root');
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  var tt;
+  function toast(msg, undo){
+    var old=document.querySelector('.toast'); if(old) old.remove();
+    var d=document.createElement('div'); d.className='toast'; d.textContent=msg;
+    if(undo){var b=document.createElement('button'); b.textContent='Undo'; b.onclick=function(){d.remove(); undo();}; d.appendChild(b);}
+    document.body.appendChild(d); clearTimeout(tt); tt=setTimeout(function(){d.remove()}, undo?12000:4000);
+  }
+  var X = { esc: esc, toast: toast, toastUndo: toast, isLive: function(){return !demo;} };
+  function start(){
+    if(demo){document.getElementById('demo').hidden=false; X.update=function(){return Promise.resolve();}; X.me={id:'demo',name:'Demo User'}; window.RecModules.inbound.render(root,X); return;}
+    X.coql=function(q){return ZOHO.CRM.API.coql({select_query:q}).then(function(r){return (r&&r.data)||[];},function(e){ if(e && e.status===204) return []; throw e;});};
+    X.update=function(entity,id,patch){
+      var d=Object.assign({id:id},patch);
+      return ZOHO.CRM.API.updateRecord({Entity:entity,RecordID:id,APIData:d,Trigger:[]}).then(function(r){
+        var x=r&&r.data&&r.data[0]; if(x&&x.code&&x.code!=='SUCCESS') throw new Error(x.message||x.code); return r;});
+    };
+    X.openCrm=function(entity,id){ZOHO.CRM.UI.Record.open({Entity:entity,RecordID:id});};
+    ZOHO.CRM.CONFIG.getCurrentUser().then(function(r){var u=r&&r.users&&r.users[0]; if(u) X.me={id:u.id,name:u.full_name}; window.RecModules.inbound.render(root,X);});
+  }
+  if(demo) start(); else ZOHO.embeddedApp.on('PageLoad',function(){}), ZOHO.embeddedApp.init().then(start);
+})();
+</script></body></html>
