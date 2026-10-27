@@ -7127,7 +7127,7 @@
 })(typeof window !== 'undefined' ? window : this);
 
 </script>
-<meta name="jpk-build" content="EM Home v39.1 (v39.0 + queue Contact fix, trimmed quick actions, Buddi and SuperCom portals, 23 Oct 2026)">
+<meta name="jpk-build" content="EM Home v39.4 (v39.2 S32 calendar + S35 guide blurb line + S38 Phase 5 frame, 27 Oct 2026)">
 <!-- jpk-s24:begin -->
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
@@ -8009,7 +8009,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'em',
   title: 'EM Home',
-  build: 'EM Home v39.2',
+  build: 'EM Home v39.4',
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   enabled: true,
   greeting: '#greeting',
@@ -12526,6 +12526,1130 @@ html[data-s32="on"] .s32-scrim[hidden] { display: none; }
 })(window);
 </script>
 <!-- jpk-s32:end -->
+<!-- jpk-s35:start -->
+<script id="jpk-s35" data-id="home-em" data-mode="line" data-after="#jpk-head #jpk-counts" data-foot="footer.foot-note" data-what="Your support day: stock emails to approve, cases due, emails waiting in your mailbox and the team mailbox, devices on leg and spare, vendor contacts.">
+if (/[?&]s35=0\b/.test(location.search)) { /* S35 off switch */ } else
+/* jpk-intro.js v1.1.0 (S35, 26 Oct 2026). "What this does" strip for JusticePoint widgets.
+   Standalone: no dependencies, no network. Works with or without jpk.js/jpk.css.
+   v1.1.0 adds, over v1.0.0 (same tag still works):
+     - Hide is remembered per browser and per page (browser storage; if storage is blocked
+       it falls back to hiding for the visit only).
+     - If the wording changes, a hidden strip shows again once.
+     - When hidden, a small "About this page" link sits at the foot of the page; it brings the strip back.
+     - data-mode="line": one line, no labels, for home pages (placed under the greeting).
+   Tag:
+     <script src="jpk-intro.js"
+       data-id="records"                      (storage key; defaults to the page file name)
+       data-what="What it is for."            (required)
+       data-fed="Fed by."  data-feeds="Feeds." (optional; not shown in line mode)
+       data-mode="line"                       (optional; homes)
+       data-after="#greeting"                 (optional; CSS selector to place after, else top of main/.wrap/body)
+       data-foot="#foot"><\/script>            (optional; where the About link goes, else footer/.foot/end of main)
+   The element ids are jpk-intro and jpk-intro-about. Plain text only; read by screen readers. */
+(function () {
+  'use strict';
+  var s = document.currentScript;
+  if (!s) return;
+  var what = s.getAttribute('data-what');
+  if (!what) return;
+  var fed = s.getAttribute('data-fed');
+  var feeds = s.getAttribute('data-feeds');
+  var mode = s.getAttribute('data-mode') === 'line' ? 'line' : 'strip';
+  var after = s.getAttribute('data-after');
+  var footSel = s.getAttribute('data-foot');
+  var pid = s.getAttribute('data-id') ||
+    ((location.pathname.split('/').pop() || 'page').replace(/\.html?$/, ''));
+  var KEY = 'jpk-intro-hidden:' + pid;
+
+  // Short stable fingerprint of the wording, so changed wording shows again.
+  function sig(str) {
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+  }
+  var SIG = sig([mode, what, fed || '', feeds || ''].join('\u0001'));
+
+  function store(fn) { try { return fn(window.localStorage); } catch (e) { return null; } }
+  function isHidden() { return store(function (ls) { return ls.getItem(KEY); }) === SIG; }
+  function setHidden(on) {
+    store(function (ls) { if (on) ls.setItem(KEY, SIG); else ls.removeItem(KEY); });
+  }
+
+  function run() {
+    if (document.getElementById('jpk-intro')) return;
+    var css = document.createElement('style');
+    css.id = 'jpk-intro-css';
+    css.textContent =
+      '#jpk-intro{margin:0 0 10px;padding:8px 12px;border:1px solid rgba(128,128,128,.35);border-radius:8px;' +
+      'background:rgba(128,128,128,.08);font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:inherit;display:flex;gap:10px;align-items:flex-start}' +
+      '#jpk-intro .ji-t{flex:1;min-width:0;overflow-wrap:anywhere}#jpk-intro b{font-weight:600}' +
+      '#jpk-intro .ji-l{display:block;opacity:.85;margin-top:2px}' +
+      '#jpk-intro.ji-line{margin:2px 0 8px;padding:0;border:0;background:none;align-items:baseline;opacity:.85;font-family:inherit}' +
+      '#jpk-intro button,#jpk-intro-about{flex:none;font:inherit;color:inherit;background:none;border:0;cursor:pointer;opacity:.7;padding:0 4px;min-height:24px;text-decoration:underline}' +
+      '#jpk-intro button:hover,#jpk-intro button:focus-visible,#jpk-intro-about:hover,#jpk-intro-about:focus-visible{opacity:1}' +
+      '#jpk-intro-about{font:12px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;margin:6px 0}' +
+      '#jpk-intro[hidden],#jpk-intro-about[hidden]{display:none}';
+    document.head.appendChild(css);
+
+    var box = document.createElement('div');
+    box.id = 'jpk-intro';
+    box.setAttribute('role', 'note');
+    box.setAttribute('aria-label', 'About this page');
+    if (mode === 'line') box.className = 'ji-line';
+    var t = document.createElement('div');
+    t.className = 'ji-t';
+    if (mode === 'line') {
+      t.textContent = what;
+    } else {
+      var line = function (label, text, first) {
+        var d = document.createElement(first ? 'div' : 'span');
+        if (!first) d.className = 'ji-l';
+        var b = document.createElement('b');
+        b.textContent = label;
+        d.appendChild(b);
+        d.appendChild(document.createTextNode(' ' + text));
+        t.appendChild(d);
+      };
+      line('What this does:', what, true);
+      if (fed) line('Fed by:', fed);
+      if (feeds) line('Feeds:', feeds);
+    }
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = 'Hide';
+    x.setAttribute('aria-label', 'Hide the note about this page');
+    box.appendChild(t);
+    box.appendChild(x);
+
+    var about = document.createElement('button');
+    about.type = 'button';
+    about.id = 'jpk-intro-about';
+    about.textContent = 'About this page';
+
+    function show(on) {
+      box.hidden = !on;
+      about.hidden = on;
+    }
+    x.addEventListener('click', function () { setHidden(true); show(false); about.focus(); });
+    about.addEventListener('click', function () { setHidden(false); show(true); x.focus(); });
+
+    function q(sel) { if (!sel) return null; try { return document.querySelector(sel); } catch (e) { return null; } }
+    function host() { return document.querySelector('main') || document.querySelector('.wrap') || document.body; }
+    function placeBox() {
+      var anchor = q(after);
+      if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(box, anchor.nextSibling);
+      else { var h = host(); h.insertBefore(box, h.firstChild); }
+    }
+    function placeAbout() {
+      var foot = q(footSel) || (footSel ? null : (document.querySelector('footer') || document.querySelector('.foot')));
+      (foot || host()).appendChild(about);
+    }
+    placeBox();
+    placeAbout();
+    show(!isHidden());
+
+    // Pages that redraw their main area or header by script would drop the strip; put it back.
+    var busy = false;
+    new MutationObserver(function () {
+      if (busy || (box.isConnected && about.isConnected)) return;
+      busy = true;
+      if (!box.isConnected) placeBox();
+      if (!about.isConnected) placeAbout();
+      busy = false;
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  // With data-after, wait (up to 15 s) for the anchor, since home headers are painted by script.
+  function start() {
+    if (!after) return run();
+    var found = function () { try { return document.querySelector(after); } catch (e) { return null; } };
+    if (found()) return run();
+    var done = false;
+    var mo = new MutationObserver(function () { if (!done && found()) { done = true; mo.disconnect(); run(); } });
+    mo.observe(document.body, { childList: true, subtree: true });
+    setTimeout(function () { if (!done) { done = true; mo.disconnect(); run(); } }, 15000);
+  }
+
+  if (document.body) start();
+  else document.addEventListener('DOMContentLoaded', start);
+})();
+
+</script>
+<!-- jpk-s35:end -->
+<!-- jpk-s38:start -->
+<style id="jpk-s38-css">
+/* jpk-s38.css v1.0.0 (S38, cohesion plan Phase 5, 27 Oct 2026). Pairs with jpk-s38.js.
+   The S33 declutter rules of Beau CS Home, applied to EM Homepage, BD Home and Leadership Home, plus "Send to Leadership".
+   Frame rules are scoped under html[data-s38="on"], which the script sets only while the page frame (jpk-shell) is on.
+   The Send to Leadership form and the Sent to Leadership card use their own s38- classes and work with either layout.
+   Hide, don't delete: nothing is removed from the page. ?s38=0, or the classic layout, shows the page as it was. */
+
+/* ---------- 1. one header row: greeting and date line left; primary action, More, refresh and settings right ---------- */
+html[data-s38="on"] #page > header.mast,
+html[data-s38="on"] #nt-nav,
+html[data-s38="on"] #page > .navrow { display: none !important; }
+html[data-s38="on"] #jpk-head { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 6px 16px; padding-top: 10px; padding-bottom: 10px; }
+html[data-s38="on"] #jpk-head .jpk-hello { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; row-gap: 2px; }
+html[data-s38="on"] #jpk-head .jpk-hi { margin: 0; font-size: 22px; }
+html[data-s38="on"] #jpk-head .jpk-sub { margin: 0; }
+html[data-s38="on"] #jpk-head .jpk-hello > #jpk-intro { flex: 1 1 100%; margin: 0; }
+html[data-s38="on"] #jpk-head .jpk-qa-wrap { flex: none; margin: 0; flex-wrap: nowrap; gap: 8px; align-items: center; }
+html[data-s38="on"] #jpk-head .jpk-qa-l { display: none; }
+html[data-s38="on"] #jpk-head .jpk-qa .jpk-qa-btn:not(.jpk-qa-primary) { display: none !important; }
+html[data-s38="on"] .s38-right, html[data-s38="on"] .s38-right.mast {
+  flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 6px; position: static;
+  margin: 0; padding: 0; border: 0; background: none; box-shadow: none; min-height: 0; width: auto;
+}
+html[data-s38="on"] .s38-right .mast-tools,
+html[data-s38="on"] .s38-right .tools { display: flex; align-items: center; gap: 6px; margin: 0; }
+html[data-s38="on"] .s38-right #refreshed { font-size: var(--fs-sm, 12.5px); color: var(--muted); white-space: nowrap; }
+html[data-s38="on"] .s38-more { position: relative; flex: none; }
+html[data-s38="on"] .s38-more > button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; font: inherit; font-weight: 600; font-size: var(--fs-base, 14px);
+  color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--jpk-r-sm, 8px); cursor: pointer; white-space: nowrap;
+}
+html[data-s38="on"] .s38-more > button:hover { background: var(--surface-2); }
+html[data-s38="on"] .s38-more > button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+html[data-s38="on"] .s38-more-list {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 60; min-width: 220px; margin: 0; padding: 6px; list-style: none;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--jpk-r-sm, 8px); box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+}
+html[data-s38="on"] .s38-more-list[hidden] { display: none; }
+html[data-s38="on"] .s38-more-list button {
+  display: block; width: 100%; text-align: left; padding: 8px 10px; min-height: 36px; font: inherit; font-size: var(--fs-base, 14px);
+  color: var(--ink); background: none; border: 0; border-radius: 6px; cursor: pointer;
+}
+html[data-s38="on"] .s38-more-list button:hover, html[data-s38="on"] .s38-more-list button:focus-visible { background: var(--surface-2); outline: none; }
+@media (max-width: 860px) {
+  html[data-s38="on"] #jpk-head { flex-wrap: wrap; }
+  html[data-s38="on"] #jpk-head .jpk-hello { flex-basis: 100%; }
+  html[data-s38="on"] #jpk-head .jpk-qa-wrap { flex: 1 1 auto; }
+}
+@media (max-width: 560px) {
+  html[data-s38="on"] .s38-right #refreshed { display: none; }
+  html[data-s38="on"] #jpk-head { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  html[data-s38="on"] #jpk-head .jpk-hello { display: block; min-width: 0; }
+  html[data-s38="on"] #jpk-head .jpk-sub { margin-top: 2px; }
+  html[data-s38="on"] #jpk-head .jpk-qa-wrap { flex-wrap: wrap; justify-content: flex-start; }
+  html[data-s38="on"] .s38-right, html[data-s38="on"] .s38-right.mast { justify-content: flex-start; }
+}
+
+/* ---------- 2. one way to navigate: the tabs. Today's flow, GO TO, Go to and Collapse all are hidden ---------- */
+html[data-s38="on"] #jpk-flow { display: none !important; }
+html[data-s38="on"] .quick-actions .hl-nav,
+html[data-s38="on"] .quick-actions .hl-all,
+html[data-s38="on"] .s38-gonav { display: none !important; }
+html[data-s38="on"] .quick-actions { align-items: center; gap: 8px 12px; min-width: 0; max-width: 100%; }
+html[data-s38="on"] #jpk-head, html[data-s38="on"] .s38-bar { min-width: 0; max-width: 100%; }
+html[data-s38="on"] .s38-tabs { max-width: 100%; }
+html[data-s38="on"] .quick-actions .jump { flex: 1 1 220px; max-width: 360px; }
+html[data-s38="on"] .s38-bar { display: flex; align-items: stretch; gap: 8px 12px; margin: 0; padding: 0; border-bottom: 1px solid var(--line); }
+html[data-s38="on"] .s38-tabs { display: flex; align-items: stretch; gap: 2px; min-width: 0; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+html[data-s38="on"] .s38-bar > .s38-tabs { margin-left: 0; padding-left: 0; border-left: 0; }
+html[data-s38="on"] .s38-tabs::-webkit-scrollbar { display: none; }
+html[data-s38="on"] .s38-tab {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; margin: 0;
+  font: inherit; font-size: var(--fs-lg, 14px); font-weight: 500; color: var(--ink-2, var(--ink2)); background: transparent; border: 0; border-bottom: 3px solid transparent; border-radius: 0; cursor: pointer; white-space: nowrap;
+}
+html[data-s38="on"] .s38-tab:hover { color: var(--ink); background: var(--surface-2); }
+html[data-s38="on"] .s38-tab[aria-selected="true"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--jp-ink, var(--focus)); }
+html[data-s38="on"] .s38-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+html[data-s38="on"] .s38-n {
+  display: inline-block; min-width: 18px; padding: 0 6px; border-radius: var(--radius-pill, 999px); background: var(--surface-2); color: var(--ink); border: 1px solid var(--line);
+  font-size: var(--fs-sm, 12.5px); font-weight: 700; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums;
+}
+html[data-s38="on"] .s38-n[hidden] { display: none; }
+html[data-s38="on"] .s38-tab[aria-selected="true"] .s38-n { background: var(--ink-2, var(--ink2)); color: var(--surface); border-color: transparent; }
+html[data-s38="on"] [data-s38-empty] { display: none !important; }
+html[data-s38="on"] .jpk-cols:has(> .jpk-side[data-s38-empty]) { grid-template-columns: minmax(0, 1fr) !important; }
+html[data-s38="on"] [data-s38-p] { scroll-margin-top: 72px; }
+@media (max-width: 860px) {
+  html[data-s38="on"] .page > .quick-actions { position: sticky; top: 0; flex-wrap: wrap; }
+  html[data-s38="on"] .quick-actions .s38-tabs { flex: 1 1 100%; order: 5; margin-left: 0; padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+  html[data-s38="on"] .s38-tab { padding: 6px 10px; min-height: 40px; }
+}
+@media (max-width: 560px) {
+  html[data-s38="on"] .quick-actions .jump { flex-basis: 150px; min-width: 0; }
+}
+
+/* ---------- 3. one "Needs you today" card, tiles inside; zero tiles and the stamp under the tiles hidden ---------- */
+html[data-s38="on"] #needs-today:not([hidden]) {
+  margin: 0 0 12px; padding: 14px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--jpk-r, 10px);
+}
+html[data-s38="on"] #needs-today .nt-lead,
+html[data-s38="on"] #needs-today .nt-foot { display: none !important; }
+html[data-s38="on"] #needs-today::after { content: none !important; display: none !important; }
+html[data-s38="on"] #needs-today .nt-tiles { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+html[data-s38="on"] #needs-today .nt-tiles > li[data-s38-hide] { display: none !important; }
+html[data-s38="on"] .s38-none { margin: 0; font-size: var(--fs-md, 13px); color: var(--muted); }
+html[data-s38="on"] .s38-none[hidden] { display: none; }
+
+/* Leadership: the card is built by the script with the same tile look as EM and BD */
+#s38-needs {
+  --nt-surface: light-dark(#FFFFFF, #191C20); --nt-surface2: light-dark(#F7F8FA, #1F2328); --nt-ink: light-dark(#1F2328, #E6E8EB);
+  --nt-ink2: light-dark(#3A424B, #C9CED4); --nt-muted: light-dark(#5B6470, #9AA1AB); --nt-line: light-dark(#DDE1E6, #2B3038);
+  --nt-line2: light-dark(#B8BEC7, #424955); --nt-accent: light-dark(#2F55A4, #7F9FE0); --nt-accent-ink: light-dark(#284A90, #9DB6EA);
+  --nt-bad: light-dark(#B42318, #F08A82); --nt-warn: light-dark(#8A5300, #E0B055); --nt-good: light-dark(#1E7A46, #5EC58C);
+  margin: 0 0 14px; padding: 14px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; color: var(--ink); box-sizing: border-box;
+}
+#s38-needs * { box-sizing: border-box; }
+#s38-needs[hidden] { display: none; }
+#s38-needs .nt-hd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0 0 10px; }
+#s38-needs h2 { margin: 0; font: 600 16px/1.3 var(--head, inherit); color: var(--nt-ink); }
+#s38-needs .nt-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+#s38-needs .nt-tiles > li { display: flex; min-width: 0; }
+#s38-needs .nt-tiles > li[hidden] { display: none; }
+#s38-needs .nt-tile { flex: 1; display: flex; flex-direction: column; gap: 6px; min-height: 132px; padding: 14px 16px; background: var(--nt-surface); border: 1px solid var(--nt-line); border-radius: 4px; color: var(--nt-ink); text-decoration: none; min-width: 0; font: inherit; text-align: left; }
+#s38-needs button.nt-tile { cursor: pointer; }
+#s38-needs button.nt-tile:hover { border-color: var(--nt-accent); }
+#s38-needs button.nt-tile:focus-visible, #s38-needs .nt-case:focus-visible { outline: 2px solid var(--nt-accent); outline-offset: 2px; }
+#s38-needs .nt-lbl { font-size: 13px; font-weight: 600; color: var(--nt-ink2); overflow-wrap: anywhere; }
+#s38-needs .nt-num { font: 700 34px/1 var(--head, inherit); font-variant-numeric: tabular-nums; color: var(--nt-ink); }
+#s38-needs .nt-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--nt-muted); }
+#s38-needs .nt-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+#s38-needs .nt-chip[hidden] { display: none; }
+#s38-needs .nt-chip.bad { color: var(--nt-bad); } #s38-needs .nt-chip.warn { color: var(--nt-warn); } #s38-needs .nt-chip.good { color: var(--nt-good); }
+#s38-needs .nt-mean { font-size: 12.5px; line-height: 1.4; color: var(--nt-muted); }
+#s38-needs .nt-go { margin-top: auto; font-size: 12.5px; font-weight: 600; color: var(--nt-accent-ink); }
+#s38-needs .nt-cases { margin: 2px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+#s38-needs .nt-case { display: block; font-size: 12.5px; line-height: 1.35; color: var(--nt-accent-ink); text-decoration: none; overflow-wrap: anywhere; }
+#s38-needs .nt-case:hover { text-decoration: underline; }
+#s38-needs .nt-case span { color: var(--nt-muted); }
+
+/* ---------- 4. calendar on a day with nothing on it: the hour grid folds; the next meeting shows ---------- */
+html[data-s38="on"] #jpk-cal[data-s38-empty-day] .s32-scroll,
+html[data-s38="on"] #jpk-cal[data-s38-empty-day] .s32-bar,
+html[data-s38="on"] #jpk-cal[data-s38-empty-day] .s32-empty,
+html[data-s38="on"] #jpk-cal[data-s38-empty-day] .s32-allday { display: none !important; }
+html[data-s38="on"] #jpk-cal[data-s38-empty-day] #jpk-cal-more { min-height: 0; }
+html[data-s38="on"] .s38-next { margin: 8px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: var(--fs-md, 13px); color: var(--muted); }
+html[data-s38="on"] .s38-next b { display: block; margin-top: 2px; color: var(--ink); font-weight: 600; font-size: var(--fs-base, 13px); }
+html[data-s38="on"] .s38-next[hidden] { display: none; }
+
+/* ---------- 5. one renewal window: 120 days not started. BD's "Renewals · 90 days" board tile is hidden ---------- */
+html[data-s38="on"] #z-boards [data-tile="renew"] { display: none !important; }
+
+/* ---------- 6. Send to Leadership: the form and the Sent to Leadership card (any layout) ---------- */
+.s38-ov { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; background: rgba(0, 0, 0, .45); overflow-y: auto; }
+.s38-ov[hidden] { display: none; }
+.s38-dlg {
+  width: 100%; max-width: 560px; padding: 18px 20px 16px; background: var(--surface, #fff); color: var(--ink, #1F2328); border: 1px solid var(--line-strong, #B8BEC7);
+  border-radius: 10px; box-shadow: 0 16px 48px rgba(0, 0, 0, .3); font-size: 14px; box-sizing: border-box;
+}
+.s38-dlg * { box-sizing: border-box; }
+.s38-dlg h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+.s38-dlg .s38-lead { margin: 0 0 14px; font-size: 13px; color: var(--muted, #5B6470); }
+.s38-dlg label { display: block; margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.s38-dlg .s38-f { margin: 0 0 12px; position: relative; }
+.s38-dlg .s38-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.s38-dlg input, .s38-dlg select, .s38-dlg textarea {
+  width: 100%; min-height: 38px; padding: 7px 10px; font: inherit; font-size: 14px; color: var(--ink, #1F2328); background: var(--surface, #fff);
+  border: 1px solid var(--line-strong, #B8BEC7); border-radius: 6px;
+}
+.s38-dlg textarea { min-height: 90px; resize: vertical; }
+.s38-dlg input:focus-visible, .s38-dlg select:focus-visible, .s38-dlg textarea:focus-visible, .s38-dlg button:focus-visible { outline: 2px solid var(--focus, #2F55A4); outline-offset: 1px; }
+.s38-dlg .s38-hint { margin: 4px 0 0; font-size: 12px; color: var(--muted, #5B6470); }
+.s38-dlg .s38-err { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--bad, #B42318); }
+.s38-dlg .s38-err[hidden] { display: none; }
+.s38-dlg .s38-res { position: absolute; left: 0; right: 0; top: 100%; z-index: 5; margin: 2px 0 0; padding: 4px; list-style: none; background: var(--surface, #fff); border: 1px solid var(--line-strong, #B8BEC7); border-radius: 6px; box-shadow: 0 8px 20px rgba(0, 0, 0, .15); max-height: 220px; overflow-y: auto; }
+.s38-dlg .s38-res[hidden] { display: none; }
+.s38-dlg .s38-res button { display: block; width: 100%; text-align: left; padding: 7px 8px; font: inherit; font-size: 13.5px; color: inherit; background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.s38-dlg .s38-res button:hover, .s38-dlg .s38-res button:focus-visible { background: var(--surface-2, #F7F8FA); }
+.s38-dlg .s38-picked { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 4px 4px 4px 10px; border: 1px solid var(--line-strong, #B8BEC7); border-radius: 6px; }
+.s38-dlg .s38-picked[hidden] { display: none; }
+.s38-dlg .s38-picked span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.s38-dlg .s38-act { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.s38-btn { min-height: 38px; padding: 0 16px; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink, #1F2328); background: var(--surface, #fff); border: 1px solid var(--line-strong, #B8BEC7); border-radius: 6px; cursor: pointer; }
+.s38-btn:hover { background: var(--surface-2, #F7F8FA); }
+.s38-btn.s38-pri { color: #fff; background: var(--accent, #2F55A4); border-color: transparent; }
+.s38-btn.s38-pri:hover { filter: brightness(1.08); }
+.s38-btn[disabled] { opacity: .6; cursor: default; }
+.s38-btn.s38-sm { min-height: 30px; padding: 0 10px; font-size: 13px; }
+@media (max-width: 520px) { .s38-dlg .s38-row { grid-template-columns: 1fr; } .s38-ov { padding: 12px 8px; } }
+
+.s38-sent { margin: 12px 0 0; padding: 14px 18px; background: var(--surface, #fff); border: 1px solid var(--line, #DDE1E6); border-radius: var(--jpk-r, 10px); color: var(--ink, #1F2328); }
+.s38-sent[hidden] { display: none; }
+.s38-sent .s38-sent-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 8px; }
+.s38-sent h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.s38-sent h2 span { font-size: 13px; font-weight: 400; color: var(--muted, #5B6470); margin-left: 6px; }
+.s38-sent ul { margin: 0; padding: 0; list-style: none; }
+.s38-sent li { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; padding: 7px 0; border-top: 1px solid var(--line, #DDE1E6); font-size: 13.5px; }
+.s38-sent li:first-child { border-top: 0; }
+.s38-sent li a { flex: 1 1 220px; min-width: 0; color: var(--ink, #1F2328); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.s38-sent li a:hover { text-decoration: underline; }
+.s38-sent .s38-who { color: var(--muted, #5B6470); }
+.s38-sent .s38-st { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--surface-2, #F7F8FA); border: 1px solid var(--line, #DDE1E6); white-space: nowrap; }
+.s38-sent .s38-st.done { color: var(--good, #1E7A46); }
+.s38-sent .s38-st.late { color: var(--bad, #B42318); }
+.s38-toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 1001; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 8px; background: var(--ink, #1F2328); color: var(--surface, #fff); font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+.s38-toast[hidden] { display: none; }
+.s38-toast.bad { background: var(--bad, #B42318); color: #fff; }
+.s38-toast a { color: inherit; font-weight: 700; margin-left: 8px; }
+
+</style>
+<script id="jpk-s38-config">
+window.JPK_S38 = {"home": "em", "frame": true, "bar": "#page > .quick-actions", "tabs": [{"id": "today", "label": "Today", "zones": ["#notice", "#needs-today", "#jpk-cal"], "count": "tiles"}, {"id": "work", "label": "Work", "zones": ["#z-work"], "count": {"sel": "#scope-mine-n"}}, {"id": "numbers", "label": "Numbers", "zones": ["#z-num"]}, {"id": "devices", "label": "Devices", "zones": ["#dev-panel"]}, {"id": "vendors", "label": "Vendors", "zones": ["#z-ref"]}]};
+</script>
+<script id="jpk-s38">
+/* jpk-s38.js v1.0.0 (S38, cohesion plan Phase 5, 27 Oct 2026). One layer on EM Homepage, BD Home, Leadership Home and Beau CS Home.
+   Config: window.JPK_S38 = { home, frame, tabs, bar, gonav, needs, lead, send, newList, sentAfter, sentTabAttr, sentTabVal } (set by the patch).
+   Frame (EM, BD, Leadership; only while the page frame jpk-shell is on), the S33 declutter rules of Beau CS Home:
+     1. one header row: greeting and date line on the left; the primary quick action, a More menu (the other quick actions,
+        which stay in the page and are clicked from the menu), the Updated stamp, refresh and settings on the right;
+        the Home bar and the brand strip are hidden; the greeting uses the first name;
+     2. tabs as the only navigation: Today's flow, GO TO, Go to and Collapse all are hidden; a tab bar shows one group of sections;
+        anything that scrolls to a section on another tab switches to that tab first; the last tab is kept per browser (#tab= works);
+     3. one "Needs you today" card with the tiles inside; tiles at zero and the stamp under the tiles hidden
+        (Leadership: a new card with four tiles, Cases sent to you plus three read from the measures the page painted);
+     4. on a day with no meetings the hour grid folds and the next meeting shows;
+     5. one renewal window, 120 days not started: BD's "Renewals · 90 days" board tile is hidden (CSS).
+   Theme: a theme picked on any home is used by the others (shared key jpk-theme-shared, set through each page's own switch).
+   Send to Leadership (BD Home, Beau CS Home; any layout): a "Send to Leadership" item in + New opens a form that creates one Case
+     (Handling_Team Leadership, owner = the leader picked, Case Origin Web, Status New, the due date given) through ZOHO.CRM.API.insertRecord;
+     a "Sent to Leadership" card on Today lists the cases you sent and their status. In preview (no Zoho SDK) nothing is written.
+   Reads: COQL on Cases and Accounts, getAllUsers. Writes: insertRecord on Cases only, from the form's Send button only.
+   Hide, don't delete. ?s38=0 turns the layer off; the classic layout turns the frame part off. */
+(function (root) {
+  'use strict';
+  var doc = root.document;
+  if (!doc || root.JPKS38) return;
+  if (/[?&]s38=0\b/.test(root.location.search)) return;
+  var VERSION = '1.0.0';
+  var C = root.JPK_S38 || {};
+  var HOME = C.home || '';
+  var HOME_NAME = { em: 'EM Homepage', bd: 'BD Home', lead: 'Leadership Home', cs: 'Beau CS Home' }[HOME] || 'Home';
+  var html = doc.documentElement;
+  var TABS = C.tabs || [];
+  var CRM = 'https://crm.zoho.com/crm/org882980956/tab/';
+  var LEADERS_FALLBACK = [
+    { id: '6715134000000774001', name: 'Edward Gordon' },
+    { id: '6715134000000779001', name: 'Nick Sayner' },
+    { id: '6715134000000781001', name: 'Stacey Anick' }
+  ];
+
+  /* ---------- helpers ---------- */
+  function $(id) { return doc.getElementById(id); }
+  function q(s, r) { try { return (r || doc).querySelector(s); } catch (e) { return null; } }
+  function qa(s, r) { try { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); } catch (e) { return []; } }
+  function tx(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+  function mk(tag, cls, attrs) { var n = doc.createElement(tag); if (cls) n.className = cls; if (attrs) for (var a in attrs) n.setAttribute(a, attrs[a]); return n; }
+  function flag(el, name, on) { if (!el) return; if (on) { if (!el.hasAttribute(name)) el.setAttribute(name, ''); } else if (el.hasAttribute(name)) el.removeAttribute(name); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function qcode(s) { return String(s == null ? '' : s).replace(/'/g, "''"); }
+  var store = {
+    get: function (k) { try { return root.localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { root.localStorage.setItem(k, v); } catch (e) {} }
+  };
+  function shellOn() { return html.getAttribute('data-jpk-shell') === 'on'; }
+  function shellState() { try { return (root.JPKShell && root.JPKShell.state) || null; } catch (e) { return null; } }
+  /* The shell re-places its zones on every arrange (Zoho's frame resizes often) and appends them in config order, so a card
+     outside the zone lists drifts to the top of its column. New cards are added to the lists, next to the zone they belong with. */
+  function zones() { try { return (root.JPKShell && root.JPKShell.config && root.JPKShell.config.zones) || null; } catch (e) { return null; } }
+  function addZone(sel, ref, before) {
+    var Z = zones(); if (!Z) return;
+    ['main', 'narrowOrder'].forEach(function (k) {
+      var a = Z[k]; if (!Array.isArray(a) || a.indexOf(sel) >= 0) return;
+      var i = a.indexOf(ref);
+      if (i < 0) { if (k === 'main') a.push(sel); return; }
+      a.splice(before ? i : i + 1, 0, sel);
+    });
+  }
+  function dropZone(sel) {
+    var Z = zones(); if (!Z) return;
+    ['main', 'narrowOrder'].forEach(function (k) { var a = Z[k], i = Array.isArray(a) ? a.indexOf(sel) : -1; if (i >= 0) a.splice(i, 1); });
+  }
+  /* the card takes the side margins of the card it sits under, so the left edges line up */
+  function edges(card, like) {
+    try {
+      var cs = root.getComputedStyle(like);
+      if (card.style.marginLeft !== cs.marginLeft) card.style.marginLeft = cs.marginLeft;
+      if (card.style.marginRight !== cs.marginRight) card.style.marginRight = cs.marginRight;
+    } catch (e) {}
+  }
+  function zoho() { var Z = root.ZOHO; return Z && Z.CRM && Z.CRM.API ? Z : null; }
+  function preview() { return /[?&]preview=1\b/.test(root.location.search) || !zoho(); }
+  function fit() { try { if (root.hlFrameFit) root.hlFrameFit.request(); } catch (e) {} }
+  function timeout(p, ms, label) {
+    return new Promise(function (res, rej) {
+      var t = setTimeout(function () { rej(new Error((label || 'Zoho') + ' did not answer')); }, ms);
+      Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); });
+    });
+  }
+  function rows(r) { if (!r) return []; if (Array.isArray(r)) return r; if (Array.isArray(r.data)) return r.data; return []; }
+  function coql(query) {
+    var Z = zoho(); if (!Z) return Promise.reject(new Error('No Zoho connection'));
+    return timeout(Z.CRM.API.coql({ select_query: query }), 15000, 'COQL').then(rows);
+  }
+  function lk(v) { return v && typeof v === 'object' ? String(v.id || '') : v ? String(v) : ''; }
+  function firstName(full) { return String(full || '').trim().split(/\s+/)[0] || ''; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  /* Due By for a picked day: 5 PM local, with the viewer's offset for that day (COQL / API datetime format) */
+  function dueIso(day) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day || ''); if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3], 17, 0, 0); if (isNaN(d)) return null;
+    var o = -d.getTimezoneOffset(), sg = o >= 0 ? '+' : '-'; o = Math.abs(o);
+    return ymd(d) + 'T17:00:00' + sg + pad(Math.floor(o / 60)) + ':' + pad(o % 60);
+  }
+  function shortDate(v) { var d = new Date(v); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  function isDone(status) { return /^(Closed|Resolved)$/.test(String(status || '')); }
+  function isLate(c) { if (isDone(c.Status) || !c.Due_By) return false; var t = Date.parse(c.Due_By); return !isNaN(t) && t < Date.now(); }
+  function openCase(id) {
+    var Z = zoho();
+    try { if (Z && Z.CRM.UI && Z.CRM.UI.Record && Z.CRM.UI.Record.open) { Z.CRM.UI.Record.open({ Entity: 'Cases', RecordID: id }); return; } } catch (e) {}
+    try { root.open(CRM + 'Cases/' + id, '_blank', 'noopener'); } catch (e) {}
+  }
+
+  /* the signed-in user, as the page publishes it (window.__bdcsUser); waits up to 20 s */
+  var userP = null;
+  function whenUser() {
+    if (userP) return userP;
+    userP = new Promise(function (res) {
+      var t0 = Date.now();
+      (function look() {
+        var u = root.__bdcsUser;
+        if (u && u.id) return res(u);
+        if (preview()) return res(u || null);   /* preview: whatever the page has; nothing is read or written */
+        if (Date.now() - t0 > 20000 || u === null) {
+          var Z = root.ZOHO;
+          if (Z && Z.CRM && Z.CRM.CONFIG && Z.CRM.CONFIG.getCurrentUser) {
+            timeout(Z.CRM.CONFIG.getCurrentUser(), 8000, 'user').then(function (r) { res((r && r.users && r.users[0]) || null); }, function () { res(null); });
+          } else res(null);
+          return;
+        }
+        setTimeout(look, 250);
+      })();
+    });
+    return userP;
+  }
+  var usersP = null;
+  function users() {
+    if (usersP) return usersP;
+    var Z = zoho();
+    if (!Z || preview()) { usersP = Promise.resolve(LEADERS_FALLBACK.map(function (l) { return { id: l.id, full_name: l.name, profile: { name: 'Leadership' } }; })); return usersP; }
+    usersP = timeout(Z.CRM.API.getAllUsers({ Type: 'ActiveUsers' }), 15000, 'users').then(function (r) { return (r && r.users) || []; }, function () { return []; });
+    return usersP;
+  }
+  function leaders() {
+    return users().then(function (us) {
+      var l = us.filter(function (u) { return u && u.profile && u.profile.name === 'Leadership' && u.status !== 'disabled'; })
+        .map(function (u) { return { id: String(u.id), name: String(u.full_name || ((u.first_name || '') + ' ' + (u.last_name || ''))).trim() }; });
+      if (!l.length) l = LEADERS_FALLBACK.slice();
+      return l.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    });
+  }
+  function nameOf(id) {
+    return users().then(function (us) {
+      var u = us.filter(function (x) { return String(x.id) === String(id); })[0];
+      if (u) return String(u.full_name || u.first_name || '');
+      var l = LEADERS_FALLBACK.filter(function (x) { return x.id === String(id); })[0];
+      return l ? l.name : '';
+    });
+  }
+
+  var toastT = 0;
+  function toast(text, opts) {
+    opts = opts || {};
+    var el = $('s38-toast');
+    if (!el) { el = mk('div', 's38-toast', { id: 's38-toast', role: 'status', 'aria-live': 'polite' }); doc.body.appendChild(el); }
+    el.className = 's38-toast' + (opts.bad ? ' bad' : '');
+    el.innerHTML = esc(text) + (opts.caseId ? '<a href="#" data-s38-open="' + esc(opts.caseId) + '">Open</a>' : '');
+    el.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(function () { el.hidden = true; }, opts.ms || 7000);
+  }
+  doc.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('[data-s38-open]');
+    if (!a) return; e.preventDefault(); openCase(a.getAttribute('data-s38-open'));
+  });
+
+  /* =====================================================================================
+     FRAME (EM, BD, Leadership)
+     ===================================================================================== */
+  var started = false, timer = 0, cur = null, moved = [];
+
+  /* ---------- 1. one header row ---------- */
+  function keepHome(el) { if (!el || el.__s38home) return; el.__s38home = { p: el.parentNode, n: el.nextSibling }; moved.push(el); }
+  function header() {
+    var head = $('jpk-head'); if (!head) return;
+    var right = $('s38-right');
+    if (!right) right = mk('div', 's38-right mast', { id: 's38-right' });   /* "mast": the icon buttons' styles are scoped to it */
+    if (right.parentNode !== head || head.lastElementChild !== right) head.appendChild(right);
+    var rf = $('refreshed');
+    if (rf && rf.closest && rf.closest('header.mast') && rf.parentNode !== right) { keepHome(rf); right.insertBefore(rf, right.firstChild); }
+    var tools = $('mast-tools') || q('#page > .navrow .tools');
+    if (tools && tools.parentNode !== right) { keepHome(tools); right.appendChild(tools); }
+
+    var wrap = q('.jpk-qa-wrap', head); if (!wrap) return;
+    var others = qa('.jpk-qa .jpk-qa-btn:not(.jpk-qa-primary)', wrap);
+    var more = $('s38-more');
+    if (!others.length) { if (more) more.hidden = true; return; }
+    if (!more) {
+      more = mk('div', 's38-more', { id: 's38-more' });
+      more.innerHTML = '<button type="button" id="s38-more-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="s38-more-list">More <span aria-hidden="true">▾</span></button>' +
+        '<ul class="s38-more-list" id="s38-more-list" role="menu" aria-label="More actions" hidden></ul>';
+      more.querySelector('#s38-more-btn').addEventListener('click', function () { menu(!(this.getAttribute('aria-expanded') === 'true')); });
+      more.querySelector('ul').addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('button[data-s38-label]'); if (!b) return;
+        var label = b.getAttribute('data-s38-label');
+        menu(false);
+        var orig = qa('#jpk-head .jpk-qa .jpk-qa-btn:not(.jpk-qa-primary)').filter(function (x) { return tx(x) === label; })[0];
+        if (orig) orig.click();
+      });
+      more.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { menu(false); $('s38-more-btn').focus(); return; }
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        var items = qa('#s38-more-list button'); if (!items.length) return;
+        e.preventDefault();
+        if ($('s38-more-list').hidden) menu(true);
+        var i = items.indexOf(doc.activeElement);
+        i = e.key === 'ArrowDown' ? (i + 1) % items.length : (i <= 0 ? items.length - 1 : i - 1);
+        items[i].focus();
+      });
+    }
+    var qaEl = q('.jpk-qa', wrap);
+    if (more.parentNode !== wrap || (qaEl && more.nextElementSibling !== qaEl)) wrap.insertBefore(more, qaEl || null);
+    more.hidden = false;
+    var sig = others.map(tx).join('|');
+    if (more.__sig !== sig) {
+      more.__sig = sig;
+      $('s38-more-list').innerHTML = others.map(function (b) {
+        return '<li role="none"><button type="button" role="menuitem" data-s38-label="' + esc(tx(b)) + '">' + esc(tx(b)) + '</button></li>';
+      }).join('');
+    }
+  }
+  function menu(open) {
+    var b = $('s38-more-btn'), l = $('s38-more-list'); if (!b || !l) return;
+    b.setAttribute('aria-expanded', String(!!open)); l.hidden = !open;
+    if (open) { var f = q('button', l); if (f) f.focus(); }
+  }
+  doc.addEventListener('click', function (e) { var m = $('s38-more'); if (m && !m.contains(e.target)) menu(false); });
+  function greet() {
+    var h = q('#jpk-head .jpk-hi'); if (!h || h.children.length) return;
+    var m = /^(Good (?:morning|afternoon|evening)), (\S+) \S[^,]*$/.exec(tx(h));
+    if (m) { var t = m[1] + ', ' + m[2]; if (h.textContent !== t) h.textContent = t; }
+  }
+
+  /* ---------- 2. tabs ---------- */
+  var TAB_KEY = 'jpk-s38-tab:' + HOME;
+  function tabCss() {
+    if ($('jpk-s38-tabs-css') || !TABS.length) return;
+    var s = mk('style', '', { id: 'jpk-s38-tabs-css' });
+    s.textContent = TABS.map(function (t) {
+      return 'html[data-s38="on"][data-s38-tab="' + t.id + '"] [data-s38-p]:not([data-s38-p="' + t.id + '"])';
+    }).join(',\n') + ' { display: none !important; }';
+    doc.head.appendChild(s);
+  }
+  function assign() {
+    TABS.forEach(function (t) {
+      (t.zones || []).forEach(function (s) { var el = q(s); if (el && el.getAttribute('data-s38-p') !== t.id) el.setAttribute('data-s38-p', t.id); });
+    });
+  }
+  function tabIds() { return TABS.map(function (t) { return t.id; }); }
+  function initialTab() {
+    var m = /[#&?]tab=([a-z-]+)/.exec(root.location.hash + '&' + root.location.search);
+    var ids = tabIds();
+    if (m && ids.indexOf(m[1]) >= 0) return m[1];
+    var s = store.get(TAB_KEY);
+    return ids.indexOf(s) >= 0 ? s : ids[0];
+  }
+  function buildTabs() {
+    var nav = $('s38-tabs');
+    var host = C.bar ? q(C.bar) : null;
+    if (!host) {
+      host = $('s38-bar');
+      if (!host) {
+        host = mk('div', 's38-bar', { id: 's38-bar' });
+        var head = $('jpk-head'); if (!head || !head.parentNode) return;
+        head.parentNode.insertBefore(host, head.nextSibling);
+      }
+    }
+    if (!nav) {
+      nav = mk('div', 's38-tabs', { id: 's38-tabs', role: 'tablist', 'aria-label': 'Home sections' });
+      nav.innerHTML = TABS.map(function (t) {
+        return '<button type="button" class="s38-tab" role="tab" id="s38-tab-' + t.id + '" data-s38-tab="' + t.id + '" aria-selected="false" tabindex="-1">' +
+          '<span class="s38-tl">' + esc(t.label) + '</span><span class="s38-n" hidden></span></button>';
+      }).join('');
+      nav.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-s38-tab]'); if (b) setTab(b.getAttribute('data-s38-tab')); });
+      nav.addEventListener('keydown', function (e) {
+        var b = e.target.closest && e.target.closest('[data-s38-tab]'); if (!b) return;
+        var ids = tabIds(), i = ids.indexOf(b.getAttribute('data-s38-tab')), n = -1;
+        if (e.key === 'ArrowRight') n = (i + 1) % ids.length; else if (e.key === 'ArrowLeft') n = (i + ids.length - 1) % ids.length;
+        else if (e.key === 'Home') n = 0; else if (e.key === 'End') n = ids.length - 1;
+        if (n < 0) return;
+        e.preventDefault(); setTab(ids[n]); var nb = $('s38-tab-' + ids[n]); if (nb) nb.focus();
+      });
+    }
+    if (nav.parentNode !== host) host.appendChild(nav);
+  }
+  function setTab(id) {
+    if (tabIds().indexOf(id) < 0) return;
+    cur = id;
+    html.setAttribute('data-s38-tab', id);
+    qa('#s38-tabs [data-s38-tab]').forEach(function (b) {
+      var on = b.getAttribute('data-s38-tab') === id;
+      b.setAttribute('aria-selected', String(on)); b.setAttribute('tabindex', on ? '0' : '-1');
+    });
+    store.set(TAB_KEY, id);
+    empties();
+    fit();
+  }
+  function empties() {
+    qa('#page .jpk-top, #page .jpk-main, #page .jpk-side, #page .jpk-full').forEach(function (z) {
+      var vis = Array.prototype.some.call(z.children, function (c) {
+        if (/^(SCRIPT|STYLE|TEMPLATE)$/.test(c.tagName)) return false;
+        var p = c.getAttribute('data-s38-p');
+        if (p && p !== cur) return false;
+        if (c.hidden || c.hasAttribute('data-s38-empty')) return false;
+        try { return root.getComputedStyle(c).display !== 'none'; } catch (e) { return true; }
+      });
+      flag(z, 'data-s38-empty', !vis);
+    });
+  }
+  function counts() {
+    TABS.forEach(function (t) {
+      var b = $('s38-tab-' + t.id), s = b && b.querySelector('.s38-n'); if (!s) return;
+      var n = null, c = t.count;
+      if (c === 'tiles') {
+        var box = $('needs-today') || $('s38-needs');
+        if (box && !box.hidden) n = qa('.nt-tiles > li', box).filter(function (li) { return !li.hidden && !li.hasAttribute('data-s38-hide') && !q('.nt-tile.loading', li); }).length;
+      } else if (c && c.sel) {
+        var m = (c.re ? new RegExp(c.re) : /(\d+)/).exec(tx(q(c.sel)));
+        if (m) n = parseInt(m[1], 10);
+      }
+      var t2 = n ? String(n) : '';
+      if (s.textContent !== t2) s.textContent = t2;
+      s.hidden = !n;
+    });
+  }
+  /* anything that scrolls to a section, or a #link to one, switches to that section's tab first */
+  function reveal(el) {
+    if (!started || !el || !el.closest) return;
+    var p = el.closest('[data-s38-p]');
+    if (p) { var id = p.getAttribute('data-s38-p'); if (id !== cur) setTab(id); }
+  }
+  var origSIV = root.Element && root.Element.prototype.scrollIntoView;
+  if (origSIV) root.Element.prototype.scrollIntoView = function () { try { reveal(this); } catch (e) {} return origSIV.apply(this, arguments); };
+  doc.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href^="#"]'); if (!a) return;
+    var id = (a.getAttribute('href') || '').slice(1); if (!id || /^tab=/.test(id)) return;
+    var t = null; try { t = doc.getElementById(decodeURIComponent(id)); } catch (er) {}
+    if (t) reveal(t);
+  }, true);
+  function gonav() {
+    if (!C.gonav) return;
+    var b = q(C.gonav), w = b && b.closest('.new-menu');
+    if (w && !w.classList.contains('s38-gonav')) w.classList.add('s38-gonav');
+  }
+
+  /* ---------- 3. one Needs you today card ---------- */
+  function needs() {
+    var sec = $('needs-today'); if (!sec) return;
+    var lis = qa('.nt-tiles > li', sec), shown = 0;
+    lis.forEach(function (li) {
+      var a = q('.nt-tile', li), hide = !!(a && a.classList.contains('empty'));
+      flag(li, 'data-s38-hide', hide); if (!hide) shown++;
+    });
+    var none = $('s38-none');
+    if (lis.length && !shown) {
+      if (!none) { none = mk('p', 's38-none', { id: 's38-none' }); none.textContent = 'Nothing needs you today.'; }
+      var hd = q('.nt-hd', sec);
+      if (none.parentNode !== sec) sec.insertBefore(none, hd ? hd.nextSibling : sec.firstChild);
+      none.hidden = false;
+    } else if (none) none.hidden = true;
+  }
+
+  /* Leadership: Needs you today, four tiles. Three read the measures the page painted (no reads of their own). */
+  var leadCases = null, leadErr = null, leadLoading = false;
+  var DEMO_LEAD = [
+    { id: 'demo-1', Subject: 'Approve the Polk County renewal terms', Status: 'In Progress', Due_By: new Date(Date.now() - 864e5).toISOString(), Created_By: { id: 'demo-joe', name: 'Joe Steinhaus' } },
+    { id: 'demo-2', Subject: 'Pricing sign-off: Sheboygan SCRAM bid', Status: 'New', Due_By: new Date(Date.now() + 3 * 864e5).toISOString(), Created_By: { id: 'demo-beau', name: 'Beau Carrigan' } }
+  ];
+  function loadLead() {
+    if (leadLoading || leadCases) return;
+    leadLoading = true;
+    var done = function (list) { leadCases = list; leadLoading = false; paintLead(); };
+    if (preview()) { done(/[?&]s38demo=none\b/.test(root.location.search) ? [] : DEMO_LEAD.slice()); return; }
+    whenUser().then(function (u) {
+      if (!u || !u.id) throw new Error('Could not tell who you are');
+      return coql("select id, Subject, Status, Due_By, Priority, Created_By from Cases where ((Handling_Team = 'Leadership') and (Owner = '" + qcode(u.id) + "')) and (Status not in ('Closed', 'Resolved')) order by Due_By asc limit 50");
+    }).then(function (list) {
+      return users().then(function (us) {
+        list.forEach(function (c) { var id = lk(c.Created_By), m = us.filter(function (x) { return String(x.id) === id; })[0]; c.Created_By = { id: id, name: m ? m.full_name : '' }; });
+        return list;
+      });
+    }).then(done, function (e) { leadErr = (e && e.message) || 'Could not read cases'; done([]); });
+  }
+  function leadTile(key) { return q('#s38-needs [data-s38-tile="' + key + '"]'); }
+  function paintMeasureTile(key, val, chip, chipCls) {
+    var li = leadTile(key); if (!li) return;
+    li.hidden = !(val && val > 0);
+    var n = q('.nt-num', li), c = q('.nt-chip', li);
+    if (n && n.textContent !== String(val)) n.textContent = String(val);
+    if (c) { if (c.textContent !== chip) c.textContent = chip; c.className = 'nt-chip ' + (chipCls || ''); c.hidden = !chip; }
+  }
+  function paintLead() {
+    var card = $('s38-needs'); if (!card) return;
+    var S31 = root.JPKS31;
+    var risk = S31 ? S31.measure('renewalsAtRisk').v : null, fin = S31 ? S31.measure('findings').v : null, ov = S31 ? S31.overdue().v : null;
+    paintMeasureTile('risk', risk, risk ? 'Target is 0' : '', 'bad');
+    paintMeasureTile('findings', fin, '', '');
+    paintMeasureTile('overdue', ov, ov ? 'Past their Due By' : '', 'bad');
+    var li = leadTile('sent');
+    if (li) {
+      var list = leadCases || [];
+      li.hidden = !list.length;
+      var late = list.filter(isLate).length;
+      var next = list.filter(function (c) { return !isLate(c) && c.Due_By; })[0];
+      var chip = late ? late + ' overdue' : next ? 'Next due ' + shortDate(next.Due_By) : '';
+      paintMeasureTile('sent', list.length, chip, late ? 'bad' : 'warn');
+      var ul = q('.nt-cases', li), h = list.slice(0, 3).map(function (c) {
+        var from = c.Created_By && c.Created_By.name ? ' · from ' + esc(firstName(c.Created_By.name)) : '';
+        return '<li><a class="nt-case" href="' + esc(CRM + 'Cases/' + c.id) + '" data-s38-open="' + esc(c.id) + '">' + esc(c.Subject || '(no subject)') +
+          '<span>' + from + (c.Due_By ? ' · due ' + esc(shortDate(c.Due_By)) : '') + '</span></a></li>';
+      }).join('') + (list.length > 3 ? '<li><span class="nt-mean">and ' + (list.length - 3) + ' more</span></li>' : '');
+      if (ul && ul.__h !== h) { ul.__h = h; ul.innerHTML = h; }
+    }
+    var shown = qa('.nt-tiles > li', card).filter(function (x) { return !x.hidden; }).length;
+    var none = q('.s38-none', card);
+    if (none) none.hidden = !!shown || !(leadCases && S31);
+  }
+  function leadNeeds() {
+    if (!C.lead) return;
+    var card = $('s38-needs');
+    if (!card) {
+      card = mk('section', '', { id: 's38-needs', 'aria-labelledby': 's38-needs-h' });
+      var tile = function (key, label, mean, go, btn) {
+        return '<li data-s38-tile="' + key + '" hidden><' + (btn ? 'button type="button"' : 'div') + ' class="nt-tile"' + (btn ? ' data-s38-go="' + btn + '"' : '') + '>' +
+          '<span class="nt-lbl">' + label + '</span><span class="nt-num">0</span><span class="nt-chip" hidden></span><span class="nt-mean">' + mean + '</span>' +
+          (key === 'sent' ? '<ul class="nt-cases"></ul>' : '') + (go ? '<span class="nt-go">' + go + '</span>' : '') + '</' + (btn ? 'button' : 'div') + '></li>';
+      };
+      card.innerHTML = '<div class="nt-hd"><h2 id="s38-needs-h">Needs you today</h2></div>' +
+        '<p class="s38-none" hidden>Nothing needs you today.</p>' +
+        '<ul class="nt-tiles">' +
+        tile('sent', 'Cases sent to you', 'Sent by Business Development or Customer Success. Open one to reply or close it.', '', '') +
+        tile('risk', 'Renewals at risk', 'Customer contracts ending in 120 days with the renewal not started.', 'See the measure →', 'h-renewalsAtRisk') +
+        tile('findings', 'Open billing findings', 'Open or disputed with the vendor.', 'See the measure →', 'h-findings') +
+        tile('overdue', 'Overdue work', 'Open cases past their Due By, by team.', 'See the measure →', 'h-overdue') +
+        '</ul>';
+      card.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-s38-go]'); if (!b) return;
+        var h = $(b.getAttribute('data-s38-go')), art = h && (h.closest('li') || h.parentNode);
+        if (art) { art.scrollIntoView({ behavior: 'smooth', block: 'start' }); try { art.setAttribute('tabindex', '-1'); art.focus({ preventScroll: true }); } catch (er) {} }
+      });
+    }
+    var grid = $('grid');
+    addZone('#s38-needs', '#grid', true);
+    if (grid && grid.parentNode && (card.parentNode !== grid.parentNode || card.nextElementSibling !== grid)) grid.parentNode.insertBefore(card, grid);
+    card.hidden = false;
+    loadLead();
+    paintLead();
+  }
+
+  /* ---------- 4. calendar on an empty day (same rule as S33 on CS Home) ---------- */
+  function fmtNext(ev) {
+    var s = new Date(ev.start); if (isNaN(s)) return '';
+    var now = new Date(), a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var dd = Math.round((new Date(s.getFullYear(), s.getMonth(), s.getDate()) - a) / 864e5);
+    var day = dd === 0 ? 'Today' : dd === 1 ? 'Tomorrow' : s.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    var time = ev.allDay ? 'all day' : s.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return day + ', ' + time;
+  }
+  function calEmpty() {
+    var c = $('jpk-cal'), w = $('s32-wrap'), S = shellState();
+    var ok = !!(S && S.cal && S.cal.status === 'ok');
+    var empty = ok && !!w && !w.hidden && !q('.s32-ev', w) && (function () { var a = q('.s32-allday', w); return !a || a.hidden; })();
+    flag(c, 'data-s38-empty-day', empty);
+    var body = $('jpk-cal-body'), up = body && q(':scope > .jpk-upnext', body); if (!up) return;
+    var p = $('s38-next');
+    if (!p) p = mk('p', 's38-next', { id: 's38-next', 'aria-live': 'polite' });
+    if (p.parentNode !== body || p.previousElementSibling !== up) body.insertBefore(p, up.nextSibling);
+    var h = '';
+    if (empty) {
+      var now = Date.now();
+      var next = (S.cal.events || []).filter(function (e) { var t = Date.parse(e.start); return !isNaN(t) && t > now; })
+        .sort(function (x, y) { return Date.parse(x.start) - Date.parse(y.start); })[0];
+      if (next) h = 'Next meeting: ' + esc(fmtNext(next)) + '<b>' + esc(next.title || 'Meeting') + '</b>';
+    }
+    if (p.__h !== h) { p.__h = h; p.innerHTML = h; }
+    p.hidden = !h;
+  }
+
+  /* ---------- run the frame ---------- */
+  function ensure() {
+    if (C.frame) {
+      if (!shellOn()) { if (started) off(); }
+      else {
+        if (!started) { started = true; tabCss(); }
+        if (html.getAttribute('data-s38') !== 'on') html.setAttribute('data-s38', 'on');
+        try { header(); } catch (e) {}
+        try { greet(); } catch (e) {}
+        try { gonav(); } catch (e) {}
+        try { leadNeeds(); } catch (e) {}
+        try { assign(); buildTabs(); if (!cur) setTab(initialTab()); } catch (e) {}
+        try { needs(); } catch (e) {}
+        try { calEmpty(); } catch (e) {}
+        try { empties(); counts(); } catch (e) {}
+      }
+    }
+    if (C.send) { try { sendEntry(); sentCard(); } catch (e) {} }
+  }
+  function off() {
+    started = false; cur = null;
+    html.removeAttribute('data-s38'); html.removeAttribute('data-s38-tab');
+    moved.forEach(function (el) { var h = el.__s38home; if (h && h.p) { try { h.p.insertBefore(el, h.n && h.n.parentNode === h.p ? h.n : null); } catch (e) {} } el.__s38home = null; });
+    moved = [];
+    ['s38-right', 's38-more', 's38-tabs', 's38-bar', 's38-next', 's38-none'].forEach(function (id) { var n = $(id); if (n && n.parentNode) n.parentNode.removeChild(n); });
+    var ln = $('s38-needs'); if (ln) ln.hidden = true;
+    dropZone('#s38-needs');
+    qa('[data-s38-empty]').forEach(function (z) { z.removeAttribute('data-s38-empty'); });
+    var c = $('jpk-cal'); if (c) c.removeAttribute('data-s38-empty-day');
+  }
+
+  /* =====================================================================================
+     THEME: one choice across the homes
+     ===================================================================================== */
+  var THEME_KEY = 'jpk-theme-shared', themeReady = false;
+  function themeNow() { return html.getAttribute('data-theme') || 'auto'; }
+  function setPageTheme(c) {
+    if (HOME === 'lead') { var b = $('theme'); for (var i = 0; i < 3 && b && themeNow() !== c; i++) b.click(); return; }
+    var btn = $('theme-' + c) || q('[data-theme-choice="' + c + '"]');
+    if (btn) btn.click();
+  }
+  function theme() {
+    var s = store.get(THEME_KEY);
+    if ((s === 'light' || s === 'dark' || s === 'auto') && themeNow() !== s) setPageTheme(s);
+    themeReady = true;
+    try {
+      new root.MutationObserver(function () { if (themeReady) store.set(THEME_KEY, themeNow()); })
+        .observe(html, { attributes: true, attributeFilter: ['data-theme'] });
+    } catch (e) {}
+  }
+
+  /* =====================================================================================
+     SEND TO LEADERSHIP (BD Home, Beau CS Home)
+     ===================================================================================== */
+  var sent = null, sentLoading = false, opener = null, lastPayload = null;
+  function sendEntry() {
+    var list = q(C.newList || '#new-list'); if (!list || $('s38-send-item')) return;
+    var li = mk('li', '', { role: 'none' });
+    li.innerHTML = '<button type="button" role="menuitem" id="s38-send-item">Send to Leadership…</button>';
+    list.appendChild(li);
+    li.firstChild.addEventListener('click', function (e) {
+      e.stopPropagation();
+      list.hidden = true;
+      var nb = $('new-btn'); if (nb) nb.setAttribute('aria-expanded', 'false');
+      openForm(nb);
+    });
+  }
+  function form() {
+    var ov = $('s38-ov'); if (ov) return ov;
+    ov = mk('div', 's38-ov', { id: 's38-ov', hidden: '' });
+    ov.innerHTML =
+      '<div class="s38-dlg" role="dialog" aria-modal="true" aria-labelledby="s38-f-h">' +
+        '<h2 id="s38-f-h">Send a case to Leadership</h2>' +
+        '<p class="s38-lead">Creates a case owned by the leader you pick. It shows on their Leadership Home under Needs you today.</p>' +
+        '<p class="s38-err" id="s38-f-err" role="alert" hidden></p>' +
+        '<div class="s38-f"><label for="s38-f-to">Send to</label><select id="s38-f-to" required><option value="">Loading leaders…</option></select></div>' +
+        '<div class="s38-f"><label for="s38-f-subj">What do you need?</label><input id="s38-f-subj" type="text" maxlength="255" required autocomplete="off" placeholder="One line, for example: Approve the Polk County renewal terms"></div>' +
+        '<div class="s38-f"><label for="s38-f-acct">Account <span style="font-weight:400">(optional)</span></label>' +
+          '<input id="s38-f-acct" type="text" autocomplete="off" placeholder="Type 2 or more letters to search">' +
+          '<div class="s38-picked" id="s38-f-picked" hidden><span></span><button type="button" class="s38-btn s38-sm" id="s38-f-clear">Clear</button></div>' +
+          '<ul class="s38-res" id="s38-f-res" role="listbox" aria-label="Matching accounts" hidden></ul></div>' +
+        '<div class="s38-row">' +
+          '<div class="s38-f"><label for="s38-f-due">Needed by</label><input id="s38-f-due" type="date" required></div>' +
+          '<div class="s38-f"><label for="s38-f-pri">Priority</label><select id="s38-f-pri"><option>Low</option><option selected>Medium</option><option>High</option></select></div>' +
+        '</div>' +
+        '<div class="s38-f"><label for="s38-f-note">Details</label><textarea id="s38-f-note" maxlength="30000" placeholder="What you need from them, and anything they should read first."></textarea>' +
+          '<p class="s38-hint">Nothing is emailed. The leader sees it on Leadership Home; you see its status under Sent to Leadership.</p></div>' +
+        '<div class="s38-act"><button type="button" class="s38-btn" id="s38-f-cancel">Cancel</button><button type="button" class="s38-btn s38-pri" id="s38-f-send">Send</button></div>' +
+      '</div>';
+    doc.body.appendChild(ov);
+    var acct = null, searchT = 0;
+    ov.__acct = function () { return acct; };
+    function pick(a) {
+      acct = a;
+      var p = $('s38-f-picked'), inp = $('s38-f-acct');
+      p.hidden = !a; inp.hidden = !!a; $('s38-f-res').hidden = true;
+      if (a) p.querySelector('span').textContent = a.name;
+      (a ? $('s38-f-clear') : inp).focus();
+    }
+    ov.__pick = pick;
+    $('s38-f-clear').addEventListener('click', function () { pick(null); });
+    $('s38-f-acct').addEventListener('input', function () {
+      var v = this.value.trim(), res = $('s38-f-res');
+      clearTimeout(searchT);
+      if (v.length < 2) { res.hidden = true; return; }
+      searchT = setTimeout(function () {
+        var p = preview()
+          ? Promise.resolve([{ id: 'demo-acct-1', Account_Name: 'Polk County Sheriff' }, { id: 'demo-acct-2', Account_Name: 'Polk Co. HS' }].filter(function (a) { return a.Account_Name.toLowerCase().indexOf(v.toLowerCase()) >= 0; }))
+          : coql("select id, Account_Name from Accounts where Account_Name like '%" + qcode(v) + "%' order by Account_Name asc limit 8");
+        p.then(function (list) {
+          res.innerHTML = list.length ? list.map(function (a) { return '<li><button type="button" role="option" data-id="' + esc(a.id) + '">' + esc(a.Account_Name) + '</button></li>'; }).join('')
+            : '<li><span class="s38-hint" style="display:block;padding:6px 8px">No account matches.</span></li>';
+          res.hidden = false;
+        }, function () { res.innerHTML = '<li><span class="s38-hint" style="display:block;padding:6px 8px">Could not search accounts.</span></li>'; res.hidden = false; });
+      }, 300);
+    });
+    $('s38-f-res').addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('button[data-id]'); if (!b) return;
+      pick({ id: b.getAttribute('data-id'), name: tx(b) });
+    });
+    $('s38-f-cancel').addEventListener('click', closeForm);
+    $('s38-f-send').addEventListener('click', submit);
+    $('s38-f-to').addEventListener('change', label);
+    ov.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.stopPropagation(); closeForm(); return; }
+      if (e.key !== 'Tab') return;
+      var f = qa('select, input:not([hidden]), textarea, button:not([hidden])', ov).filter(function (x) { return !x.disabled && x.offsetParent !== null; });
+      if (!f.length) return;
+      if (e.shiftKey && doc.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && doc.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+    ov.addEventListener('mousedown', function (e) { if (e.target === ov) closeForm(); });
+    return ov;
+  }
+  function label() {
+    var s = $('s38-f-to'), o = s && s.options[s.selectedIndex], b = $('s38-f-send');
+    if (b) b.textContent = o && o.value ? 'Send to ' + firstName(o.textContent) : 'Send';
+  }
+  function openForm(from) {
+    opener = from || doc.activeElement;
+    var ov = form();
+    ['s38-f-subj', 's38-f-note', 's38-f-acct'].forEach(function (id) { $(id).value = ''; });
+    ov.__pick(null);
+    var d = new Date(); d.setDate(d.getDate() + 7);
+    $('s38-f-due').value = ymd(d);
+    $('s38-f-pri').value = 'Medium';
+    var err = $('s38-f-err'); err.hidden = true; err.textContent = '';
+    var sb = $('s38-f-send'); sb.disabled = false;
+    ov.hidden = false;
+    $('s38-f-subj').focus();
+    leaders().then(function (ls) {
+      var s = $('s38-f-to'), keep = s.value;
+      s.innerHTML = '<option value="">Pick a leader</option>' + ls.map(function (l) { return '<option value="' + esc(l.id) + '">' + esc(l.name) + '</option>'; }).join('');
+      if (keep) s.value = keep;
+      label();
+    });
+  }
+  function closeForm() {
+    var ov = $('s38-ov'); if (!ov || ov.hidden) return;
+    ov.hidden = true;
+    if (opener && opener.focus) { try { opener.focus(); } catch (e) {} }
+  }
+  function fail(m) { var err = $('s38-f-err'); err.textContent = m; err.hidden = false; }
+  function submit() {
+    var to = $('s38-f-to'), toName = to.value ? tx(to.options[to.selectedIndex]) : '';
+    var subj = $('s38-f-subj').value.trim(), day = $('s38-f-due').value, due = dueIso(day), pri = $('s38-f-pri').value;
+    var note = $('s38-f-note').value.trim(), acct = $('s38-ov').__acct();
+    if (!to.value) { fail('Pick the leader to send it to.'); to.focus(); return; }
+    if (!subj) { fail('Say in one line what you need.'); $('s38-f-subj').focus(); return; }
+    if (!due) { fail('Pick the date you need it by.'); $('s38-f-due').focus(); return; }
+    if (day < ymd(new Date())) { fail('The date has passed. Pick today or later.'); $('s38-f-due').focus(); return; }
+    var sb = $('s38-f-send'); sb.disabled = true; sb.textContent = 'Sending…';
+    whenUser().then(function (me) {
+      var who = (me && me.full_name) || 'someone';
+      var data = {
+        Subject: subj, Handling_Team: 'Leadership', Case_Origin: 'Web', Status: 'New', Priority: pri,
+        Owner: { id: to.value }, Due_By: due,
+        Description: (note ? note + '\n\n' : '') + 'Sent to Leadership from ' + HOME_NAME + ' by ' + who + '.'
+      };
+      if (acct && acct.id) data.Account_Name = { id: acct.id };
+      lastPayload = data;
+      if (preview()) {
+        sb.disabled = false; label(); closeForm();
+        toast('Preview: nothing was sent. In Zoho this creates a case for ' + toName + '.');
+        sent = [{ id: 'demo-new', Subject: subj, Status: 'New', Due_By: due, Owner: { id: to.value, name: toName } }].concat(sent || []);
+        paintSent();
+        return;
+      }
+      return timeout(zoho().CRM.API.insertRecord({ Entity: 'Cases', APIData: data, Trigger: ['workflow'] }), 20000, 'Saving').then(function (r) {
+        var d = r && r.data && r.data[0];
+        if (!d || d.code !== 'SUCCESS') throw new Error((d && (d.message || d.code)) || 'Zoho did not save it');
+        sb.disabled = false; label(); closeForm();
+        toast('Sent to ' + toName + ': ' + subj, { caseId: d.details && d.details.id });
+        sent = null; loadSent(true);
+      });
+    }).catch(function (e) {
+      sb.disabled = false; label();
+      fail('Not sent: ' + ((e && e.message) || 'Zoho did not answer') + '. Nothing was saved; try again.');
+    });
+  }
+
+  var DEMO_SENT = [
+    { id: 'demo-s1', Subject: 'Pricing sign-off: Sheboygan SCRAM bid', Status: 'In Progress', Due_By: new Date(Date.now() + 2 * 864e5).toISOString(), Owner: { id: '6715134000000779001', name: 'Nick Sayner' } },
+    { id: 'demo-s2', Subject: 'Approve the Polk County renewal terms', Status: 'Resolved', Due_By: new Date(Date.now() - 2 * 864e5).toISOString(), Owner: { id: '6715134000000774001', name: 'Edward Gordon' } }
+  ];
+  function loadSent(force) {
+    if (sentLoading || (sent && !force)) return;
+    sentLoading = true;
+    var done = function (list) { sent = list; sentLoading = false; paintSent(); };
+    if (preview()) { done(/[?&]s38demo=none\b/.test(root.location.search) ? [] : DEMO_SENT.slice()); return; }
+    whenUser().then(function (u) {
+      if (!u || !u.id) return [];
+      return coql("select id, Subject, Status, Due_By, Owner, Created_Time from Cases where (Handling_Team = 'Leadership') and (Created_By = '" + qcode(u.id) + "') order by Created_Time desc limit 10")
+        .then(function (list) {
+          return users().then(function (us) {
+            list.forEach(function (c) { var id = lk(c.Owner), m = us.filter(function (x) { return String(x.id) === id; })[0]; c.Owner = { id: id, name: m ? m.full_name : '' }; });
+            return list;
+          });
+        });
+    }).then(done, function () { done([]); });
+  }
+  function sentCard() {
+    var anchor = q(C.sentAfter || '#needs-today'); if (!anchor || !anchor.parentNode) return;
+    var card = $('s38-sent');
+    if (!card) {
+      card = mk('section', 's38-sent', { id: 's38-sent', 'aria-labelledby': 's38-sent-h', hidden: '' });
+      card.innerHTML = '<div class="s38-sent-h"><h2 id="s38-sent-h">Sent to Leadership<span>your cases and where they are</span></h2>' +
+        '<button type="button" class="s38-btn s38-sm" id="s38-sent-new">+ Send a case</button></div><ul></ul>';
+      card.querySelector('#s38-sent-new').addEventListener('click', function () { openForm(this); });
+      if (C.sentOrder) card.style.order = C.sentOrder;
+    }
+    if (C.sentTabAttr && card.getAttribute(C.sentTabAttr) !== (C.sentTabVal || 'today')) card.setAttribute(C.sentTabAttr, C.sentTabVal || 'today');
+    if (shellOn() && C.sentZoneAfter) addZone('#s38-sent', C.sentZoneAfter, false);
+    if (card.parentNode !== anchor.parentNode || card.previousElementSibling !== anchor) anchor.parentNode.insertBefore(card, anchor.nextSibling);
+    edges(card, anchor);
+    loadSent(false);
+  }
+  function paintSent() {
+    var card = $('s38-sent'); if (!card) return;
+    var list = sent || [];
+    card.hidden = !list.length;
+    var h = list.map(function (c) {
+      var st = isDone(c.Status) ? '<span class="s38-st done">' + esc(c.Status) + '</span>' : isLate(c) ? '<span class="s38-st late">Overdue</span>' : '<span class="s38-st">' + esc(c.Status || 'New') + '</span>';
+      var who = c.Owner && c.Owner.name ? 'to ' + esc(firstName(c.Owner.name)) : '';
+      return '<li><a href="' + esc(CRM + 'Cases/' + c.id) + '" data-s38-open="' + esc(c.id) + '">' + esc(c.Subject || '(no subject)') + '</a>' +
+        '<span class="s38-who">' + who + (c.Due_By ? ' · needed by ' + esc(shortDate(c.Due_By)) : '') + '</span>' + st + '</li>';
+    }).join('');
+    var ul = card.querySelector('ul');
+    if (ul.__h !== h) { ul.__h = h; ul.innerHTML = h; fit(); }
+  }
+
+  /* =====================================================================================
+     start
+     ===================================================================================== */
+  function start() {
+    theme();
+    ensure();
+    timer = setInterval(ensure, 700);
+    try {
+      var o = new root.MutationObserver(function () { clearTimeout(o.__t); o.__t = setTimeout(ensure, 40); });
+      o.observe(doc.body, { childList: true, subtree: true });
+    } catch (e) {}
+  }
+  root.JPKS38 = {
+    version: VERSION, build: 'S38 Phase 5 homes converge, 27 Oct 2026', home: HOME,
+    setTab: setTab, getTab: function () { return cur; }, ensure: ensure, off: off, openSend: function () { openForm(null); },
+    lastPayload: function () { return lastPayload; }, _model: { dueIso: dueIso, firstName: firstName, isLate: isLate },
+    /* reads again (tests, and after a long idle): the Leadership cases tile and the Sent to Leadership card */
+    refresh: function () { leadCases = null; leadErr = null; leadLoading = false; sent = null; sentLoading = false; userP = null; usersP = null; ensure(); }
+  };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(start, 0); });
+  else setTimeout(start, 0);
+})(window);
+
+</script>
+<!-- jpk-s38:end -->
 </body>
 </html>
 
