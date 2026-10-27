@@ -3,11 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="jpk-build" content="Nav bar v1.1.1 (S41, 27 Oct 2026)">
 <title>Nav bar</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
 <style>
 html,body{margin:0;background:#fff;color-scheme:light dark}
 @media (prefers-color-scheme:dark){html,body{background:#191C20}}
+:root[data-theme="light"],:root[data-theme="light"] body{background:#fff;color-scheme:light}
+:root[data-theme="dark"],:root[data-theme="dark"] body{background:#191C20;color-scheme:dark}
+#demo-note{font:12px "Public Sans",system-ui,sans-serif;color:#5F6670;padding:0 8px 6px}
 </style>
 </head>
 <body>
@@ -15,16 +19,31 @@ html,body{margin:0;background:#fff;color-scheme:light dark}
 <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
 <script src="jpk-nav.js"></script>
 <script>
+/* Nav bar v1.1.1 (S41): Back depends on the user's profile (read once from Zoho), so Back waits for it; Home shows at once. */
 (function () {
   var mount = document.getElementById('nav');
   var q = new URLSearchParams(location.search);
-  function draw(entity) { JPK.navBar(mount, entity); }
-  if (q.get('demo') !== null || typeof ZOHO === 'undefined') { draw(q.get('module') || 'Cases'); return; }
-  draw('');  /* Home shows at once; Back appears when the module is known */
+  function resize() { try { ZOHO.CRM.UI.Resize({ height: '52', width: '100%' }); } catch (e) {} }
+  if (q.get('demo') !== null || typeof ZOHO === 'undefined') {
+    var th = q.get('theme'); if (th === 'dark' || th === 'light') document.documentElement.setAttribute('data-theme', th);
+    var note = document.createElement('div'); note.id = 'demo-note';
+    JPK.navBar(mount, q.get('module') || 'Cases', { profile: q.get('profile') || 'Administrator', demo: true,
+      onDemo: function (r) { note.textContent = 'Demo: would open ' + r.label + (r.section ? ' on ' + r.section : '') + '.'; } });
+    document.body.appendChild(note);
+    return;
+  }
+  var entity = '', profile = null, gotProfile = false;
+  function draw() { JPK.navBar(mount, gotProfile ? entity : '', { profile: profile }); resize(); }
+  draw();  /* Home shows at once; Back appears when the module and profile are known */
   try {
     ZOHO.embeddedApp.on('PageLoad', function (d) {
-      draw(d && d.Entity);
-      try { ZOHO.CRM.UI.Resize({ height: '52', width: '100%' }); } catch (e) {}
+      entity = (d && d.Entity) || '';
+      var done = function () { gotProfile = true; draw(); };
+      try {
+        ZOHO.CRM.CONFIG.getCurrentUser().then(function (r) {
+          var u = r && r.users && r.users[0]; profile = u && u.profile ? u.profile.name : null; done();
+        }, done);
+      } catch (e) { done(); }
     });
     ZOHO.embeddedApp.init();
   } catch (e) { /* stay on Home-only bar */ }

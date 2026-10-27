@@ -1,6 +1,10 @@
-/* jpk-nav.js v1.0.0 (19 Oct 2026): JPK.navBar, "Back to [tab]" + "Home" buttons for widgets on record pages.
+/* jpk-nav.js v1.1.1 (27 Oct 2026, S41 Phase 4c; v1.1.1 same-window section link via ?widgetparams): JPK.navBar, "Back to [tab]" + "Home" buttons for widgets on record pages.
+   v1.1.0: tab renamed Support (was Support Process); Back is per profile (Support and Processes are Administrator-only tabs,
+   so other profiles go back to their own home page, named); Back to Records / Processes opens the module's section through
+   a ?widgetparams link on the tab URL (same window).
+   v1.0.0 (19 Oct 2026): first version.
    Standalone kit file (load after jpk.js if you use it; it does not need jpk.js).
-   One module-to-tab map below. Edit only the map when a tab or module changes.
+   One module-to-tab map below. Edit only the map when a tab, module or home page changes.
    Same-window navigation: a plain <a target="_top"> link to the CRM tab URL (tested 19 Oct 2026 from a
    widget on a Canvas record page: opens in the same window; the SDK has no tab-navigation call). */
 (function (root) {
@@ -8,25 +12,41 @@
   var JPK = root.JPK = root.JPK || {};
   var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
 
-  /* ---- the one map: tab label -> web tab, and which modules belong to which tab ---- */
+  /* ---- the one map ----
+     TABS: tab label -> web tab URL, its API name (for Widget.open), who may use it, and which modules belong to it.
+     modules: module API name -> the section key the tab's widget opens on (records.js module key). */
   var TABS = {
-    'Records':         { url: ORG + 'WebTab25', modules: ['Accounts', 'Deals', 'Contracts', 'Customer_Onboarding', 'Vendors'] },
-    'Support Process': { url: ORG + 'WebTab26', modules: ['Cases', 'Support_Emails'] },
-    'Processes':       { url: ORG + 'WebTab24', modules: ['Billing_Periods', 'Billing_Findings', 'Solicitations', 'Contract_Ingest_Tab'] }
+    'Records':   { url: ORG + 'WebTab25', api: 'Customer_and_Prospect_Tab', profiles: null,
+                   modules: { Accounts: 'accounts', Deals: 'deals', Contracts: 'contracts', Customer_Onboarding: 'onboarding', Vendors: 'vendor_pricing' } },
+    'Support':   { url: ORG + 'WebTab26', api: 'Support_Tab', profiles: ['Administrator'],
+                   modules: { Cases: 'cases', Support_Emails: 'triage' } },
+    'Processes': { url: ORG + 'WebTab24', api: 'Admin_Processes_Tab', profiles: ['Administrator'],
+                   modules: { Billing_Periods: 'billing', Billing_Findings: 'billing_findings', Solicitations: 'p_solicit', Contract_Ingest_Tab: 'contract_ingest' } }
   };
+  /* Home page each profile lands on (Setup > Customize Home page). Used to name Back when the tab is not theirs. */
+  var HOMES = { 'EM Support': 'EM Homepage', 'Business Development': 'BD Home', 'Leadership': 'Leadership Home', 'PDEC': 'PDEC Home' };
   var HOME = { label: 'Home', url: ORG + 'Home/begin' };
   /* friendly names, used for ?module= in demo mode and matching */
   var ALIAS = { 'opportunities': 'Deals', 'customer onboarding': 'Customer_Onboarding', 'support emails': 'Support_Emails',
     'billing periods': 'Billing_Periods', 'billing findings': 'Billing_Findings', 'contract ingest': 'Contract_Ingest_Tab' };
 
-  function resolve(entity) {
+  function allowed(tab, profile) { return !tab.profiles || (profile != null && tab.profiles.indexOf(profile) >= 0); }
+
+  /* resolve(entity, profile) -> { label, url, api, section, home, module, toHome }
+     profile unknown (null) is treated as Administrator only for tabs open to everyone; Admin-only tabs then wait for it. */
+  function resolve(entity, profile) {
     var e = String(entity || '').trim();
     if (ALIAS[e.toLowerCase()]) e = ALIAS[e.toLowerCase()];
     var low = e.toLowerCase();
     for (var label in TABS) {
       if (!Object.prototype.hasOwnProperty.call(TABS, label)) continue;
-      var m = TABS[label].modules;
-      for (var i = 0; i < m.length; i++) if (m[i].toLowerCase() === low) return { label: label, url: TABS[label].url, home: HOME.url, module: m[i] };
+      var t = TABS[label], m = t.modules;
+      for (var k in m) {
+        if (!Object.prototype.hasOwnProperty.call(m, k) || k.toLowerCase() !== low) continue;
+        if (allowed(t, profile)) return { label: label, url: t.url, api: t.api, section: m[k], home: HOME.url, module: k, toHome: false };
+        var hl = HOMES[profile] || 'Home';
+        return { label: hl, url: HOME.url, api: null, section: null, home: HOME.url, module: k, toHome: true };
+      }
     }
     return null; /* unmapped module: caller shows Home only */
   }
@@ -43,7 +63,11 @@
     '@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .jpk-nav{background:var(--surface,#191C20);color:var(--ink,#E6E8EB)}' +
     ':root:not([data-theme="light"]) .jpk-nav a{background:var(--surface,#191C20);color:var(--ink,#E6E8EB);border-color:var(--line-strong,#424955)}' +
     ':root:not([data-theme="light"]) .jpk-nav a:hover{background:var(--surface2,#1F2328)}' +
-    ':root:not([data-theme="light"]) .jpk-nav a.back{color:var(--accent-ink,#9DB6EA);border-color:var(--accent,#7F9FE0)}}';
+    ':root:not([data-theme="light"]) .jpk-nav a.back{color:var(--accent-ink,#9DB6EA);border-color:var(--accent,#7F9FE0)}}' +
+    ':root[data-theme="dark"] .jpk-nav{background:#191C20;color:#E6E8EB}' +
+    ':root[data-theme="dark"] .jpk-nav a{background:#191C20;color:#E6E8EB;border-color:#424955}' +
+    ':root[data-theme="dark"] .jpk-nav a:hover{background:#1F2328}' +
+    ':root[data-theme="dark"] .jpk-nav a.back{color:#9DB6EA;border-color:#7F9FE0}';
 
   function el(tag, attrs, html) {
     var n = document.createElement(tag);
@@ -54,19 +78,46 @@
   var ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>';
   var HOMEI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>';
 
-  /* JPK.navBar(mount, entity) -> the resolved tab (or null). Draws "Back to <tab>" (if the module is mapped) and "Home". */
-  function navBar(mount, entity) {
+  /* v1.1.1: the section rides on the tab URL as ?widgetparams={...}; Zoho hands it to the tab's widget on PageLoad
+     (tested live 27 Oct: WebTab26?widgetparams={"jpk_section":"cases"} opened Support on Cases). A plain same-window
+     link, so no new browser tab (Widget.open, used in v1.1.0, opened one). */
+  function tabHref(r) {
+    if (!r.section || r.toHome) return r.url;
+    return r.url + '?widgetparams=' + encodeURIComponent(JSON.stringify({ jpk_section: r.section, jpk_from: r.module }));
+  }
+
+  /* JPK.navBar(mount, entity, opts) -> the resolved destination (or null).
+     opts.profile: the user's profile name (Back for Admin-only tabs waits for it; without it Back shows Home).
+     Draws "Back to <tab>" (if the module is mapped) and "Home". When Back already goes home, the Home button is left out. */
+  function navBar(mount, entity, opts) {
+    opts = opts || {};
     if (!document.getElementById('jpk-nav-css')) {
       var st = el('style', { id: 'jpk-nav-css' }); st.textContent = CSS; document.head.appendChild(st);
     }
-    var r = resolve(entity);
+    var r = resolve(entity, opts.profile == null ? null : opts.profile);
     var nav = el('nav', { 'class': 'jpk-nav', 'aria-label': 'Navigate' });
-    if (r) nav.appendChild(el('a', { 'class': 'back', href: r.url, target: '_top', rel: 'noopener', title: 'Back to ' + r.label }, ARROW + '<span>Back to ' + r.label + '</span>'));
-    nav.appendChild(el('a', { 'class': 'home', href: HOME.url, target: '_top', rel: 'noopener', title: 'Home' }, HOMEI + '<span>Home</span>'));
+    if (r) {
+      var a = el('a', { 'class': 'back', href: tabHref(r), target: '_top', rel: 'noopener', title: 'Back to ' + r.label, 'data-section': r.section || '' }, ARROW + '<span>Back to ' + r.label + '</span>');
+      a.addEventListener('click', function (ev) { if (opts.demo) { ev.preventDefault(); if (opts.onDemo) opts.onDemo(r); } });
+      nav.appendChild(a);
+    }
+    if (!r || !r.toHome) nav.appendChild(el('a', { 'class': 'home', href: HOME.url, target: '_top', rel: 'noopener', title: 'Home' }, HOMEI + '<span>Home</span>'));
     mount.innerHTML = ''; mount.appendChild(nav);
     return r;
   }
 
-  JPK.navBar = navBar; JPK.navResolve = resolve; JPK.navMap = { tabs: TABS, home: HOME };
-  if (typeof module !== 'undefined' && module.exports) module.exports = { resolve: resolve, TABS: TABS, HOME: HOME };
+  /* For tab widgets: the section a Back click asked for, from PageLoad data (shape varies by SDK version). */
+  function sectionFrom(d) {
+    if (!d || typeof d !== 'object') return null;
+    var cands = [d, d.Message, d.message, d.data, d.Data, d.customData];
+    for (var i = 0; i < cands.length; i++) {
+      var c = cands[i];
+      if (typeof c === 'string') { try { c = JSON.parse(c); } catch (e) { continue; } }
+      if (c && typeof c === 'object' && typeof c.jpk_section === 'string' && c.jpk_section) return c.jpk_section;
+    }
+    return null;
+  }
+
+  JPK.navBar = navBar; JPK.navResolve = resolve; JPK.navSection = sectionFrom; JPK.navMap = { tabs: TABS, homes: HOMES, home: HOME, version: '1.1.1', href: tabHref };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { resolve: resolve, sectionFrom: sectionFrom, TABS: TABS, HOMES: HOMES, HOME: HOME, VERSION: '1.1.1', tabHref: tabHref };
 })(typeof window !== 'undefined' ? window : this);
