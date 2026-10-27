@@ -1,4 +1,4 @@
-/* Next step widget v1.1.0 (S41, 27 Oct 2026: Cases, Billing Findings, Solicitations). v1.0.6 (S12). Read-only: the buttons open Zoho's own forms, nothing is written from here. */
+/* Next step widget v1.0.6 (S12). Read-only: the buttons open Zoho's own forms, nothing is written from here. */
 (function () {
   'use strict';
   var M = window.NextStepModel, root = document.getElementById('ns'), toastEl = document.getElementById('ns-toast'), tt = null;
@@ -62,13 +62,12 @@
     ZOHO.embeddedApp.on('PageLoad', function (d) {
       var entity = d.Entity, id = Array.isArray(d.EntityId) ? d.EntityId[0] : d.EntityId;
       state.module = entity;
-      if ((M.MODULES || ['Contracts', 'Accounts']).indexOf(entity) < 0) { root.innerHTML = '<div class="ns-body"><section class="ns-card none"><div class="ns-txt"><p class="ns-title">Next step is not set up for this module</p></div></section></div>'; resize(); return; }
+      if (entity !== 'Contracts' && entity !== 'Accounts') { root.innerHTML = '<div class="ns-body"><section class="ns-card none"><div class="ns-txt"><p class="ns-title">Next step is not set up for this module</p></div></section></div>'; resize(); return; }
       ZOHO.CRM.API.getRecord({ Entity: entity, RecordID: id }).then(function (res) {
         var rec = res && res.data && res.data[0];
         if (!rec) throw new Error('Record not found');
         state.rec = rec;
-        if (entity === 'Cases' && rec.Related_To && rec.Related_To.id) return { id: rec.Related_To.id, name: rec.Related_To.name };
-        var acct = entity === 'Contracts' ? (rec.Account && rec.Account.id) : entity === 'Accounts' ? rec.id : entity === 'Cases' ? (rec.Account_Name && rec.Account_Name.id) : null;
+        var acct = entity === 'Contracts' ? (rec.Account && rec.Account.id) : rec.id;
         return loadContact(acct);
       }).then(function (c) { state.contact = c; render(); })
         .catch(function (e) { root.innerHTML = '<div class="ns-body"><section class="ns-card bad"><div class="ns-txt"><p class="ns-title">Next step could not load</p><p class="ns-why">' + esc((e && e.message) || 'Unknown error') + '</p></div></section></div>'; resize(); });

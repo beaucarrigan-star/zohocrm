@@ -1,4 +1,4 @@
-/* Next step widget v1.1.0 (S41, 27 Oct 2026; styles unchanged since v1.0.0, S12, 19 Oct 2026). Tokens mirror jpk-theme-v3.css section 1 (Graphite + cobalt), light and dark.
+/* Next step widget v1.0.0 (S12, 19 Oct 2026). Tokens mirror jpk-theme-v3.css section 1 (Graphite + cobalt), light and dark.
    Status colors are never the accent: the rule on the left is cobalt only when nothing needs attention. */
 :root{--bg:#F4F5F7;--surface:#FFFFFF;--surface2:#F7F8FA;--ink:#16191D;--muted:#5F6670;--line:#DCE0E5;--line-strong:#B8BEC7;
 --accent:#2F55A4;--accent-ink:#284A90;--on-accent:#FFFFFF;--warn:#8A6412;--bad:#A33A33;
