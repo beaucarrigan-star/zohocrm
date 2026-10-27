@@ -2274,6 +2274,11 @@ function rpInit() {
      anything that ended longer ago is an old contract never closed out (CS - Expired, Still Live), not a renewal */
   var STALE_DAYS = 180;
   var renewsIn90 = function (c) { var d = daysFrom(c.Final_End_Date); return c.Counterparty_Type !== 'Vendor' && c.Contract_Status !== 'Ended' && renewalOpen(c) && d != null && d >= -STALE_DAYS && d <= 90; };
+  /* S39 (27 Oct 2026): Follow-ups use the one renewal window, the rule of CS Home's "Renewals not started, 120 days or less" tile and
+     Leadership's Renewals at risk: Customer contracts, Renewal Status Not started, ending today to 120 days out. ?s39=0 gives the old window. */
+  var S39_FU = !/[?&]s39=0\b/.test(location.search);
+  var renewsNotStarted120 = function (c) { var d = daysFrom(c.Final_End_Date); return c.Counterparty_Type === 'Customer' && c.Renewal_Status === 'Not started' && d != null && d >= 0 && d <= 120; };
+  var pastEndLeftOut = function (c) { var d = daysFrom(c.Final_End_Date); return c.Counterparty_Type !== 'Vendor' && c.Contract_Status !== 'Ended' && renewalOpen(c) && d != null && d < 0; };
   var staleRenewal = function (c) { var d = daysFrom(c.Final_End_Date); return c.Counterparty_Type !== 'Vendor' && c.Contract_Status !== 'Ended' && renewalOpen(c) && d != null && d < -STALE_DAYS; };
   var needsTouch = function (a) { return !a.Former_Customer && !a.Close_Out && /^(cold|no logged touch)$/i.test(a.Touch_Status); };
   var dealOpen = function (d) { var g = stageGroup(d.Stage, d.Stage_Group); return g !== 'Won' && g !== 'Lost or Dead'; };
@@ -2865,8 +2870,9 @@ function rpInit() {
         when: n < 0 ? (-n) + ' day' + (n === -1 ? '' : 's') + ' past close' : n === 0 ? 'closes today' : 'closes in ' + n + ' day' + (n === 1 ? '' : 's'), sig: n < 0 ? 'late' : '', band: band(n), ord: n, type: 'deal', rec: d });
     });
     D.contracts.forEach(function (c) {
-      if (c.Counterparty_Type === 'Vendor' || c.Contract_Status === 'Ended' || !renewalOpen(c)) return;
-      var n = daysFrom(c.Final_End_Date); if (n == null || n > 90 || n < -STALE_DAYS) return;
+      if (S39_FU) { if (!renewsNotStarted120(c)) return; }
+      else if (c.Counterparty_Type === 'Vendor' || c.Contract_Status === 'Ended' || !renewalOpen(c)) return;
+      var n = daysFrom(c.Final_End_Date); if (!S39_FU && (n == null || n > 90 || n < -STALE_DAYS)) return;
       var a = accById(c.AccountId);
       push({ key: 'renew:' + c.id, kind: 'renew', chip: 'Renewal', cls: n < 0 ? 'lost' : 'warm', title: c.Name, sub: [a && a.Account_Name !== c.Name ? a.Account_Name : '', c.Renewal_Status].filter(Boolean).join(' · '),
         when: n < 0 ? (-n) + ' days overdue' : n === 0 ? 'ends today' : 'ends in ' + n + ' days', sig: n < 0 ? 'late' : '', band: band(n), ord: n, type: a ? 'account' : null, rec: a || null, crm: c });
@@ -2896,10 +2902,10 @@ function rpInit() {
     FU.vis = shown;
     Object.keys(FU.sel).forEach(function (k) { var it = fuFind(k); if (!it || it.snoozed) delete FU.sel[k]; });
     $('fu-meta').innerHTML = loading ? '' : '<span class="badge"><b>' + live_.length + '</b> to do</span>' + (sn.length ? '<span class="badge"><b>' + sn.length + '</b> snoozed</span>' : '');
-    $('fu-filter').innerHTML = loading ? '' : FU_TYPES.map(function (t) { var n = live_.filter(function (x) { return x.kind === t[0]; }).length; return '<button type="button" class="fchip" data-fut="' + t[0] + '" aria-pressed="' + (FU.type === t[0]) + '">' + esc(t[1]) + ' <span class="num">' + n + '</span></button>'; }).join('')
+    $('fu-filter').innerHTML = loading ? '' : FU_TYPES.map(function (t) { var n = live_.filter(function (x) { return x.kind === t[0]; }).length; return '<button type="button" class="fchip" data-fut="' + t[0] + '"' + (S39_FU && t[0] === 'renew' ? ' title="Renewals not started, 120 days or less"' : '') + ' aria-pressed="' + (FU.type === t[0]) + '">' + esc(t[1]) + ' <span class="num">' + n + '</span></button>'; }).join('')
       + (sn.length ? '<button type="button" class="fchip" data-fusn aria-pressed="' + FU.showSnoozed + '">Snoozed <span class="num">' + sn.length + '</span></button>' : '');
     var cap = FU.all ? shown.length : FU_CAP, rows = shown.slice(0, cap);
-    var stale = loading ? 0 : D.contracts.filter(staleRenewal).length, sv = VIEWS['CS - Expired, Still Live'];
+    var stale = loading ? 0 : D.contracts.filter(S39_FU ? pastEndLeftOut : staleRenewal).length, sv = VIEWS['CS - Expired, Still Live'];
     box.innerHTML = loading ? skeletonRows(FU_CAP) : rows.length ? rows.map(function (x) {
       var sel = !!FU.sel[x.key];
       var word = x.sig === 'late' ? 'Late' : x.sig === 'never' ? 'Never' : x.sig === 'cold' ? 'Cold' : '', kindLab = { cold: 'Account', deal: 'Opportunity', renew: 'Renewal', camp: 'Campaign', vendor: 'Vendor' }[x.kind] || x.chip;
@@ -2914,7 +2920,7 @@ function rpInit() {
         + '<span class="when">' + esc(x.snoozed ? 'wakes ' + fmtDate(x.snoozed) : x.when) + '</span><span class="sig">' + esc(x.snoozed ? '' : word) + '</span>'
         + '<span class="fuacts">' + acts + '</span></div>';
     }).join('') + (shown.length > cap ? '<p class="fine more"><button type="button" class="btn" data-fuall>Show all ' + shown.length + '</button></p>' : '')
-      + (stale && (!FU.type || FU.type === 'renew') ? '<p class="fine stale">' + stale + ' older contract' + (stale === 1 ? '' : 's') + ' ended more than ' + STALE_DAYS + ' days ago and ' + (stale === 1 ? 'is' : 'are') + ' left out here (never closed out, not renewals to chase)' + (sv && !PREVIEW ? ' · <a target="_top" href="' + esc(url.view(sv.module, sv.id)) + '">CS - Expired, Still Live ↗</a>' : '') + '.</p>' : '')
+      + (stale && (!FU.type || FU.type === 'renew') ? '<p class="fine stale">' + (S39_FU ? stale + ' contract' + (stale === 1 ? '' : 's') + ' past ' + (stale === 1 ? 'its' : 'their') + ' end date ' + (stale === 1 ? 'is' : 'are') + ' left out here (not renewals to chase)' : stale + ' older contract' + (stale === 1 ? '' : 's') + ' ended more than ' + STALE_DAYS + ' days ago and ' + (stale === 1 ? 'is' : 'are') + ' left out here (never closed out, not renewals to chase)') + (sv && !PREVIEW ? ' · <a target="_top" href="' + esc(url.view(sv.module, sv.id)) + '">CS - Expired, Still Live ↗</a>' : '') + '.</p>' : '')
       : '<p class="empty fine">' + (FU.type ? 'Nothing of this type is due.' : 'All items complete. No follow-ups due.') + '</p>';
     var nb = Object.keys(FU.sel).length; $('fu-bulk').hidden = !nb; $('fu-bulk-n').textContent = nb + ' selected'; resize();
   }
@@ -5636,7 +5642,7 @@ function rpInit() {
 })(typeof window !== 'undefined' ? window : this);
 
 </script>
-<meta name="jpk-build" content="BD Home v6.4 (v6.3 S37 + S35 guide blurb line + S38 Phase 5 frame and Send to Leadership, 27 Oct 2026)">
+<meta name="jpk-build" content="BD Home v6.5 (v6.4 S38 + S39 boards like CS and Follow-ups renewals not started in 120 days, 27 Oct 2026)">
 <!-- jpk-s24:begin -->
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
@@ -6519,7 +6525,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'bd',
   title: 'BD Home',
-  build: 'BD Home v6.4',
+  build: 'BD Home v6.5',
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   enabled: true,
   greeting: '#greeting',
@@ -12645,5 +12651,114 @@ window.JPK_S38 = {"home": "bd", "frame": true, "send": true, "bar": "#page > .qu
 
 </script>
 <!-- jpk-s38:end -->
+<!-- jpk-s39:start -->
+<style id="jpk-s39-css">
+/* jpk-s39.css (S39, 27 Oct 2026): BD Home boards, CS Home's S33 item 6. Pairs with jpk-s39.js. Scoped under html[data-s39="on"]. */
+/* five tiles, the rest behind "Show all numbers" */
+html[data-s39="on"]:not([data-s39-more]) #z-boards #nums > [data-s39-x] { display: none !important; }
+html[data-s39="on"] #z-boards > .band { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 10px; }
+html[data-s39="on"] .s39-more {
+  margin-left: auto; font: inherit; font-size: var(--fs-md, 13px); font-weight: 600; color: var(--accent-ink, var(--ink)); background: none; border: 0;
+  padding: 4px 6px; border-radius: 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
+}
+html[data-s39="on"] .s39-more:hover { background: var(--surface-2); }
+html[data-s39="on"] .s39-more:focus-visible { outline: 2px solid var(--focus, var(--accent, #2f5bd3)); outline-offset: 1px; }
+html[data-s39="on"] .s39-more[hidden] { display: none; }
+/* one health chip per row: the reason when there is one, otherwise the colour word (the dot always stays) */
+html[data-s39="on"] td.s39-hasr > .s39-hw {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+html[data-s39="on"] td.s39-hasr > .s { display: inline; margin-left: 4px; }
+
+</style>
+<script id="jpk-s39">
+/* jpk-s39.js v1.0.0 (S39, 27 Oct 2026): BD Home boards follow CS Home's S33 item 6.
+   1. Board numbers: at most five tiles show on a board; any more sit behind "Show all numbers (n more)" in the Boards band
+      (the choice is kept per person in this browser, as on CS). No BD board has more than five today, so the button stays hidden
+      until one does. The EM customer health bar counts as one tile, as on CS.
+   2. One health chip per board row: when a row has a reason chip (Cold, No Logged Touch, Fresh...), the colour word is hidden
+      on screen (screen readers still read it); the dot stays. Same markup and rule as CS (jpk-s33 health()).
+   No data reads, no writes. Hide, don't delete. Off switch: ?s39=0 (also restores the old Follow-ups renewal window). */
+(function (root) {
+  'use strict';
+  var doc = root.document;
+  if (!doc || root.JPKS39) return;
+  if (/[?&]s39=0\b/.test(root.location.search)) { root.JPKS39 = { version: '1.0.0', off: true }; return; }
+  var VERSION = '1.0.0', MORE_KEY = 'jpk-s39-morenums', CAP = 5;
+  var html = doc.documentElement;
+  function $(id) { return doc.getElementById(id); }
+  function q(s, r) { try { return (r || doc).querySelector(s); } catch (e) { return null; } }
+  function qa(s, r) { try { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); } catch (e) { return []; } }
+  function flag(el, name, on) { if (!el) return; if (on) { if (!el.hasAttribute(name)) el.setAttribute(name, ''); } else if (el.hasAttribute(name)) el.removeAttribute(name); }
+  var store = {
+    get: function (k) { try { return root.localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { root.localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  /* ---------- 1. five tiles, then "Show all numbers" ---------- */
+  function tiles() {
+    var nums = $('nums'); if (!nums) return [];
+    return qa(':scope > .kpi', nums).filter(function (t) {
+      if (t.hasAttribute('data-s39-x')) return true;                 /* hidden by this layer: still a tile */
+      return getComputedStyle(t).display !== 'none';                 /* hidden by another layer (S38's 90-day tile): not counted */
+    });
+  }
+  function cap() {
+    var list = tiles(), extra = 0;
+    list.forEach(function (t, i) { var x = i >= CAP; flag(t, 'data-s39-x', x); if (x) extra++; });
+    moreBtn(extra);
+  }
+  function moreBtn(extra) {
+    var band = q('#z-boards > .band'); if (!band) return;
+    var b = $('s39-more');
+    if (!b) {
+      b = doc.createElement('button'); b.type = 'button'; b.id = 's39-more'; b.className = 's39-more'; b.setAttribute('aria-controls', 'nums');
+      b.addEventListener('click', function () { setMore(!html.hasAttribute('data-s39-more')); });
+      band.appendChild(b);
+    }
+    var on = html.hasAttribute('data-s39-more');
+    var t = on ? 'Show fewer numbers' : 'Show all numbers (' + extra + ' more)';
+    if (b.textContent !== t) b.textContent = t;
+    b.setAttribute('aria-expanded', String(on));
+    b.hidden = !extra;
+  }
+  function setMore(on) { flag(html, 'data-s39-more', on); store.set(MORE_KEY, on ? '1' : '0'); cap(); }
+
+  /* ---------- 2. one health chip per row ---------- */
+  function health() {
+    qa('#board tbody td[title*="ustomer health"]').forEach(function (td) {
+      if (!td.__s39) {
+        Array.prototype.slice.call(td.childNodes).forEach(function (n) {
+          if (n.nodeType === 3 && n.textContent.trim()) { var s = doc.createElement('span'); s.className = 's39-hw'; td.insertBefore(s, n); s.appendChild(n); }
+        });
+        td.__s39 = 1;
+      }
+      var hasR = !!q('.tchip, .s28-pill, .pill, .chip', td);
+      if (td.classList.contains('s39-hasr') !== hasR) td.classList.toggle('s39-hasr', hasR);
+    });
+  }
+
+  function ensure() {
+    if (html.getAttribute('data-s39') !== 'on') html.setAttribute('data-s39', 'on');
+    try { cap(); } catch (e) {}
+    try { health(); } catch (e) {}
+  }
+  var obs = null;
+  function start() {
+    var z = $('z-boards');
+    if (!z) { setTimeout(start, 300); return; }
+    if (store.get(MORE_KEY) === '1') flag(html, 'data-s39-more', true);
+    ensure();
+    try {
+      obs = new MutationObserver(function () { clearTimeout(obs.__t); obs.__t = setTimeout(ensure, 40); });
+      obs.observe(z, { childList: true, subtree: true });
+    } catch (e) { setInterval(ensure, 700); }
+  }
+  root.JPKS39 = { version: VERSION, build: 'S39 BD boards: five tiles and one health chip, 27 Oct 2026', ensure: ensure, setMore: setMore, cap: CAP };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start); else start();
+})(window);
+
+</script>
+<!-- jpk-s39:end -->
 </body>
 </html>
