@@ -1,0 +1,16 @@
+/* jpk-s39.css (S39, 27 Oct 2026): BD Home boards, CS Home's S33 item 6. Pairs with jpk-s39.js. Scoped under html[data-s39="on"]. */
+/* five tiles, the rest behind "Show all numbers" */
+html[data-s39="on"]:not([data-s39-more]) #z-boards #nums > [data-s39-x] { display: none !important; }
+html[data-s39="on"] #z-boards > .band { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 10px; }
+html[data-s39="on"] .s39-more {
+  margin-left: auto; font: inherit; font-size: var(--fs-md, 13px); font-weight: 600; color: var(--accent-ink, var(--ink)); background: none; border: 0;
+  padding: 4px 6px; border-radius: 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
+}
+html[data-s39="on"] .s39-more:hover { background: var(--surface-2); }
+html[data-s39="on"] .s39-more:focus-visible { outline: 2px solid var(--focus, var(--accent, #2f5bd3)); outline-offset: 1px; }
+html[data-s39="on"] .s39-more[hidden] { display: none; }
+/* one health chip per row: the reason when there is one, otherwise the colour word (the dot always stays) */
+html[data-s39="on"] td.s39-hasr > .s39-hw {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+html[data-s39="on"] td.s39-hasr > .s { display: inline; margin-left: 4px; }
