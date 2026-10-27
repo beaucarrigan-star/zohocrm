@@ -10760,7 +10760,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.11.0 (v6.10.0 + S36 voice typing in New meeting, 26 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.12.0 (v6.11.0 + S37 say the whole meeting, 26 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -11644,7 +11644,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.11.0',
+  build: 'Beau CS Home v6.12.0',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -12572,7 +12572,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.11.0',
+    build: 'Beau CS Home v6.12.0',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -19278,5 +19278,364 @@ html[data-s33="on"] #s28-support .s28-view { width: auto; }
 })(window);
 </script>
 <!-- jpk-s36:end -->
+<!-- jpk-s37:start -->
+<style id="jpk-s37-css">
+/* jpk-s37.css (S37, 26 Oct 2026): "Say the whole meeting" bar at the top of the New meeting form */
+.jpk-vq { display: grid; gap: 6px; padding: 10px; margin: 0 0 12px; border: 1px dashed var(--line, #c9ced6); border-radius: 10px; background: var(--surface-2, var(--surface2, rgba(127,127,127,.06))); min-width: 0; }
+.jpk-vq-row { display: flex; gap: 6px; align-items: center; min-width: 0; flex-wrap: wrap; }
+.jpk-vq-mic { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--accent, #2f5bd3);
+  background: var(--accent, #2f5bd3); color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.jpk-vq-mic svg { width: 16px; height: 16px; }
+.jpk-vq-mic:focus-visible, .jpk-vq-go:focus-visible { outline: 2px solid var(--accent, #2f5bd3); outline-offset: 2px; }
+.jpk-vq-mic[aria-pressed="true"] { background: #c62828; border-color: #c62828; animation: jpk-mic-pulse 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .jpk-vq-mic[aria-pressed="true"] { animation: none; } }
+@keyframes jpk-mic-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, .45); } 50% { box-shadow: 0 0 0 6px rgba(198, 40, 40, 0); } }
+.jpk-vq-in { flex: 1 1 160px; min-width: 0; min-height: 36px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line, #c9ced6);
+  background: var(--surface, #fff); color: var(--ink, inherit); font: inherit; font-size: 13px; }
+.jpk-vq-go { min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line, #c9ced6); background: var(--surface, #fff); color: var(--ink-2, inherit); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.jpk-vq-msg { margin: 0; display: grid; gap: 2px; font-size: 12px; font-weight: 400; color: var(--ink-3, #666); }
+.jpk-vq-msg:empty { display: none; }
+.jpk-vq-heard { color: var(--ink-2, #444); font-style: italic; overflow-wrap: anywhere; }
+.jpk-vq-done { color: var(--ink-2, #444); }
+.jpk-vq-warn { color: var(--warn-ink, #8a4b00); }
+.jpk-vq-next { font-weight: 600; color: var(--ink-2, #444); }
+</style>
+<script id="jpk-s37">
+/* jpk-s37.js v1.0.0 (S37, 26 Oct 2026): "Say the whole meeting" for the New meeting form.
+   One spoken (or typed) sentence fills Title, Date, Starts / Ends, Meeting type and Invite, e.g.
+   "Teams meeting with Joe at 3 PM on Wednesday October 28th for 30 minutes about pricing".
+   The sentence is read on this computer by fixed rules (no AI service, no Zoho calls). Nothing is saved: the form's own
+   Add meeting button saves, as before. Anything it can't tell is left as it was and named in the status line.
+   Off switch: ?s37=0 on the widget URL. */
+(function (root) {
+  'use strict';
+  var doc = root.document;
+  if (!doc || root.JPKS37) return;
+  var VERSION = '1.0.0';
+  var OFF = /[?&]s37=0\b/.test(root.location.search);
+
+  /* ------------------------------------------------------------------ parser (pure) */
+  var WD = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  var MON = { jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6,
+    aug: 7, august: 7, sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11 };
+  var MON_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  var WD_RE = '(sunday|monday|tuesday|wednesday|thursday|friday|saturday)';
+  var NUMS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+  var MINW = { fifteen: 15, twenty: 20, thirty: 30, 'forty five': 45, 'forty-five': 45, forty: 40, sixty: 60, ninety: 90 };
+  var NOUNS = { meeting: 'Meeting', call: 'Call', sync: 'Sync', 'check in': 'Check-in', 'check-in': 'Check-in', checkin: 'Check-in',
+    'catch up': 'Catch-up', 'catch-up': 'Catch-up', catchup: 'Catch-up', review: 'Review', demo: 'Demo', 'one on one': '1:1', 'one-on-one': '1:1',
+    '1:1': '1:1', lunch: 'Lunch', coffee: 'Coffee', huddle: 'Huddle', standup: 'Stand-up', 'stand-up': 'Stand-up', interview: 'Interview', training: 'Training' };
+  var FILLER = /^(a|an|the|me|my|our|please|set|up|and|,|in|to|of|on|for|new|quick|some)$/;
+  var STOPS = '(?:about|regarding|re|to discuss|to talk about|to review|to go over|for|on|at|from|between|tomorrow|today|tonight|next|this|,)';
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function day0(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function addDays(d, n) { var x = day0(d); x.setDate(x.getDate() + n); return x; }
+  function cap(s) { s = String(s || '').trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  function titleCase(s) { return String(s || '').split(/\s+/).filter(Boolean).map(cap).join(' '); }
+
+  function parse(text, now) {
+    now = now || new Date();
+    var original = String(text || '');
+    var out = { heard: original.trim(), title: '', date: '', start: '', end: '', dur: null, allDay: false, venue: '', people: [], warn: [] };
+    var s = ' ' + original.toLowerCase().replace(/[“”"!?]/g, ' ').replace(/’/g, "'") + ' ';
+    /* normalise what speech engines produce */
+    s = s.replace(/\b([ap])\.\s?m\.?/g, '$1m').replace(/(\d)\s*([ap])m\b/g, '$1 $2m').replace(/[;]/g, ' , ').replace(/,/g, ' , ')
+         .replace(/(\d)\.(?=\s|$)/g, '$1').replace(/\.(?=\s|$)/g, ' ');
+    s = s.replace(/\b(at|from|to|until|till|by|around)\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/g, function (m, p, w) { return p + ' ' + NUMS[w]; });
+    s = s.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(?=\s*(?:am|pm|o'?clock|thirty|fifteen|forty[- ]five)\b)/g, function (w) { return NUMS[w]; });
+    s = s.replace(/\b(\d{1,2})\s+(thirty|fifteen|forty[- ]five)\b/g, function (m, h, w) { return h + ':' + (MINW[w.replace('-', ' ')] || MINW[w]); });
+    s = s.replace(/\b(fifteen|twenty|thirty|forty[- ]five|forty|sixty|ninety)(?=[\s-]+min)/g, function (w) { return MINW[w.replace('-', ' ')] || MINW[w]; });
+    s = s.replace(/\bmid-?day\b/g, 'noon');
+
+    function cut(re, fn) { var hit = false; s = s.replace(re, function () { hit = true; var r = fn ? fn.apply(null, arguments) : ''; return ' ' + (r || '') + ' '; }); return hit; }
+
+    /* meeting type (read before anything is cut) */
+    if (/\b(teams|online|virtual|video|webex|zoom)\b/.test(s)) out.venue = 'Online';
+    else if (/\b(on[- ]?site|at (?:their|the client'?s?|the customer'?s?|client) (?:office|site|location)|client (?:site|location))\b/.test(s)) out.venue = 'Client location';
+    else if (/\b(in[- ]office|in the office|at (?:the|our) office|in person)\b/.test(s)) out.venue = 'In-office';
+
+    /* invitation wording: "and send him a teams invite", "invite them" */
+    cut(/\b(?:and\s+)?(?:please\s+)?(?:send|email|give)\s+(?:him|her|them|it|everyone|joe|[a-z]+)?\s*(?:a|an|the)?\s*(?:microsoft\s+)?(?:teams\s+)?(?:meeting\s+)?(?:invite|invitation)s?\b/g);
+    cut(/\b(?:and\s+)?invite\s+(?:him|her|them|everyone)\b/g);
+    cut(/\b(?:using|via|over|on)\s+(?:microsoft\s+)?teams\b/g);
+    cut(/\b(?:microsoft\s+)?teams\b|\b(?:online|virtual|video|webex|zoom)\b/g);
+    cut(/\b(?:on[- ]?site|at (?:their|the client'?s?|the customer'?s?|client) (?:office|site|location)|client (?:site|location)|in[- ]office|in the office|at (?:the|our) office|in person)\b/g);
+
+    /* opening words */
+    var isReminder = /^\s*(?:hey\s+)?(?:please\s+)?(?:remind me to|reminder to)\b/.test(s);
+    s = s.replace(/^\s*(?:hey\s+)?(?:please\s+)?(?:can you\s+|could you\s+)?(?:remind me to|reminder to|add|create|schedule|set up|setup|book|make|put|new)\b\s*(?:me\s+)?(?:in\s+)?(?:a\s+|an\s+)?/, ' ');
+
+    /* length */
+    cut(/\bfor\s+(?:an?|one)\s+hour\s+and\s+(?:a\s+)?half\b|\bfor\s+(?:an?\s+)?hour\s+and\s+a\s+half\b/g, function () { out.dur = 90; });
+    cut(/\bfor\s+(\d+)\s+hours?\s+and\s+(\d+)\s+min(?:ute)?s?\b/g, function (m, h, mi) { out.dur = (+h) * 60 + (+mi); });
+    cut(/\bfor\s+(\d+(?:\.\d+)?)\s+(?:hours?|hrs?)\b/g, function (m, h) { out.dur = Math.round(parseFloat(h) * 60); });
+    cut(/\bfor\s+(?:an?|one)\s+hour\b/g, function () { out.dur = 60; });
+    cut(/\bfor\s+half\s+an?\s+hour\b|\bfor\s+a\s+half\s+hour\b/g, function () { out.dur = 30; });
+    cut(/\b(?:for\s+)?(\d{1,3})[\s-]*min(?:ute)?s?(?:\s+long)?\b/g, function (m, mi) { out.dur = +mi; });
+    cut(/\b(?:an?|one)[\s-]hour\b(?=\s+(?:meeting|call|review|sync|demo|training))/g, function () { out.dur = 60; });
+    cut(/\ball[\s-]day\b/g, function () { out.allDay = true; });
+
+    /* date */
+    var today = day0(now), date = null, wdSaid = null;
+    function mkDate(y, m, d) { var x = new Date(y, m, d); return x.getMonth() === m && x.getDate() === d ? x : null; }
+    function noYear(m, d) { var x = mkDate(today.getFullYear(), m, d); if (x && x < today) x = mkDate(today.getFullYear() + 1, m, d); return x; }
+    cut(new RegExp('\\b(?:on\\s+)?(?:' + WD_RE + '\\s*,?\\s*)?(?:the\\s+)?' + MON_RE + '\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(20\\d\\d))?\\b', 'g'), function (m, wd, mo, d, y) {
+      if (wd) wdSaid = wd; var mm = MON[mo]; date = y ? mkDate(+y, mm, +d) : noYear(mm, +d); });
+    if (!date) cut(new RegExp('\\b(?:on\\s+)?(?:' + WD_RE + '\\s*,?\\s*)?(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s+of\\s+' + MON_RE + '(?:\\s*,?\\s*(20\\d\\d))?\\b', 'g'), function (m, wd, d, mo, y) {
+      if (wd) wdSaid = wd; var mm = MON[mo]; date = y ? mkDate(+y, mm, +d) : noYear(mm, +d); });
+    if (!date) cut(/\b(?:on\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/g, function (m, mo, d, y) {
+      var yy = y ? (+y < 100 ? 2000 + (+y) : +y) : 0; date = yy ? mkDate(yy, +mo - 1, +d) : noYear(+mo - 1, +d); });
+    if (!date) cut(/\b(?:the\s+)?day\s+after\s+tomorrow\b/g, function () { date = addDays(today, 2); });
+    if (!date) cut(/\btomorrow\b/g, function () { date = addDays(today, 1); });
+    if (!date) cut(/\b(?:today|tonight)\b/g, function () { date = today; });
+    cut(new RegExp('\\b(?:on\\s+)?(this\\s+|next\\s+|coming\\s+)?' + WD_RE + '\\b', 'g'), function (m, which, wd) {
+      if (date) { wdSaid = wdSaid || wd; return; }
+      var t = WD.indexOf(wd), diff = (t - today.getDay() + 7) % 7;
+      if (which && /next/.test(which)) diff = diff === 0 ? 7 : (t > today.getDay() ? diff + 7 : diff);
+      date = addDays(today, diff);
+    });
+    if (!date) cut(/\b(?:on\s+)?the\s+(\d{1,2})(?:st|nd|rd|th)\b/g, function (m, d) {
+      var x = mkDate(today.getFullYear(), today.getMonth(), +d);
+      if (!x || x < today) { var n = new Date(today.getFullYear(), today.getMonth() + 1, 1); x = mkDate(n.getFullYear(), n.getMonth(), +d); }
+      date = x;
+    });
+    if (date && wdSaid && WD[date.getDay()] !== wdSaid) out.warn.push(cap(wdSaid) + ' doesn’t match ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' (a ' + cap(WD[date.getDay()]) + '). Using the date.');
+    if (date) out.date = ymd(date);
+
+    /* time */
+    var hint = '';
+    cut(/\b(?:in the|this)\s+(morning|afternoon|evening)\b/g, function (m, p) { hint = p; if (/this/.test(m) && !out.date) out.date = ymd(today); });
+    if (/\btonight\b/.test(original.toLowerCase())) hint = hint || 'evening';
+    function hour(h, mer, otherMer) {
+      h = +h; var m = mer || otherMer;
+      if (m === 'am') return h % 12;
+      if (m === 'pm') return h % 12 + 12;
+      if (hint === 'morning') return h % 12;
+      if (hint === 'afternoon' || hint === 'evening') return h % 12 + 12;
+      if (h === 12) return 12;
+      if (h >= 1 && h <= 6) return h + 12;
+      return h;
+    }
+    function hm(h, mi) { return pad(h) + ':' + pad(+mi || 0); }
+    var rangeRe = /\b(?:from\s+|between\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:to|until|till|through|-|–|and)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/;
+    var rm = rangeRe.exec(s);
+    var rangeOk = rm && !(/\band\b/.test(rm[0]) && !/^between\s/.test(rm[0])) && (rm[3] || rm[6] || rm[2] || rm[5] || /^(?:from|between)\s/.test(rm[0]));
+    if (rangeOk) {
+      var sh = hour(rm[1], rm[3], rm[6]), eh = hour(rm[4], rm[6], rm[3] || null);
+      if (!rm[6] && !rm[3] && eh <= sh && eh < 12) eh += 12;
+      out.start = hm(sh, rm[2]); out.end = hm(eh, rm[5]);
+      s = s.slice(0, rm.index) + ' ' + s.slice(rm.index + rm[0].length);
+    } else {
+      cut(/\b(?:at\s+|around\s+|by\s+)?noon\b/g, function () { out.start = '12:00'; });
+      if (!out.start) cut(/\b(at\s+|around\s+|@\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|o'?clock)?\b/g, function (m, at, h, mi, mer) {
+        if (out.start) return m;
+        if (!(at || mi || mer)) return m;               /* a bare number is not a time */
+        if (+h > 23 || (mi && +mi > 59)) return m;
+        var mm = mer === 'am' || mer === 'pm' ? mer : '';
+        out.start = +h > 12 ? hm(+h, mi) : hm(hour(h, mm), mi);
+      });
+    }
+    if (out.start && out.end) { var a = out.start.split(':'), b = out.end.split(':'); out.dur = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]); if (out.dur <= 0) { out.end = ''; out.dur = null; } }
+    if (out.start && !out.end && out.dur) { var st = out.start.split(':'), tot = +st[0] * 60 + +st[1] + out.dur; if (tot < 24 * 60) out.end = hm(Math.floor(tot / 60), tot % 60); }
+
+    /* people: "with Joe", "with Joe and Stacey" */
+    var names = [];
+    cut(new RegExp('\\bwith\\s+(.+?)(?=\\s+' + STOPS + '\\b|\\s*$)'), function (m, who) {
+      who.split(/\s*(?:,|\band\b|&)\s*/).forEach(function (n) {
+        n = n.replace(/^(?:the|my)\s+/, '').trim(); if (!n || n.length < 2) return;
+        var w = n.split(/\s+/).slice(0, 3).join(' ');
+        if (!/^(him|her|them|me|us)$/.test(w)) names.push(w);
+      });
+      return '';
+    });
+    out.people = names;
+
+    /* topic: "about pricing" */
+    var topic = '';
+    cut(/\b(?:about|regarding|re|to discuss|to talk about|to review|to go over|on the topic of)\s+(.+?)\s*$/, function (m, t) { topic = t.replace(/[\s,]+$/, '').replace(/^(?:the\s+)?/, function (x) { return x; }).trim(); return ''; });
+
+    /* title */
+    s = s.replace(/\bcheck\s+in\b/g, 'check-in').replace(/\bcatch\s+up\b/g, 'catch-up').replace(/\bone\s+on\s+one\b/g, 'one-on-one').replace(/\bstand\s+up\b/g, 'stand-up');
+    var words = s.replace(/\s+,\s+/g, ' ').split(/\s+/).filter(Boolean);
+    var noun = '';
+    var joined = ' ' + words.join(' ') + ' ';
+    Object.keys(NOUNS).sort(function (x, y) { return y.length - x.length; }).some(function (k) { if (joined.indexOf(' ' + k + ' ') >= 0) { noun = NOUNS[k]; return true; } return false; });
+    var rest = words.filter(function (w) { return !FILLER.test(w); });
+    var restNoNoun = rest.filter(function (w) { return !NOUNS[w]; });
+    /* bring back the speaker's own capitals for words in the title */
+    var orig = {}; original.split(/[^A-Za-z0-9'&:-]+/).forEach(function (w) { if (w && w !== w.toLowerCase()) orig[w.toLowerCase()] = w; });
+    function restore(str) { return String(str).split(/\s+/).map(function (w) { return orig[w] || w; }).join(' '); }
+    var who = names.map(function (n) { return n.split(/\s+/).map(function (w) { return orig[w] || cap(w); }).join(' '); });
+    var whoText = who.length > 1 ? who.slice(0, -1).join(', ') + ' and ' + who[who.length - 1] : (who[0] || '');
+    if (topic) out.title = cap(restore(topic)) + (whoText ? ' – with ' + whoText : '');
+    else if (restNoNoun.length) out.title = cap(restore(rest.join(' '))) + (whoText ? ' with ' + whoText : '');
+    else if (whoText) out.title = (noun || 'Meeting') + ' with ' + whoText;
+    else if (noun && !isReminder) out.title = noun;
+    out.title = out.title.replace(/\s+/g, ' ').trim().slice(0, 255);
+    if (out.allDay) { out.start = ''; out.end = ''; }
+    return out;
+  }
+
+  /* ------------------------------------------------------------------ filling the form */
+  function fire(el, type) { try { el.dispatchEvent(new Event(type || 'input', { bubbles: true })); } catch (e) {} }
+  function setField(f, name, val) { var el = f.querySelector('[name="' + name + '"]'); if (!el || val == null) return false; el.value = val; fire(el, 'input'); fire(el, 'change'); return true; }
+  function mins(t) { var p = String(t || '').split(':'); return p.length === 2 ? (+p[0]) * 60 + (+p[1]) : null; }
+  function hmOf(m) { return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  function nice(dstr) { var p = dstr.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+  function niceTime(t) { var m = mins(t), h = Math.floor(m / 60), mi = m % 60; return ((h % 12) || 12) + (mi ? ':' + pad(mi) : '') + (h < 12 ? ' AM' : ' PM'); }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function pickPerson(f, name) {
+    var q = f.querySelector('[name="iq"]'), ul = f.querySelector('.jpk-mo-ivr');
+    if (!q || !ul) return Promise.resolve('no-invite');
+    q.value = name; fire(q, 'input');
+    var words = name.toLowerCase().split(/\s+/);
+    var t0 = Date.now();
+    function look() {
+      var btns = Array.prototype.slice.call(ul.querySelectorAll('button[data-jpk-mx="ipick"]'));
+      var none = ul.querySelector('.jpk-mo-rnone');
+      if (!btns.length && !none && Date.now() - t0 < 5000) return sleep(150).then(look);
+      function nameWords(b) { return ((b.querySelector('.jpk-mo-rn') || {}).textContent || '').toLowerCase().split(/\s+/); }
+      function exact(b) { var nm = nameWords(b); return words.every(function (w) { return nm.indexOf(w) >= 0; }); }
+      function prefix(b) { var nm = nameWords(b); return words.every(function (w) { return nm.some(function (x) { return x.indexOf(w) === 0; }); }); }
+      function kind(b) { return ((b.querySelector('.jpk-mo-rk') || {}).textContent || '').trim(); }
+      function choose(test) {
+        var mates = btns.filter(function (b) { return kind(b) === 'Teammate' && test(b); });
+        var contacts = btns.filter(function (b) { return kind(b) === 'Contact' && test(b); });
+        if (mates.length === 1) return mates[0];
+        if (!mates.length && contacts.length === 1) return contacts[0];
+        return mates.length || contacts.length ? false : null;   /* false = several, null = none */
+      }
+      var pick = choose(exact);
+      if (pick === null) pick = choose(prefix);
+      if (pick) { var who = (pick.querySelector('.jpk-mo-rn') || {}).textContent || name; pick.click(); return 'added:' + who; }
+      return btns.length ? 'choose' : 'none';
+    }
+    return sleep(100).then(look);
+  }
+
+  function fill(f, p, msg) {
+    var done = [], left = [];
+    if (p.title) { setField(f, 't', p.title); done.push('title'); } else left.push('title');
+    if (p.date) { setField(f, 'd', p.date); done.push(nice(p.date)); } else left.push('date');
+    var ad = f.querySelector('[name="ad"]');
+    if (p.allDay && ad) { if (!ad.checked) { ad.checked = true; fire(ad, 'input'); fire(ad, 'change'); } done.push('all day'); }
+    else if (p.start) {
+      if (ad && ad.checked) { ad.checked = false; fire(ad, 'input'); fire(ad, 'change'); }
+      var cur = (mins(f.querySelector('[name="e"]').value) || 0) - (mins(f.querySelector('[name="s"]').value) || 0);
+      var len = p.dur || (cur > 0 ? cur : 30), st = mins(p.start), en = p.end ? mins(p.end) : st + len;
+      if (en >= 24 * 60) en = 24 * 60 - 1;
+      setField(f, 's', p.start); setField(f, 'e', hmOf(en));
+      done.push(niceTime(p.start) + '–' + niceTime(hmOf(en)));
+    } else left.push('time');
+    if (p.venue) { var mv = f.querySelector('[name="mv"]'); if (mv && Array.prototype.some.call(mv.options, function (o) { return o.value === p.venue; })) { setField(f, 'mv', p.venue); done.push(p.venue === 'Online' ? 'Online (Teams)' : p.venue); } }
+    paint(msg, p, done, left, []);
+    /* people one at a time, through the form's own Invite search */
+    var chain = Promise.resolve(), notes = [];
+    p.people.forEach(function (n) {
+      chain = chain.then(function () { return pickPerson(f, n); }).then(function (r) {
+        if (/^added:/.test(r)) done.push('invited ' + r.slice(6));
+        else if (r === 'choose') notes.push('Pick ' + titleCase(n) + ' from the Invite list');
+        else if (r === 'none') notes.push('No match for “' + titleCase(n) + '” in Invite');
+        paint(msg, p, done, left, notes);
+      });
+    });
+    return chain.then(function () { paint(msg, p, done, left, notes, true); return { done: done, left: left, notes: notes }; });
+  }
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function paint(msg, p, done, left, notes, final) {
+    if (!msg) return;
+    var html = '<span class="jpk-vq-heard">Heard: “' + esc(p.heard) + '”</span>';
+    if (done.length) html += '<span class="jpk-vq-done">Filled: ' + esc(done.join(', ')) + '</span>';
+    var warn = left.length ? ['Couldn’t tell the ' + left.join(' or ') + ' — set ' + (left.length > 1 ? 'them' : 'it') + ' below'] : [];
+    warn = warn.concat(p.warn || [], notes || []);
+    if (warn.length) html += '<span class="jpk-vq-warn">' + esc(warn.join('. ')) + '.</span>';
+    if (final) html += '<span class="jpk-vq-next">Check it, then click Add meeting.</span>';
+    msg.innerHTML = html;
+  }
+
+  /* ------------------------------------------------------------------ the bar */
+  var SR = root.SpeechRecognition || root.webkitSpeechRecognition || null;
+  var MIC = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2z"/></svg>';
+  var listening = null;
+
+  function run(f, bar) {
+    var q = bar.querySelector('.jpk-vq-in'), msg = bar.querySelector('.jpk-vq-msg');
+    var text = q.value.trim();
+    if (!text) { msg.innerHTML = '<span class="jpk-vq-warn">Say or type the meeting first.</span>'; return Promise.resolve(null); }
+    return fill(f, parse(text, new Date()), msg);
+  }
+  function stopListening() { var l = listening; if (!l) return; listening = null; try { l.rec.onresult = l.rec.onerror = l.rec.onend = null; l.rec.stop(); } catch (e) {} l.btn.setAttribute('aria-pressed', 'false'); }
+  function listen(f, bar) {
+    var btn = bar.querySelector('.jpk-vq-mic'), q = bar.querySelector('.jpk-vq-in'), msg = bar.querySelector('.jpk-vq-msg');
+    if (listening) { var was = listening; stopListening(); if (was.btn === btn) return; }
+    if (!SR) { msg.innerHTML = '<span class="jpk-vq-warn">Voice isn’t available in this browser. Type the meeting in the box (or press Windows key + H in it), then press Enter.</span>'; q.focus(); return; }
+    var rec; try { rec = new SR(); } catch (e) { msg.innerHTML = '<span class="jpk-vq-warn">Voice couldn’t start here. Type the meeting in the box, then press Enter.</span>'; return; }
+    rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    var me = { rec: rec, btn: btn, heard: '' }; listening = me;
+    btn.setAttribute('aria-pressed', 'true'); q.value = '';
+    msg.innerHTML = '<span>Listening… say who, when and what, e.g. “Teams meeting with Joe Wednesday at 3 about pricing”.</span>';
+    rec.onresult = function (ev) { if (listening !== me) return; var t = ''; for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript + ' '; me.heard = t.trim(); q.value = me.heard; };
+    rec.onerror = function (ev) {
+      if (listening !== me) return; var c = ev && ev.error; stopListening();
+      var t = c === 'not-allowed' || c === 'service-not-allowed' ? 'The microphone is blocked for this page (Zoho or the browser). Type the meeting in the box (or press Windows key + H in it), then press Enter.'
+        : c === 'no-speech' ? 'Didn’t hear anything. Click the mic and try again.'
+        : c === 'aborted' ? '' : 'Voice stopped (' + (c || 'unknown') + '). Type the meeting in the box, then press Enter.';
+      msg.innerHTML = t ? '<span class="jpk-vq-warn">' + esc(t) + '</span>' : '';
+    };
+    rec.onend = function () { if (listening !== me) return; stopListening(); if (me.heard) run(f, bar); else msg.innerHTML = ''; };
+    try { rec.start(); } catch (e) { stopListening(); msg.innerHTML = '<span class="jpk-vq-warn">Voice couldn’t start here. Type the meeting in the box, then press Enter.</span>'; }
+  }
+
+  function addBar(f) {
+    if (f.querySelector('.jpk-vq')) return false;
+    var bar = doc.createElement('div');
+    bar.className = 'jpk-vq';
+    bar.innerHTML = '<div class="jpk-vq-row">'
+      + '<button type="button" class="jpk-vq-mic" aria-pressed="false">' + MIC + '<span>Say the whole meeting</span></button>'
+      + '<input class="jpk-vq-in" type="text" autocomplete="off" maxlength="400" aria-label="Or type the meeting in one sentence" placeholder="or type: Teams meeting with Joe Wed at 3 about pricing">'
+      + '<button type="button" class="jpk-vq-go">Fill</button></div>'
+      + '<p class="jpk-vq-msg" role="status" aria-live="polite"></p>';
+    var anchor = f.querySelector('input[name="t"]');
+    var lab = anchor && anchor.closest('label');
+    var at = lab && lab.parentNode === f ? lab : (f.firstElementChild && /H[1-6]/.test(f.firstElementChild.tagName) ? f.firstElementChild.nextSibling : f.firstChild);
+    if (lab && lab.parentNode !== f) { var top = lab; while (top.parentNode && top.parentNode !== f) top = top.parentNode; at = top; }
+    f.insertBefore(bar, at);
+    var q = bar.querySelector('.jpk-vq-in');
+    bar.querySelector('.jpk-vq-mic').addEventListener('click', function (e) { e.preventDefault(); listen(f, bar); });
+    bar.querySelector('.jpk-vq-go').addEventListener('click', function (e) { e.preventDefault(); run(f, bar); });
+    f.addEventListener('reset', function () { stopListening(); setTimeout(function () { q.value = ''; bar.querySelector('.jpk-vq-msg').innerHTML = ''; }, 0); });
+    return true;
+  }
+  function scan() {
+    var n = 0;
+    Array.prototype.forEach.call(doc.querySelectorAll('form input[name="t"][maxlength="255"]'), function (t) { var f = t.form || t.closest('form'); if (f && f.querySelector('[name="d"]') && addBar(f)) n++; });
+    if (listening && !doc.contains(listening.btn)) stopListening();
+    return n;
+  }
+  function boot() {
+    scan();
+    /* Enter in the sentence box: the page's own key handler stops key events inside the form, so Enter would submit the
+       form (and save the meeting). Catch that submit first and fill instead. */
+    root.addEventListener('submit', function (e) {
+      var a = doc.activeElement; if (!a || !a.classList || !a.classList.contains('jpk-vq-in')) return;
+      var f = e.target, bar = a.closest('.jpk-vq'); if (!f || !bar || !f.contains(a)) return;
+      e.preventDefault(); e.stopImmediatePropagation(); run(f, bar);
+    }, true);
+    root.addEventListener('keydown', function (e) {
+      var t = e.target; if (e.key !== 'Enter' || !t || !t.classList || !t.classList.contains('jpk-vq-in')) return;
+      e.preventDefault(); e.stopPropagation(); var f = t.form || t.closest('form'), bar = t.closest('.jpk-vq'); if (f && bar) run(f, bar);
+    }, true);
+    try { new MutationObserver(scan).observe(doc.body, { childList: true, subtree: true }); } catch (e) { setInterval(scan, 1000); }
+  }
+  root.JPKS37 = { version: VERSION, parse: parse, fill: fill, scan: scan, off: OFF };
+  if (OFF) return;
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
+})(window);
+</script>
+<!-- jpk-s37:end -->
 </body>
 </html>
