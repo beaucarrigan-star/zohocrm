@@ -1,4 +1,4 @@
-/* EM Margins: read-only web tab. Reads EM_Margin (Row_Type = 'Contract rate') with COQL only; never writes.
+/* Customer Margins (v1.2, S42 28 Oct 2026: lookup names read as Account.Account_Name etc.; widget COQL returns lookups as id only): read-only web tab. Reads EM_Margin (Row_Type = 'Contract rate') with COQL only; never writes.
    Demo mode (?demo=1, or not inside Zoho): fictional rows and a "Demo data" banner. */
 (function () {
   'use strict';
@@ -10,8 +10,8 @@
     Accounts: { tab: 'Accounts', label: 'account' }
   };
 
-  var FULL_FIELDS = 'id, Name, Margin_Key, Row_Type, Status, Exception_Reason, Contract, Account, Vendor, Device_Family, Rate_Description, Customer_Rate, Vendor_Daily_Rate, Margin_Per_Unit_Day, Modelled_Margin_Pct, Modelled_Margin_Tier, Vendor_Cost_Tier, Margin_Notes, Modified_Time';
-  var SMALL_FIELDS = 'id, Name, Status, Exception_Reason, Contract, Account, Vendor, Device_Family, Customer_Rate, Vendor_Daily_Rate, Margin_Per_Unit_Day, Modelled_Margin_Pct, Modelled_Margin_Tier';
+  var FULL_FIELDS = 'id, Name, Margin_Key, Row_Type, Status, Exception_Reason, Contract, Account, Vendor, Device_Family, Rate_Description, Customer_Rate, Vendor_Daily_Rate, Margin_Per_Unit_Day, Modelled_Margin_Pct, Modelled_Margin_Tier, Vendor_Cost_Tier, Margin_Notes, Modified_Time, Account.Account_Name, Contract.Name, Vendor.Vendor_Name';
+  var SMALL_FIELDS = 'id, Name, Status, Exception_Reason, Contract, Account, Vendor, Device_Family, Customer_Rate, Vendor_Daily_Rate, Margin_Per_Unit_Day, Modelled_Margin_Pct, Modelled_Margin_Tier, Account.Account_Name, Contract.Name, Vendor.Vendor_Name';
   var WHERE = " from EM_Margin where Row_Type = 'Contract rate'";
 
   var DEMO = false, ALL = [], hideTest = true, tabsApi = null, tMargins = null, tWaiting = null, tCustomers = null, footNote = '';
@@ -158,7 +158,7 @@
       onRowClick: openCustomer
     });
     tabsApi = JPK.tabs({
-      mount: '#tabs', label: 'EM Margins views',
+      mount: '#tabs', label: 'Customer Margins views',
       tabs: [{ id: 'margins', label: 'Margins' }, { id: 'waiting', label: 'Waiting' }, { id: 'customers', label: 'Customers' }]
     });
   }

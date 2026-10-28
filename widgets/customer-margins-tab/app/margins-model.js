@@ -34,6 +34,10 @@
   function normalize(r) {
     r = r || {};
     var acc = look(r.Account), con = look(r.Contract), ven = look(r.Vendor);
+    /* S42: widget COQL returns lookups as {id} only; names come from the dotted fields. */
+    if (!acc.name && r['Account.Account_Name'] != null) acc.name = String(r['Account.Account_Name']);
+    if (!con.name && r['Contract.Name'] != null) con.name = String(r['Contract.Name']);
+    if (!ven.name && r['Vendor.Vendor_Name'] != null) ven.name = String(r['Vendor.Vendor_Name']);
     var pct = num(r.Modelled_Margin_Pct);
     return {
       id: str(r.id),
