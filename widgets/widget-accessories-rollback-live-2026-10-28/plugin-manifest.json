@@ -1,0 +1,45 @@
+{
+  "locale": [
+    "en"
+  ],
+  "service": "CRM",
+  "storage": false,
+  "config": [],
+  "usedConnections": [],
+  "cspDomains": {
+    "connect-src": [],
+    "script-src": [
+      "live.zwidgets.com"
+    ],
+    "style-src": [
+      "fonts.googleapis.com"
+    ],
+    "font-src": [
+      "fonts.gstatic.com"
+    ]
+  },
+  "modules": {
+    "widgets": [
+      {
+        "name": "Accessory Board",
+        "location": "crm.webtab",
+        "url": "/app/ship.html"
+      },
+      {
+        "name": "Accessory Board Button",
+        "location": "crm.button",
+        "url": "/app/ship.html"
+      },
+      {
+        "name": "Accessory Order (Account)",
+        "location": "crm.detailview.relatedlist",
+        "url": "/app/order.html"
+      },
+      {
+        "name": "Accessory Order (Case)",
+        "location": "crm.button",
+        "url": "/app/order.html"
+      }
+    ]
+  }
+}
