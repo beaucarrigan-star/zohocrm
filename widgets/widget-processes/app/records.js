@@ -1,4 +1,6 @@
-/* records.js: shared engine. Reads window.RECORDS_MODULE, renders list + record view for that module.
+/* records.js S42 (28 Oct 2026, Processes v3.1.2): S41 open-on-a-section, as in Records v3.4: opens on the section a Nav bar
+   or native Back asked for (widgetparams jpk_section), else on the section this person used last on this tab.
+   records.js: shared engine. Reads window.RECORDS_MODULE, renders list + record view for that module.
    Optional page globals: RECORDS_SWITCH (module keys), RECORDS_TAB (tab name for the breadcrumb), RECORDS_GROUPED (Processes: group tabs + sub-tabs). */
 (function () {
   'use strict';
@@ -306,7 +308,18 @@
     return h;
   }
   function switchHtml() { if (barDone) { barDone = false; return ''; } return topBar(''); }
-  function switchTo(k) { if (!MODS[k] || MODS[k] === cfg) return; cfg = MODS[k]; st.filter = 'all'; st.search = ''; st.token++; showList(); }
+  var LASTKEY = 'jpk-records-last:' + TAB;
+  function remember(k) { try { window.localStorage.setItem(LASTKEY, k); } catch (e) { /* storage blocked: no memory */ } }
+  function lastSection() { try { return window.localStorage.getItem(LASTKEY); } catch (e) { return null; } }
+  function wantedSection(d) {
+    if (!d || typeof d !== 'object') return null;
+    var c = [d, d.Message, d.message, d.data, d.Data, d.customData];
+    for (var i = 0; i < c.length; i++) { var x = c[i]; if (typeof x === 'string') { try { x = JSON.parse(x); } catch (e) { continue; } }
+      if (x && typeof x === 'object' && typeof x.jpk_section === 'string' && x.jpk_section) return x.jpk_section; }
+    return null;
+  }
+  function sectionOk(k) { return !!(k && MODS[k] && (!SW || SW.indexOf(k) >= 0)); }
+  function switchTo(k) { if (!MODS[k] || MODS[k] === cfg) return; cfg = MODS[k]; remember(k); st.filter = 'all'; st.search = ''; st.token++; showList(); }
   function bindSwitch() {
     if (window.RecShell) window.RecShell.setCurrent(cfg.key);
     var cur = root.querySelector('.l1 [aria-selected=true]'); if (cur && cur.scrollIntoView) { try { cur.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
@@ -637,6 +650,8 @@
   /* ---------- start ---------- */
   function start(init) {
     live = !!(init && !init.demo);
+    var eid0 = init && init.EntityId, asked = wantedSection(init), last = lastSection();
+    if (!eid0) { if (sectionOk(asked)) { cfg = MODS[asked]; remember(asked); } else if (sectionOk(last)) cfg = MODS[last]; }
     if (window.RecShell && document.getElementById('rail')) {
       window.RecShell.init({ mods: MODS, sw: SW || [cfg.key], grouped: GROUPED, tab: TAB, current: cfg.key, onSwitch: switchTo,
         onBrand: function () { brandNote(); if (document.getElementById('list')) { st.token++; reload(); } } });
