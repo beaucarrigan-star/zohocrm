@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Order for a customer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-rail.css">
+<link rel="stylesheet" href="ship.css">
+<link rel="stylesheet" href="order.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Vendor order <span id="demo-flag" class="chip warn sm" hidden>Demo data</span></div>
+      <h1 id="who">Loading...</h1>
+      <div class="muted sm" id="ctx"></div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help">About</button>
+    </div>
+  </header>
+  <div id="err" class="err" role="alert" hidden></div>
+
+  <div class="grid">
+    <section class="card c7" aria-labelledby="h-new">
+      <h2 id="h-new">New order</h2>
+      <div id="setup-note" class="muted" hidden>Ordering is not set up yet. The Vendor Orders module and vendor fields are in the setup checklist (section F).</div>
+      <div id="form">
+        <label class="sm muted" for="o-type">What are you ordering?</label>
+        <select id="o-type" aria-label="Order type"><option value="Accessories">Accessories</option><option value="Devices">Devices</option></select>
+        <label class="sm muted" for="o-vendor">Vendor</label>
+        <select id="o-vendor" aria-label="Vendor to order from"></select>
+        <div class="dr-h">Items</div>
+        <div id="rows"></div>
+        <button type="button" class="btn sm" id="add-row">Add another item</button>
+        <div id="ship-wrap" hidden>
+          <label class="sm muted" for="o-ship">Ship to (optional: delivery address, attention and phone for the form)</label>
+          <textarea id="o-ship" rows="2" maxlength="300"></textarea>
+        </div>
+        <div id="stock" class="stock" hidden></div>
+        <div id="plan"></div>
+      </div>
+    </section>
+    <section class="card c5" aria-labelledby="h-hist">
+      <h2 id="h-hist">Orders for this customer <em id="hist-sub"></em></h2>
+      <div id="hist"></div>
+      <div id="recv" class="recv" hidden></div>
+    </section>
+  </div>
+</main>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="ship-logic.js"></script>
+<script src="order-demo.js"></script>
+<script src="order.js"></script>
+<script src="jpk-brand.js"></script>
+<script src="jpk-rail.js" data-group="Equipment" data-tool="Accessory orders"></script>
+<script src="jpk-intro.js"
+  data-what="Place and track a vendor order (accessories or devices) for one customer, then mark it received when it arrives."
+  data-fed="Vendors (how each vendor takes orders), Products, and the Account or Case you opened this from."
+  data-feeds="Vendor Orders, one row per order. When started from the Accessory board it also updates that recommendation. Nothing is sent to the vendor automatically."></script>
+</body>
+</html>
