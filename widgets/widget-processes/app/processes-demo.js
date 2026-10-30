@@ -23,5 +23,16 @@ window.PROC_DEMO = (function () {
     { id: 's1', Name: 'Fond du Lac Co HHS: EM services', Issuing_Agency: { id: '6', name: 'Fond Du Lac Co HHS' }, Status: 'Identified', Proposal_Due: '2026-11-12', Days_To_Deadline: 29, Bid_Decision: null, Best_Score: 82, Unmet_Mandatory_Count: 1 },
     { id: 's2', Name: 'Dane Co Sheriff: GPS monitoring', Issuing_Agency: { id: '7', name: 'Dane Co Sheriff' }, Status: 'Identified', Proposal_Due: null, Days_To_Deadline: null, Bid_Decision: 'Bid', Best_Score: 74, Unmet_Mandatory_Count: 0 }
   ];
-  return { periods: periods, findings: findings, contracts: contracts, solicitations: sols };
+  contracts[0].Contract_Start_Date = '2025-03-01'; contracts[0].Contract_End_Date = '2027-02-28'; contracts[0].Renewal_Options_Left = 2; contracts[0].Renewal_Option_Length_Mo = 12; contracts[0].Final_End_Date = '2029-02-28'; contracts[0].Contractbook_Status = 'Live contract';
+  contracts[1].Contract_Start_Date = '2021-03-01'; contracts[1].Original_End_Date = '2023-03-25'; contracts[1].Contract_End_Date = '2023-03-25'; contracts[1].Renewals_Allowed = 0; contracts[1].Contractbook_Status = 'Archive PDF only';
+  contracts[2].Contract_Start_Date = '2024-01-01'; contracts[2].Contract_End_Date = '2026-12-31'; contracts[2].Contractbook_Rates = 'GPS $5.75'; contracts[2].Contractbook_Status = 'Live contract';
+  contracts[3].Contract_Start_Date = '2024-03-01'; contracts[3].Original_End_Date = '2025-12-31'; contracts[3].End_After_1_Renewal = '2026-12-31'; contracts[3].Renewals_Allowed = 2; contracts[3].Renewal_Option_Length_Mo = 12; contracts[3].Final_End_Date = '2027-12-31'; contracts[3].Contractbook_Status = 'Live contract';
+  var rate_lines = [
+    { id: 'l1', Parent_Id: { id: 'c1', name: 'Clark County Human Services' }, Rate_Device: 'GPS', Rate_Vendor: { id: 'v1', name: 'Allied Universal Electronic Monitoring' }, 'Rate_Vendor.Vendor_Name': 'Allied Universal Electronic Monitoring', Rate_Daily_Amount: 4, Rate_Type: 'Customer rate', Line_Status: 'Verified', Effective_Date: null },
+    { id: 'l2', Parent_Id: { id: 'c4', name: 'Marinette County DA Diversion' }, Rate_Device: 'GPS', Rate_Vendor: null, 'Rate_Vendor.Vendor_Name': null, Rate_Daily_Amount: 13.15, Rate_Type: 'Customer rate', Line_Status: 'Verified', Effective_Date: null },
+    { id: 'l3', Parent_Id: { id: 'c4', name: 'Marinette County DA Diversion' }, Rate_Device: 'Remote Breath', Rate_Vendor: { id: 'v2', name: 'SCRAM Systems' }, 'Rate_Vendor.Vendor_Name': 'SCRAM Systems', Rate_Daily_Amount: 12.3, Rate_Type: 'Customer rate', Line_Status: 'Verified', Effective_Date: null },
+    { id: 'l4', Parent_Id: { id: 'c4', name: 'Marinette County DA Diversion' }, Rate_Device: 'CAM', Rate_Vendor: { id: 'v2', name: 'SCRAM Systems' }, 'Rate_Vendor.Vendor_Name': 'SCRAM Systems', Rate_Daily_Amount: 15, Rate_Type: 'Customer rate', Line_Status: 'Superseded', Effective_Date: null },
+    { id: 'l5', Parent_Id: { id: 'c4', name: 'Marinette County DA Diversion' }, Rate_Device: 'CAM', Rate_Vendor: { id: 'v2', name: 'SCRAM Systems' }, 'Rate_Vendor.Vendor_Name': 'SCRAM Systems', Rate_Daily_Amount: 15, Rate_Type: 'Customer rate', Line_Status: null, Effective_Date: '2024-04-04' }
+  ];
+  return { periods: periods, findings: findings, contracts: contracts, solicitations: sols, rate_lines: rate_lines };
 })();

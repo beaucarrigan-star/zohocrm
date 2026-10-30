@@ -184,7 +184,7 @@
         h += X.tableHtml(cols, lane.items.slice(0, 300), true, ed) + (ed ? '<p class="mut edhint">Columns marked ✎ save to Zoho at once, with Undo. ' + esc(o.edit.who) + '.</p>' : '');
       }
       var cur = S.sel != null && lane.items[S.sel];
-      if (cur) h += '<div class="cards"><section class="card" id="det"><h3>' + esc(cur[o.nameKey]) + '</h3><dl>' + o.detail.map(function (d) { return '<dt>' + esc(d[1]) + '</dt><dd>' + esc(X.R.fmt(cur[d[0]], d[2])) + '</dd>'; }).join('') + '</dl><div class="acts"><button type="button" class="btn pri" data-a="open">Open ' + esc(o.noun) + '</button>' +
+      if (cur) h += '<div class="cards"><section class="card" id="det"><h3>' + esc(cur[o.nameKey]) + '</h3><dl>' + o.detail.map(function (d) { return '<dt>' + esc(d[1]) + '</dt><dd>' + esc(X.R.fmt(cur[d[0]], d[2])) + '</dd>'; }).join('') + '</dl>' + (o.detailExtra ? o.detailExtra(cur) : '') + '<div class="acts"><button type="button" class="btn pri" data-a="open">Open ' + esc(o.noun) + '</button>' +
         (cur[o.acct] && cur[o.acct].id ? '<button type="button" class="btn" data-a="acct">Open account</button>' : '') + '<button type="button" class="btn" data-a="close">Close</button></div></section></div>';
       h += '<p class="mut" style="padding:12px 24px 0;font-size:12px">' + esc(o.foot) + '</p></div>';
       root.innerHTML = h; X.bindSwitch();
@@ -207,18 +207,58 @@
     function load(force) {
       if (S.busy || (S.loaded && !force)) return Promise.resolve();
       S.busy = true; S.err = '';
-      if (!X.isLive()) { S.rows = window.PROC_DEMO[o.demo]; S.loaded = true; S.busy = false; return Promise.resolve(); }
-      return pageAll('select id, ' + o.select + ' from ' + o.entity + ' where id is not null', 'id asc').then(function (r) { S.rows = r; S.loaded = true; S.busy = false; }, function (e) { S.err = e.message || 'Read failed'; S.loaded = true; S.busy = false; });
+      function finish(rows) { S.rows = rows; if (o.derive) rows.forEach(o.derive); S.loaded = true; S.busy = false; if (o.lines) return loadLines(o, rows).then(function () { if (o.derive) rows.forEach(o.derive); }); }
+      if (!X.isLive()) { return Promise.resolve(finish(window.PROC_DEMO[o.demo])); }
+      return pageAll('select id, ' + o.select + ' from ' + o.entity + ' where id is not null', 'id asc').then(finish, function (e) { S.err = e.message || 'Read failed'; S.loaded = true; S.busy = false; });
     }
     return { key: o.key, title: o.title, swLabel: o.swLabel, group: o.group, entity: o.entity, custom: true, render: function (r, ctx) { root = r; X = ctx; draw(); if (!S.loaded && !S.busy) load().then(draw); } };
   }
   var truthy = function (v) { return v === true || v === 'true'; };
   var s = function (v) { return v && v !== '-None-' ? String(v) : ''; };
+  /* S46: child rows (Rate Lines) for the Contract pipeline, fetched in chunks after the contracts load. r._lines = [] when none. */
+  function loadLines(o, rows) {
+    rows.forEach(function (r) { r._lines = []; });
+    var byId = {}; rows.forEach(function (r) { byId[String(r.id)] = r; });
+    function put(ls) { ls.forEach(function (l) { var p = l[o.lines.parent], r = p && byId[String(p.id || p)]; if (r) r._lines.push(l); }); }
+    if (!X.isLive()) { put(window.PROC_DEMO[o.lines.demo] || []); return Promise.resolve(); }
+    var ids = rows.map(function (r) { return String(r.id); }), chunks = []; while (ids.length) chunks.push(ids.splice(0, 40));
+    var q = chunks.reduce(function (p, c) { return p.then(function () {
+      return X.coql('select ' + o.lines.select + ' from ' + o.lines.entity + ' where ' + o.lines.parent + " in ('" + c.join("','") + "') order by id asc limit 200").then(function (res) { put(res.rows || res || []); }, function () { /* lines are optional: the row still shows */ });
+    }); }, Promise.resolve());
+    return q;
+  }
+  function addMonths(iso, m) { var d = X.R.parseDate(iso); if (!d || !m) return ''; var x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + m, d.getUTCDate())); return x.toISOString().slice(0, 10); }
+  var LINE_DEAD = /Superseded|Rejected/;
+  function vendShort(l) { var n = X.R.plain(l['Rate_Vendor.Vendor_Name']) || X.R.plain(l.Rate_Vendor) || ''; return String(n).split(/[\s(]/)[0]; }
+  function money2(n) { return n == null || n === '' || isNaN(+n) ? '' : '$' + (+n).toFixed(2); }
+  function contractDerive(r) {
+    var end0 = r.Original_End_Date || r.Contract_End_Date || '', len = +r.Renewal_Option_Length_Mo || 0;
+    var allowed = r.Renewals_Allowed != null && r.Renewals_Allowed !== '' ? +r.Renewals_Allowed : (r.Renewal_Options_Left != null && r.Renewal_Options_Left !== '' ? +r.Renewal_Options_Left : 0);
+    r._end0 = end0;
+    r._end1 = r.End_After_1_Renewal || (allowed >= 1 && len ? addMonths(end0, len) : '');
+    r._end2 = allowed >= 2 ? (len ? addMonths(end0, 2 * len) : (allowed === 2 ? (r.Final_End_Date || '') : '')) : '';
+    r._renew = allowed ? allowed + (len ? ' x ' + len + ' mo' : '') : 'None';
+    var ls = (r._lines || []).filter(function (l) { return !LINE_DEAD.test(s(l.Line_Status)); }), seen = {}, parts = [];
+    ls.sort(function (a, b) { return (s(b.Line_Status) === 'Verified') - (s(a.Line_Status) === 'Verified'); });
+    ls.forEach(function (l) { var d = s(l.Rate_Device) || 'Device'; if (seen[d]) return; seen[d] = 1; var v = vendShort(l); parts.push(d + ' ' + money2(l.Rate_Daily_Amount) + (v ? ' (' + v + ')' : '')); });
+    r._dev = parts.length ? parts.join(' · ') : (r.Contractbook_Rates ? 'CB: ' + String(r.Contractbook_Rates) : '');
+    r._nodev = parts.length ? '' : 'none';
+  }
+  function contractLinesHtml(r) {
+    var ls = r._lines || [];
+    var h = '<h4 style="margin:12px 0 6px;font-size:13px">Devices and pricing</h4>';
+    if (!ls.length) return h + '<p class="mut" style="margin:0">No rate lines on this contract.' + (r.Contractbook_Rates ? ' Contractbook rates: ' + esc(String(r.Contractbook_Rates)) : '') + '</p>';
+    h += '<div class="tw" style="border-radius:var(--r-sm);border:1px solid var(--line)"><table><thead><tr><th scope="col">Equipment</th><th scope="col">Manufacturer</th><th scope="col" class="r">Rate / day</th><th scope="col">Type</th><th scope="col">Line status</th><th scope="col">Effective</th></tr></thead><tbody>';
+    ls.forEach(function (l) { h += '<tr><td>' + esc(s(l.Rate_Device)) + '</td><td>' + esc(X.R.plain(l['Rate_Vendor.Vendor_Name']) || X.R.plain(l.Rate_Vendor) || '') + '</td><td class="r">' + esc(money2(l.Rate_Daily_Amount)) + '</td><td>' + esc(s(l.Rate_Type)) + '</td><td>' + X.pillHtml(s(l.Line_Status) || 'Unreviewed') + '</td><td>' + esc(X.R.fmt(l.Effective_Date, 'date')) + '</td></tr>'; });
+    return h + '</tbody></table></div>';
+  }
   var RM = window.RecModules;
   RM.p_contract = laneView({
     key: 'p_contract', title: 'Contracts', swLabel: 'Pipeline', group: 'Contract', entity: 'Contracts', demo: 'contracts', noun: 'contract', nameKey: 'Name', acct: 'Account',
     sub: 'Where each contract is in review, cleanup and reconciliation. Terms come from Contractbook.',
-    select: 'Name, Account, Contract_Status, Ingest_Status, Needs_Cleanup, Reconciliation_Status, Days_to_Final_End, Renewal_Band',
+    select: 'Name, Account, Contract_Status, Ingest_Status, Needs_Cleanup, Reconciliation_Status, Days_to_Final_End, Renewal_Band, Contract_Start_Date, Original_End_Date, Contract_End_Date, End_After_1_Renewal, Final_End_Date, Renewals_Allowed, Renewal_Options_Left, Renewal_Option_Length_Mo, Contractbook_Rates, Contractbook_Status',
+    lines: { entity: 'Rate_Lines', parent: 'Parent_Id', demo: 'rate_lines', select: 'id, Parent_Id, Rate_Device, Rate_Vendor, Rate_Vendor.Vendor_Name, Rate_Daily_Amount, Rate_Type, Line_Status, Effective_Date' },
+    derive: contractDerive, detailExtra: contractLinesHtml,
     foot: 'Read only. Reconciliation compares each contract with the billing system.',
     lanes: [
       { id: 'review', label: 'Needs review', kpi: 'warn', test: function (r) { return s(r.Ingest_Status) === 'Needs Review'; } },
@@ -226,10 +266,11 @@
       { id: 'recon', label: 'Reconcile by hand', kpi: 'bad', test: function (r) { return /Check by hand|Rate differs|Absent from CB/.test(s(r.Reconciliation_Status)); } },
       { id: 'backlog', label: 'Backlog (not ingested)', kpi: 'info', test: function (r) { return /Backlog|Not Ingested/.test(s(r.Ingest_Status)); } },
       { id: 'done', label: 'Ingested', kpi: 'good', test: function (r) { return s(r.Ingest_Status) === 'Ingested'; } },
+      { id: 'nodev', label: 'No device pricing', kpi: 'warn', test: function (r) { return !!r._nodev && s(r.Contract_Status) !== 'Ended'; } },
       { id: 'all', label: 'All contracts', test: function () { return true; } }
     ],
-    cols: [{ k: 'Name', label: 'Contract', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Contract_Status', label: 'Status', pill: 1 }, { k: 'Ingest_Status', label: 'Ingest', pill: 1 }, { k: 'Reconciliation_Status', label: 'Reconciliation', pill: 1 }, { k: 'Days_to_Final_End', label: 'Days left', t: 'num', r: 1 }],
-    detail: [['Account', 'Account'], ['Contract_Status', 'Contract status'], ['Ingest_Status', 'Ingest'], ['Needs_Cleanup', 'Needs cleanup'], ['Reconciliation_Status', 'Reconciliation'], ['Renewal_Band', 'Renewal band'], ['Days_to_Final_End', 'Days left', 'num']]
+    cols: [{ k: 'Name', label: 'Contract', main: 1 }, { k: 'Account', label: 'Account' }, { k: 'Contract_Status', label: 'Status', pill: 1 }, { k: 'Contract_Start_Date', label: 'Start', t: 'date' }, { k: '_end0', label: 'End (no renewals)', t: 'date' }, { k: '_end1', label: 'After 1 renewal', t: 'date' }, { k: '_end2', label: 'After 2 renewals', t: 'date' }, { k: 'Days_to_Final_End', label: 'Days left', t: 'num', r: 1 }, { k: '_dev', label: 'Devices and pricing', trunc: 90 }],
+    detail: [['Account', 'Account'], ['Contract_Status', 'Contract status'], ['Contract_Start_Date', 'Start date', 'date'], ['_end0', 'End date (no renewals)', 'date'], ['_end1', 'End after 1 renewal', 'date'], ['_end2', 'End after 2 renewals', 'date'], ['Final_End_Date', 'Final end (all options)', 'date'], ['Days_to_Final_End', 'Days left to final end', 'num'], ['_renew', 'Renewals'], ['Ingest_Status', 'Terms source'], ['Contractbook_Status', 'Contractbook'], ['Needs_Cleanup', 'Needs cleanup'], ['Reconciliation_Status', 'Reconciliation'], ['Renewal_Band', 'Renewal band']]
   });
   RM.p_solicit = laneView({
     key: 'p_solicit', title: 'Solicitations', swLabel: 'Solicitations', group: 'Solicitations', entity: 'Solicitations', demo: 'solicitations', noun: 'solicitation', nameKey: 'Name', acct: 'Issuing_Agency',
