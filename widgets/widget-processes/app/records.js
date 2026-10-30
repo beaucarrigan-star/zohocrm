@@ -1,4 +1,4 @@
-/* records.js S42 (28 Oct 2026, Processes v3.1.2): S41 open-on-a-section, as in Records v3.4: opens on the section a Nav bar
+/* records.js S46 (30 Oct 2026, Processes v3.1.3: unchanged code; Ingest section removed from RECORDS_SWITCH in processes.html). S42 (28 Oct 2026, Processes v3.1.2): S41 open-on-a-section, as in Records v3.4: opens on the section a Nav bar
    or native Back asked for (widgetparams jpk_section), else on the section this person used last on this tab.
    records.js: shared engine. Reads window.RECORDS_MODULE, renders list + record view for that module.
    Optional page globals: RECORDS_SWITCH (module keys), RECORDS_TAB (tab name for the breadcrumb), RECORDS_GROUPED (Processes: group tabs + sub-tabs). */

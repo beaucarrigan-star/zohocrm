@@ -216,10 +216,10 @@
   var s = function (v) { return v && v !== '-None-' ? String(v) : ''; };
   var RM = window.RecModules;
   RM.p_contract = laneView({
-    key: 'p_contract', title: 'Contract ingest', swLabel: 'Pipeline', group: 'Contract', entity: 'Contracts', demo: 'contracts', noun: 'contract', nameKey: 'Name', acct: 'Account',
-    sub: 'Where each contract is in ingest, cleanup and reconciliation. Upload new packets under Ingest.',
+    key: 'p_contract', title: 'Contracts', swLabel: 'Pipeline', group: 'Contract', entity: 'Contracts', demo: 'contracts', noun: 'contract', nameKey: 'Name', acct: 'Account',
+    sub: 'Where each contract is in review, cleanup and reconciliation. Terms come from Contractbook.',
     select: 'Name, Account, Contract_Status, Ingest_Status, Needs_Cleanup, Reconciliation_Status, Days_to_Final_End, Renewal_Band',
-    foot: 'Read only. Reconciliation compares each contract with the billing system. Packets are uploaded under Ingest.',
+    foot: 'Read only. Reconciliation compares each contract with the billing system.',
     lanes: [
       { id: 'review', label: 'Needs review', kpi: 'warn', test: function (r) { return s(r.Ingest_Status) === 'Needs Review'; } },
       { id: 'cleanup', label: 'Needs cleanup', kpi: 'warn', test: function (r) { return truthy(r.Needs_Cleanup); } },

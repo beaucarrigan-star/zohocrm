@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Processes</title>
-<meta name="jpk-build" content="Processes tab v3.1.2 (v3.1-s24 + S35 guide line + S41 open on a section, S42 28 Oct 2026)">
+<meta name="jpk-build" content="Processes tab v3.1.3 (v3.1.2 minus Contract > Ingest; contracts come from Contractbook, S46 30 Oct 2026)">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="records.css">
 <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
@@ -14,7 +14,7 @@
 <nav class="jpk-rail" id="rail" aria-label="Navigation"></nav>
 <main id="app" aria-live="polite"></main>
 </div>
-<script>window.RECORDS_MODULE='p_contract';window.RECORDS_SWITCH=['p_contract','contract_ingest','billing_run','billing_flow','billing_findings','billing','p_solicit','solicit_new'];window.RECORDS_TAB='Processes';window.RECORDS_GROUPED=true;</script>
+<script>window.RECORDS_MODULE='p_contract';window.RECORDS_SWITCH=['p_contract','billing_run','billing_flow','billing_findings','billing','p_solicit','solicit_new'];window.RECORDS_TAB='Processes';window.RECORDS_GROUPED=true;</script>
 <script src="jpk-brand.js"></script>
 <script src="records-shell.js"></script>
 <script src="records-model.js"></script>
@@ -30,7 +30,7 @@
 <script src="records.js"></script>
 <script src="jpk-intro.js"
   data-id="processes"
-  data-what="The monthly and as-needed admin jobs Beau runs: contract ingest and review, vendor billing reconcile, solicitation intake and briefing. Admin only."
+  data-what="The monthly and as-needed admin jobs Beau runs: contract pipeline and review, vendor billing reconcile, solicitation intake and briefing. Admin only."
   data-fed="Contract packets, vendor invoices, solicitation links and packets"
   data-feeds="Contract Documents, Rate Lines, Contract Clauses, Billing Periods and Findings, Solicitations"></script>
 </body>
