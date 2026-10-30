@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Accessory board</title>
+<meta name="jpk-build" content="Accessories tab + S50 Back button (jpk-back v1.0.0, 30 Oct 2026); was: Accessories tab (Accessory board) (S42: guide line on jpk-intro v1.1.0, 28 Oct 2026)">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-rail.css">
+<link rel="stylesheet" href="ship.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Accessories</div>
+      <h1>Accessory board</h1>
+      <div class="muted sm" id="asof">Loading...</div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip warn">Demo data</span></span>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="help">About</button>
+    </div>
+  </header>
+
+  <div id="next"></div>
+  <section class="card" aria-labelledby="h-tiles" style="margin-top:12px">
+    <h2 id="h-tiles">Where things stand <em id="tiles-sub"></em></h2>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-list" style="margin-top:16px">
+    <h2 id="h-list">Customers to order for <em>click a row to see what was recommended and what shipped</em></h2>
+    <div id="err" class="err" role="alert" hidden></div>
+    <div id="list"></div>
+  </section>
+  <p class="muted sm" id="foot"></p>
+</main>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="jpk.js"></script>
+<script src="ship-logic.js"></script>
+<script src="demo-data.js"></script>
+<script src="ship.js"></script>
+<script src="jpk-brand.js"></script>
+<script src="jpk-rail.js" data-group="Equipment" data-tool="Accessory shipments"></script>
+<script src="jpk-intro.js"
+  data-what="Accessory reorder board: shows which customers are due or overdue for chargers, straps and tools, worst first. Mark them contacted or place the order from here."
+  data-fed="Accessory Order Recommendations (kept up to date by the nightly job) and Accessory Shipments."
+  data-feeds="Mark contacted writes a Stock and Accessory Actions row. Ordering goes through the Order area into Vendor Orders."></script>
+<script src="jpk-back.js"></script>
+</body>
+</html>
