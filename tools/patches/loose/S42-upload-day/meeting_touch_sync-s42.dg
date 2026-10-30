@@ -1,0 +1,390 @@
+string standalone.meeting_touch_sync(String daysBack, String dryRun, String onlyAccountId)
+{
+	// meeting_touch_sync  (S31, 23 Oct 2026; S42 28 Oct: loops read r.get("data").toList() into a variable first, Zoho will not save the inline form)  Plan 3 step 4: a linked, past meeting counts as a touch.
+	// Why: BD's "gone cold" reads Accounts.Last_Touch. Meetings linked from the home calendar ("Link to account or contact")
+	// did not move it, so a prospect Joe met last week could still read Cold.
+	// What it does: reads Meetings (Events) that ENDED in the last N days and are linked to an account (What_Id), an
+	// opportunity (What_Id, its account) or a contact (Who_Id, the contact's account). For each account it takes the newest
+	// meeting end date and moves Accounts.Last_Touch forward to it, the same way last_touch_email_sync does.
+	// Never moves Last_Touch backward, never writes any other field, never changes an owner. Writes go out with workflows off.
+	// Standalone, REST API enabled, connection "zohocrm" (CRM read + update scopes; the same one last_touch_email_sync uses).
+	// Arguments:
+	//   daysBack       default 2; 30 for a first catch-up; max 400
+	//   dryRun         "yes" (default) = report only, write nothing. "no" = write.
+	//   onlyAccountId  an Accounts id = write to that one account only (TEST first, then one real one). Blank = all.
+	// Off switch: pause or delete its Schedule. Nothing else calls it, so the home pages are not affected.
+	// Schedule (after Beau's yes): daily 06:40 CT, daysBack = 2, dryRun = no, onlyAccountId blank; before the Touch Status
+	// recalculation (about 08:45 CT), after last_touch_email_sync (06:30).
+	nDays = 2;
+	if(daysBack != null && daysBack.trim() != "" && daysBack.trim().isNumber())
+	{
+		nDays = daysBack.trim().toLong();
+	}
+	if(nDays < 1)
+	{
+		nDays = 1;
+	}
+	if(nDays > 400)
+	{
+		nDays = 400;
+	}
+	write = false;
+	if(dryRun != null && dryRun.trim().toLowerCase() == "no")
+	{
+		write = true;
+	}
+	only = "";
+	if(onlyAccountId != null && onlyAccountId.trim().isNumber())
+	{
+		only = onlyAccountId.trim();
+	}
+	coqlUrl = "https://www.zohoapis.com/crm/v8/coql";
+	since = zoho.currentdate.subDay(nDays).toString("yyyy-MM-dd") + "T00:00:00-06:00";
+	nowTs = zoho.currenttime.toString("yyyy-MM-dd'T'HH:mm:ss") + "-06:00";
+	// ---------- 1. past meetings with a link ----------
+	whatEnd = Map();
+	// What_Id -> newest end date (account or opportunity id)
+	whoEnd = Map();
+	// Who_Id (contact) -> newest end date
+	seen = 0;
+	linked = 0;
+	truncated = false;
+	pages = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+	for each  pg in pages
+	{
+		q = "select id, End_DateTime, What_Id, Who_Id from Events where (End_DateTime between '" + since + "' and '" + nowTs + "') order by id asc limit " + pg * 200 + ", 200";
+		body = Map();
+		body.put("select_query",q);
+		r = invokeurl
+		[
+			url :coqlUrl
+			type :POST
+			parameters:body.toString()
+			connection:"zohocrm"
+		];
+		if(r == null || r.get("data") == null)
+		{
+			break;
+		}
+		rows = r.get("data").toList();
+		for each  row in rows
+		{
+			seen = seen + 1;
+			e = ifnull(row.get("End_DateTime"),"").toString();
+			if(e.length() < 10)
+			{
+				continue;
+			}
+			d = e.subString(0,10);
+			w = row.get("What_Id");
+			c = row.get("Who_Id");
+			if(w != null || c != null)
+			{
+				linked = linked + 1;
+			}
+			if(w != null)
+			{
+				wid = w.get("id").toString();
+				if(!whatEnd.containsKey(wid))
+				{
+					whatEnd.put(wid,d);
+				}
+				else if(d.replaceAll("-","").toLong() > whatEnd.get(wid).replaceAll("-","").toLong())
+				{
+					whatEnd.put(wid,d);
+				}
+			}
+			if(c != null)
+			{
+				cid = c.get("id").toString();
+				if(!whoEnd.containsKey(cid))
+				{
+					whoEnd.put(cid,d);
+				}
+				else if(d.replaceAll("-","").toLong() > whoEnd.get(cid).replaceAll("-","").toLong())
+				{
+					whoEnd.put(cid,d);
+				}
+			}
+		}
+		if(rows.size() < 200)
+		{
+			break;
+		}
+		if(pg == 19)
+		{
+			truncated = true;
+		}
+	}
+	// ---------- 2. resolve each link to an account: newest[accountId] = date ----------
+	newest = Map();
+	readFailed = 0;
+	// 2a. What_Id that is an account; the rest may be opportunities
+	pending = List();
+	pending.addAll(whatEnd.keys());
+	notAccount = List();
+	chunk = List();
+	idx = 0;
+	for each  wid in pending
+	{
+		chunk.add(wid);
+		idx = idx + 1;
+		if(chunk.size() == 50 || idx == pending.size())
+		{
+			body = Map();
+			body.put("select_query","select id from Accounts where id in ('" + chunk.toString("','") + "')");
+			r = invokeurl
+			[
+				url :coqlUrl
+				type :POST
+				parameters:body.toString()
+				connection:"zohocrm"
+			];
+			found = List();
+			if(r != null && r.get("data") != null)
+			{
+				dataRows1 = r.get("data").toList();
+				for each  a in dataRows1
+				{
+					found.add(a.get("id").toString());
+				}
+			}
+			for each  x in chunk
+			{
+				if(found.contains(x))
+				{
+					newest.put(x,whatEnd.get(x));
+				}
+				else
+				{
+					notAccount.add(x);
+				}
+			}
+			chunk = List();
+		}
+	}
+	// 2b. opportunities -> their account
+	idx = 0;
+	for each  did in notAccount
+	{
+		chunk.add(did);
+		idx = idx + 1;
+		if(chunk.size() == 50 || idx == notAccount.size())
+		{
+			body = Map();
+			body.put("select_query","select id, Account_Name from Deals where id in ('" + chunk.toString("','") + "')");
+			r = invokeurl
+			[
+				url :coqlUrl
+				type :POST
+				parameters:body.toString()
+				connection:"zohocrm"
+			];
+			if(r != null && r.get("data") != null)
+			{
+				dataRows2 = r.get("data").toList();
+				for each  dl in dataRows2
+				{
+					acc = dl.get("Account_Name");
+					if(acc != null)
+					{
+						aid = acc.get("id").toString();
+						d = whatEnd.get(dl.get("id").toString());
+						if(!newest.containsKey(aid))
+						{
+							newest.put(aid,d);
+						}
+						else if(d.replaceAll("-","").toLong() > newest.get(aid).replaceAll("-","").toLong())
+						{
+							newest.put(aid,d);
+						}
+					}
+				}
+			}
+			chunk = List();
+		}
+	}
+	// 2c. contacts -> their account
+	contacts = List();
+	contacts.addAll(whoEnd.keys());
+	idx = 0;
+	for each  cid in contacts
+	{
+		chunk.add(cid);
+		idx = idx + 1;
+		if(chunk.size() == 50 || idx == contacts.size())
+		{
+			body = Map();
+			body.put("select_query","select id, Account_Name from Contacts where id in ('" + chunk.toString("','") + "')");
+			r = invokeurl
+			[
+				url :coqlUrl
+				type :POST
+				parameters:body.toString()
+				connection:"zohocrm"
+			];
+			if(r != null && r.get("data") != null)
+			{
+				dataRows3 = r.get("data").toList();
+				for each  ct in dataRows3
+				{
+					acc = ct.get("Account_Name");
+					if(acc != null)
+					{
+						aid = acc.get("id").toString();
+						d = whoEnd.get(ct.get("id").toString());
+						if(!newest.containsKey(aid))
+						{
+							newest.put(aid,d);
+						}
+						else if(d.replaceAll("-","").toLong() > newest.get(aid).replaceAll("-","").toLong())
+						{
+							newest.put(aid,d);
+						}
+					}
+				}
+			}
+			chunk = List();
+		}
+	}
+	// ---------- 3. compare with Last_Touch ----------
+	ids = List();
+	ids.addAll(newest.keys());
+	if(only != "")
+	{
+		ids = List();
+		if(newest.containsKey(only))
+		{
+			ids.add(only);
+		}
+	}
+	updates = List();
+	plan = List();
+	idx = 0;
+	for each  aid in ids
+	{
+		chunk.add(aid);
+		idx = idx + 1;
+		if(chunk.size() == 50 || idx == ids.size())
+		{
+			body = Map();
+			body.put("select_query","select id, Account_Name, Last_Touch from Accounts where id in ('" + chunk.toString("','") + "')");
+			r = invokeurl
+			[
+				url :coqlUrl
+				type :POST
+				parameters:body.toString()
+				connection:"zohocrm"
+			];
+			if(r == null || r.get("data") == null)
+			{
+				readFailed = readFailed + chunk.size();
+			}
+			else
+			{
+				dataRows4 = r.get("data").toList();
+				for each  a in dataRows4
+				{
+					id = a.get("id").toString();
+					cand = newest.get(id);
+					cur = ifnull(a.get("Last_Touch"),"").toString();
+					newer = false;
+					if(cand != null)
+					{
+						if(cur.length() < 10)
+						{
+							newer = true;
+						}
+						else if(cand.replaceAll("-","").toLong() > cur.subString(0,10).replaceAll("-","").toLong())
+						{
+							newer = true;
+						}
+					}
+					if(newer)
+					{
+						u = Map();
+						u.put("id",id);
+						u.put("Last_Touch",cand);
+						updates.add(u);
+						if(plan.size() < 25)
+						{
+							plan.add(ifnull(a.get("Account_Name"),id) + ": " + ifnull(cur,"none") + " -> " + cand);
+						}
+					}
+				}
+			}
+			chunk = List();
+		}
+	}
+	// ---------- 4. write (only with dryRun = no), 100 per call, workflows off ----------
+	ok = 0;
+	failed = 0;
+	errors = List();
+	if(write)
+	{
+		batch = List();
+		n = 0;
+		for each  u in updates
+		{
+			batch.add(u);
+			n = n + 1;
+			if(batch.size() == 100 || n == updates.size())
+			{
+				wb = Map();
+				wb.put("data",batch);
+				wb.put("trigger",List());
+				w = invokeurl
+				[
+					url :"https://www.zohoapis.com/crm/v8/Accounts"
+					type :PUT
+					parameters:wb.toString()
+					connection:"zohocrm"
+				];
+				if(w == null || w.get("data") == null)
+				{
+					failed = failed + batch.size();
+					if(errors.size() < 5)
+					{
+						errors.add(ifnull(w,"no response").toString());
+					}
+				}
+				else
+				{
+					dataRows5 = w.get("data").toList();
+					for each  x in dataRows5
+					{
+						if(x.get("code") == "SUCCESS")
+						{
+							ok = ok + 1;
+						}
+						else
+						{
+							failed = failed + 1;
+							if(errors.size() < 5)
+							{
+								errors.add(x.toString());
+							}
+						}
+					}
+				}
+				batch = List();
+			}
+		}
+	}
+	resp = Map();
+	resp.put("ok",failed == 0 && readFailed == 0);
+	resp.put("dry_run",!write);
+	resp.put("only_account",only);
+	resp.put("days_back",nDays);
+	resp.put("meetings_read",seen);
+	resp.put("meetings_linked",linked);
+	resp.put("accounts_with_meeting",newest.size());
+	resp.put("would_move",updates.size());
+	resp.put("plan",plan);
+	resp.put("last_touch_moved",ok);
+	resp.put("failed",failed);
+	resp.put("accounts_not_read",readFailed);
+	resp.put("errors",errors);
+	resp.put("truncated",truncated);
+	return resp.toString();
+}
