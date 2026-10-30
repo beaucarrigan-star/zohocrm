@@ -1,0 +1,83 @@
+/* jpk-s51.css (S51, 30 Oct 2026): BD Home pipeline tools. Pairs with jpk-s51.js. Scoped under html[data-s51="on"]. */
+html[data-s51="on"] #s51-pipe { margin-top: 14px; }
+html[data-s51="on"] #s51-pipe[hidden] { display: none; }
+html[data-s51="on"] #s51-pipe .s51-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 10px; }
+html[data-s51="on"] #s51-pipe .s51-hd h2 { margin: 0; font: 600 16px/1.3 var(--head, inherit); color: var(--ink); }
+html[data-s51="on"] #s51-pipe .s51-meta { font-size: 12.5px; color: var(--muted); }
+html[data-s51="on"] .s51-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+html[data-s51="on"] .s51-seg button { font: inherit; font-size: 12.5px; line-height: 1; padding: 6px 11px; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+html[data-s51="on"] .s51-seg button[aria-pressed="true"] { background: var(--accent, #1F6F7A); color: var(--accent-contrast, #fff); }
+html[data-s51="on"] .s51-seg button:focus-visible { outline: 2px solid var(--focus, var(--accent)); outline-offset: 2px; }
+html[data-s51="on"] .s51-views { margin-left: auto; }
+html[data-s51="on"] .s51-note { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+html[data-s51="on"] .s51-note[hidden] { display: none; }
+html[data-s51="on"] .s51-empty { padding: 18px 4px; font-size: 13px; color: var(--muted); }
+
+/* ---- Kanban ---- */
+html[data-s51="on"] .s51-lanes { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+html[data-s51="on"] .s51-lane { flex: 0 0 218px; min-width: 0; scroll-snap-align: start; background: color-mix(in srgb, var(--surface) 88%, var(--line)); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+html[data-s51="on"] .s51-lane[data-s51-x] { display: none; }
+html[data-s51="on"] .s51-lane-h { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin: 0 2px 8px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+html[data-s51="on"] .s51-lane-h .n { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+html[data-s51="on"] .s51-lane-sum { display: block; margin: -4px 2px 8px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+html[data-s51="on"] .s51-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+html[data-s51="on"] .s51-card { display: block; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--s51-pipe-c, var(--line)); border-radius: 6px; color: var(--ink); text-decoration: none; }
+html[data-s51="on"] .s51-card:hover { border-color: var(--accent); border-left-color: var(--s51-pipe-c, var(--accent)); }
+html[data-s51="on"] .s51-card:focus-visible { outline: 2px solid var(--focus, var(--accent)); outline-offset: 2px; }
+html[data-s51="on"] .s51-card b { display: block; font-size: 13px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+html[data-s51="on"] .s51-card .acc { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-s51="on"] .s51-card .row { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 5px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+html[data-s51="on"] .s51-card .amt { color: var(--ink); font-weight: 600; }
+html[data-s51="on"] .s51-card .stale { color: var(--bad); }
+html[data-s51="on"] .s51-sc { display: inline-flex; gap: 2px; align-items: center; }
+html[data-s51="on"] .s51-sc i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong, var(--line)); }
+html[data-s51="on"] .s51-sc i.on { background: var(--accent); }
+html[data-s51="on"] .s51-sc.none { font-style: italic; }
+html[data-s51="on"] .s51-more { margin: 6px 0 0; font: inherit; font-size: 12.5px; color: var(--accent-ink, var(--accent)); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+html[data-s51="on"] .s51-more[hidden] { display: none; }
+
+/* pipeline colours (one per pipeline, same in both themes; the name is always printed too) */
+html[data-s51="on"] [data-s51-p="JusticePoint EM"] { --s51-pipe-c: #1F6F7A; }
+html[data-s51="on"] [data-s51-p="JusticePoint Programs"] { --s51-pipe-c: #6BB8C3; }
+html[data-s51="on"] [data-s51-p="Sirona Programs"] { --s51-pipe-c: #B07D2B; }
+html[data-s51="on"] [data-s51-p="TDP Pipeline"] { --s51-pipe-c: #7A5BA8; }
+html[data-s51="on"] .s51-key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+html[data-s51="on"] .s51-key li { display: inline-flex; align-items: center; gap: 6px; }
+html[data-s51="on"] .s51-key i { width: 10px; height: 10px; border-radius: 50%; background: var(--s51-pipe-c); }
+
+/* ---- Quadrant ---- */
+html[data-s51="on"] .s51-quad { position: relative; }
+html[data-s51="on"] .s51-quad svg { display: block; width: 100%; height: auto; max-height: 520px; font: 12px/1 var(--font, inherit); }
+html[data-s51="on"] .s51-quad .ax { stroke: var(--line); stroke-width: 1; }
+html[data-s51="on"] .s51-quad .mid { stroke: var(--line-strong, var(--muted)); stroke-dasharray: 4 4; }
+html[data-s51="on"] .s51-quad text { fill: var(--muted); }
+html[data-s51="on"] .s51-quad .ql { fill: var(--muted); font-weight: 600; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; opacity: .8; }
+html[data-s51="on"] .s51-quad .dot { fill: var(--s51-pipe-c, var(--accent)); fill-opacity: .55; stroke: var(--s51-pipe-c, var(--accent)); stroke-width: 1.5; cursor: pointer; }
+html[data-s51="on"] .s51-quad .dot:hover, html[data-s51="on"] .s51-quad a:focus-visible .dot { fill-opacity: .9; }
+html[data-s51="on"] .s51-quad svg, html[data-s51="on"] .s51-quad a { outline: none !important; }
+html[data-s51="on"] .s51-quad a:focus-visible .dot { stroke-width: 4; fill-opacity: .9; }
+html[data-s51="on"] .s51-quad .lbl { fill: var(--ink); font-size: 11px; pointer-events: none; }
+html[data-s51="on"] .s51-unscored { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+html[data-s51="on"] .s51-unscored li a { display: inline-block; padding: 4px 9px; border: 1px dashed var(--line-strong, var(--line)); border-radius: 999px; font-size: 12px; color: var(--ink); text-decoration: none; }
+html[data-s51="on"] .s51-unscored li a:hover { border-color: var(--accent); }
+html[data-s51="on"] .s51-quad-tip { position: absolute; z-index: 3; pointer-events: none; max-width: 260px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line-strong, var(--line)); border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.18); font-size: 12px; line-height: 1.4; color: var(--ink); }
+html[data-s51="on"] .s51-quad-tip[hidden] { display: none; }
+html[data-s51="on"] .s51-quad-tip b { display: block; }
+html[data-s51="on"] .s51-quad-tip span { color: var(--muted); }
+
+/* ---- Forecast tile (Needs you today) ---- */
+html[data-s51="on"] #needs-today .nt-tiles > li[data-s51-tile] button.nt-tile { cursor: pointer; width: 100%; }
+html[data-s51="on"] #needs-today .nt-tiles > li[data-s51-tile] button.nt-tile:hover { border-color: var(--nt-accent, var(--accent)); }
+html[data-s51="on"] #needs-today .nt-tiles > li[data-s51-tile] .nt-num { font-size: 26px; }
+html[data-s51="on"] .s51-fc { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 2px 0 0; font-size: 12px; color: var(--nt-muted, var(--muted)); font-variant-numeric: tabular-nums; }
+html[data-s51="on"] .s51-fc dt { margin: 0; }
+html[data-s51="on"] .s51-fc dd { margin: 0; text-align: right; color: var(--nt-ink, var(--ink)); }
+
+@media (max-width: 640px) {
+  html[data-s51="on"] #s51-pipe .s51-hd { gap: 8px; }
+  html[data-s51="on"] .s51-views { margin-left: 0; }
+  html[data-s51="on"] .s51-lane { flex-basis: 200px; }
+  html[data-s51="on"] .s51-quad svg { max-height: none; }
+}
+@media print { html[data-s51="on"] .s51-quad-tip, html[data-s51="on"] .s51-more { display: none !important; } }
+html[data-s51="on"] .s51-lane-h .s51-key-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; background: var(--s51-pipe-c); vertical-align: -1px; }
