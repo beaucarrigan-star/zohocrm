@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Knowledge</title>
-<meta name="jpk-build" content="Knowledge tab v1.0 (S43, 28 Oct 2026)">
+<meta name="jpk-build" content="Knowledge tab v2.0.2 (30 Oct 2026)">
+<script>/* apply the remembered theme before paint, so there is no flash */(function(){try{var t=localStorage.getItem('kn-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="knowledge.css">
 <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
@@ -14,11 +15,12 @@
   <nav class="kn-rail" id="rail" aria-label="Knowledge"></nav>
   <main id="app" aria-live="polite"></main>
 </div>
+<div id="lightbox" hidden></div>
 <script src="knowledge-data.js"></script>
 <script src="knowledge.js"></script>
 <script src="jpk-intro.js"
   data-id="knowledge"
-  data-what="Find a how-to or a fix. Pick a way in on the left, narrow by vendor and device, and open an article. Read only: changes are made in the Knowledge Articles module."
+  data-what="Find a how-to or a fix. Start from Home: pick a vendor or device, or a way in on the left. Click any picture to enlarge it. Read only: changes are made in the Knowledge Articles module."
   data-fed="Knowledge Articles (Published only)"
   data-feeds="Nothing (read only)"></script>
 </body>
