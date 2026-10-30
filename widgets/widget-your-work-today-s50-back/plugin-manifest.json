@@ -1,0 +1,24 @@
+{
+  "service": "CRM",
+  "cspDomains": {
+    "connect-src": [
+      "https://crm.zoho.com"
+    ],
+    "style-src": [
+      "fonts.googleapis.com"
+    ],
+    "font-src": [
+      "fonts.gstatic.com"
+    ]
+  },
+  "modules": {
+    "widgets": [
+      {
+        "location": "crm.webtab",
+        "url": "/app/work-today.html",
+        "name": "Your work today"
+      }
+    ]
+  },
+  "config": []
+}
