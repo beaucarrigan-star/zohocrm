@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stock Alerts</title>
+<meta name="jpk-build" content="Stock Alerts tab (S47c: customer replies, Ordered / No Order Needed, 30 Oct 2026)">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="jpk.css">
+<link rel="stylesheet" href="jpk-theme-v3.css">
+<link rel="stylesheet" href="jpk-rail.css">
+<link rel="stylesheet" href="stock.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="rec">
+    <div>
+      <div class="eyebrow">Equipment</div>
+      <h1>Stock Alerts</h1>
+      <div class="muted sm">Review the emails the nightly count drafted, then approve, edit or reject each one. Nothing is sent until a person approves it.</div>
+    </div>
+    <div class="actions">
+      <span id="demo-flag" hidden><span class="chip info">Demo data</span></span>
+      <button type="button" class="btn" id="more">More</button>
+      <button type="button" class="btn" id="help">About this widget</button>
+    </div>
+  </header>
+
+  <div id="nx"></div>
+  <div id="tabs"></div>
+
+  <section class="card">
+    <div id="bar" class="selbar" hidden>
+      <label class="sm"><input type="checkbox" id="all"> Select all</label>
+      <span class="muted sm" id="sel-note"></span>
+      <button type="button" class="btn pri" id="mass" disabled>Approve selected (0)</button>
+    </div>
+    <div id="cf" class="cfbar" hidden></div>
+    <div id="tbl"></div>
+  </section>
+</div>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script src="stock-model.js"></script>
+<script src="stock-replies.js"></script>
+<script src="stock-months.js"></script>
+<script src="jpk.js"></script>
+<script src="demo-data.js"></script>
+<script src="jpk-recip.js"></script>
+<script src="stock.js"></script>
+<script src="jpk-brand.js"></script>
+<script src="jpk-rail.js" data-group="Equipment" data-tool="Stock alerts"></script>
+<script src="jpk-intro.js"
+  data-what="Approve or reject the low-stock and excess-stock emails to customers, see who has replied, mark replies Ordered or No Order Needed, and see what is waiting, sent or closed."
+  data-fed="EM Stock Alerts created by the nightly stock count, using the rules in EM Reorder Rules."
+  data-feeds="Approving sends the email to the customer and marks the alert as handled."></script>
+</body>
+</html>
