@@ -1,0 +1,76 @@
+/* jpk-s48.css v1.0.0 (S48, 30 Oct 2026): a cleaner calendar. Month pills keep the time on its own line (weekends too);
+   the New meeting form gets click-anywhere Date, Starts and Ends pickers and length chips. Off switch: ?s48=0. */
+html[data-s48="on"][data-jpk-popouts="on"] .jpk-mo-ev { -webkit-line-clamp: 3; line-clamp: 3; overflow-wrap: normal; word-break: normal; hyphens: manual; }
+@media (min-width: 641px) {
+  html[data-s48="on"][data-jpk-popouts="on"] .jpk-mo-dow, html[data-s48="on"][data-jpk-popouts="on"] .jpk-mo-grid { grid-template-columns: .85fr repeat(5, minmax(0, 1fr)) .85fr; }
+}
+html[data-s48="on"][data-jpk-popouts="on"] .jpk-mo-et,
+html[data-s48="on"][data-jpk-popouts="on"] .jpk-mo-cell.jpk-mo-wk .jpk-mo-et { display: block; margin: 0 0 1px; white-space: nowrap; overflow: hidden; text-overflow: clip; font-variant-numeric: tabular-nums; }
+
+/* the native inputs stay in the form and carry the values; the pickers below are what people click */
+html[data-s48="on"] .jpk-mo-form input.s48-native { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important;
+  border: 0 !important; opacity: 0; pointer-events: none; overflow: hidden; clip-path: inset(50%); }
+html[data-s48="on"] .jpk-mo-form .jpk-mo-frow.s48-daterow { grid-template-columns: minmax(0, 1fr) auto; }
+html[data-s48="on"] .jpk-mo-form .jpk-mo-frow.s48-one { grid-template-columns: minmax(0, 1fr); }
+html[data-s48="on"] .jpk-mo-form .jpk-mo-times { align-items: start; }
+html[data-s48="on"] .jpk-mo-form .s48-f { position: relative; }
+
+html[data-s48="on"] .s48-pick { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 40px; padding: 7px 10px 7px 11px; box-sizing: border-box;
+  font: inherit; font-size: var(--fs-md); font-weight: 500; text-align: left; color: var(--ink); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; transition: border-color .12s, box-shadow .12s; }
+html[data-s48="on"] .s48-pick:hover { border-color: var(--accent); }
+html[data-s48="on"] .s48-pick:focus-visible, html[data-s48="on"] .s48-pick[aria-expanded="true"] { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--accent-soft); }
+html[data-s48="on"] .s48-pick svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; color: var(--muted); }
+html[data-s48="on"] .s48-pick .s48-v { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+html[data-s48="on"] .s48-pick .s48-cv { width: 12px; height: 12px; transition: transform .15s; }
+html[data-s48="on"] .s48-pick[aria-expanded="true"] .s48-cv { transform: rotate(180deg); }
+html[data-s48="on"] .s48-pick.s48-bad { border-color: var(--bad, #B42318); }
+
+html[data-s48="on"] .s48-panel { grid-column: 1 / -1; margin-top: 2px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface);
+  box-shadow: 0 6px 18px light-dark(rgba(16, 24, 40, .10), rgba(0, 0, 0, .45)); }
+html[data-s48="on"] .s48-panel[hidden] { display: none; }
+html[data-s48="on"] .s48-panel button { font: inherit; color: var(--ink); background: none; border: 0; cursor: pointer; }
+html[data-s48="on"] .s48-panel button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* time list */
+html[data-s48="on"] .s48-tlist { display: grid; gap: 1px; max-height: 228px; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+html[data-s48="on"] .s48-opt { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; min-height: 34px; padding: 6px 10px; border-radius: 8px;
+  text-align: left; font-size: var(--fs-md); font-variant-numeric: tabular-nums; white-space: nowrap; }
+html[data-s48="on"] .s48-opt:hover { background: var(--surface-2); }
+html[data-s48="on"] .s48-opt i { font-style: normal; font-size: var(--fs-sm); color: var(--muted); }
+html[data-s48="on"] .s48-opt[aria-selected="true"] { background: var(--accent); color: var(--jpk-on-accent); font-weight: 600; }
+html[data-s48="on"] .s48-opt[aria-selected="true"] i { color: inherit; opacity: .85; }
+html[data-s48="on"] .s48-phead { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 2px 8px; font-size: var(--fs-sm); font-weight: 600; color: var(--ink-2); }
+
+/* date panel */
+html[data-s48="on"] .s48-dnav { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+html[data-s48="on"] .s48-dnav:hover { background: var(--surface-2); }
+html[data-s48="on"] .s48-dnav svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+html[data-s48="on"] .s48-dmon { flex: 1 1 auto; text-align: center; font-size: var(--fs-md); color: var(--ink); }
+html[data-s48="on"] .s48-dow, html[data-s48="on"] .s48-dgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+html[data-s48="on"] .s48-dow span { padding: 2px 0 4px; text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); }
+html[data-s48="on"] .s48-day { height: 34px; border-radius: 8px; font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
+html[data-s48="on"] .s48-day:hover { background: var(--surface-2); }
+html[data-s48="on"] .s48-day.s48-out { color: var(--muted); }
+html[data-s48="on"] .s48-day.s48-today { box-shadow: inset 0 0 0 1.5px var(--accent); font-weight: 600; }
+html[data-s48="on"] .s48-day[aria-selected="true"] { background: var(--accent); color: var(--jpk-on-accent); font-weight: 600; }
+html[data-s48="on"] .s48-quick { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--line); }
+
+/* chips: quick dates and meeting length */
+html[data-s48="on"] .s48-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+html[data-s48="on"] .s48-chips > span { margin-right: 2px; font-size: var(--fs-sm); font-weight: 600; color: var(--ink-2); }
+html[data-s48="on"] .s48-chip { min-height: 28px; padding: 3px 11px; border-radius: 999px; font: inherit; font-size: var(--fs-sm); font-weight: 500; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line-strong); cursor: pointer; transition: background .12s, border-color .12s; }
+html[data-s48="on"] .s48-panel .s48-chip { border: 1px solid var(--line-strong); }
+html[data-s48="on"] .s48-chip:hover { border-color: var(--accent); }
+html[data-s48="on"] .s48-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+html[data-s48="on"] .s48-chip:disabled { opacity: .45; cursor: default; }
+html[data-s48="on"] .s48-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* the home calendar's day timeline (S32): the red now label ran 6px past the left edge and lost its first digit ("9:25 AM" read
+   ":25 AM"). A 66px time column with every label inside it. */
+html[data-s48="on"][data-s32="on"] .s32-grid { margin-left: 66px; }
+html[data-s48="on"][data-s32="on"] .s32-allday { padding-left: 66px; }
+html[data-s48="on"][data-s32="on"] .s32-empty { margin-left: 66px; }
+html[data-s48="on"][data-s32="on"] .s32-hr span { left: -64px; width: 56px; }
+html[data-s48="on"][data-s32="on"] .s32-now b { left: -58px; width: 54px; padding-right: 2px; box-sizing: border-box; }
