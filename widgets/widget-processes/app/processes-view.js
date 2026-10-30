@@ -207,9 +207,9 @@
     function load(force) {
       if (S.busy || (S.loaded && !force)) return Promise.resolve();
       S.busy = true; S.err = '';
-      function finish(rows) { S.rows = rows; if (o.derive) rows.forEach(o.derive); S.loaded = true; S.busy = false; if (o.lines) return loadLines(o, rows).then(function () { if (o.derive) rows.forEach(o.derive); }); }
+      function finish(rows) { if (o.keep) rows = rows.filter(o.keep); S.rows = rows; if (o.derive) rows.forEach(o.derive); S.loaded = true; S.busy = false; if (o.lines) return loadLines(o, rows).then(function () { if (o.derive) rows.forEach(o.derive); }); }
       if (!X.isLive()) { return Promise.resolve(finish(window.PROC_DEMO[o.demo])); }
-      return pageAll('select id, ' + o.select + ' from ' + o.entity + ' where id is not null', 'id asc').then(finish, function (e) { S.err = e.message || 'Read failed'; S.loaded = true; S.busy = false; });
+      return pageAll('select id, ' + o.select + ' from ' + o.entity + ' where ' + (o.where || 'id is not null'), 'id asc').then(finish, function (e) { S.err = e.message || 'Read failed'; S.loaded = true; S.busy = false; });
     }
     return { key: o.key, title: o.title, swLabel: o.swLabel, group: o.group, entity: o.entity, custom: true, render: function (r, ctx) { root = r; X = ctx; draw(); if (!S.loaded && !S.busy) load().then(draw); } };
   }
@@ -255,10 +255,11 @@
   var RM = window.RecModules;
   RM.p_contract = laneView({
     key: 'p_contract', title: 'Contracts', swLabel: 'Pipeline', group: 'Contract', entity: 'Contracts', demo: 'contracts', noun: 'contract', nameKey: 'Name', acct: 'Account',
-    sub: 'Where each contract is in review, cleanup and reconciliation. Terms come from Contractbook.',
+    sub: 'Where each contract is in review, cleanup and reconciliation. Terms come from Contractbook. Ended contracts are not listed.',
     select: 'Name, Account, Contract_Status, Ingest_Status, Needs_Cleanup, Reconciliation_Status, Days_to_Final_End, Renewal_Band, Contract_Start_Date, Original_End_Date, Contract_End_Date, End_After_1_Renewal, Final_End_Date, Renewals_Allowed, Renewal_Options_Left, Renewal_Option_Length_Mo, Contractbook_Rates, Contractbook_Status',
     lines: { entity: 'Rate_Lines', parent: 'Parent_Id', demo: 'rate_lines', select: 'id, Parent_Id, Rate_Device, Rate_Vendor, Rate_Vendor.Vendor_Name, Rate_Daily_Amount, Rate_Type, Line_Status, Effective_Date' },
     derive: contractDerive, detailExtra: contractLinesHtml,
+    where: "(Contract_Status is null or Contract_Status != 'Ended')", keep: function (r) { return s(r.Contract_Status) !== 'Ended'; },
     foot: 'Read only. Reconciliation compares each contract with the billing system.',
     lanes: [
       { id: 'review', label: 'Needs review', kpi: 'warn', test: function (r) { return s(r.Ingest_Status) === 'Needs Review'; } },
