@@ -2383,6 +2383,7 @@ html[data-s48="on"][data-s32="on"] .s32-now b { left: -58px; width: 54px; paddin
 })();
 </script>
 <!-- jpk-s48:end -->
+<style>/* S49 */ .s49-st{margin-left:auto;font-size:var(--fs-sm,13px);white-space:nowrap}</style>
 </head>
 <body>
 
@@ -2476,7 +2477,7 @@ html[data-s48="on"][data-s32="on"] .s32-now b { left: -58px; width: 54px; paddin
 
   <!-- ===================== Zone 1: My work — Queue + waiting emails | Follow-ups ===================== -->
   <div class="bz" id="z-sm" hidden>
-      <div class="band"><h2>Stock emails to approve</h2><span class="meta" id="sm-meta"></span></div>
+      <div class="band"><h2>Stock emails to approve</h2><span class="meta" id="sm-meta"></span><a class="s49-st" target="_top" href="https://crm.zoho.com/crm/org882980956/tab/WebTab13">Open the Stock Alerts page ↗</a></div>
       <section class="card sm-card" aria-label="Stock alert emails waiting for approval">
         <p class="sm-note">Sent from <b>emsupport@justicepoint.org</b> and signed as <b id="sm-who">you</b>. Edit anything below before you approve.</p>
         <ul class="sm-list" id="sm-list"></ul>
@@ -2569,8 +2570,8 @@ html[data-s48="on"][data-s32="on"] .s32-now b { left: -58px; width: 54px; paddin
           <span class="value num sk" id="k-excess-v">—</span>
           <span class="ctx" id="k-excess-c">customers over 20% spare (or 1), leased GPS</span>
         </a>
-        <a class="kpi" id="k-stock" target="_top" data-view="stockAlerts" title="Opens EM Stock Alerts">
-          <span class="label">Stock alerts<span class="go" aria-hidden="true">view ↗</span></span>
+        <a class="kpi" id="k-stock" target="_top" href="https://crm.zoho.com/crm/org882980956/tab/WebTab13" title="Opens the Stock Alerts page">
+          <span class="label">Stock alerts<span class="go" aria-hidden="true">Stock Alerts ↗</span></span>
           <span class="value num sk" id="k-stock-v">—</span>
           <span class="ctx" id="k-stock-c">open alerts, excluding excess spares</span>
         </a>
@@ -4845,6 +4846,7 @@ function rpInit() {
   /* BD + CS Home: Quick links in three groups. BD keeps BD Home's list; Customer Success and EM Support are the CS and Support views/tabs from EM Home. */
   var LINKS_CS = [
     ['CS - EM Customers', 'Accounts view', { view: 'CS - EM Customers', m: 'Accounts' }], ['CS - Operated Programs', 'Accounts view', { view: 'CS - Operated Programs', m: 'Accounts' }],
+    ['Stock Alerts page', 'web tab: approve emails, customer replies, history', { href: TAB + 'WebTab13', top: true }],
     ['EM Stock Alerts', 'module', { m: 'EM_Stock_Alerts' }], ['Accessory board', 'web tab', { href: TAB + 'WebTab6', top: true }],
     ['Daily Unit Counts', 'module', { m: 'Daily_Unit_Counts' }], ['Unit trends by day', 'dashboard', { href: UNIT_TRENDS_URL, top: true }],
     ['Customer Onboarding', 'module', { m: 'Customer_Onboarding' }], ['Vendors', 'module', { m: 'Vendors' }]
@@ -11304,7 +11306,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.13.2 (v6.13.1 S47 + S48 cleaner calendar: times on their own line, click-anywhere date and time pickers, 30 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.13.3 (S49 Stock Alerts links) from v6.13.2 (v6.13.1 S47 + S48 cleaner calendar: times on their own line, click-anywhere date and time pickers, 30 Oct 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -16821,7 +16823,8 @@ html[data-s27="on"] #z-sm { padding-bottom: 12px; }
   function csTile(e) {
     var a = e.target.closest && e.target.closest('#numgrid > section.kpis a.kpi'); if (!a) return;
     var corner = e.target.closest('.go');
-    if (corner && a.id === 'k-acc') return;                      /* Accessory orders has no in-page table: its "view ↗" stays a link to the Zoho view. Spare, Excess and Stock alerts corner links go to the Devices tab */
+    if (corner && a.id === 'k-acc') return;
+    if (a.id === 'k-stock') { e.stopPropagation(); return; }    /* S49: the Stock alerts tile is a plain link to the Stock Alerts page (WebTab13) */                      /* Accessory orders has no in-page table: its "view ↗" stays a link to the Zoho view. Spare, Excess and Stock alerts corner links go to the Devices tab */
     e.preventDefault(); e.stopPropagation();
     var at = a.id === 'k-stock' || a.id === 'k-acc' ? 'stock' : '#dev-panel';
     goDevices(at);
@@ -16839,7 +16842,8 @@ html[data-s27="on"] #z-sm { padding-bottom: 12px; }
     qa('#numgrid > section.kpis a.kpi .go').forEach(function (g) {
       if (g.__s27) return; g.__s27 = 1;
       var a = g.closest('a'), txt = tx(g).replace(/[›↗↓]/g, '').trim();
-      if (a && (a.id === 'k-excess' || a.id === 'k-stock')) g.textContent = 'devices ›';
+      if (a && a.id === 'k-excess') g.textContent = 'devices ›';
+      if (a && a.id === 'k-stock') { g.textContent = 'Stock Alerts ↗'; g.removeAttribute('aria-hidden'); return; }   /* S49: real link, no role=link wrapper */
       g.removeAttribute('aria-hidden'); g.setAttribute('role', 'link'); g.setAttribute('tabindex', '0');
       g.setAttribute('aria-label', (a && a.id === 'k-devspare' ? 'See the Devices on leg table' : (a && (a.id === 'k-excess' || a.id === 'k-stock') ? txt + ' on the Devices tab' : txt + ' in Zoho (opens the list)')) + (a && a.title ? ': ' + a.title : ''));
       g.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); g.click(); } });
