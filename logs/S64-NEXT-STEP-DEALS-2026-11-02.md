@@ -92,8 +92,18 @@ Rollback: `C:\Users\Beau\JusticePoint\Zoho\S64-phase13a\rollback\next-step-v1.1.
 
 Git: commit on main, tag **next-step-v1.2.0**.
 
-## Before it can show on a deal (not done here)
+## Upload and live check (2 Nov 2026, after the build)
 
-- Upload the zip (Setup > Widgets, id 6715134000009398171; index stays /widget.html).
-- Add the Next step related list to the Deals layout(s), or the Deals canvas, as the other modules have it.
-- On a TEST deal, check the five sections and `data-stage-source`.
+Beau uploaded next-step-v1.2.0-s64.zip and made two Zoho changes:
+- **Deals Standard layout:** added Next step as a related list (Next_step1, id 6715134000011054642, second after Notes). Confirmed through the API.
+- **Opportunities - Network Canvas** (6715134000006649716): added the Next step widget. This is the canvas deals open in for Administrator, and a layout-only related list does not show there.
+
+Checked in Zoho in the built-in browser, signed in as Beau:
+
+| Deal | Shown | Right? |
+|---|---|---|
+| TEST 13a Programs (do not use) | Programs path, Prospecting current; Contact ✓ · Amount ✗; Next Step ✓; Margin not set, No lines; "TEST next step (do not use)", "From the Next Step field. No open task."; amber rule | Yes |
+| TEST ownership routing (do not use) | EM path; Contact ✓ · Amount ✓; Margin 36.7% On target; next step is the open task "Contact Prospect", due Nov 3, 2026, Beau Carrigan (COQL: the only open task; the other one is Completed) | Yes |
+| Brown County EM | EM path, 206 days in stage, "stale" chip; Contact ✗ · Amount ✗; next step is the Deferred task "Contact Prospect", Joe Steinhaus | Yes |
+
+Not checked: `data-stage-source`, because the widget frame is on another origin and the page cannot read it. The stage lists shown are right either way. The canvas widget box is taller than the card (about 500 px), so there is blank space under it; about 220 px is enough at 1200 px.
