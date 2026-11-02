@@ -362,3 +362,4 @@ Every build found in your Zoho, Downloads and Desktop folders, oldest first. Eac
 | 2026-10-30 | widget-your-work-today-s50-back | widget-your-work-today-s50-back-20261030 | widget-your-work-today-s50-back.zip | _MERGED_single_source | 4 |
 | 2026-10-30 | bd-home | bd-home-v6.7-s51-pipeline | BD-Home-v6.7-s51-pipeline.zip | _MERGED_single_source | 2 |
 | 2026-10-30 | widget-knowledge | widget-knowledge-v2.0-2026-10-30 | widget-knowledge-v2.0-2026-10-30.zip | _MERGED_single_source | 6 |
+| 2026-11-02 | next-step | next-step-v1.2.0 | next-step-v1.2.0-s64.zip | S64-phase13a | 7 |

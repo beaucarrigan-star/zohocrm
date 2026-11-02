@@ -1,0 +1,180 @@
+{
+ "_source": "Zoho getLayouts(Deals), layout Standard 6715134000000091023, read 2 Nov 2026 (S64); Pipeline field trimmed to display values",
+ "layouts": [
+  {
+   "name": "Standard",
+   "sections": [
+    {
+     "fields": [
+      {
+       "api_name": "Pipeline",
+       "pick_list_values": [
+        {
+         "display_value": "JusticePoint EM",
+         "maps": [
+          {
+           "api_name": "Stage",
+           "pick_list_values": [
+            {
+             "display_value": "Prospecting"
+            },
+            {
+             "display_value": "Discovery"
+            },
+            {
+             "display_value": "Demo/Pilot Approved"
+            },
+            {
+             "display_value": "Pilot Running"
+            },
+            {
+             "display_value": "Proposal Submitted"
+            },
+            {
+             "display_value": "Contract Negotiation"
+            },
+            {
+             "display_value": "Closed Won"
+            },
+            {
+             "display_value": "Closed Lost"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "display_value": "JusticePoint Programs",
+         "maps": [
+          {
+           "api_name": "Stage",
+           "pick_list_values": [
+            {
+             "display_value": "Prospecting"
+            },
+            {
+             "display_value": "Discovery"
+            },
+            {
+             "display_value": "Program Design/Scoping"
+            },
+            {
+             "display_value": "Budget Proposal"
+            },
+            {
+             "display_value": "Contract Negotiation"
+            },
+            {
+             "display_value": "County/Board Approval"
+            },
+            {
+             "display_value": "Closed Won"
+            },
+            {
+             "display_value": "Closed Lost"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "display_value": "Sirona Programs",
+         "maps": [
+          {
+           "api_name": "Stage",
+           "pick_list_values": [
+            {
+             "display_value": "Prospecting"
+            },
+            {
+             "display_value": "Discovery"
+            },
+            {
+             "display_value": "Site Visit / Capacity Review"
+            },
+            {
+             "display_value": "RFP/Procurement Event"
+            },
+            {
+             "display_value": "Budget Proposal"
+            },
+            {
+             "display_value": "Contract and Credentialing"
+            },
+            {
+             "display_value": "Closed Won"
+            },
+            {
+             "display_value": "Closed Lost"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "display_value": "TDP Pipeline",
+         "maps": [
+          {
+           "api_name": "Stage",
+           "pick_list_values": [
+            {
+             "display_value": "Prospecting"
+            },
+            {
+             "display_value": "Discovery"
+            },
+            {
+             "display_value": "Solution Development"
+            },
+            {
+             "display_value": "Proposal Submitted"
+            },
+            {
+             "display_value": "Contract Negotiation"
+            },
+            {
+             "display_value": "Closed Won"
+            },
+            {
+             "display_value": "Closed Lost"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "display_value": "Standard Pipeline",
+         "maps": [
+          {
+           "api_name": "Stage",
+           "pick_list_values": [
+            {
+             "display_value": "Prospecting"
+            },
+            {
+             "display_value": "Discovery"
+            },
+            {
+             "display_value": "Proposal Submitted"
+            },
+            {
+             "display_value": "Contract Negotiation"
+            },
+            {
+             "display_value": "Closed Won"
+            },
+            {
+             "display_value": "Closed Lost"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

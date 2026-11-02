@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Next step test harness</title>
+<!-- Test only, never zipped. Runs the real app files against a stand-in ZOHO object.
+     Query: fx=<fixture> (see FX), app=<path to app folder, default ../app/>, meta=live|none|fail, tasks=fail, theme=dark|light, s13=0 -->
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var APP = q.get('app') || '../app/';
+  if (q.get('theme')) document.documentElement.setAttribute('data-theme', q.get('theme'));
+  var C = { id: '6715134000011028080', name: 'TEST Contact (do not use)' };
+  function D(o) { return Object.assign({ Deal_Name: 'TEST', Stage_Group: 'Early', Days_in_Stage: 0, Contact_Name: C, Next_Step: 'TEST next step (do not use)', Amount: null, Deal_Margin: null, Margin_Status: null, Reason_For_Loss__s: null }, o); }
+  var T = [{ Subject: 'Send the pilot terms', Due_Date: '2026-11-04', Status: 'Not Started', 'Owner.first_name': 'Joe', 'Owner.last_name': 'Steinhaus' },
+           { Subject: 'Later task', Due_Date: '2026-11-20', Status: 'Deferred', 'Owner.first_name': 'Beau Carrigan', 'Owner.last_name': null }];
+  var FX = {
+    em: ['Deals', D({ id: '6715134000011013037', Deal_Name: 'TEST ownership routing (do not use)', Pipeline: 'JusticePoint EM', Stage: 'Prospecting', Amount: 16425, Deal_Margin: 36.7, Margin_Status: 'On target' })],
+    programs: ['Deals', D({ id: '6715134000011022038', Deal_Name: 'TEST 13a Programs (do not use)', Pipeline: 'JusticePoint Programs', Stage: 'Prospecting' })],
+    sirona: ['Deals', D({ id: '6715134000011022039', Deal_Name: 'TEST 13a Sirona (do not use)', Pipeline: 'Sirona Programs', Stage: 'Prospecting' })],
+    tdp: ['Deals', D({ id: '6715134000011022040', Deal_Name: 'TEST 13a TDP (do not use)', Pipeline: 'TDP Pipeline', Stage: 'Prospecting' })],
+    standard: ['Deals', D({ id: '6715134000011022041', Deal_Name: 'TEST 13a Standard (do not use)', Pipeline: 'Standard Pipeline', Stage: 'Prospecting' })],
+    stale: ['Deals', D({ id: '6715134000002171048', Deal_Name: 'Stale case', Pipeline: 'JusticePoint EM', Stage: 'Discovery', Days_in_Stage: 206, Amount: 264625, Deal_Margin: 18.2, Margin_Status: 'Below target' }), T],
+    mid: ['Deals', D({ id: '1', Deal_Name: 'Mid', Pipeline: 'Sirona Programs', Stage: 'RFP/Procurement Event', Stage_Group: 'Mid', Days_in_Stage: 3, Amount: 90000, Contact_Name: null, Margin_Status: 'Below floor', Deal_Margin: 4 })],
+    lost: ['Deals', D({ id: '2', Deal_Name: 'Lost', Pipeline: 'JusticePoint EM', Stage: 'Closed Lost', Stage_Group: 'Lost or Dead', Days_in_Stage: 33, Next_Step: null })],
+    won: ['Deals', D({ id: '3', Deal_Name: 'Won', Pipeline: 'JusticePoint EM', Stage: 'Closed Won', Stage_Group: 'Won', Days_in_Stage: 206, Amount: 30879, Deal_Margin: 22, Margin_Status: 'On target', Next_Step: null })],
+    dead: ['Deals', D({ id: '4', Deal_Name: 'Dead', Pipeline: 'JusticePoint Programs', Stage: 'Dead', Stage_Group: 'Lost or Dead', Days_in_Stage: 40, Next_Step: null })],
+    meeting: ['Deals', D({ id: '5', Deal_Name: 'Meeting', Pipeline: 'JusticePoint EM', Stage: 'Meeting (Face to Face or Zoom)', Days_in_Stage: 20, Amount: 1000, Next_Step: null })],
+    contract: ['Contracts', { id: '1001', Name: 'Rock Co Pretrial Program', Counterparty_Type: 'Customer', Renewal_Status: 'Outreach', Final_End_Date: '2026-12-16', Stage_Entered: '2026-10-23', Account: { id: '2001' } }],
+    kase: ['Cases', { id: '3001', Subject: 'Strap broken', Status: 'New', Case_Age_days: 8, Due_By: '2026-10-26T08:56:40-05:00', Account_Name: { id: '2001', name: 'Rock County' }, Handling_Team: 'EM Support' }],
+    lead: ['Leads', { id: '7' }]
+  };
+  var fx = FX[q.get('fx') || 'em'];
+  var layouts = null;
+  window.__calls = [];
+  window.ZOHO = {
+    embeddedApp: { on: function (ev, fn) { this._fn = fn; }, init: function () { var self = this; setTimeout(function () { self._fn({ Entity: fx[0], EntityId: [fx[1].id] }); }, 0); } },
+    CRM: {
+      API: {
+        getRecord: function (o) { __calls.push(['getRecord', o.Entity]); return Promise.resolve({ data: [fx[1]] }); },
+        coql: function (o) {
+          __calls.push(['coql', o.select_query]);
+          if (/from Tasks/.test(o.select_query)) return q.get('tasks') === 'fail' ? Promise.reject({ code: 'NO_PERMISSION' }) : Promise.resolve(fx[2] ? { data: fx[2] } : {});
+          return Promise.resolve({ data: [{ id: '9001', Full_Name: 'Pat Lee' }] });
+        }
+      },
+      META: {
+        getLayouts: function () {
+          __calls.push(['getLayouts']);
+          var m = q.get('meta') || 'live';
+          if (m === 'fail') return Promise.reject({ code: 'NO_PERMISSION' });
+          if (m === 'none') return Promise.resolve({ layouts: [{ sections: [{ fields: [{ api_name: 'Pipeline', pick_list_values: [{ display_value: 'JusticePoint EM' }] }] }] }] });
+          return fetch('fixtures/deals-layout-pipeline-2026-11-02.json').then(function (r) { return r.json(); });
+        }
+      },
+      UI: { Resize: function () {}, Record: { edit: function (o) { __calls.push(['edit', o]); return Promise.resolve(); }, create: function (o) { __calls.push(['create', o]); return Promise.resolve(); } } }
+    }
+  };
+  document.write('<link rel="stylesheet" href="' + APP + 'next-step.css">');
+  window.__APP = APP;
+})();
+</script>
+</head>
+<body>
+<main id="ns" class="ns" aria-live="polite"><div class="ns-card ns-load"><span class="sk" style="width:60%"></span><span class="sk" style="width:85%;margin-top:8px"></span></div></main>
+<div id="ns-toast" role="status" aria-live="polite"></div>
+<script>
+['next-step-model.js', 'demo-data.js', 'deal-stages.js', 'next-step.js'].forEach(function (f) { document.write('<script src="' + __APP + f + '" onerror="console.warn(\'missing ' + f + '\')"><\/script>'); });
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-/* Next step widget v1.0.0 (S12, 19 Oct 2026). Tokens mirror jpk-theme-v3.css section 1 (Graphite + cobalt), light and dark.
+/* Next step widget v1.2.0 (S64, 2 Nov 2026: Deals mode block at the end; the rules above are unchanged since v1.0.0, S12, 19 Oct 2026). Tokens mirror jpk-theme-v3.css section 1 (Graphite + cobalt), light and dark.
    Status colors are never the accent: the rule on the left is cobalt only when nothing needs attention. */
 :root{--bg:#F4F5F7;--surface:#FFFFFF;--surface2:#F7F8FA;--ink:#16191D;--muted:#5F6670;--line:#DCE0E5;--line-strong:#B8BEC7;
 --accent:#2F55A4;--accent-ink:#284A90;--on-accent:#FFFFFF;--warn:#8A6412;--bad:#A33A33;
@@ -38,3 +38,30 @@ button{font:inherit;color:inherit;cursor:pointer}
 .demo select{font:inherit;background:var(--surface2);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-sm);padding:4px 6px;max-width:100%}
 @media (max-width:600px){.ns-card{flex-direction:column;align-items:stretch}.ns-act .btn{flex:1 1 auto;min-height:44px}.ns-txt{flex:none}}
 .ns-eye{display:none}
+/* Deals mode (v1.2.0, S64). Symbols and words carry the meaning; colour only repeats it. */
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ns-deal .ns-txt{flex:1 1 320px}
+.ns-deal .ns-txt>p{margin:0 0 6px}
+.nd-strip{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px}
+.nd-pipe{font-weight:600}
+.nd-days{color:var(--muted)}
+.chip{display:inline-block;border:1px solid var(--line-strong);border-radius:999px;padding:0 8px;font-size:11.5px;font-weight:600;line-height:18px;color:var(--muted);white-space:nowrap}
+.chip.ok{color:var(--ink)}
+.chip.warn{color:var(--warn);border-color:var(--warn)}
+.chip.bad{color:var(--bad);border-color:var(--bad)}
+.nd-path{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-wrap:wrap;gap:4px 0;font-size:12px;color:var(--muted)}
+.nd-path li{display:flex;align-items:center}
+.nd-path li+li::before{content:"\203A";margin:0 6px;color:var(--muted);font-weight:400}
+.nd-path li.current{color:var(--ink);font-weight:700}
+.nd-path li.current>span:first-child{border:1px solid var(--ink);border-radius:var(--r-sm);padding:0 6px}
+.nd-path li.done{color:var(--ink)}
+.nd-path-off{font-size:12.5px}
+.nd-path-off span{color:var(--muted)}
+.nd-gate,.nd-margin{font-size:12.5px}
+.nd-gl{color:var(--muted);font-weight:600}
+.nd-ok{color:var(--ink)}
+.nd-miss{color:var(--bad);font-weight:600}
+.nd-hint{color:var(--muted)}
+.nd-next{border-top:1px solid var(--line);padding-top:6px;margin-top:2px}
+.ns-deal .nd-eye{display:block}
+@media (max-width:600px){.ns-deal .ns-txt{flex:none}}
