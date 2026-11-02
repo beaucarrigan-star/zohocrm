@@ -1,0 +1,160 @@
+{
+  "Cases.Case_Category": {
+    "id": "6715134000005157002",
+    "api_name": "Case_Category",
+    "data_type": "picklist",
+    "pick_list_values": [
+      {
+        "display_value": "-None-",
+        "sequence_number": 1,
+        "reference_value": "-None-",
+        "colour_code": null,
+        "actual_value": "-None-",
+        "id": "6715134000005157011",
+        "type": "used"
+      },
+      {
+        "display_value": "Device Troubleshooting",
+        "sequence_number": 2,
+        "reference_value": "Device Issue",
+        "colour_code": "#dbdbdb",
+        "actual_value": "Device Issue",
+        "id": "6715134000005157001",
+        "type": "used"
+      },
+      {
+        "display_value": "Lost Equipment",
+        "sequence_number": 3,
+        "reference_value": "Lost Equipment",
+        "colour_code": "#f6c1ff",
+        "actual_value": "Lost Equipment",
+        "id": "6715134000006445313",
+        "type": "used"
+      },
+      {
+        "display_value": "Order Device(s)",
+        "sequence_number": 4,
+        "reference_value": "Order Device(s)",
+        "colour_code": "#ffecb2",
+        "actual_value": "Order Device(s)",
+        "id": "6715134000006445312",
+        "type": "used"
+      },
+      {
+        "display_value": "Order Supplies",
+        "sequence_number": 5,
+        "reference_value": "Supplies and Straps",
+        "colour_code": "#f27e22",
+        "actual_value": "Supplies and Straps",
+        "id": "6715134000005157003",
+        "type": "used"
+      },
+      {
+        "display_value": "Enrollment or Removal",
+        "sequence_number": 6,
+        "reference_value": "Enrollment or Removal",
+        "colour_code": "#4137be",
+        "actual_value": "Enrollment or Removal",
+        "id": "6715134000005157004",
+        "type": "used"
+      },
+      {
+        "display_value": "Alerts and Violations",
+        "sequence_number": 7,
+        "reference_value": "Alerts and Violations",
+        "colour_code": "#9a2e47",
+        "actual_value": "Alerts and Violations",
+        "id": "6715134000005157005",
+        "type": "used"
+      },
+      {
+        "display_value": "Billing Question",
+        "sequence_number": 8,
+        "reference_value": "Billing Question",
+        "colour_code": "#168aef",
+        "actual_value": "Billing Question",
+        "id": "6715134000005157006",
+        "type": "used"
+      },
+      {
+        "display_value": "Training Request",
+        "sequence_number": 9,
+        "reference_value": "Training Request",
+        "colour_code": "#9a2e47",
+        "actual_value": "Training Request",
+        "id": "6715134000005157007",
+        "type": "used"
+      },
+      {
+        "display_value": "Portal or Software",
+        "sequence_number": 10,
+        "reference_value": "Portal or Software",
+        "colour_code": "#dbdbdb",
+        "actual_value": "Portal or Software",
+        "id": "6715134000005157008",
+        "type": "used"
+      },
+      {
+        "display_value": "Inventory Reconciliation",
+        "sequence_number": 11,
+        "reference_value": "Inventory Request",
+        "colour_code": "#67c480",
+        "actual_value": "Inventory Request",
+        "id": "6715134000005157009",
+        "type": "used"
+      },
+      {
+        "display_value": "Other",
+        "sequence_number": 12,
+        "reference_value": "Other",
+        "colour_code": "#e972fd",
+        "actual_value": "Other",
+        "id": "6715134000005157010",
+        "type": "used"
+      },
+      {
+        "display_value": "DOC Service Request",
+        "sequence_number": 13,
+        "reference_value": "DOC Service Request",
+        "colour_code": "#af38fa",
+        "actual_value": "DOC Service Request",
+        "id": "6715134000007175857",
+        "type": "used"
+      }
+    ]
+  },
+  "Pricing_Scenarios.Vendor_Source": {
+    "id": "6715134000006337129",
+    "api_name": "Vendor_Source",
+    "data_type": "picklist",
+    "pick_list_values": [
+      {
+        "display_value": "-None-",
+        "sequence_number": 1,
+        "reference_value": "-None-",
+        "colour_code": null,
+        "actual_value": "-None-",
+        "id": "6715134000006337131",
+        "type": "used"
+      },
+      {
+        "display_value": "Lease from vendor",
+        "sequence_number": 2,
+        "reference_value": "Lease from vendor",
+        "colour_code": null,
+        "actual_value": "Lease from vendor",
+        "id": "6715134000006337128",
+        "type": "used"
+      },
+      {
+        "display_value": "JP-owned fleet",
+        "sequence_number": 3,
+        "reference_value": "JP-owned fleet",
+        "colour_code": null,
+        "actual_value": "JP-owned fleet",
+        "id": "6715134000006337130",
+        "type": "used"
+      }
+    ]
+  }
+}
