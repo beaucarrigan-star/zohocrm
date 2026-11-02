@@ -1,0 +1,249 @@
+string automation.equipment_shipped_import(Date startDate, Date endDate)
+{
+// Loads Allied "Equipment Shipped" .xlsx reports into Accessory_Shipments.
+// Source: the OneDrive folder "Shipments" (synced locally as C:\Users\Beau\JusticePoint\Shipments) in the drive the
+// "onedrive" connection signs in to. The folder is found by path (Shipments, JusticePoint/Shipments) and then by
+// name search, so moving it inside the drive is harmless. Beau exports the report from SmartView per contract and
+// drops the files there (or a Power Automate flow copies email attachments in). Every .xlsx whose
+// last-modified date falls in startDate..endDate is sent to the Catalyst function ship_parse (as its OneDrive
+// download link), which returns one row per packing slip. Rows upsert on Row_Key (= packing slip number), so
+// re-running a range or loading overlapping reports is safe. Account is set by matching Allied_Customer to
+// Accounts.SmartView_Customer (semicolon-separated list allowed).
+// Run by the scheduler equipment_shipped_daily (last 7 days) or by hand for a range. Needs connections "onedrive"
+// (Microsoft, Files.Read) and "zohocrm". Replace <SHIP_PARSE_TOKEN> with the token from deploy-ship.ps1.
+	folderName = "Shipments";
+	parseUrl = "https://contract-pipeline-911327312.development.catalystserverless.com/server/ship_parse/parse";
+	parseToken = "<SHIP_PARSE_TOKEN>";
+	startIso = startDate.toString("yyyy-MM-dd") + "T00:00:00Z";
+	endIso = endDate.addDay(1).toString("yyyy-MM-dd") + "T00:00:00Z";
+	// ---- 0. find the folder: try the usual paths, then search the drive by name ----
+	folderId = "";
+	for each  cand in {"Shipments","JusticePoint/Shipments","Equipment Shipped"}
+	{
+		if(folderId != "")
+		{
+			continue;
+		}
+		pr = invokeurl
+		[
+			url :"https://graph.microsoft.com/v1.0/me/drive/root:/" + cand.replaceAll(" ","%20") + "?$select=id,name,folder"
+			type :GET
+			connection :"onedrive"
+		];
+		if(pr.containKey("id") && pr.containKey("folder"))
+		{
+			folderId = pr.get("id");
+		}
+	}
+	if(folderId == "")
+	{
+		sr = invokeurl
+		[
+			url :"https://graph.microsoft.com/v1.0/me/drive/root/search(q='" + folderName + "')?$select=id,name,folder&$top=50"
+			type :GET
+			connection :"onedrive"
+		];
+		if(sr.containKey("value"))
+		{
+			for each  it in sr.get("value")
+			{
+				if(folderId == "" && it.containKey("folder") && ifnull(it.get("name"),"").toString().equalsIgnoreCase(folderName))
+				{
+					folderId = it.get("id");
+				}
+			}
+		}
+	}
+	if(folderId == "")
+	{
+		return "OneDrive folder '" + folderName + "' not found in the drive the 'onedrive' connection signs in to.";
+	}
+	// ---- 1. list the folder (paged) and keep .xlsx files modified in the range ----
+	files = List();
+	listUrl = "https://graph.microsoft.com/v1.0/me/drive/items/" + folderId + "/children?$top=200";
+	for each  pg in {1,2,3,4,5}
+	{
+		if(listUrl == "")
+		{
+			continue;
+		}
+		lr = invokeurl
+		[
+			url :listUrl
+			type :GET
+			connection :"onedrive"
+		];
+		listUrl = "";
+		if(!lr.containKey("value"))
+		{
+			info "OneDrive listing failed: " + lr;
+			return "OneDrive folder '" + folderName + "' could not be listed - see log";
+		}
+		for each  it in lr.get("value")
+		{
+			nm = ifnull(it.get("name"),"").toString();
+			mod = ifnull(it.get("lastModifiedDateTime"),"").toString();
+			if(nm.toLowerCase().endsWith(".xlsx") && mod >= startIso && mod < endIso && it.get("@microsoft.graph.downloadUrl") != null)
+			{
+				files.add(it);
+			}
+		}
+		if(lr.containKey("@odata.nextLink"))
+		{
+			listUrl = lr.get("@odata.nextLink");
+		}
+	}
+	if(files.size() == 0)
+	{
+		return "Equipment Shipped " + startDate + " to " + endDate + ": no .xlsx files modified in that range in /" + folderName + ".";
+	}
+	// ---- 2. Allied customer -> Account map ----
+	acctMap = Map();
+	for each  off in {0,200,400,600,800}
+	{
+		q = Map();
+		q.put("select_query","select id, SmartView_Customer from Accounts where SmartView_Customer is not null limit 200 offset " + off);
+		ar = invokeurl
+		[
+			url :"https://www.zohoapis.com/crm/v7/coql"
+			type :POST
+			parameters :q.toString()
+			connection :"zohocrm"
+		];
+		if(ar.containKey("data"))
+		{
+			for each  a in ar.get("data")
+			{
+				for each  nm in ifnull(a.get("SmartView_Customer"),"").toString().toList(";")
+				{
+					k = nm.trim().toLowerCase();
+					if(k != "")
+					{
+						acctMap.put(k,a.get("id").toString());
+					}
+				}
+			}
+		}
+	}
+	// ---- 3. each file -> parse -> upsert ----
+	written = 0;
+	failed = 0;
+	unlinked = List();
+	notes = List();
+	seen = Map();
+	for each  f in files
+	{
+		fname = f.get("name").toString();
+		body = Map();
+		body.put("file_url",f.get("@microsoft.graph.downloadUrl"));
+		resp = invokeurl
+		[
+			url :parseUrl
+			type :POST
+			parameters :body.toString()
+			headers :{"X-Ship-Token":parseToken,"Content-Type":"application/json"}
+		];
+		rm = Map();
+		try
+		{
+			rm = resp.toMap();
+		}
+		catch (e)
+		{
+			rm = Map();
+		}
+		if(rm == null || rm.get("status") != "ok")
+		{
+			failed = failed + 1;
+			notes.add(fname + ": " + ifnull(rm.get("message"),resp.toString()));
+			continue;
+		}
+		for each  w in ifnull(rm.get("warnings"),List())
+		{
+			notes.add(fname + " warning: " + w);
+		}
+		recs = List();
+		for each  r in rm.get("rows")
+		{
+			slip = r.get("row_key").toString();
+			if(seen.containKey(slip))
+			{
+				continue;
+			}
+			seen.put(slip,true);
+			d = Map();
+			d.put("Name",r.get("name"));
+			d.put("Row_Key",slip);
+			d.put("Allied_Customer",r.get("allied_customer"));
+			d.put("Ship_Date",r.get("ship_date"));
+			d.put("Month",r.get("month"));
+			d.put("Order_Number",r.get("order_number"));
+			d.put("Packing_Slip",r.get("packing_slip"));
+			d.put("Tracking_Number",r.get("tracking_number"));
+			d.put("Devices",r.get("devices"));
+			d.put("Straps",r.get("straps"));
+			d.put("Pin_Trays",r.get("pin_trays"));
+			d.put("Tamper_Plugs",r.get("tamper_plugs"));
+			d.put("Chargers",r.get("chargers"));
+			d.put("Tools",r.get("tools"));
+			d.put("Quantity",r.get("quantity"));
+			d.put("Is_Accessory",r.get("is_accessory"));
+			ck = ifnull(r.get("allied_customer"),"").toString().trim().toLowerCase();
+			if(acctMap.containKey(ck))
+			{
+				d.put("Account",{"id":acctMap.get(ck)});
+			}
+			else if(!unlinked.contains(r.get("allied_customer")))
+			{
+				unlinked.add(r.get("allied_customer"));
+			}
+			recs.add(d);
+		}
+		if(recs.size() == 0)
+		{
+			continue;
+		}
+		up = Map();
+		up.put("data",recs);
+		up.put("duplicate_check_fields",{"Row_Key"});
+		up.put("trigger",List());
+		ur = invokeurl
+		[
+			url :"https://www.zohoapis.com/crm/v7/Accessory_Shipments/upsert"
+			type :POST
+			parameters :up.toString()
+			connection :"zohocrm"
+		];
+		if(ur.containKey("data"))
+		{
+			for each  x in ur.get("data")
+			{
+				if(x.get("code") == "SUCCESS")
+				{
+					written = written + 1;
+				}
+				else
+				{
+					failed = failed + 1;
+					notes.add(fname + ": " + x.toString());
+				}
+			}
+		}
+		else
+		{
+			failed = failed + 1;
+			notes.add(fname + ": " + ur.toString());
+		}
+	}
+	summary = "Equipment Shipped " + startDate + " to " + endDate + ": " + files.size() + " file(s), " + seen.size() + " packing slip(s), " + written + " row(s) written, " + failed + " failure(s).";
+	if(unlinked.size() > 0)
+	{
+		summary = summary + " No Account for: " + unlinked.toString(", ") + " (add the name to SmartView Customer on the account and re-run).";
+	}
+	if(notes.size() > 0)
+	{
+		summary = summary + " " + notes.toString(" | ");
+	}
+	info summary;
+	return summary;
+}

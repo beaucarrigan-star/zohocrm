@@ -1,0 +1,160 @@
+string button.collections_parse_report(String reportId)
+{
+// Button "Parse Report" on Collections Reports (In Record > Details).
+// Arg reportId = #Collections Reports - Collections Report Id.
+// Takes the newest PDF attached to the report, sends it to the Catalyst function col_parse, then
+// creates one Collection Request per customer and drafts each email (collections_prepare).
+// Safe to press again: customers that already have a request on this report are skipped.
+	colUrl = "https://contract-pipeline-911327312.development.catalystserverless.com/server/col_parse/parse";
+	colToken = "<COL_PARSE_TOKEN>";
+	nl = zoho.encryption.urlDecode("%0A");
+	base = "https://www.zohoapis.com/crm/v7/Collections_Reports/" + reportId;
+	att = invokeurl
+	[
+		url :base + "/Attachments?fields=id,File_Name,Created_Time"
+		type :GET
+		connection :"zohocrm"
+	];
+	attId = "";
+	attName = "";
+	if(att != null && att.containKey("data"))
+	{
+		// newest PDF wins (Created_Time digits as a number)
+		best = 0;
+		atts = att.get("data");
+		for each  a in atts
+		{
+			n = ifnull(a.get("File_Name"),"");
+			ts = ifnull(a.get("Created_Time"),"2000-01-01T00:00:00").toString().replaceAll("[^0-9]","",true);
+			t = ts.subString(0,14).toLong();
+			if(n.toLowerCase().endsWith(".pdf") && (attId == "" || t > best))
+			{
+				attId = a.get("id");
+				attName = n;
+				best = t;
+			}
+		}
+	}
+	if(attId == "")
+	{
+		return "Attach the Collections_Report_With_Contact.pdf from Monday's QuickBooks email to this record first, then press Parse Report again.";
+	}
+	pdf = invokeurl
+	[
+		url :base + "/Attachments/" + attId
+		type :GET
+		connection :"zohocrm"
+	];
+	pdf.setParamName("file");
+	resp = invokeurl
+	[
+		url :colUrl
+		type :POST
+		files :pdf
+		headers:{"X-Col-Token":colToken}
+	];
+	rm = Map();
+	try
+	{
+		rm = resp.toMap();
+	}
+	catch (e)
+	{
+		rm = Map();
+	}
+	rupd = Map();
+	if(rm == null || rm.get("status") != "ok")
+	{
+		msg = ifnull(rm.get("message"),resp.toString());
+		rupd.put("Parse_Status","Failed");
+		rupd.put("Parse_Log","Parse failed for " + attName + ": " + msg);
+		zoho.crm.updateRecord("Collections_Reports",reportId.toLong(),rupd);
+		return "Could not read the report: " + msg;
+	}
+	reportDate = ifnull(rm.get("report_date"),"");
+	// existing requests on this report (re-press safety)
+	have = List();
+	ex = zoho.crm.searchRecords("Collection_Requests","(Collections_Report:equals:" + reportId + ")");
+	for each  x in ex
+	{
+		if(x.get("QB_Customer") != null)
+		{
+			have.add(x.get("QB_Customer"));
+		}
+	}
+	counts = Map();
+	created = 0;
+	skipped = 0;
+	out = List();
+	custs = rm.get("customers");
+	for each  c in custs
+	{
+		nm = c.get("name");
+		if(have.contains(nm))
+		{
+			skipped = skipped + 1;
+		}
+		else
+		{
+			rec = Map();
+			rec.put("Name",nm + " - " + reportDate);
+			rec.put("Collections_Report",reportId);
+			rec.put("QB_Customer",nm);
+			if(reportDate != "")
+			{
+				rec.put("Report_Date",reportDate);
+			}
+			rec.put("Open_Balance",c.get("total_open"));
+			rec.put("Invoiced_Amount",c.get("total_amount"));
+			rec.put("Oldest_Days_Past_Due",c.get("oldest_days_past_due"));
+			rec.put("Invoice_Count",c.get("invoices").size());
+			rec.put("Invoice_Detail",c.get("detail"));
+			rec.put("Recipient_Emails",c.get("emails").toString(", "));
+			cr = zoho.crm.createRecord("Collection_Requests",rec);
+			if(cr.get("id") != null)
+			{
+				created = created + 1;
+				st = standalone.collections_prepare(cr.get("id").toString());
+				counts.put(st,ifnull(counts.get(st),0) + 1);
+				out.add(nm + ": " + st);
+			}
+			else
+			{
+				out.add(nm + ": could not create - " + cr.toString());
+			}
+		}
+	}
+	warns = rm.get("warnings");
+	logTxt = "Parsed " + attName + " (parser " + ifnull(rm.get("parser_version"),"") + "): " + rm.get("customer_count") + " customers, " + rm.get("invoice_count") + " invoices, open $" + rm.get("grand_total_open") + "." + nl + out.toString(nl);
+	if(skipped > 0)
+	{
+		logTxt = logTxt + nl + skipped + " customer(s) already had a request on this report - skipped.";
+	}
+	if(warns != null && warns.size() > 0)
+	{
+		logTxt = logTxt + nl + "WARNINGS:" + nl + warns.toString(nl);
+		rupd.put("Parse_Status","Parsed with warnings");
+	}
+	else
+	{
+		rupd.put("Parse_Status","Parsed");
+	}
+	if(reportDate != "")
+	{
+		rupd.put("Report_Date",reportDate);
+		rupd.put("Name","Collections Report - " + reportDate.toDate().toString("MMMM d, yyyy"));
+	}
+	rupd.put("Customers",rm.get("customer_count"));
+	rupd.put("Invoices",rm.get("invoice_count"));
+	rupd.put("Total_Amount",rm.get("grand_total_amount"));
+	rupd.put("Total_Open",rm.get("grand_total_open"));
+	rupd.put("Drafts_Created",ifnull(counts.get("Awaiting approval"),0));
+	rupd.put("Parse_Log",logTxt);
+	zoho.crm.updateRecord("Collections_Reports",reportId.toLong(),rupd);
+	summary = created + " requests created: " + ifnull(counts.get("Awaiting approval"),0) + " awaiting your approval, " + ifnull(counts.get("Needs account"),0) + " need an Account picked, " + ifnull(counts.get("Below threshold"),0) + " below $5, " + ifnull(counts.get("No recipient"),0) + " with no email.";
+	if(warns != null && warns.size() > 0)
+	{
+		summary = summary + " Check the Parse Log - the parser raised " + warns.size() + " warning(s).";
+	}
+	return summary;
+}

@@ -1,0 +1,195 @@
+void automation.collections_send(String requestId)
+{
+// Collections - send the approved reconciliation email. Called by the "Collections emails" Approval
+// Process on Approve. Arg requestId = #Collection Requests - Collection Request Id.
+// Sends from Beau (bcarrigan@differenceprinciple.org) to Recipient Emails, CC CC Emails, through the
+// CRM send-mail API on the Contact so it is logged there; falls back to Deluge sendmail. Keeps a copy
+// as a Note on the request and on the Account either way.
+	fromEmail = "bcarrigan@differenceprinciple.org";
+	fromName = "Beau Carrigan";
+	nl = zoho.encryption.urlDecode("%0A");
+	cr = zoho.encryption.urlDecode("%0D");
+	req = zoho.crm.getRecordById("Collection_Requests",requestId.toLong());
+	if(req.get("id") == null)
+	{
+		info "not found " + requestId;
+		return;
+	}
+	upd = Map();
+	if(ifnull(req.get("Email_Status"),"") == "Sent")
+	{
+		return;
+	}
+	subj = ifnull(req.get("Draft_Subject"),"").trim();
+	body = ifnull(req.get("Draft_Body"),"").trim();
+	toList = List();
+	rawTo = ifnull(req.get("Recipient_Emails"),"").replaceAll(";",",",false).replaceAll(cr,"",false).replaceAll(nl,",",false);
+	pieces = rawTo.toList(",");
+	for each  p in pieces
+	{
+		e = p.trim();
+		if(e.contains("@") && !toList.contains(e))
+		{
+			toList.add(e);
+		}
+	}
+	ccList = List();
+	rawCc = ifnull(req.get("CC_Emails"),"").replaceAll(";",",",false);
+	cpieces = rawCc.toList(",");
+	for each  p in cpieces
+	{
+		e = p.trim();
+		if(e.contains("@") && !ccList.contains(e) && !toList.contains(e))
+		{
+			ccList.add(e);
+		}
+	}
+	if(toList.size() == 0 || subj == "" || body == "")
+	{
+		upd.put("Email_Status","Send failed");
+		upd.put("Send_Log","Nothing sent: recipient, subject or body was empty when approved.");
+		zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+		return;
+	}
+	body = body.replaceAll("{{sender}}",fromName,false);
+	// invoice table from Invoice Detail (lines: num | date | due | days | amount | open; last line TOTAL)
+	rows = "";
+	totalAmt = "";
+	totalOpen = "";
+	det = ifnull(req.get("Invoice_Detail"),"").replaceAll(cr,"",false);
+	lines = det.toList(nl);
+	td = "<td style='padding:4px 10px;border-bottom:1px solid #ddd'>";
+	tdr = "<td style='padding:4px 10px;border-bottom:1px solid #ddd;text-align:right'>";
+	for each  ln in lines
+	{
+		f = ln.toList("|");
+		vals = List();
+		for each  v in f
+		{
+			if(v.trim() != "")
+			{
+				vals.add(v.trim());
+			}
+		}
+		if(ln.trim().startsWith("TOTAL"))
+		{
+			if(vals.size() >= 3)
+			{
+				totalAmt = vals.get(vals.size() - 2);
+				totalOpen = vals.get(vals.size() - 1);
+			}
+		}
+		else if(f.size() >= 6)
+		{
+			rows = rows + "<tr>" + td + f.get(0).trim() + "</td>" + td + f.get(1).trim() + "</td>" + td + f.get(2).trim() + "</td>" + tdr + f.get(3).trim() + "</td>" + tdr + "$" + f.get(4).trim() + "</td>" + tdr + "$" + f.get(5).trim() + "</td></tr>";
+		}
+	}
+	th = "<th style='padding:4px 10px;border-bottom:2px solid #999;text-align:left'>";
+	thr = "<th style='padding:4px 10px;border-bottom:2px solid #999;text-align:right'>";
+	table = "<table style='border-collapse:collapse;font-size:14px;margin:8px 0'><tr>" + th + "Invoice #</th>" + th + "Invoice date</th>" + th + "Due date</th>" + thr + "Days past due</th>" + thr + "Amount</th>" + thr + "Open balance</th></tr>" + rows + "<tr><td colspan='4' style='padding:6px 10px;font-weight:bold'>Total</td><td style='padding:6px 10px;text-align:right;font-weight:bold'>$" + totalAmt + "</td><td style='padding:6px 10px;text-align:right;font-weight:bold'>$" + totalOpen + "</td></tr></table>";
+	if(body.contains("{{invoice_table}}"))
+	{
+		body = body.replaceAll("<p>{{invoice_table}}</p>",table,false).replaceAll("{{invoice_table}}",table,false);
+	}
+	contactId = "";
+	if(req.get("Contact") != null)
+	{
+		contactId = req.get("Contact").get("id");
+	}
+	accountId = "";
+	if(req.get("Account") != null)
+	{
+		accountId = req.get("Account").get("id");
+	}
+	sent = false;
+	log = "";
+	if(contactId != "")
+	{
+		fromMap = Map();
+		fromMap.put("user_name",fromName);
+		fromMap.put("email",fromEmail);
+		toMaps = List();
+		for each  e in toList
+		{
+			tm = Map();
+			tm.put("user_name",e);
+			tm.put("email",e);
+			toMaps.add(tm);
+		}
+		ccMaps = List();
+		for each  e in ccList
+		{
+			tm = Map();
+			tm.put("user_name",e);
+			tm.put("email",e);
+			ccMaps.add(tm);
+		}
+		mail = Map();
+		mail.put("from",fromMap);
+		mail.put("to",toMaps);
+		if(ccMaps.size() > 0)
+		{
+			mail.put("cc",ccMaps);
+		}
+		mail.put("subject",subj);
+		mail.put("content",body);
+		mail.put("mail_format","html");
+		mail.put("org_email",false);
+		payload = Map();
+		payload.put("data",{mail});
+		rs = invokeurl
+		[
+			url :"https://www.zohoapis.com/crm/v7/Contacts/" + contactId + "/actions/send_mail"
+			type :POST
+			parameters:payload.toString()
+			connection :"zohocrm"
+		];
+		if(rs.containKey("data") && rs.get("data").get(0).get("status") == "success")
+		{
+			sent = true;
+			log = "Sent via CRM mail API from " + fromEmail + " to " + toList.toString(", ") + " cc " + ccList.toString(", ");
+		}
+		else
+		{
+			log = "send_mail API: " + rs.toString() + " | ";
+		}
+	}
+	if(!sent)
+	{
+		sendmail
+		[
+			from :zoho.loginuserid
+			to :toList
+			cc :ccList
+			subject :subj
+			message :body
+		]
+		sent = true;
+		log = log + "Sent via sendmail fallback from " + zoho.loginuserid + " to " + toList.toString(", ") + " cc " + ccList.toString(", ");
+	}
+	plain = "To: " + toList.toString(", ") + nl + "Cc: " + ccList.toString(", ") + nl + nl + body.replaceAll("</tr>",nl,false).replaceAll("</td>","  ",false).replaceAll("</th>","  ",false).replaceAll("</p>",nl + nl,false).replaceAll("<br>",nl,false).replaceAll("<[^>]+>","",true);
+	note = Map();
+	note.put("Parent_Id",req.get("id"));
+	note.put("se_module","Collection_Requests");
+	note.put("Note_Title","Sent: " + subj);
+	note.put("Note_Content",plain);
+	zoho.crm.createRecord("Notes",note);
+	if(accountId != "")
+	{
+		n2 = Map();
+		n2.put("Parent_Id",accountId);
+		n2.put("se_module","Accounts");
+		n2.put("Note_Title","Collections email sent: " + subj);
+		n2.put("Note_Content",plain);
+		zoho.crm.createRecord("Notes",n2);
+	}
+	upd.put("Email_Status","Sent");
+	upd.put("Email_Sent_At",zoho.currenttime.toString("yyyy-MM-dd'T'HH:mm:ssXXX"));
+	if(log.length() > 1900)
+	{
+		log = log.subString(0,1900);
+	}
+	upd.put("Send_Log",log);
+	r = zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+	info r;
+}

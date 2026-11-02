@@ -1,0 +1,15 @@
+void schedule.equipment_shipped_daily()
+{
+// Scheduler wrapper: loads any Equipment Shipped files added to OneDrive in the last 7 days, then emails Beau the result.
+// Schedule daily at 06:30 America/Chicago, before em_accessory_order_recommendations (07:00) so the new slips feed
+// that night's recommendations. Re-running over the same emails is harmless (upsert on Row_Key).
+	result = automation.equipment_shipped_import(zoho.currentdate.subDay(7),zoho.currentdate);
+	info result;
+	sendmail
+	[
+		from :zoho.adminuserid
+		to :"bcarrigan@differenceprinciple.org"
+		subject :"Equipment Shipped import: " + zoho.currentdate.toString("MMM d")
+		message :result
+	]
+}

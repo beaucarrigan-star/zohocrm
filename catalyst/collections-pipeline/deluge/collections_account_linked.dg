@@ -1,0 +1,7 @@
+void automation.collections_account_linked(String requestId)
+{
+// Workflow "Collections - account linked" on Collection Requests: on edit, when Account is modified
+// and Email Status is Needs account. Builds contacts + draft and sends it into approval.
+	st = standalone.collections_prepare(requestId);
+	info st;
+}

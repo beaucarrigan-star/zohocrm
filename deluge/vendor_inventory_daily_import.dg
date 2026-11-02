@@ -1,0 +1,679 @@
+string standalone.vendor_inventory_daily_import(String dryRun)
+{
+	// Deluge keeps "\n" as backslash-n, so build the real characters once
+	nl = zoho.encryption.urlDecode("%0A");
+	cr = zoho.encryption.urlDecode("%0D");
+	bom = zoho.encryption.urlDecode("%EF%BB%BF");
+	// vendor_inventory_daily_import  (20 Oct 2026)
+	// Loads SCRAM and SuperCom daily inventory CSVs from OneDrive into Daily Unit Counts and raises
+	// "Customer spare floor" EM Stock Alerts for those vendors. Allied stays with units_on_leg_daily_import.
+	//
+	// Files (written by Power Automate, newest 4 days are read, re-running is harmless: upsert on Row_Key):
+	//   /SCRAM Inventory/SCRAM_yyyy-MM-dd_HHmmss.csv      pipe-separated, from the ScramToCsv Office Script
+	//        columns: Customer|Location Name|Device Type Description|Device Category|Inventory Status Description
+	//   /SuperCom Inventory/SuperCom_yyyy-MM-dd_HHmmss.csv  the PureMonitor CSV as SuperCom sends it
+	//        columns used: Event source, Condition, Agency
+	// Count date = file date minus 1 day (both reports are "as of midnight", same as the Allied night).
+	//
+	// Rules (Beau, 20 Oct 2026):
+	//   SCRAM customer "Allied Univ. EM US, Inc."  -> Vendor SCRAM, Supplied Through Allied
+	//   SCRAM customer "Justice Point"/"JusticePoint" -> Vendor SCRAM, Supplied Through Direct
+	//   Location Name (Agency for SuperCom) is the customer. Bare JusticePoint / Demo - Beau = house stock (no Account).
+	//   SCRAM on leg = Assigned to Client + Pending Removal; spare = In Inventory + Pending Assignment.
+	//   Awaiting Return, Lost, Shipped From AMS are not counted. Location [Default] is skipped.
+	//   SuperCom on leg = Allocated; spare = Available.
+	// Account match: Accounts.Vendor_Location_Names (one name per line, "JusticePoint - " prefix dropped).
+	//
+	// dryRun = "yes" (or blank) writes nothing and returns the summary. "no" writes.
+	// Needs connections "onedrive" (Microsoft, Files.Read.All) and "zohocrm" - the same two the Allied import uses.
+	write = ifnull(dryRun,"yes").trim().toLowerCase() == "no";
+	quiet = Map();
+	quiet.put("trigger",List());
+	moduleName = "Daily_Unit_Counts";
+	out = List();
+	// ---------- 1. account map from Vendor_Location_Names ----------
+	acctMap = Map();
+	accRows = List();
+	for each  off in {0,200,400,600}
+	{
+		qa = Map();
+		qa.put("select_query","select id, Vendor_Location_Names from Accounts where id is not null order by id asc limit " + off + ", 200");
+		qra = invokeurl
+		[
+			url :"https://www.zohoapis.com/crm/v7/coql"
+			type :POST
+			parameters:qa.toString()
+			connection:"zohocrm"
+		];
+		if(("x" + qra).contains("\"data\":"))
+		{
+			accRows.addAll(qra.get("data"));
+		}
+		if(!qra.containKey("info") || qra.get("info").get("more_records") != true)
+		{
+			break;
+		}
+	}
+	for each  row in accRows
+	{
+		vln = ifnull(row.get("Vendor_Location_Names"),"");
+		if(vln != "")
+		{
+			names = vln.toList(nl);
+			for each  nm in names
+			{
+				k = nm.trim().toLowerCase();
+				if(k != "")
+				{
+					acctMap.put(k,row.get("id"));
+				}
+			}
+		}
+	}
+	out.add("Account names on file: " + acctMap.size());
+	// ---------- 2. which file names are wanted (last 4 days) ----------
+	wantedDays = List();
+	for each  i in {0,1,2,3}
+	{
+		wantedDays.add(zoho.currentdate.subDay(i).toString("yyyy-MM-dd"));
+	}
+	sources = List();
+	s1 = Map();
+	s1.put("vendor","SCRAM");
+	s1.put("folder","SCRAM Inventory");
+	s1.put("prefix","SCRAM_");
+	s1.put("folderId","01GYQA7K3BLGH7FILVABDZSXFXMIQI4SI6");
+	sources.add(s1);
+	s2 = Map();
+	s2.put("vendor","SuperCom");
+	s2.put("folder","SuperCom Inventory");
+	s2.put("prefix","SuperCom_");
+	s2.put("folderId","01GYQA7K4YVZWMBMC32FA3DB376QZJ6NPK");
+	sources.add(s2);
+	// agg key -> map of row values
+	agg = Map();
+	unmatched = Map();
+	filesRead = 0;
+	for each  src in sources
+	{
+		// Folder by item id (created 21 Oct 2026). If the folder is ever recreated, update folderId above.
+		listUrl = "https://graph.microsoft.com/v1.0/me/drive/items/" + src.get("folderId") + "/children?$top=200";
+		files = List();
+		lr = invokeurl
+		[
+			url :listUrl
+			type :GET
+			connection:"onedrive"
+		];
+		if(("x" + lr).contains("\"value\":"))
+		{
+			for each  it in lr.get("value")
+			{
+				nm = ifnull(it.get("name"),"").toString();
+				if(nm.startsWith(src.get("prefix")) && nm.toLowerCase().endsWith(".csv"))
+				{
+					fileDay = nm.subString(src.get("prefix").length(),src.get("prefix").length() + 10);
+					if(wantedDays.contains(fileDay))
+					{
+						it.put("fileDay",fileDay);
+						files.add(it);
+					}
+				}
+			}
+		}
+		else
+		{
+			msgT = lr.toString();
+			if(msgT.length() > 300)
+			{
+				msgT = msgT.subString(0,300);
+			}
+			out.add(src.get("vendor") + ": folder listing failed: " + msgT);
+			continue;
+		}
+		// Newest file per day AND customer group wins. SCRAM sends two files a day
+		// (Allied group and Justice Point direct group), so both are kept; a re-sent copy replaces the older one.
+		isScram = src.get("vendor") == "SCRAM";
+		picked = Map();
+		for each  f in files
+		{
+			// Download through Graph with the onedrive connection. Deluge hands back a CSV as a file object,
+			// so read it with getFileContent(); fall back to toString(). Report what came back if neither works.
+			resp = invokeurl
+			[
+				url :"https://graph.microsoft.com/v1.0/me/drive/items/" + f.get("id") + "/content"
+				type :GET
+				connection:"onedrive"
+			];
+			fText = "";
+			note = "";
+			try 
+			{
+				t1 = resp.getFileContent();
+				if(t1 != null)
+				{
+					if(t1 != "")
+					{
+						fText = t1;
+						note = "fc";
+					}
+				}
+			}
+			catch (e1)
+			{
+				note = "fc err " + e1;
+			}
+			if(fText == "")
+			{
+				try 
+				{
+					t2 = resp.toString();
+					if(t2 != null)
+					{
+						if(t2 != "")
+						{
+							fText = t2;
+							note = note + " ts";
+						}
+					}
+				}
+				catch (e2)
+				{
+					note = note + " ts err " + e2;
+				}
+			}
+			okText = false;
+			if(fText != "")
+			{
+				if(fText.contains(nl) || fText.contains(cr))
+				{
+					okText = true;
+				}
+			}
+			if(!okText)
+			{
+				snip = "(empty)";
+				if(fText != "")
+				{
+					snip = fText;
+					if(snip.length() > 120)
+					{
+						snip = snip.subString(0,120);
+					}
+				}
+				out.add(f.get("name") + ": not read [" + note + "] got: " + snip);
+				continue;
+			}
+			// Windows line ends: turn \r\n into \n (only when there is one, so the call never sees an empty value)
+			if(fText.contains(cr))
+			{
+				fText = fText.replaceAll(cr + nl,nl);
+				if(fText.contains(cr))
+				{
+					fText = fText.replaceAll(cr,nl);
+				}
+			}
+			// SuperCom files start with a byte-order mark; drop it so the first header matches
+			if(fText.startsWith(bom))
+			{
+				fText = fText.subString(bom.length());
+			}
+			// (no "\r" strip here: every cell is trimmed later, which removes it)
+			grp = "all";
+			if(isScram)
+			{
+				grp = "direct";
+				fLines = fText.toList(nl);
+				if(fLines.size() > 1)
+				{
+					firstCust = fLines.get(1.toLong()).toList("|").get(0.toLong()).toLowerCase();
+					if(firstCust.contains("allied"))
+					{
+						grp = "allied";
+					}
+				}
+			}
+			pKey = f.get("fileDay") + "|" + grp;
+			// time part of the name (HHmmss after the date) picks the newest copy; same day within one key
+			fNum = 0;
+			tStart = src.get("prefix").length() + 11;
+			nmT = f.get("name").toString();
+			if(nmT.length() >= tStart + 6)
+			{
+				tPart = nmT.subString(tStart,tStart + 6);
+				if(tPart.isNumber())
+				{
+					fNum = tPart.toLong();
+				}
+			}
+			if(!picked.containKey(pKey) || fNum > picked.get(pKey).get("num").toLong())
+			{
+				pick = Map();
+				pick.put("num",fNum);
+				pick.put("day",f.get("fileDay"));
+				pick.put("name",f.get("name"));
+				pick.put("text",fText);
+				picked.put(pKey,pick);
+			}
+		}
+		for each  pKey in picked.keys()
+		{
+			pick = picked.get(pKey);
+			d = pick.get("day");
+			countDate = d.toDate("yyyy-MM-dd").subDay(1).toString("yyyy-MM-dd");
+			text = pick.get("text");
+			if(text.startsWith("ERROR|"))
+			{
+				out.add(pick.get("name") + ": convert step reported " + text);
+				continue;
+			}
+			lines = text.toList(nl);
+			filesRead = filesRead + 1;
+			sep = ",";
+			if(isScram)
+			{
+				sep = "|";
+			}
+			hdr = Map();
+			headerSeen = false;
+			for each  ln in lines
+			{
+				if(ln.trim() == "")
+				{
+					continue;
+				}
+				cells = ln.toList(sep);
+				if(!isScram)
+				{
+					// SuperCom: re-join cells that were split inside double quotes
+					fixed = List();
+					buf = "";
+					inQ = false;
+					for each  c in cells
+					{
+						if(inQ)
+						{
+							buf = buf + "," + c;
+							if(c.endsWith("\""))
+							{
+								fixed.add(buf.replaceAll("\"",""));
+								inQ = false;
+							}
+						}
+						else if(c.startsWith("\"") && !(c.length() > 1 && c.endsWith("\"")))
+						{
+							buf = c;
+							inQ = true;
+						}
+						else
+						{
+							if(c.contains("\""))
+							{
+								c = c.replaceAll("\"","");
+							}
+							fixed.add(c);
+						}
+					}
+					cells = fixed;
+				}
+				if(!headerSeen)
+				{
+					ci = 0;
+					for each  c in cells
+					{
+						hdr.put(c.trim().toLowerCase(),ci);
+						ci = ci + 1;
+					}
+					headerSeen = true;
+					continue;
+				}
+				// ---- pull the fields for this vendor ----
+				supplied = "Direct";
+				if(isScram)
+				{
+					if(!hdr.containKey("location name") || cells.size() <= hdr.get("inventory status description").toLong())
+					{
+						continue;
+					}
+					cust = cells.get(hdr.get("customer").toLong()).trim();
+					loc = cells.get(hdr.get("location name").toLong()).trim();
+					device = cells.get(hdr.get("device type description").toLong()).trim();
+					status = cells.get(hdr.get("inventory status description").toLong()).trim().toLowerCase();
+					if(cust.toLowerCase().contains("allied"))
+					{
+						supplied = "Allied";
+					}
+					if(loc == "[Default]" || loc == "")
+					{
+						continue;
+					}
+					onLegAdd = 0;
+					spareAdd = 0;
+					if(status == "assigned to client" || status == "pending removal")
+					{
+						onLegAdd = 1;
+					}
+					else if(status == "in inventory" || status == "pending assignment")
+					{
+						spareAdd = 1;
+					}
+					else
+					{
+						continue;
+					}
+					dl2 = device.toLowerCase();
+					family = "Other";
+					if(dl2.contains("remote breath"))
+					{
+						family = "Remote Breath";
+					}
+					else if(dl2.contains("cam") || dl2.contains("base station"))
+					{
+						family = "CAM";
+					}
+				}
+				else
+				{
+					if(!hdr.containKey("agency") || cells.size() <= hdr.get("agency").toLong())
+					{
+						continue;
+					}
+					loc = cells.get(hdr.get("agency").toLong()).trim();
+					device = cells.get(hdr.get("event source").toLong()).trim();
+					cond = cells.get(hdr.get("condition").toLong()).trim().toLowerCase();
+					onLegAdd = 0;
+					spareAdd = 0;
+					if(cond == "allocated")
+					{
+						onLegAdd = 1;
+					}
+					else if(cond == "available")
+					{
+						spareAdd = 1;
+					}
+					else
+					{
+						continue;
+					}
+					family = "Other";
+					if(device.toLowerCase().contains("pureone"))
+					{
+						family = "GPS";
+					}
+					if(loc == "")
+					{
+						continue;
+					}
+				}
+				// ---- customer key and account ----
+				// keys stay on the name exactly as the vendor sends it (rows and alerts written 21 Oct use it)
+				rawLoc = loc;
+				locKey = loc.toLowerCase().trim();
+				for each  pre in {"justicepoint - ","justice point - ","justicepoint -","justice point -"}
+				{
+					if(locKey.startsWith(pre))
+					{
+						locKey = locKey.subString(pre.length()).trim();
+					}
+				}
+				// show the name without the "JusticePoint - " prefix too (Allied-group SCRAM rows carry it)
+				if(locKey != "" && loc.toLowerCase().trim() != locKey)
+				{
+					loc = loc.trim();
+					loc = loc.subString(loc.length() - locKey.length());
+				}
+				house = locKey == "justicepoint" || locKey == "justice point" || locKey.startsWith("demo");
+				acctId = null;
+				if(!house)
+				{
+					acctId = acctMap.get(locKey);
+					if(acctId == null)
+					{
+						unmatched.put(src.get("vendor") + ": " + loc,ifnull(unmatched.get(src.get("vendor") + ": " + loc),0) + 1);
+					}
+				}
+				rowKey = countDate + "|" + src.get("vendor") + "|" + supplied + "|" + rawLoc + "|" + device;
+				r = agg.get(rowKey);
+				if(r == null)
+				{
+					r = Map();
+					viaT = "";
+					if(supplied == "Allied")
+					{
+						viaT = " (via Allied)";
+					}
+					r.put("Name",src.get("vendor") + viaT + " - " + loc + " | " + device + " | " + countDate);
+					r.put("Row_Key",rowKey);
+					r.put("SmartView_Customer",src.get("vendor") + " | " + loc);
+					r.put("Hardware_Version",device);
+					r.put("Device_Family",family);
+					r.put("Count_Date",countDate);
+					r.put("Month",countDate.subString(0,7));
+					r.put("Vendor",src.get("vendor"));
+					r.put("Supplied_Through",supplied);
+					r.put("Acquisition","Leased");
+					r.put("On_Leg",0);
+					r.put("Spare",0);
+					if(acctId != null)
+					{
+						r.put("Account",acctId);
+					}
+					r.put("_house",house);
+					r.put("_keyCust",src.get("vendor") + " | " + rawLoc);
+				}
+				r.put("On_Leg",r.get("On_Leg").toLong() + onLegAdd);
+				r.put("Spare",r.get("Spare").toLong() + spareAdd);
+				agg.put(rowKey,r);
+			}
+		}
+	}
+	// ---------- 3. upsert ----------
+	rows = List();
+	latest = "";
+	latestN = 0;
+	for each  k in agg.keys()
+	{
+		r = agg.get(k);
+		r.put("Total_Units",r.get("On_Leg").toLong() + r.get("Spare").toLong());
+		dn = r.get("Count_Date").toDate("yyyy-MM-dd").toString("yyyyMMdd").toLong();
+		if(dn > latestN)
+		{
+			latestN = dn;
+			latest = r.get("Count_Date");
+		}
+		rows.add(r);
+	}
+	out.add("Files read: " + filesRead + ". Rows built: " + rows.size() + ". Latest count date: " + latest);
+	if(unmatched.size() > 0)
+	{
+		out.add("No account match (add the name to Accounts > Vendor Location Names): " + unmatched.keys().toString());
+	}
+	created = 0;
+	errors = List();
+	if(write && rows.size() > 0)
+	{
+		batch = List();
+		n = 0;
+		for each  r in rows
+		{
+			clean = Map();
+			for each  f in r.keys()
+			{
+				if(!f.startsWith("_"))
+				{
+					clean.put(f,r.get(f));
+				}
+			}
+			batch.add(clean);
+			n = n + 1;
+			if(batch.size() == 100 || n == rows.size())
+			{
+				b = Map();
+				b.put("data",batch);
+				b.put("duplicate_check_fields",{"Row_Key"});
+				b.put("trigger",List());
+				resp = invokeurl
+				[
+					url :"https://www.zohoapis.com/crm/v7/" + moduleName + "/upsert"
+					type :POST
+					parameters:b.toString()
+					connection:"zohocrm"
+				];
+				if(("x" + resp).contains("\"data\":"))
+				{
+					for each  x in resp.get("data")
+					{
+						if(x.get("status") == "success")
+						{
+							created = created + 1;
+						}
+						else
+						{
+							msgT = x.toString();
+							if(msgT.length() > 200)
+							{
+								msgT = msgT.subString(0,200);
+							}
+							errors.add(msgT);
+						}
+					}
+				}
+				else
+				{
+					msgT = resp.toString();
+					if(msgT.length() > 300)
+					{
+						msgT = msgT.subString(0,300);
+					}
+					errors.add(msgT);
+				}
+				batch = List();
+			}
+		}
+		out.add("Upserted: " + created + ". Errors: " + errors.size());
+		if(errors.size() > 0)
+		{
+			out.add("First error: " + errors.get(0));
+		}
+	}
+	// ---------- 4. spare floor alerts (latest date only, customers with an Account) ----------
+	// Floor = 10% of on-leg units, minimum 1 (same default as the Allied alerts). Base stations are not floored.
+	// Email_Status "Not applicable": these alerts show on the Stock Alerts board; customer emails for SCRAM/SuperCom come later.
+	raised = 0;
+	cleared = 0;
+	alertPlan = List();
+	for each  r in rows
+	{
+		if(r.get("Count_Date") != latest || r.get("Account") == null || r.get("Hardware_Version").toLowerCase().contains("base station"))
+		{
+			continue;
+		}
+		if(r.get("Device_Family") == "Other")
+		{
+			continue;
+		}
+		onLeg = r.get("On_Leg").toLong();
+		spare = r.get("Spare").toLong();
+		if(onLeg == 0)
+		{
+			continue;
+		}
+		floorV = ((onLeg + 9) / 10).toLong();
+		if(floorV < 1)
+		{
+			floorV = 1;
+		}
+		akey = "VENDOR|spare|" + r.get("Vendor") + "|" + r.get("Supplied_Through") + "|" + r.get("_keyCust") + "|" + r.get("Hardware_Version");
+		existing = List();
+		qe = Map();
+		qe.put("select_query","select id from EM_Stock_Alerts where Alert_Key = '" + akey.replaceAll("[(),']","") + "' and Status = 'Open' limit 1");
+		qre = invokeurl
+		[
+			url :"https://www.zohoapis.com/crm/v7/coql"
+			type :POST
+			parameters:qe.toString()
+			connection:"zohocrm"
+		];
+		if(("x" + qre).contains("\"data\":"))
+		{
+			existing.addAll(qre.get("data"));
+		}
+		if(spare < floorV)
+		{
+			alertPlan.add(r.get("Name") + ": spare " + spare + " < floor " + floorV);
+			if(write)
+			{
+				alertRec = Map();
+				alertRec.put("Alert_Key",akey.replaceAll("[(),']",""));
+				alertRec.put("Alert_Type","Customer spare floor");
+				alertRec.put("SmartView_Customer",r.get("SmartView_Customer"));
+				alertRec.put("Account",r.get("Account"));
+				alertRec.put("Device_Family",r.get("Device_Family"));
+				alertRec.put("Assigned_Units",onLeg);
+				alertRec.put("Spare_Units",spare);
+				alertRec.put("Threshold",floorV);
+				alertRec.put("Suggested_Order",floorV - spare);
+				alertRec.put("Count_Date",latest);
+				alertRec.put("Last_Seen",latest);
+				alertRec.put("Detail",r.get("Vendor") + " (" + r.get("Supplied_Through") + "): " + r.get("SmartView_Customer") + " has " + spare + " spare " + r.get("Hardware_Version") + " against " + onLeg + " on leg. Floor is " + floorV + ".");
+				if(existing != null && existing.size() > 0)
+				{
+					zoho.crm.updateRecord("EM_Stock_Alerts",existing.get(0).get("id").toLong(),alertRec,quiet);
+				}
+				else
+				{
+					alertRec.put("Name","Customer spare floor - " + r.get("SmartView_Customer") + " - " + r.get("Hardware_Version"));
+					alertRec.put("Status","Open");
+					alertRec.put("Email_Status","Not applicable");
+					alertRec.put("Alert_Status","Needs action");
+					alertRec.put("First_Raised",latest);
+					zoho.crm.createRecord("EM_Stock_Alerts",alertRec,quiet);
+					raised = raised + 1;
+				}
+			}
+		}
+		else if(existing != null && existing.size() > 0)
+		{
+			alertPlan.add(r.get("Name") + ": back above floor, would clear");
+			if(write)
+			{
+				clr = Map();
+				clr.put("Status","Resolved");
+				clr.put("Resolution","Cleared on its own");
+				clr.put("Alert_Status","Done");
+				clr.put("Last_Seen",latest);
+				zoho.crm.updateRecord("EM_Stock_Alerts",existing.get(0).get("id").toLong(),clr,quiet);
+				cleared = cleared + 1;
+			}
+		}
+	}
+	out.add("Spare floor checks below floor or clearing: " + alertPlan.size() + ". Raised: " + raised + ". Cleared: " + cleared);
+	if(alertPlan.size() > 0)
+	{
+		out.add("Alerts: " + alertPlan.toString());
+	}
+	if(!write)
+	{
+		out.add("DRY RUN - nothing was written. Run with dryRun = no to write.");
+		// show a sample of the rows
+		sample = List();
+		i = 0;
+		for each  r in rows
+		{
+			if(i < 40)
+			{
+				tag = "";
+				if(r.get("Account") == null)
+				{
+					tag = " [no account]";
+				}
+				sample.add(r.get("Name") + " on " + r.get("On_Leg") + " / spare " + r.get("Spare") + tag);
+			}
+			i = i + 1;
+		}
+		out.add("Rows (first 40): " + sample.toString());
+	}
+	summary = out.toString(nl);
+	info summary;
+	return summary;
+}

@@ -1,0 +1,179 @@
+string standalone.collections_prepare(String requestId)
+{
+// Collections - match, find/create billing contacts, and draft the reconciliation email for one
+// Collection Request. Called by collections_parse_report for every customer on a new report, and by
+// the workflow "Collections - account linked" when Beau fills in the Account on a Needs account row.
+// Ends with Email Status = Awaiting approval (enters the "Collections emails" approval process),
+// Needs account, No recipient or Below threshold. Returns that status.
+// The invoice table is NOT stored in Draft Body (the CRM rich-text field strips <table> markup); the
+// draft carries {{invoice_table}} and collections_send builds the table from Invoice Detail at send time.
+	minBalance = 5.00;
+	// Deluge in this org does not turn "\n" into a newline, so build the real characters once
+	nl = zoho.encryption.urlDecode("%0A");
+	cr = zoho.encryption.urlDecode("%0D");
+	ccDefault = "aradtke@differenceprinciple.org";
+	req = zoho.crm.getRecordById("Collection_Requests",requestId.toLong());
+	if(req.get("id") == null)
+	{
+		return "not found";
+	}
+	status = ifnull(req.get("Email_Status"),"");
+	if(status == "Sent" || status == "Awaiting approval")
+	{
+		return status;
+	}
+	qbName = ifnull(req.get("QB_Customer"),"").trim();
+	rawTo = ifnull(req.get("Recipient_Emails"),"").trim();
+	emails = List();
+	pieces = rawTo.replaceAll(";",",",false).replaceAll(cr,"",false).replaceAll(nl,",",false).toList(",");
+	for each  piece in pieces
+	{
+		e = piece.trim();
+		if(e.contains("@") && !emails.contains(e))
+		{
+			emails.add(e);
+		}
+	}
+	upd = Map();
+	log = "";
+	// ---- 1. Account: already set > QB Customer Name on an Account > an existing Contact's Account ----
+	accountId = "";
+	if(req.get("Account") != null)
+	{
+		accountId = req.get("Account").get("id");
+	}
+	if(accountId == "" && qbName != "")
+	{
+		hits = zoho.crm.searchRecords("Accounts","(QB_Customer_Name:equals:" + qbName + ")");
+		if(hits.size() > 0 && hits.get(0).get("id") != null)
+		{
+			accountId = hits.get(0).get("id");
+			log = log + "Account matched on QB Customer Name. ";
+		}
+	}
+	if(accountId == "")
+	{
+		for each  e in emails
+		{
+			if(accountId == "")
+			{
+				ch = zoho.crm.searchRecords("Contacts","(Email:equals:" + e + ")");
+				if(ch.size() > 0 && ch.get(0).get("Account_Name") != null)
+				{
+					accountId = ch.get(0).get("Account_Name").get("id");
+					log = log + "Account matched through existing contact " + e + ". ";
+				}
+			}
+		}
+	}
+	if(accountId == "")
+	{
+		upd.put("Email_Status","Needs account");
+		upd.put("Send_Log","No Account has QB Customer Name '" + qbName + "' and no Contact has " + emails.toString(", ") + ". Pick the Account on this record and save - the draft is built automatically and future reports match on their own.");
+		zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+		return "Needs account";
+	}
+	upd.put("Account",accountId);
+	acct = zoho.crm.getRecordById("Accounts",accountId.toLong());
+	if(ifnull(acct.get("QB_Customer_Name"),"") == "" && qbName != "")
+	{
+		au = Map();
+		au.put("QB_Customer_Name",qbName);
+		zoho.crm.updateRecord("Accounts",accountId.toLong(),au);
+		log = log + "Saved QB Customer Name on the Account. ";
+	}
+	// ---- 2. Contacts: reuse by email, create any that are missing, tick Receives Collections ----
+	primaryId = "";
+	firstName = "";
+	for each  e in emails
+	{
+		cid = "";
+		ch = zoho.crm.searchRecords("Contacts","(Email:equals:" + e + ")");
+		if(ch.size() > 0 && ch.get(0).get("id") != null)
+		{
+			c = ch.get(0);
+			cid = c.get("id");
+			if(c.get("Receives_Collections") != true)
+			{
+				cu = Map();
+				cu.put("Receives_Collections",true);
+				zoho.crm.updateRecord("Contacts",cid.toLong(),cu);
+			}
+			if(primaryId == "")
+			{
+				firstName = ifnull(c.get("First_Name"),"");
+			}
+		}
+		else
+		{
+			nc = Map();
+			nc.put("Last_Name","Billing - " + ifnull(acct.get("Account_Name"),qbName));
+			nc.put("Email",e);
+			nc.put("Account_Name",accountId);
+			nc.put("Receives_Collections",true);
+			nc.put("Description","Created from the QuickBooks Collections Report (" + qbName + "). Rename to the person's real name when known.");
+			crc = zoho.crm.createRecord("Contacts",nc);
+			if(crc.get("id") != null)
+			{
+				cid = crc.get("id");
+				log = log + "Created contact for " + e + ". ";
+			}
+			else
+			{
+				log = log + "Could not create contact for " + e + ": " + crc.toString() + ". ";
+			}
+		}
+		if(primaryId == "" && cid != "")
+		{
+			primaryId = cid;
+		}
+	}
+	if(primaryId != "")
+	{
+		upd.put("Contact",primaryId);
+	}
+	if(emails.size() == 0)
+	{
+		upd.put("Email_Status","No recipient");
+		upd.put("Send_Log",log + "The report has no email address for this customer.");
+		zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+		return "No recipient";
+	}
+	// ---- 3. Threshold ----
+	bal = ifnull(req.get("Open_Balance"),0).toDecimal();
+	if(bal < minBalance)
+	{
+		upd.put("Email_Status","Below threshold");
+		upd.put("Send_Log",log + "Open balance under $" + minBalance + " - no email drafted.");
+		zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+		return "Below threshold";
+	}
+	// ---- 4. Draft ----
+	asOf = "";
+	if(req.get("Report_Date") != null)
+	{
+		asOf = req.get("Report_Date").toDate().toString("MMMM d, yyyy");
+	}
+	greet = "Hello,";
+	if(emails.size() == 1 && firstName != "")
+	{
+		greet = "Hi " + firstName + ",";
+	}
+	body = "<p>" + greet + "</p><p>I'm reaching out to help reconcile the open balance on the " + qbName + " account with JusticePoint. As of " + asOf + ", our records show the following open invoices:</p><p>{{invoice_table}}</p><p>Could you help us reconcile these? If any have already been paid, please reply with the payment date and check or reference number so we can apply it. If any are in question, let us know and we'll send a copy of the invoice or work through the difference with you.</p><p>Thank you,<br>{{sender}}<br>JusticePoint</p>";
+	upd.put("Recipient_Emails",emails.toString(", "));
+	if(ifnull(req.get("CC_Emails"),"") == "")
+	{
+		upd.put("CC_Emails",ccDefault);
+	}
+	upd.put("Draft_Subject","JusticePoint open invoices - " + qbName + " (as of " + asOf + ")");
+	upd.put("Draft_Body",body);
+	upd.put("Email_Status","Awaiting approval");
+	upd.put("Send_Log",log + "Draft ready for approval.");
+	r = zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+	if(r.get("id") == null)
+	{
+		info r;
+		return "update failed: " + r.toString();
+	}
+	return "Awaiting approval";
+}

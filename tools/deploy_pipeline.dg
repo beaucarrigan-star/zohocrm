@@ -1,0 +1,60 @@
+// Standalone function: deploy_pipeline(String pipeline)
+// Starts the GitHub "Deploy ... pipeline" workflow. Administrator only (see the button settings).
+//
+// One-time setup:
+//  1. GitHub > Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate.
+//     Repository access: ONLY jp-catalyst-pipelines. Permissions: Actions = Read and write. Expiry: 1 year.
+//  2. CRM > Setup > Developer Hub > Variables > New: GITHUB_DEPLOY_TOKEN = that token.
+//     Also GITHUB_DEPLOY_REPO = <your-github-account>/jp-catalyst-pipelines
+//  3. Setup > Developer Hub > Functions > New > Standalone, name deploy_pipeline, paste this.
+//
+// pipeline = "solicitation" or "contract". Billing deploys from your PC (deploy-billing.cmd).
+string standalone.deploy_pipeline(String pipeline)
+{
+	result = Map();
+	p = ifnull(pipeline,"").trim().toLowerCase();
+	if(p != "solicitation" && p != "contract")
+	{
+		result.put("ok",false);
+		result.put("error","pipeline must be solicitation or contract");
+		return result.toString();
+	}
+	token = zoho.crm.getOrgVariable("GITHUB_DEPLOY_TOKEN");
+	repo = zoho.crm.getOrgVariable("GITHUB_DEPLOY_REPO");
+	if(token == null || token == "" || repo == null || repo == "")
+	{
+		result.put("ok",false);
+		result.put("error","GITHUB_DEPLOY_TOKEN or GITHUB_DEPLOY_REPO is not set in CRM Variables");
+		return result.toString();
+	}
+	hdr = Map();
+	hdr.put("Authorization","Bearer " + token);
+	hdr.put("Accept","application/vnd.github+json");
+	hdr.put("X-GitHub-Api-Version","2022-11-28");
+	hdr.put("User-Agent","zoho-crm-deploy");
+	body = Map();
+	body.put("ref","main");
+	url = "https://api.github.com/repos/" + repo + "/actions/workflows/deploy-" + p + ".yml/dispatches";
+	resp = invokeurl
+	[
+		url :url
+		type :POST
+		parameters :body.toString()
+		headers :hdr
+		detailed :true
+	];
+	code = resp.get("responseCode");
+	if(code == 204)
+	{
+		result.put("ok",true);
+		result.put("message","Deploy started for the " + p + " pipeline. It takes a few minutes.");
+		result.put("watch","https://github.com/" + repo + "/actions");
+	}
+	else
+	{
+		result.put("ok",false);
+		result.put("error","GitHub answered " + code);
+		result.put("detail",resp.get("responseText"));
+	}
+	return result.toString();
+}
