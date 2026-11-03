@@ -3,7 +3,7 @@ name: Deploy contract pipeline
 on:
   push:
     branches: [main]
-    paths: ["contract-pipeline/**", "ci/**", ".github/workflows/deploy-contract.yml"]
+    paths: ["catalyst/contract-pipeline/**", "ci/**", ".github/workflows/deploy-contract.yml"]
   workflow_dispatch:
 
 concurrency: deploy-contract
@@ -35,7 +35,7 @@ jobs:
       # GitHub (see .gitignore), so here only the tests that need no fixtures can run. The full golden
       # set runs on your PC with check-contracts.cmd before you push.
       - name: Tests
-        working-directory: contract-pipeline
+        working-directory: catalyst/contract-pipeline
         run: |
           if [ -d tests/fixtures ]; then
             python -m pytest tests -q -p no:cacheprovider
@@ -47,12 +47,12 @@ jobs:
       - name: Build
         run: |
           rm -rf build && mkdir -p build
-          cp contract-pipeline/catalyst.json build/
+          cp catalyst/contract-pipeline/catalyst.json build/
           for fn in con_api con_worker; do
             mkdir -p "build/functions/$fn"
-            find "contract-pipeline/$fn" -maxdepth 1 -type f ! -name write_back.py ! -name '*.bak-*' \
+            find "catalyst/contract-pipeline/$fn" -maxdepth 1 -type f ! -name write_back.py ! -name '*.bak-*' \
               -exec cp {} "build/functions/$fn/" \;
-            cp "contract-pipeline/fn_config/$fn.json" "build/functions/$fn/catalyst-config.json"
+            cp "catalyst/contract-pipeline/fn_config/$fn.json" "build/functions/$fn/catalyst-config.json"
           done
           # PDF / Word / Excel readers as Linux wheels for the worker
           python -m pip install --quiet --target build/functions/con_worker \
@@ -72,6 +72,22 @@ jobs:
           ZOHO_ACCOUNTS_URL: ${{ secrets.ZOHO_ACCOUNTS_URL }}
           ZOHO_API_DOMAIN: ${{ secrets.ZOHO_API_DOMAIN }}
           CON_PIPELINE_TOKEN: ${{ secrets.CON_PIPELINE_TOKEN }}
+          # Claude shadow reader + OCR (optional). Secrets: CLAUDE_API_KEY. Repository variables
+          # (Settings > Secrets and variables > Actions > Variables): the rest. Set them with tools/set-secrets.ps1.
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_WORKSPACE_ID: ${{ vars.CLAUDE_WORKSPACE_ID }}
+          CLAUDE_MODEL_EXTRACT: ${{ vars.CLAUDE_MODEL_EXTRACT }}
+          CLAUDE_MODEL_REVIEW: ${{ vars.CLAUDE_MODEL_REVIEW }}
+          CON_CLAUDE: ${{ vars.CON_CLAUDE }}
+          CON_CLAUDE_MODELS: ${{ vars.CON_CLAUDE_MODELS }}
+          CON_CLAUDE_ESCALATE: ${{ vars.CON_CLAUDE_ESCALATE }}
+          CON_CLAUDE_RERUN: ${{ vars.CON_CLAUDE_RERUN }}
+          CON_CLAUDE_MAX_TOKENS: ${{ vars.CON_CLAUDE_MAX_TOKENS }}
+          CON_CLAUDE_MAX_CHARS: ${{ vars.CON_CLAUDE_MAX_CHARS }}
+          CON_OCR: ${{ vars.CON_OCR }}
+          CON_OCR_MAX_PAGES: ${{ vars.CON_OCR_MAX_PAGES }}
+          CON_OCR_MAX_SECONDS: ${{ vars.CON_OCR_MAX_SECONDS }}
+          CON_PDF_SECONDS: ${{ vars.CON_PDF_SECONDS }}
         run: python ci/inject_env.py contract build
 
       - name: Deploy to Catalyst

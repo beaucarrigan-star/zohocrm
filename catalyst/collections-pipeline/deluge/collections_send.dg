@@ -5,8 +5,30 @@ void automation.collections_send(String requestId)
 // Sends from Beau (bcarrigan@differenceprinciple.org) to Recipient Emails, CC CC Emails, through the
 // CRM send-mail API on the Contact so it is logged there; falls back to Deluge sendmail. Keeps a copy
 // as a Note on the request and on the Account either way.
+	// Sender comes from CRM Variable ALERT_EMAILS (JSON: {"collections_from":"x@y.org","collections_from_name":"Name"});
+	// the literals below are only the fallback when the variable is missing.
 	fromEmail = "bcarrigan@differenceprinciple.org";
 	fromName = "Beau Carrigan";
+	try
+	{
+		av = ifnull(zoho.crm.getOrgVariable("ALERT_EMAILS"),"").trim();
+		if(av.startsWith("{"))
+		{
+			am = av.toMap();
+			if(ifnull(am.get("collections_from"),"").contains("@"))
+			{
+				fromEmail = am.get("collections_from").trim();
+			}
+			if(ifnull(am.get("collections_from_name"),"") != "")
+			{
+				fromName = am.get("collections_from_name").trim();
+			}
+		}
+	}
+	catch (e)
+	{
+		info "ALERT_EMAILS not readable, using the default sender: " + e;
+	}
 	nl = zoho.encryption.urlDecode("%0A");
 	cr = zoho.encryption.urlDecode("%0D");
 	req = zoho.crm.getRecordById("Collection_Requests",requestId.toLong());
@@ -16,7 +38,8 @@ void automation.collections_send(String requestId)
 		return;
 	}
 	upd = Map();
-	if(ifnull(req.get("Email_Status"),"") == "Sent")
+	es = ifnull(req.get("Email_Status"),"");
+	if(es == "Sent" || es == "Sending" || es == "Sent (unconfirmed)")
 	{
 		return;
 	}
@@ -101,7 +124,17 @@ void automation.collections_send(String requestId)
 	{
 		accountId = req.get("Account").get("id");
 	}
+	// Claim the request BEFORE anything goes out, so a second Approve or a timed-out retry cannot send the email twice.
+	claim = Map();
+	claim.put("Email_Status","Sending");
+	cr1 = zoho.crm.updateRecord("Collection_Requests",req.get("id"),claim);
+	if(cr1.get("id") == null)
+	{
+		info "could not claim request " + requestId + " (nothing sent): " + cr1;
+		return;
+	}
 	sent = false;
+	unconfirmed = false;
 	log = "";
 	if(contactId != "")
 	{
@@ -156,16 +189,38 @@ void automation.collections_send(String requestId)
 	}
 	if(!sent)
 	{
-		sendmail
-		[
-			from :zoho.loginuserid
-			to :toList
-			cc :ccList
-			subject :subj
-			message :body
-		]
-		sent = true;
-		log = log + "Sent via sendmail fallback from " + zoho.loginuserid + " to " + toList.toString(", ") + " cc " + ccList.toString(", ");
+		// Deluge sendmail returns nothing, so this path cannot confirm delivery. Try it, then mark the request
+		// "Sent (unconfirmed)" rather than Sent so a person checks the mailbox before trusting it.
+		try
+		{
+			sendmail
+			[
+				from :zoho.loginuserid
+				to :toList
+				cc :ccList
+				subject :subj
+				message :body
+			]
+			sent = true;
+			unconfirmed = true;
+			log = log + "Handed to sendmail fallback from " + zoho.loginuserid + " to " + toList.toString(", ") + " cc " + ccList.toString(", ") + " (delivery not confirmable)";
+		}
+		catch (e)
+		{
+			log = log + "sendmail fallback failed: " + e;
+		}
+	}
+	if(!sent)
+	{
+		upd.put("Email_Status","Send failed");
+		if(log.length() > 1900)
+		{
+			log = log.subString(0,1900);
+		}
+		upd.put("Send_Log",log);
+		r = zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+		info "send failed " + requestId + ": " + r;
+		return;
 	}
 	plain = "To: " + toList.toString(", ") + nl + "Cc: " + ccList.toString(", ") + nl + nl + body.replaceAll("</tr>",nl,false).replaceAll("</td>","  ",false).replaceAll("</th>","  ",false).replaceAll("</p>",nl + nl,false).replaceAll("<br>",nl,false).replaceAll("<[^>]+>","",true);
 	note = Map();
@@ -183,7 +238,14 @@ void automation.collections_send(String requestId)
 		n2.put("Note_Content",plain);
 		zoho.crm.createRecord("Notes",n2);
 	}
-	upd.put("Email_Status","Sent");
+	if(unconfirmed)
+	{
+		upd.put("Email_Status","Sent (unconfirmed)");
+	}
+	else
+	{
+		upd.put("Email_Status","Sent");
+	}
 	upd.put("Email_Sent_At",zoho.currenttime.toString("yyyy-MM-dd'T'HH:mm:ssXXX"));
 	if(log.length() > 1900)
 	{
@@ -191,5 +253,9 @@ void automation.collections_send(String requestId)
 	}
 	upd.put("Send_Log",log);
 	r = zoho.crm.updateRecord("Collection_Requests",req.get("id"),upd);
+	if(r.get("id") == null)
+	{
+		info "WARNING: email went out but the request could not be marked Sent: " + r;
+	}
 	info r;
 }

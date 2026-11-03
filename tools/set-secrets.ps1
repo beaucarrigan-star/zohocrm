@@ -8,9 +8,10 @@
 #     powershell -ExecutionPolicy Bypass -File .\set-secrets.ps1
 
 $ErrorActionPreference = "Stop"
-$repo = "beaucarrigan-star/jp-catalyst-pipelines"
+$repo = "beaucarrigan-star/zohocrm"
 $sol  = Join-Path $env:USERPROFILE ".solpipe.env"
 $con  = Join-Path $env:USERPROFILE ".conpipe.env"
+$claude = Join-Path $env:USERPROFILE ".conpipe-claude.env"   # optional: Claude shadow reader + OCR settings
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { throw "GitHub CLI not found. Run: winget install --id GitHub.cli -e   then reopen PowerShell." }
 cmd /c "gh auth status >nul 2>&1"
@@ -51,6 +52,23 @@ foreach ($k in "ZOHO_ACCOUNTS_URL", "ZOHO_API_DOMAIN") {
 }
 Set-GhSecret "SOL_PIPELINE_TOKEN" $s["PIPELINE_TOKEN"]
 Set-GhSecret "CON_PIPELINE_TOKEN" $c["CON_PIPELINE_TOKEN"]
+
+# Claude shadow reader + OCR: the key is a secret, the settings are repository variables (plain, visible in
+# GitHub). Same names deploy-contracts.ps1 reads; ci/inject_env.py puts them on con_worker. Without this block a
+# GitHub deploy turned CON_CLAUDE back to "off".
+if (Test-Path $claude) {
+    $cv = Read-EnvFile $claude
+    if ($cv["CLAUDE_API_KEY"]) { Set-GhSecret "CLAUDE_API_KEY" $cv["CLAUDE_API_KEY"] } else { Write-Host "  skipped CLAUDE_API_KEY (not in .conpipe-claude.env)" }
+    foreach ($k in "CLAUDE_WORKSPACE_ID", "CLAUDE_MODEL_EXTRACT", "CLAUDE_MODEL_REVIEW", "CON_CLAUDE", "CON_CLAUDE_MODELS",
+                   "CON_CLAUDE_ESCALATE", "CON_CLAUDE_RERUN", "CON_CLAUDE_MAX_TOKENS", "CON_CLAUDE_MAX_CHARS",
+                   "CON_OCR", "CON_OCR_MAX_PAGES", "CON_OCR_MAX_SECONDS", "CON_PDF_SECONDS") {
+        if ($cv.ContainsKey($k) -and $cv[$k]) {
+            cmd /c "gh variable set $k --repo $repo --body `"$($cv[$k])`" >nul"
+            if ($LASTEXITCODE -ne 0) { throw "gh variable set $k failed" }
+            Write-Host "  variable $k"
+        }
+    }
+} else { Write-Host "  no $claude - Claude reader stays off after a GitHub deploy" }
 
 Write-Host ""
 $sec = Read-Host "Paste the Catalyst token from 'catalyst token:generate' (hidden, press Enter)" -AsSecureString

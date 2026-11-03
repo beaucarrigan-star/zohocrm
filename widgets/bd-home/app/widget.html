@@ -7,6 +7,71 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BD Home</title>
 <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<script id="jpk-routing">/* jpk-routing v1.0 (3 Nov 2026, code review M8): the one editable place for who-is-who on every home page.
+   Reads CRM Variable HOME_ROUTING (Setup > Developer Space > CRM Variables), a JSON object with any of:
+     admin_id             user id whose mail, triage and agenda are personal (today Beau)
+     admin_name           that person's display name
+     personal_mailboxes   addresses that never show on the team's waiting list
+     team_mailbox         the shared EM support mailbox
+     mail_people          [{ "name": "first last", "boxes": ["addr", ...] }, ...]  who owns which mailbox
+     leadership_fallback  [{ "id": "...", "name": "..." }, ...]  used when no active user has the Leadership profile
+     queue_profiles       profile names whose users count as the "Unassigned" queue
+   Keys left out keep the defaults below (the values that were hard-coded before). Layers read window.JPKR()
+   at call time and subscribe with JPKR.on(fn) so a value that arrives after first paint still takes effect. */
+(function (root) {
+  if (root.JPKR) return;
+  var DEF = {
+    admin_id: '6715134000000503001',
+    admin_name: 'Beau Carrigan',
+    personal_mailboxes: ['bcarrigan@differenceprinciple.org', 'bcarrigan@justicepoint.org'],
+    team_mailbox: 'emsupport@justicepoint.org',
+    mail_people: [
+      { name: 'beau carrigan', boxes: ['bcarrigan@justicepoint.org', 'bcarrigan@differenceprinciple.org'] },
+      { name: 'stacey loosen', boxes: ['sloosen@justicepoint.org'] },
+      { name: 'brittany mueller', boxes: ['bmueller@justicepoint.org'] }
+    ],
+    leadership_fallback: [
+      { id: '6715134000000774001', name: 'Edward Gordon' },
+      { id: '6715134000000779001', name: 'Nick Sayner' },
+      { id: '6715134000000781001', name: 'Stacey Anick' }
+    ],
+    queue_profiles: ['Administrator', 'System Support']
+  };
+  var cur = JSON.parse(JSON.stringify(DEF)), subs = [], done = false, tries = 0;
+  function R() { return cur; }
+  R.VAR = 'HOME_ROUTING'; R.defaults = DEF; R.source = 'defaults'; R.error = '';
+  R.on = function (fn) { subs.push(fn); if (done && R.source !== 'defaults') { try { fn(cur); } catch (e) {} } };
+  function same(a, b) { return Object.prototype.toString.call(a) === Object.prototype.toString.call(b); }
+  function apply(text) {
+    var v; try { v = JSON.parse(String(text || '')); } catch (e) { R.error = 'HOME_ROUTING is not valid JSON'; return false; }
+    if (!v || typeof v !== 'object') { R.error = 'HOME_ROUTING is not a JSON object'; return false; }
+    var n = 0;
+    for (var k in DEF) if (Object.prototype.hasOwnProperty.call(v, k) && v[k] != null && same(v[k], DEF[k])) { cur[k] = v[k]; n++; }
+    cur.admin_id = String(cur.admin_id);
+    R.source = 'HOME_ROUTING'; R.error = '';
+    subs.forEach(function (fn) { try { fn(cur); } catch (e) {} });
+    return n > 0;
+  }
+  function attempt() {
+    var Z = root.ZOHO;
+    if (done) return;
+    if (!(Z && Z.CRM && Z.CRM.API && Z.CRM.API.getOrgVariable)) { again(); return; }
+    var answered = false, t = setTimeout(function () { if (!answered) { answered = true; again(); } }, 6000);
+    try {
+      Promise.resolve(Z.CRM.API.getOrgVariable(R.VAR)).then(function (r) {
+        if (answered) return; answered = true; clearTimeout(t);
+        var v = r && r.Success && r.Success.Content; if (v == null && r && r.Content) v = r.Content;
+        done = true;
+        if (v == null || String(v).trim() === '') { R.error = 'HOME_ROUTING is empty or missing: using the defaults'; return; }
+        apply(v);
+      }, function () { if (answered) return; answered = true; clearTimeout(t); again(); });
+    } catch (e) { if (!answered) { answered = true; clearTimeout(t); again(); } }
+  }
+  function again() { if (done) return; tries++; if (tries >= 8) { done = true; R.error = R.error || 'HOME_ROUTING could not be read: using the defaults'; return; } setTimeout(attempt, tries < 3 ? 1500 : 3000); }
+  R.reload = function () { done = false; tries = 0; attempt(); };
+  root.JPKR = R;
+  setTimeout(attempt, 1200);   /* after each page's own ZOHO.embeddedApp.init() */
+})(window);</script>
 <script id="frame-fit">// kit-owned: frame-fit.js — size the widget's iframe to its content, one scrollbar (BD UX step 4a, Sep 30 2026).
 (function () {
   /* Asks Zoho to resize this widget's iframe to the page's content height with ZOHO.CRM.UI.Resize, so the Zoho
@@ -2176,7 +2241,7 @@ var zdt = function (iso) {       /* Zoho wants datetimes with an offset, not Z *
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + (o >= 0 ? '+' : '-') + p(Math.floor(Math.abs(o) / 60)) + ':' + p(Math.abs(o) % 60);
 };
 var idOf = function (v) { return v == null ? null : typeof v === 'object' ? (v.id ? String(v.id) : null) : String(v); };
-var qstr = function (s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); };
+var qstr = function (s) { return String(s == null ? '' : s).replace(/'/g, "''"); };   /* COQL escapes a quote by doubling it; \' is a SYNTAX_ERROR (3 Nov 2026) */
 var ymd = function (d) { d = d instanceof Date ? d : new Date(d); var p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
 var DAY_MS = 864e5;
 var daysFrom = function (dateStr) { if (!dateStr) return null; var a = new Date(String(dateStr).slice(0, 10) + 'T12:00:00'), b = new Date(); b.setHours(12, 0, 0, 0); return Math.round((a - b) / DAY_MS); };
@@ -2438,8 +2503,8 @@ function rpInit() {
 }
 
 
-  var VERSION = 'BD Home v4.7';
-  var POLL_S = 120;
+  var VERSION = 'BD Home v4.8';
+  var POLL_S = 600;   /* 3 Nov 2026: was 120 (about 1,300 calls/hour/tab); the poll already waits while the tab is hidden */
   var ME = { id: null, name: '' };
   var TODAY = ymd(new Date());
   var api = PREVIEW ? null : live;
@@ -5921,7 +5986,7 @@ function rpInit() {
   function retry(fn, n) { return safe(fn).catch(function (e) { if (n <= 0) throw e; return wait(1500).then(function () { return retry(fn, n - 1); }); }); }
   function queueIds() {
     return withTimeout(root.ZOHO.CRM.API.getAllUsers({ Type: 'ActiveUsers' }), 8000).then(function (r) {
-      return ((r && r.users) || []).filter(function (u) { var p = u.profile && u.profile.name; return p === 'Administrator' || p === 'System Support'; }).map(function (u) { return String(u.id); });
+      return ((r && r.users) || []).filter(function (u) { var p = u.profile && u.profile.name; return window.JPKR().queue_profiles.indexOf(p) >= 0; }).map(function (u) { return String(u.id); });
     }, function () { return []; });
   }
 
@@ -6917,7 +6982,7 @@ window.JPK_SHELL = {
   if (!doc) return;
   var TEST_EVENT = '6715134000009801001';
   var DEF = {
-    writeAllowedIds: [TEST_EVENT], timeoutMs: 15000, pageSize: 200, maxPages: 10, userWaitMs: 20000, detailCap: 10, trigger: ['workflow'],
+    writeAllowedIds: '*', timeoutMs: 15000   /* 3 Nov 2026: every meeting may be linked; [TEST_EVENT] was the test-only guard */, pageSize: 200, maxPages: 10, userWaitMs: 20000, detailCap: 10, trigger: ['workflow'],
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/', outlookUrl: 'https://outlook.office.com/calendar/view/day'
   };
   if (!root.jpkCalendarConfig || typeof root.jpkCalendarConfig !== 'object') root.jpkCalendarConfig = { writeAllowedIds: DEF.writeAllowedIds.slice() };
@@ -9093,7 +9158,7 @@ window.JPK_SHELL = {
    signed-in user, workflow trigger on); the home calendar and the month re-read after it. JPK_SHELL.popouts.create = false hides it.
     v0.4.0 (S26d): a meeting with a join link that has not ended joins when clicked: its pill in the grid and its title in the day list.
    v0.3.1: linking follows the calendar's write guard. A new meeting has no id, so while jpkCalendarConfig.writeAllowedIds is a list
-   (today: the TEST meeting only) the form hides the link field and sends no What_Id / Who_Id. writeAllowedIds = '*' turns it on.
+   (the test-only guard, removed 3 Nov 2026) the form hides the link field and sends no What_Id / Who_Id. writeAllowedIds = '*' turns it on.
    v0.2.0: the Month popout (Month button on the home calendar; a month grid and the chosen day's meetings, read with
    jpkCalendar.load for the six weeks on screen, read-only), new box markup for the softer design (jpk-pop-v2.css), and every
    contract or renewal box and list row links to the Contract Review Band (the contract record, where the band sits). Pairs with jpk-pop.css and jpk-shell.js (load after both).
@@ -12246,11 +12311,8 @@ window.JPK_S38 = {"home": "bd", "frame": true, "send": true, "bar": "#page > .qu
   var html = doc.documentElement;
   var TABS = C.tabs || [];
   var CRM = 'https://crm.zoho.com/crm/org882980956/tab/';
-  var LEADERS_FALLBACK = [
-    { id: '6715134000000774001', name: 'Edward Gordon' },
-    { id: '6715134000000779001', name: 'Nick Sayner' },
-    { id: '6715134000000781001', name: 'Stacey Anick' }
-  ];
+  var LEADERS_FALLBACK = window.JPKR().leadership_fallback.slice();   /* CRM Variable HOME_ROUTING.leadership_fallback */
+  window.JPKR.on(function (r) { LEADERS_FALLBACK = r.leadership_fallback.slice(); });
 
   /* ---------- helpers ---------- */
   function $(id) { return doc.getElementById(id); }

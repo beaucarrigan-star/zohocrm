@@ -66,6 +66,17 @@ CONTRACT_FIELDS = [
 NOTE_LIMIT = 30000  # Zoho Note_Content practical cap; the Ingest_Summary field (2000) gets the head
 
 
+_SECRET_RE = re.compile(r"(refresh_token|client_secret|client_id|access_token|api_key|token)=[^&\s]+", re.I)
+
+
+def _safe_error(exc):
+    """Error text for a CRM Note: query strings with credentials masked, Zoho OAuth tokens masked, capped."""
+    text = str(exc) or exc.__class__.__name__
+    text = _SECRET_RE.sub(lambda m: m.group(1) + "=***", text)
+    text = re.sub(r"1000\.[0-9a-f]{32}\.[0-9a-f]{32}", "***", text)   # Zoho oauth token shape
+    return text[:1500]
+
+
 def handler(job_request, context):
     """Catalyst python_3_9 Job function entry point (same signature as the live sol_worker): params come
     from job_request.get_job_param, and the job must be closed explicitly or it runs to the timeout."""
@@ -80,7 +91,7 @@ def handler(job_request, context):
         try:
             if action not in NEW_FROM_PACKET:
                 zc.update_record("Contracts", record_id, {"Ingest_Status": "Failed"})
-            zc.post_note(module, record_id, "Contract ingest", "Ingest failed: {}".format(str(exc)[:1500]))
+            zc.post_note(module, record_id, "Contract ingest", "Ingest failed: {}".format(_safe_error(exc)))
         except Exception:  # noqa: BLE001
             log.exception("could not post the failure note")
         context.close_with_failure()

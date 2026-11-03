@@ -1,0 +1,7 @@
+{
+	"functions": {
+		"targets": ["col_parse"],
+		"ignore": [],
+		"source": "functions"
+	}
+}

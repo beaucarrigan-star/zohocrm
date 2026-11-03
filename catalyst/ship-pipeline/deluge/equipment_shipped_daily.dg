@@ -5,10 +5,28 @@ void schedule.equipment_shipped_daily()
 // that night's recommendations. Re-running over the same emails is harmless (upsert on Row_Key).
 	result = automation.equipment_shipped_import(zoho.currentdate.subDay(7),zoho.currentdate);
 	info result;
+	// Recipient from CRM Variable ALERT_EMAILS (JSON key "shipments_digest"); the literal is the fallback.
+	alertTo = "bcarrigan@differenceprinciple.org";
+	try
+	{
+		av = ifnull(zoho.crm.getOrgVariable("ALERT_EMAILS"),"").trim();
+		if(av.startsWith("{"))
+		{
+			am = av.toMap();
+			if(ifnull(am.get("shipments_digest"),"").contains("@"))
+			{
+				alertTo = am.get("shipments_digest").trim();
+			}
+		}
+	}
+	catch (e)
+	{
+		info "ALERT_EMAILS not readable, using the default: " + e;
+	}
 	sendmail
 	[
 		from :zoho.adminuserid
-		to :"bcarrigan@differenceprinciple.org"
+		to :alertTo
 		subject :"Equipment Shipped import: " + zoho.currentdate.toString("MMM d")
 		message :result
 	]

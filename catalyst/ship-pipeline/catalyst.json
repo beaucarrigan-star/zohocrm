@@ -1,0 +1,7 @@
+{
+	"functions": {
+		"targets": ["ship_parse"],
+		"ignore": [],
+		"source": "functions"
+	}
+}

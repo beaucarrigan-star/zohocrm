@@ -3,7 +3,7 @@ name: Deploy solicitation pipeline
 on:
   push:
     branches: [main]
-    paths: ["solicitation-pipeline/**", "ci/**", ".github/workflows/deploy-solicitation.yml"]
+    paths: ["catalyst/solicitation-pipeline/**", "ci/**", ".github/workflows/deploy-solicitation.yml"]
   workflow_dispatch:        # the "Run workflow" button (and the optional Zoho button) uses this
 
 concurrency: deploy-solicitation
@@ -32,7 +32,7 @@ jobs:
           python -m pip install --quiet reportlab pdfminer.six==20250506
 
       - name: Offline tests (a failure stops the deploy)
-        working-directory: solicitation-pipeline
+        working-directory: catalyst/solicitation-pipeline
         run: |
           for t in test_pipeline.py test_ingest_flow.py test_scoring_engine.py test_rule_ingest.py; do
             python "tests/$t"
@@ -41,10 +41,10 @@ jobs:
       - name: Build
         run: |
           rm -rf build && mkdir -p build
-          cp solicitation-pipeline/catalyst.json build/
-          cp -r solicitation-pipeline/functions build/functions
+          cp catalyst/solicitation-pipeline/catalyst.json build/
+          cp -r catalyst/solicitation-pipeline/functions build/functions
           for fn in sol_api sol_worker; do
-            cp -r solicitation-pipeline/solpipe "build/functions/$fn/solpipe"
+            cp -r catalyst/solicitation-pipeline/solpipe "build/functions/$fn/solpipe"
             # Linux wheels for Catalyst's python_3_9 stack (pdfminer.six needs compiled cryptography)
             python -m pip install --quiet --target "build/functions/$fn" \
               --platform manylinux2014_x86_64 --python-version 3.9 --implementation cp \

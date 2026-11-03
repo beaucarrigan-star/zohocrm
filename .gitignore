@@ -9,16 +9,16 @@ node_modules/
 build/
 
 # solicitation-pipeline: RFP packets and company documents
-solicitation-pipeline/*.pdf
-solicitation-pipeline/*.PDF
-solicitation-pipeline/*.docx
-solicitation-pipeline/*.xlsx
+**/solicitation-pipeline/*.pdf
+**/solicitation-pipeline/*.PDF
+**/solicitation-pipeline/*.docx
+**/solicitation-pipeline/*.xlsx
 
 # contract-pipeline: signed contracts, review outputs, real contract text used by the golden tests
-contract-pipeline/contracts/
-contract-pipeline/Claude outputs/
-contract-pipeline/tests/fixtures/
-contract-pipeline/*.pdf
+**/contract-pipeline/contracts/
+**/contract-pipeline/Claude outputs/
+**/contract-pipeline/tests/fixtures/
+**/contract-pipeline/*.pdf
 
 # added for this repo: never commit data, archives or office files anywhere
 *.zip
@@ -38,3 +38,4 @@ bulk_state.json
 
 # logos are the only images allowed
 !**/*logo*.png
+_to_delete/

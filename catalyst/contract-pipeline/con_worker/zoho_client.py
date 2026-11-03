@@ -41,9 +41,11 @@ def get_access_token():
     if _token_cache["access_token"] and _token_cache["expires_at"] - 60 > now:
         return _token_cache["access_token"]
 
+    # Secrets go in the POST body (data=), never in the URL: requests puts the URL into every
+    # HTTPError message, and con_worker posts that message as a Note on the record.
     resp = requests.post(
         _accounts_domain() + "/oauth/v2/token",
-        params={
+        data={
             "refresh_token": os.environ["ZOHO_REFRESH_TOKEN"],
             "client_id": os.environ["ZOHO_CLIENT_ID"],
             "client_secret": os.environ["ZOHO_CLIENT_SECRET"],
@@ -51,8 +53,12 @@ def get_access_token():
         },
         timeout=30,
     )
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise requests.HTTPError("Zoho token refresh failed: HTTP {}".format(resp.status_code), response=resp)
     data = resp.json()
+    if not data.get("access_token"):
+        # Zoho answers 200 with {"error": "invalid_code"} and the like; never echo the body
+        raise RuntimeError("Zoho token refresh failed: {}".format(data.get("error") or "no access_token"))
     _token_cache["access_token"] = data["access_token"]
     _token_cache["expires_at"] = now + int(data.get("expires_in", 3600))
     return _token_cache["access_token"]

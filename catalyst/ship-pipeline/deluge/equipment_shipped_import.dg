@@ -12,7 +12,26 @@ string automation.equipment_shipped_import(Date startDate, Date endDate)
 // Run by the scheduler equipment_shipped_daily (last 7 days) or by hand for a range. Needs connections "onedrive"
 // (Microsoft, Files.Read) and "zohocrm". Replace <SHIP_PARSE_TOKEN> with the token from deploy-ship.ps1.
 	folderName = "Shipments";
-	parseUrl = "https://contract-pipeline-911327312.development.catalystserverless.com/server/ship_parse/parse";
+	// Catalyst host: CRM Variable CATALYST_PIPELINE_BASE (e.g. https://contract-pipeline-911327312.development.catalystserverless.com).
+	// Change it there when the functions move to the production stage; the literal is only the fallback.
+	catBase = "https://contract-pipeline-911327312.development.catalystserverless.com";
+	try
+	{
+		cb = ifnull(zoho.crm.getOrgVariable("CATALYST_PIPELINE_BASE"),"").trim();
+		if(cb.startsWith("https://"))
+		{
+			catBase = cb;
+		}
+	}
+	catch (e)
+	{
+		info "CATALYST_PIPELINE_BASE not readable, using the default: " + e;
+	}
+	if(catBase.endsWith("/"))
+	{
+		catBase = catBase.subString(0,catBase.length() - 1);
+	}
+	parseUrl = catBase + "/server/ship_parse/parse";
 	parseToken = "<SHIP_PARSE_TOKEN>";
 	startIso = startDate.toString("yyyy-MM-dd") + "T00:00:00Z";
 	endIso = endDate.addDay(1).toString("yyyy-MM-dd") + "T00:00:00Z";

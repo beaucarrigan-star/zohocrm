@@ -5,7 +5,26 @@ string button.collections_parse_report(String reportId)
 // Takes the newest PDF attached to the report, sends it to the Catalyst function col_parse, then
 // creates one Collection Request per customer and drafts each email (collections_prepare).
 // Safe to press again: customers that already have a request on this report are skipped.
-	colUrl = "https://contract-pipeline-911327312.development.catalystserverless.com/server/col_parse/parse";
+	// Catalyst host: CRM Variable CATALYST_PIPELINE_BASE (e.g. https://contract-pipeline-911327312.development.catalystserverless.com).
+	// Change it there when the functions move to the production stage; the literal is only the fallback.
+	catBase = "https://contract-pipeline-911327312.development.catalystserverless.com";
+	try
+	{
+		cb = ifnull(zoho.crm.getOrgVariable("CATALYST_PIPELINE_BASE"),"").trim();
+		if(cb.startsWith("https://"))
+		{
+			catBase = cb;
+		}
+	}
+	catch (e)
+	{
+		info "CATALYST_PIPELINE_BASE not readable, using the default: " + e;
+	}
+	if(catBase.endsWith("/"))
+	{
+		catBase = catBase.subString(0,catBase.length() - 1);
+	}
+	colUrl = catBase + "/server/col_parse/parse";
 	colToken = "<COL_PARSE_TOKEN>";
 	nl = zoho.encryption.urlDecode("%0A");
 	base = "https://www.zohoapis.com/crm/v7/Collections_Reports/" + reportId;

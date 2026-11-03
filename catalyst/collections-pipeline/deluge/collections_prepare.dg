@@ -11,7 +11,24 @@ string standalone.collections_prepare(String requestId)
 	// Deluge in this org does not turn "\n" into a newline, so build the real characters once
 	nl = zoho.encryption.urlDecode("%0A");
 	cr = zoho.encryption.urlDecode("%0D");
+	// Default CC comes from CRM Variable ALERT_EMAILS (JSON key "collections_cc"); the literal is the fallback.
 	ccDefault = "aradtke@differenceprinciple.org";
+	try
+	{
+		av = ifnull(zoho.crm.getOrgVariable("ALERT_EMAILS"),"").trim();
+		if(av.startsWith("{"))
+		{
+			am = av.toMap();
+			if(am.containKey("collections_cc"))
+			{
+				ccDefault = ifnull(am.get("collections_cc"),"").trim();
+			}
+		}
+	}
+	catch (e)
+	{
+		info "ALERT_EMAILS not readable, using the default CC: " + e;
+	}
 	req = zoho.crm.getRecordById("Collection_Requests",requestId.toLong());
 	if(req.get("id") == null)
 	{

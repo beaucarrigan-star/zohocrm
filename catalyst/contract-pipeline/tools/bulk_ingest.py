@@ -23,7 +23,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.dirname(HERE)                      # the "EM contracts" folder
 OCR = os.path.join(HERE, "ocr")
 STATE = os.path.join(HERE, "bulk_state.json")
-CON_API = "https://contract-pipeline-911327312.development.catalystserverless.com/server/con_api/ingest"
+# Catalyst host: CON_API_BASE in the environment (same value as the CRM Variable CATALYST_PIPELINE_BASE);
+# the development stage is the default.
+CON_API_BASE = os.environ.get("CON_API_BASE", "").strip().rstrip("/") or "https://contract-pipeline-911327312.development.catalystserverless.com"
+CON_API = CON_API_BASE + "/server/con_api/ingest"
 SEND = {"attach to Contract": ("Contracts", "ingest_contract"),
         "new Contract on Account": ("Accounts", "new_contract_from_packet")}
 WAIT_SECONDS = 600       # max wait for one packet's worker to finish before moving on

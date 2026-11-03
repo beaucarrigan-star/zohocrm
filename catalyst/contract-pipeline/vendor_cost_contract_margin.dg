@@ -1,5 +1,8 @@
 /*
- * vendor_cost_contract_margin  (v5, 9 Oct 2026 - customer rates from Rate Lines)
+ * vendor_cost_contract_margin  (v5.1, 3 Nov 2026 - vendor/product ids can be overridden by CRM Variable VENDOR_PRODUCT_MAP)
+ *
+ * v5.1: the vendor and product id tables stay in this file as defaults; CRM Variable VENDOR_PRODUCT_MAP (JSON)
+ *       replaces any of them without a code change. Same ids as em_margin_from_contract.
  * ------------------------------------------------
  * v5: section 2 prices each customer contract from its live "Customer rate" Rate Lines
  *     (not superseded/rejected, effective). The old Rates and Devices fields are read only for a
@@ -84,6 +87,34 @@ void automation.vendor_cost_contract_margin()
 	rateMap.put("Wrist_Worn_GPS_Rate","6715134000006353123");
 	rateMap.put("Supercom_GPS_Rate","6715134000000750065");
 	rateMap.put("Supercom_Victim_Rate","6715134000000750060");
+	// ---- CRM Variable VENDOR_PRODUCT_MAP (3 Nov 2026): one editable place for the vendor and product ids ----
+	// JSON with any of: "allied_vendor_id", "rate_fields" {field api name: product id}, "vendor_key" {vendor id: name},
+	// "line_products" {"Device|Vendor": product id}, "line_products_any" {"Device": product id}. Keys given replace the
+	// matching entries above and below; keys left out keep the values in this file.
+	vpm = Map();
+	try
+	{
+		vpmRaw = ifnull(zoho.crm.getOrgVariable("VENDOR_PRODUCT_MAP"),"").trim();
+		if(vpmRaw.startsWith("{"))
+		{
+			vpm = vpmRaw.toMap();
+		}
+	}
+	catch (e)
+	{
+		info "VENDOR_PRODUCT_MAP not readable, using the ids in the function: " + e;
+	}
+	if(ifnull(vpm.get("allied_vendor_id"),"") != "")
+	{
+		alliedId = vpm.get("allied_vendor_id").toString();
+	}
+	if(vpm.get("rate_fields") != null)
+	{
+		for each  rk in vpm.get("rate_fields").keys()
+		{
+			rateMap.put(rk,vpm.get("rate_fields").get(rk).toString());
+		}
+	}
 	rateLabel = Map();
 	rateLabel.put("GPS_Rate_Allied","GPS (Allied)");
 	rateLabel.put("RB_Rate_Attenti","RB (Attenti)");
@@ -465,6 +496,28 @@ void automation.vendor_cost_contract_margin()
 	lineProdAny.put("Hybrid GPS + Alcohol","6715134000000657001");
 	lineProdAny.put("Wrist-worn GPS","6715134000006353123");
 	lineProdAny.put("Victim / DV","6715134000000750060");
+	// VENDOR_PRODUCT_MAP overrides for the Rate Lines tables (see the rate field block above)
+	if(vpm.get("vendor_key") != null)
+	{
+		for each  vk in vpm.get("vendor_key").keys()
+		{
+			vendorKey.put(vk,vpm.get("vendor_key").get(vk).toString());
+		}
+	}
+	if(vpm.get("line_products") != null)
+	{
+		for each  lk in vpm.get("line_products").keys()
+		{
+			lineProd.put(lk,vpm.get("line_products").get(lk).toString());
+		}
+	}
+	if(vpm.get("line_products_any") != null)
+	{
+		for each  ak in vpm.get("line_products_any").keys()
+		{
+			lineProdAny.put(ak,vpm.get("line_products_any").get(ak).toString());
+		}
+	}
 	custLines = Map();
 	for each  pg in {1,2,3,4,5}
 	{

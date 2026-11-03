@@ -1,0 +1,92 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["documents", "terms", "rate_lines", "clauses", "conflicts", "summary"],
+  "properties": {
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "doc_type", "effective_date", "governs", "page", "source_sentence"],
+        "properties": {
+          "file": {"type": "string"},
+          "doc_type": {"type": "string", "enum": ["Base agreement", "Amendment", "Addendum", "Rate sheet", "Renewal", "Exhibit or SOW", "Insurance or BAA", "Other"]},
+          "effective_date": {"type": "string"},
+          "governs": {"type": "boolean"},
+          "page": {"type": "integer"},
+          "source_sentence": {"type": "string"}
+        }
+      }
+    },
+    "terms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "value", "confidence", "file", "page", "source_sentence"],
+        "properties": {
+          "field": {"type": "string", "enum": ["Contract_Start_Date", "Contract_End_Date", "Auto_Renews", "Renewals_Allowed", "Renewal_Options_Left", "Renewal_Option_Length_Mo", "Notice_Period_Days", "Termination_Convenience_Days", "Payment_Terms_Days", "Invoice_Cadence", "Rate_Basis", "Admin_Rate_Pct", "Not_To_Exceed", "Escalator_Pct", "Governing_State", "Insurance_Limit", "Spare_Clause_Detail"]},
+          "value": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["High", "Medium", "Low"]},
+          "file": {"type": "string"},
+          "page": {"type": "integer"},
+          "source_sentence": {"type": "string"}
+        }
+      }
+    },
+    "rate_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["device", "amount", "unit", "ownership", "tier_min", "tier_max", "effective_date", "current", "confidence", "file", "page", "source_sentence"],
+        "properties": {
+          "device": {"type": "string"},
+          "amount": {"type": "number"},
+          "unit": {"type": "string", "enum": ["day", "month", "one_time", "replacement", "percent"]},
+          "ownership": {"type": "string", "enum": ["Leased", "Purchased", "n/a"]},
+          "tier_min": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
+          "tier_max": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
+          "effective_date": {"type": "string"},
+          "current": {"type": "boolean"},
+          "confidence": {"type": "string", "enum": ["High", "Medium", "Low"]},
+          "file": {"type": "string"},
+          "page": {"type": "integer"},
+          "source_sentence": {"type": "string"}
+        }
+      }
+    },
+    "clauses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["clause_type", "title", "obligation", "is_boilerplate", "file", "page", "source_sentence"],
+        "properties": {
+          "clause_type": {"type": "string", "enum": ["Special work", "Reporting", "Staffing", "Training", "Install", "Service level", "Insurance", "Data & privacy", "Termination", "Other"]},
+          "title": {"type": "string"},
+          "obligation": {"type": "string"},
+          "is_boilerplate": {"type": "boolean"},
+          "file": {"type": "string"},
+          "page": {"type": "integer"},
+          "source_sentence": {"type": "string"}
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["topic", "detail", "files"],
+        "properties": {
+          "topic": {"type": "string"},
+          "detail": {"type": "string"},
+          "files": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "summary": {"type": "string"}
+  }
+}
