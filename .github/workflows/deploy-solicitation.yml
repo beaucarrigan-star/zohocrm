@@ -69,5 +69,10 @@ jobs:
         env:
           CATALYST_TOKEN: ${{ secrets.CATALYST_TOKEN }}
         run: |
+          # The token is pasted by hand: drop line breaks and spaces, and say (without showing it) whether anything
+          # non-ASCII is left, since the Catalyst API rejects such a header with "Invalid character in header content".
+          CATALYST_TOKEN="$(printf %s "$CATALYST_TOKEN" | tr -d '
+	 ')"
+          echo "CATALYST_TOKEN: ${#CATALYST_TOKEN} characters, $(printf %s "$CATALYST_TOKEN" | LC_ALL=C grep -c '[^[:print:]]' || true) line(s) with non-printable/non-ASCII characters"
           catalyst config:set python3_9.bin="$(which python)"
           catalyst deploy --only functions --org "$CATALYST_ORG_ID" --project "$CATALYST_PROJECT_ID" --token "$CATALYST_TOKEN"
