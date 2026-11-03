@@ -74,7 +74,13 @@ Write-Host ""
 $sec = Read-Host "Paste the Catalyst token from 'catalyst token:generate' (hidden, press Enter)" -AsSecureString
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
 try { $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-Set-GhSecret "CATALYST_TOKEN" $plain.Trim()
+$plain = ($plain -replace '\s', '')
+# A paste into the hidden prompt can silently come through as one stray character; the deploy then fails with
+# "Invalid character in header content". Check the shape (never the value) before uploading.
+if ($plain.Length -lt 20 -or $plain -match '[^!-~]') {
+    throw "That does not look like a Catalyst token ($($plain.Length) characters). Run 'catalyst token:generate' again and paste only the token, or set it with: gh secret set CATALYST_TOKEN --repo $repo"
+}
+Set-GhSecret "CATALYST_TOKEN" $plain
 
 Write-Host ""
 Write-Host "Done. Secrets now on the repo:" -ForegroundColor Green
