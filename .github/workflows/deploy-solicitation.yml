@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 20
     env:
       CATALYST_PROJECT_ID: "31190000000033001"
+      CATALYST_ORG_ID: "10134581670"      # the Catalyst org ("domain" id in .catalystrc); the CLI needs it with a token
     steps:
       - uses: actions/checkout@v4
 
@@ -69,4 +70,4 @@ jobs:
           CATALYST_TOKEN: ${{ secrets.CATALYST_TOKEN }}
         run: |
           catalyst config:set python3_9.bin="$(which python)"
-          catalyst deploy --only functions --project "$CATALYST_PROJECT_ID" --token "$CATALYST_TOKEN"
+          catalyst deploy --only functions --org "$CATALYST_ORG_ID" --project "$CATALYST_PROJECT_ID" --token "$CATALYST_TOKEN"
