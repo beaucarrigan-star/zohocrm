@@ -1,4 +1,4 @@
-/* Customer Margins (v1.2, S42 28 Oct 2026: lookup names read as Account.Account_Name etc.; widget COQL returns lookups as id only): read-only web tab. Reads EM_Margin (Row_Type = 'Contract rate') with COQL only; never writes.
+/* Customer Margins (v1.3, S78 5 Nov 2026: Edit rates in the line popout (margins-edit.js) and a Home button; v1.2 S42 28 Oct 2026: lookup names read as Account.Account_Name etc.; widget COQL returns lookups as id only). Reads EM_Margin (Row_Type = 'Contract rate') with COQL; writes only from the Edit rates form.
    Demo mode (?demo=1, or not inside Zoho): fictional rows and a "Demo data" banner. */
 (function () {
   'use strict';
@@ -14,7 +14,7 @@
   var SMALL_FIELDS = 'id, Name, Status, Exception_Reason, Contract, Account, Vendor, Device_Family, Customer_Rate, Vendor_Daily_Rate, Margin_Per_Unit_Day, Modelled_Margin_Pct, Modelled_Margin_Tier, Account.Account_Name, Contract.Name, Vendor.Vendor_Name';
   var WHERE = " from EM_Margin where Row_Type = 'Contract rate'";
 
-  var DEMO = false, ALL = [], hideTest = true, tabsApi = null, tMargins = null, tWaiting = null, tCustomers = null, footNote = '';
+  var DEMO = false, ME = '', ALL = [], hideTest = true, tabsApi = null, tMargins = null, tWaiting = null, tCustomers = null, footNote = '';
   var filt = { vendor: '', device: '', tiers: [] };
   var TONE = { Negative: 'bad', Thin: 'warn', Normal: 'neutral', Strong: 'good' };
   var TIER_ORDER = { Negative: 0, Thin: 1, Normal: 2, Strong: 3 };
@@ -65,8 +65,10 @@
       dlRow('Margin key', dash(r.key)) +
       dlRow('Row name', dash(r.name)) +
       dlRow('Last modified', dash(when(r.modified))) +
-      '</dl>';
-    JPK.drawer.open({ title: (r.accountName || 'EM Margin') + ' · ' + (r.device || 'line'), html: h });
+      '</dl>' + (window.MarginsEdit ? window.MarginsEdit.formHtml(r) : '');
+    JPK.drawer.open({ title: (r.accountName || 'EM Margin') + ' · ' + (r.device || 'line'), html: h, onMount: function (body) {
+      if (window.MarginsEdit && body.querySelector('#me-form')) window.MarginsEdit.mount(body, r, { demo: DEMO, user: ME, onSaved: function () { load(true); } });
+    } });
   }
   function openCustomer(c) {
     var h = '<div class="dl-links">' + link('Accounts', c.accountId, 'Open account', 'btn sm') + '</div><dl class="dl">' +
@@ -109,7 +111,7 @@
     tMargins.setRows(lines); tWaiting.setRows(wait); tCustomers.setRows(cust);
     tabsApi.setCount('margins', t.filled); tabsApi.setCount('waiting', t.waiting); tabsApi.setCount('customers', cust.length);
     var f = $('#foot');
-    f.textContent = (footNote ? footNote + ' ' : '') + 'Read-only. Margin % is rate only, no volume weighting. Tiers: Negative below 0%, Thin below 20%, Normal below 50%, Strong 50% and up.' + (hideTest ? ' TEST rows are hidden.' : '');
+    f.textContent = (footNote ? footNote + ' ' : '') + 'Margin % is rate only, no volume weighting. Open a line and use Edit rates to change a rate, cost or vendor. Tiers: Negative below 0%, Thin below 20%, Normal below 50%, Strong 50% and up.' + (hideTest ? ' TEST rows are hidden.' : '');
   }
 
   function build() {
@@ -213,6 +215,7 @@
   JPK.crm.init({ timeout: 4000 }).then(function (d) {
     DEMO = forceDemo || !!(d && d.demo);
     $('#demo-banner').hidden = !DEMO;
+    try { if (!DEMO && window.ZOHO.CRM.CONFIG && window.ZOHO.CRM.CONFIG.getCurrentUser) window.ZOHO.CRM.CONFIG.getCurrentUser().then(function (u) { var x = u && u.users && u.users[0]; if (x) ME = x.full_name || ''; }).catch(function () {}); } catch (e) { /* ignore */ }
     return load(false);
   });
   window.__margins = { rows: function () { return ALL; }, demo: function () { return DEMO; } };

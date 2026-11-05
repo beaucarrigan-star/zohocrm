@@ -1025,6 +1025,25 @@
   .calllog label { display: grid; gap: 3px; font-size: var(--fs-sm); color: var(--muted); }
   .calllog input, .calllog select, .calllog textarea { font: inherit; font-size: var(--fs-md); color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 5px 8px; width: 100%; }
   .calllog textarea { min-height: 56px; resize: vertical; }
+  /* S73: SuperCom order panel in the case popout (reuses .composer) */
+  .sc-panel { display: grid; flex-basis: 100%; }
+  .sc-panel textarea[data-sc="details"] { min-height: 64px; }
+  .sc-panel textarea[data-sc="n-body"] { min-height: 200px; }
+  .sc-panel .sc-h { margin: 0 0 4px; font-size: var(--fs-md); color: var(--ink); }
+  .sc-panel .sc-note { margin-bottom: 2px; }
+  .sc-panel .sc-set { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 8px 8px; margin: 0; min-width: 0; }
+  .sc-panel .sc-set legend { font-size: var(--fs-sm); color: var(--muted); padding: 0 4px; }
+  .sc-panel .sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; }
+  .sc-panel .sc-grid label.sc-item { grid-template-columns: 1fr 52px; }
+  .sc-panel .sc-grid label.sc-item input { text-align: center; padding: 3px 4px; }
+  .sc-panel .sc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: var(--fs-sm); color: var(--muted); }
+  .sc-panel .sc-row .sc-lbl { flex-basis: 100%; }
+  .sc-panel label.sc-rad, .sc-panel label.sc-cc { display: flex; align-items: center; gap: 6px; grid-template-columns: none; color: var(--ink); cursor: pointer; }
+  .sc-panel label.sc-rad input, .sc-panel label.sc-cc input { width: auto; margin: 0; padding: 0; }
+  .sc-panel .sc-ccs { display: grid; gap: 4px; max-height: 150px; overflow: auto; }
+  .sc-panel label.stack .sc-lbl { font-size: var(--fs-sm); color: var(--muted); }
+  .sc-panel .sc-lead, .sc-panel [data-pk="sc-lead"] { margin: 0 0 4px; }
+  @media (max-width: 560px) { .sc-panel .sc-grid { grid-template-columns: 1fr 1fr; } }
   .calllog .row2 { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
   @media (max-width: 560px) { .composer label { grid-template-columns: 1fr; } .composer label.kb .kb-box { grid-column: 1; } .composer .resolve-fields label { grid-template-columns: 1fr; } .calllog .grid2 { grid-template-columns: 1fr; } }
 </style>
@@ -6219,7 +6238,7 @@ function rpInit() {
   function invPortals(d, seq) {
     if (!d || !invNeeded(d)) return;
     invVendors().then(function (vendors) {
-      if (seq !== P.seq || !vendors.length || document.getElementById('pk-inv')) return;
+      if (seq !== P.seq || !vendors.length) return;
       var vid = d.Vendor && d.Vendor.id ? String(d.Vendor.id) : '';
       if (vid) return vendors.filter(function (v) { return String(v.id) === vid; });
       var text = [d.Subject, d.Description, d.Device_Serial].join('\n');
@@ -6233,15 +6252,284 @@ function rpInit() {
         return byAcct.length ? byAcct : vendors;
       }).catch(function () { return vendors; });
     }).then(function (list) {
-      if (!list || !list.length || seq !== P.seq || document.getElementById('pk-inv')) return;
+      if (!list || !list.length || seq !== P.seq) return;
       var anchor = document.getElementById('pk-reach'); if (!anchor) return;
       var btns = list.map(function (v) {
         return '<a class="btn" target="_blank" rel="noopener" href="' + esc(invHref(v.Customer_Portal)) + '" title="Opens ' + esc(invHref(v.Customer_Portal)) + ' in a new tab">' + esc(String(v.Vendor_Name || 'Vendor').replace(/ Electronic Monitoring$/, '')) + ' portal ↗</a>';
       }).join('');
+      var haveInv = document.getElementById('pk-inv');
+      if (haveInv) { if (!haveInv.querySelector('.pk-inv a.btn')) haveInv.querySelector('.pk-inv').insertAdjacentHTML('beforeend', btns); positionPeek(); return; }
       anchor.insertAdjacentHTML('beforebegin', '<div class="pk-sec" id="pk-inv"><h4>Order, return or move inventory</h4><div class="pk-inv">' + btns
         + '<span class="meta">This case looks like it needs inventory ordered, returned or moved. Portals open in a new tab; sign in with your vendor login.</span></div></div>');
       positionPeek();
     });
+  }
+  /* ---------- S73 (3 Nov 2026): SuperCom equipment order from the case popout ----------
+     One button, "Order from SuperCom", in the Order, return or move inventory row. It opens the review form
+     (agency, contact, ship-to, items to request and return, reason, signature, details), the copy list (every
+     contact on the account that has an email, as check boxes; the sender is always copied), and Send.
+     Send runs the standalone function supercom_rma_send (fills the Writer form, attaches the PDF, emails
+     SuperCom, makes the Vendor Orders row, drafts the Order Sent customer email as PENDING APPROVAL), then
+     resolves the case through the same Blueprint path as the Resolve form (Device(s) Ordered). The Order Sent
+     email is edited and approved in the same panel (supercom_rma_notice: get, save, approve, reject). A case
+     reopened later with a draft still waiting shows the approval box again. Off switch: ?s73=0. */
+  var SC_ID = '6715134000000625022';
+  var SC_ON = !/[?&]s73=0/.test(location.search);
+  var SC_REQ = [['unit_kit', 'Unit kit'], ['device_only', 'Device only'], ['wall_charger', 'Wall charger'], ['mobile_charger', 'Mobile charger'], ['strap_kit', 'Strap kit'], ['installation_kit', 'Installation kit'], ['purebeacon', 'PureBeacon'], ['pureshield', 'PureShield'], ['charging_cord', 'Charging cord'], ['strap_cutters', 'Strap cutters']];
+  var SC_RET = [['device_only', 'Device only'], ['wall_charger', 'Wall charger'], ['mobile_charger', 'Mobile charger'], ['purebeacon', 'PureBeacon'], ['pureshield', 'PureShield']];
+  var SC = { caseId: '', d: null, acct: null, contacts: [], pending: null, orderId: '', sender: '', sending: false };
+  var scIsEmail = function (s) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || '').trim()); };
+  /* the preview answers as the live functions would, so the panel can be tried with no Zoho behind it */
+  var scFn = function (name, args) {
+    if (!PREVIEW) return api.fn(name, args);
+    return new Promise(function (res, rej) {
+      setTimeout(function () {
+        if (/[?&]scfail=1/.test(location.search) && name === 'supercom_rma_send') return rej(new Error('A SuperCom order already exists on this case (EM-1581 SuperCom RMA). Nothing sent.'));
+        var pl = {}; try { pl = JSON.parse(args.payload || '{}'); } catch (e) { pl = {}; }
+        if (name === 'supercom_rma_send') return res({ ok: true, live: false, case: 'EM-1581', sent_to: pl.sender_email || 'you@justicepoint.org', cc: (pl.cc || []).join(','), order_id: 'ord1', notice_status: 'Pending approval' });
+        var act = args.action;
+        if (act === 'get') return res({ ok: true, status: 'Pending approval', to: SC.draftTo || 'kara@example.org', cc: SC.draftCc || '', subject: SC.draftSubject || 'EM-1581 · Order sent to SuperCom · Test County', body: SC.draftBody || 'Hello,\n\nWe have sent your equipment request to SuperCom.\n\nThank you,\nJusticePoint EM Support' });
+        if (act === 'approve') return res({ ok: true, live: false, status: 'Pending approval (test mode, sent to you only)' });
+        if (act === 'reject') return res({ ok: true, status: 'Rejected' });
+        return res({ ok: true, status: 'Pending approval' });
+      }, 350);
+    });
+  };
+  function scSender() {
+    if (SC.sender) return Promise.resolve(SC.sender);
+    var u = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null;
+    if (u && scIsEmail(u.email)) { SC.sender = String(u.email).trim(); return Promise.resolve(SC.sender); }
+    return api.user().then(function (x) { SC.sender = (x && scIsEmail(x.email)) ? String(x.email).trim() : ''; return SC.sender; }).catch(function () { return ''; });
+  }
+  /* which cases get the button: the case's Vendor is SuperCom; or the text names SuperCom; or the account's vendor is SuperCom;
+     or nothing says which vendor (the portal row then lists every vendor, SuperCom included). A case with another vendor does not. */
+  function scEligible(d) {
+    var vid = d.Vendor && d.Vendor.id ? String(d.Vendor.id) : '';
+    if (vid) return Promise.resolve(vid === SC_ID);
+    if (/\bsupercom\b/i.test([d.Subject, d.Description, d.Device_Serial].join('\n'))) return Promise.resolve(true);
+    var acctId = d.Account_Name && d.Account_Name.id;
+    if (!acctId) return Promise.resolve(true);
+    return api.record('Accounts', acctId).then(function (a) {
+      a = a || {};
+      var cur = a.Current_Vendor && a.Current_Vendor.name ? String(a.Current_Vendor.name) : '';
+      var used = [].concat(a.Device_s_Used || []).join(' ');
+      if (/supercom/i.test(cur + ' ' + used)) return true;
+      if (cur || used.trim()) return false;
+      return true;
+    }).catch(function () { return true; });
+  }
+  function scSection() {
+    var sec = document.getElementById('pk-inv');
+    if (!sec) {
+      var anchor = document.getElementById('pk-reach'); if (!anchor) return null;
+      anchor.insertAdjacentHTML('beforebegin', '<div class="pk-sec" id="pk-inv"><h4>Order, return or move inventory</h4><div class="pk-inv"></div></div>');
+      sec = document.getElementById('pk-inv');
+    }
+    return sec;
+  }
+  function scOffer(d, seq) {
+    if (!SC_ON || !d) return;
+    var id = String(d.id || P.id || '');
+    var pend = (numericId(id) || PREVIEW) ? api.coql("select id, Name, Notice_Status from Vendor_Orders where Case = " + id + " and Notice_Status = 'Pending approval' limit 1").then(function (r) { return Array.isArray(r) ? r[0] : null; }).catch(function () { return null; }) : Promise.resolve(null);
+    Promise.all([pend, scEligible(d)]).then(function (x) {
+      var order = x[0], ok = x[1];
+      if (seq !== P.seq || document.getElementById('sc-btn')) return;
+      var vSC = d.Vendor && String(d.Vendor.id) === SC_ID;
+      if (!order && !(ok && (vSC || invNeeded(d)))) return;
+      var sec = scSection(); if (!sec) return;
+      SC.caseId = id; SC.d = d; SC.pending = order || null; SC.orderId = order ? String(order.id) : ''; SC.acct = null; SC.contacts = [];
+      var host = sec.querySelector('.pk-inv');
+      host.insertAdjacentHTML('afterbegin', '<button type="button" class="btn" id="sc-btn" data-pk="sc-toggle" aria-expanded="false" title="Fills SuperCom\'s Agency Equipment Order/Return Form, emails it to SuperCom, and resolves the case">' + (order ? 'Order sent: approve the customer email' : 'Order from SuperCom') + '</button>');
+      sec.insertAdjacentHTML('beforeend', '<div class="composer sc-panel" data-pk="sc-panel" hidden></div>');
+      positionPeek();
+      if (order) scToggle(true);
+    });
+  }
+  function scPanel() { var p = $('peek'); return p ? p.querySelector('[data-pk="sc-panel"]') : null; }
+  function scSay(t, cls) { var p = scPanel(), m = p && p.querySelector('[data-pk="sc-msg"]'); if (m) { m.textContent = t || ''; m.className = 'pk-msg ' + (cls || ''); } }
+  function scToggle(open) {
+    var p = scPanel(), b = document.getElementById('sc-btn'); if (!p) return;
+    var want = open == null ? p.hidden : !!open;
+    p.hidden = !want; if (b) b.setAttribute('aria-expanded', String(want));
+    if (want && !p.getAttribute('data-built')) { p.setAttribute('data-built', '1'); if (SC.pending) scShowNotice(); else scBuild(); }
+    positionPeek();
+  }
+  function scItems(list, kind) {
+    return '<div class="sc-grid">' + list.map(function (it) {
+      return '<label class="sc-item"><span>' + esc(it[1]) + '</span><input type="number" min="0" max="99" step="1" inputmode="numeric" data-sc="' + kind + '-' + it[0] + '" placeholder="0" aria-label="' + esc(kind === 'req' ? 'Request ' : 'Return ') + esc(it[1]) + ' quantity"></label>';
+    }).join('') + '</div>';
+  }
+  /* read the customer's email (case Subject + Description) and pre-fill what it plainly says: items to return and to request,
+     the reason, the serial, and the details line. It only fills boxes; the person reviews every one before Send. */
+  function scGuess(d) {
+    var raw = String((d && d.Description) || '').replace(/\r/g, '');
+    var cut = raw.search(/\n\s*(best regards|kind regards|warm regards|regards|sincerely|sent from|confidentiality notice)/i);
+    var body = (cut >= 0 ? raw.slice(0, cut) : raw).replace(/^\s*(hello|hi|hey|good (morning|afternoon))[^\n.!?]{0,40}\n/i, '').replace(/\s+/g, ' ').trim().replace(/\s*thank(s| you)[.!\s]*$/i, '').trim();
+    var t = (String((d && d.Subject) || '') + ' ' + body).toLowerCase();
+    var g = { req: {}, ret: {}, reason: '', serial: '', details: body.slice(0, 400), any: false };
+    var m = body.match(/\b(?:sn|s\/n|serial(?:\s*(?:number|no\.?|#))?)[\s:#.\-]*([a-z0-9][a-z0-9\-]{5,})/i);
+    if (m) g.serial = m[1].replace(/-+$/, '');
+    var hasRet = /return (label|shipping|the|this|it|them)|returning|send(ing)? (it|them|this|the \w+) back|ship(ping)? (it|them|this|the \w+) back|\brma\b/.test(t);
+    var hasRep = /replacement|replace\b|send (me|us) (a|an|another|new)|need (a|an|another|new) (device|unit|gps)|ship (me|us)? ?(a|an|another)/.test(t);
+    var qty = function (re) { var q = t.match(re); return q ? String(Math.min(99, parseInt(q[1], 10) || 1)) : '1'; };
+    var acc = [['wall_charger', /wall charger/], ['mobile_charger', /(mobile|portable|car|vehicle) charger/], ['charging_cord', /charging (cord|cable)|\bcord\b/], ['strap_cutters', /strap cutters?/], ['strap_kit', /strap kit|\bstraps?\b/], ['installation_kit', /installation kit/], ['unit_kit', /unit kit/], ['purebeacon', /pure ?beacon/], ['pureshield', /pure ?shield/]];
+    var accHit = 0;
+    acc.forEach(function (a) { if (a[1].test(t) && !(a[0] === 'strap_kit' && /strap cutters?/.test(t) && !/strap kit/.test(t))) { accHit++; if (hasRep || /need|send|order/.test(t)) { var qm = t.match(new RegExp('(\\d{1,2})\\s+(?:replacement\\s+|new\\s+)?' + a[1].source.replace(/^\\b|\\b$/g, '').replace(/^\(\?:/, '(?:'))); g.req[a[0]] = qm ? String(Math.min(99, parseInt(qm[1], 10) || 1)) : '1'; } } });
+    if (hasRep && (!accHit || /replacement (device|unit|gps)|new (device|unit|gps)|replace the (device|unit)/.test(t))) g.req.device_only = qty(/(\d{1,2})\s+(?:replacement\s+|new\s+)?(?:devices|units|gps)/);
+    if (hasRet) g.ret.device_only = '1';
+    if (hasRet) g.reason = /charge|battery|malfunction|broken|defect|faulty|not work|won't|will not|doesn't|does not|dead|crack|damag|stopped|fail|error|issue|problem/.test(t) ? 'malfunction' : (/extra|surplus|no longer|not needed|don't need|closing|closed/.test(t) ? 'extra' : '');
+    g.any = !!(Object.keys(g.req).length || Object.keys(g.ret).length || g.serial || g.reason);
+    return g;
+  }
+  function scBuild() {
+    var p = scPanel(); if (!p) return;
+    var d = SC.d || {};
+    p.innerHTML = '<div class="meta">Loading the account…</div>';
+    var acctId = d.Account_Name && d.Account_Name.id;
+    var accP = acctId ? api.record('Accounts', acctId).catch(function () { return {}; }) : Promise.resolve({});
+    var conP;
+    if (PREVIEW) conP = Promise.resolve([{ id: 'k1', First_Name: 'Kara', Last_Name: 'Nelson', Email: 'kara@example.org', Title: 'Program Director' }, { id: 'k2', First_Name: 'Tom', Last_Name: 'Ruiz', Email: 'tom@example.org', Title: 'Supervisor' }, { id: 'k3', First_Name: 'Ann', Last_Name: 'Lee', Email: 'ann@example.org', Title: '' }]);
+    else conP = acctId ? api.coql("select id, First_Name, Last_Name, Email, Title from Contacts where Account_Name = " + acctId + " and Email is not null limit 60").then(function (r) { return Array.isArray(r) ? r : []; }).catch(function () { return []; }) : Promise.resolve([]);
+    var seq = P.seq;
+    Promise.all([accP, conP, scSender()]).then(function (x) {
+      if (seq !== P.seq || !scPanel()) return;
+      var a = x[0] || {}, contacts = (x[1] || []).filter(function (c) { return scIsEmail(c.Email); });
+      SC.acct = a; SC.contacts = contacts;
+      var caseEmail = (P.reach && scIsEmail(P.reach.email)) ? P.reach.email : (scIsEmail(d.Email) ? String(d.Email).trim() : '');
+      var agency = String(a.Account_Name || (d.Account_Name && d.Account_Name.name) || '').trim();
+      var contactBits = [d.Reported_By || (P.reach && P.reach.who) || '', (P.reach && P.reach.phone) || d.Phone || '', caseEmail].filter(Boolean);
+      var addr = [a.Shipping_Street || a.Billing_Street, a.Shipping_City || a.Billing_City, [a.Shipping_State || a.Billing_State, a.Shipping_Code || a.Billing_Code].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+      var copy = contacts.length ? contacts.map(function (c, i) {
+        var nm = [c.First_Name, c.Last_Name].filter(Boolean).join(' ') || c.Email;
+        return '<label class="sc-cc"><input type="checkbox" data-sc="cc" value="' + esc(String(c.Email).trim()) + '"' + (String(c.Email).trim().toLowerCase() === caseEmail.toLowerCase() ? ' checked' : '') + '> <span>' + esc(nm) + (c.Title ? ' · ' + esc(c.Title) : '') + ' <span class="meta">' + esc(c.Email) + '</span></span></label>';
+      }).join('') : '<span class="meta">No contacts with an email on this account.</span>';
+      p.innerHTML = '<h4 class="sc-h">SuperCom equipment order</h4>'
+        + '<div class="meta sc-note">Review the form, then Send. SuperCom gets the filled Agency Equipment Order/Return Form from your account; you are copied, along with anyone you tick. The case resolves as Device(s) Ordered, and the Order Sent email to the customer waits for your approval below.</div>'
+        + '<label>Agency <input type="text" data-sc="agency" maxlength="200" value="' + esc(agency) + '"></label>'
+        + '<label>Contact <input type="text" data-sc="contact" maxlength="200" value="' + esc(contactBits.join(' · ')) + '" placeholder="Name, phone, email"></label>'
+        + '<label>Ship to <input type="text" data-sc="address" maxlength="200" value="' + esc(addr) + '" placeholder="Street, city, state ZIP (required)"></label>'
+        + '<label>Serial <input type="text" data-sc="serial" maxlength="60" value="' + esc(d.Device_Serial || '') + '" placeholder="optional"></label>'
+        + '<fieldset class="sc-set"><legend>Request from SuperCom</legend>' + scItems(SC_REQ, 'req') + '</fieldset>'
+        + '<fieldset class="sc-set"><legend>Return to SuperCom</legend>' + scItems(SC_RET, 'ret') + '</fieldset>'
+        + '<div class="sc-row"><span class="sc-lbl">Reason for return</span>'
+        + '<label class="sc-rad"><input type="radio" name="sc-reason" data-sc="reason" value="malfunction"> Malfunction</label>'
+        + '<label class="sc-rad"><input type="radio" name="sc-reason" data-sc="reason" value="extra"> Extra equipment</label>'
+        + '<label class="sc-rad"><input type="radio" name="sc-reason" data-sc="reason" value="other"> Other</label></div>'
+        + '<div class="sc-row"><span class="sc-lbl">Signature required on delivery</span>'
+        + '<label class="sc-rad"><input type="radio" name="sc-sig" data-sc="sig" value="No" checked> No</label>'
+        + '<label class="sc-rad"><input type="radio" name="sc-sig" data-sc="sig" value="Yes"> Yes</label></div>'
+        + '<label class="stack"><span class="sc-lbl">Details for SuperCom (400 characters)</span><textarea data-sc="details" maxlength="400" rows="3" placeholder="Anything SuperCom needs to know"></textarea></label>'
+        + '<fieldset class="sc-set"><legend>Also copy (the account\'s contacts with an email)</legend><div class="sc-ccs">' + copy + '</div></fieldset>'
+        + '<label>Notice to <input type="text" data-sc="notice-to" value="' + esc(caseEmail) + '" placeholder="Who gets the Order Sent email"></label>'
+        + '<div class="send-row"><button type="button" class="btn primary" data-pk="sc-send">Send order to SuperCom</button><button type="button" class="btn" data-pk="sc-cancel">Cancel</button>'
+        + '<span class="from">from you · reply-to ' + esc(SUPPORT_FROM) + ' · ' + esc((d.Case_ID || 'the case')) + ' in the subject</span><span class="pk-msg" data-pk="sc-msg" aria-live="polite"></span></div>';
+      var gs = scGuess(d), setv = function (k, val) { var e = p.querySelector('[data-sc="' + k + '"]'); if (e && val) e.value = val; };
+      Object.keys(gs.req).forEach(function (k) { setv('req-' + k, gs.req[k]); });
+      Object.keys(gs.ret).forEach(function (k) { setv('ret-' + k, gs.ret[k]); });
+      if (gs.reason) { var re = p.querySelector('[data-sc="reason"][value="' + gs.reason + '"]'); if (re) re.checked = true; }
+      if (gs.serial && !d.Device_Serial) setv('serial', gs.serial);
+      setv('details', gs.details);
+      if (gs.any) { var nt0 = p.querySelector('.sc-note'); if (nt0) nt0.insertAdjacentHTML('afterend', '<div class="pk-msg ok">Filled from the customer\'s email: check the items, the reason and the details before you send.</div>'); }
+      positionPeek();
+      var f = p.querySelector('[data-sc="address"]'); if (f && !f.value) f.focus();
+    });
+  }
+  function scRead() {
+    var p = scPanel(), v = function (k) { var e = p.querySelector('[data-sc="' + k + '"]'); return e ? String(e.value || '').trim() : ''; };
+    var qty = function (list, kind) { var o = {}; list.forEach(function (it) { var q = v(kind + '-' + it[0]); if (q !== '' && q !== '0') o[it[0]] = q; }); return o; };
+    var rEl = p.querySelector('[data-sc="reason"]:checked'), sEl = p.querySelector('[data-sc="sig"]:checked');
+    var cc = Array.prototype.map.call(p.querySelectorAll('[data-sc="cc"]:checked'), function (e) { return e.value; });
+    var nt = v('notice-to').split(/[,;\s]+/).filter(Boolean);
+    return { agency: v('agency'), contact: v('contact'), address: v('address'), serial: v('serial'), signature: sEl ? sEl.value : '', reason: rEl ? rEl.value : '', details: v('details'), request: qty(SC_REQ, 'req'), 'return': qty(SC_RET, 'ret'), cc: cc, notice_to: nt };
+  }
+  function scCheck(o) {
+    if (!o.agency || !o.contact) return 'Agency and contact are required.';
+    if (!o.address) return 'Enter the ship-to address. Nothing goes to SuperCom without one.';
+    var bad = ''; Object.keys(o.request).forEach(function (k) { if (!/^\d{1,2}$/.test(o.request[k])) bad = 'Quantities are whole numbers from 1 to 99.'; });
+    Object.keys(o['return']).forEach(function (k) { if (!/^\d{1,2}$/.test(o['return'][k])) bad = 'Quantities are whole numbers from 1 to 99.'; });
+    if (bad) return bad;
+    if (!Object.keys(o.request).length && !Object.keys(o['return']).length) return 'Choose at least one item to request or return.';
+    if (Object.keys(o['return']).length && !o.reason) return 'Pick a reason for the return.';
+    if (!o.notice_to.length) return 'Add who gets the Order Sent email (Notice to).';
+    for (var i = 0; i < o.notice_to.length; i++) if (!scIsEmail(o.notice_to[i])) return 'Not an email address: ' + o.notice_to[i];
+    return '';
+  }
+  function scSend(btn) {
+    if (SC.sending) return;
+    var o = scRead(), err = scCheck(o);
+    if (err) { scSay(err, 'bad'); return; }
+    SC.sending = true; var was = btn.textContent; btn.disabled = true; btn.textContent = 'Sending…'; scSay('Filling the form and emailing SuperCom. This takes about 15 seconds.', '');
+    var id = SC.caseId, r = findCase(id);
+    scSender().then(function (me) {
+      var pl = { agency: o.agency, contact: o.contact, address: o.address, signature: o.signature, serial: o.serial, reason: o.reason, details: o.details, request: o.request, 'return': o['return'], cc: o.cc, notice_to: o.notice_to, sender_email: me };
+      if (SC.d && SC.d.Account_Name && SC.d.Account_Name.id) pl.account_id = String(SC.d.Account_Name.id);
+      return scFn('supercom_rma_send', { caseId: String(id), payload: JSON.stringify(pl) });
+    }).then(function (out) {
+      SC.sending = false; SC.orderId = String(out.order_id || '');
+      SC.pending = { id: SC.orderId };
+      var live = out.live !== false;
+      var line = (live ? 'Order sent to SuperCom' : 'TEST MODE: the SuperCom email went to ' + (out.sent_to || 'you') + ' only') + '. ';
+      /* the order is out: resolve the case the way the Resolve form does (Blueprint, Resolution Category Device(s) Ordered) */
+      var sol = 'Equipment ordered from SuperCom' + (o.serial ? ' for SN ' + o.serial : '') + ' (' + (out.case || caseName(r)) + ' order form sent).';
+      var btnEl = document.getElementById('sc-btn'); if (btnEl) btnEl.textContent = 'Order sent: approve the customer email';
+      return blueprintStatus(id, 'Resolved', 'SuperCom order sent from the case popout', { Resolution_Category: 'Device(s) Ordered', Solution: sol }).then(function () {
+        if (r) { r.Status = 'Resolved'; renderQueue(); refreshPeek(id); }
+        toast(caseName(r) + ' · ' + (live ? 'order sent to SuperCom · resolved' : 'TEST order sent to you · resolved'), { key: 'case:' + id, ms: 7000 });
+        scShowNotice(line + 'Case resolved as Device(s) Ordered.');
+      }, function (e) {
+        scShowNotice(line + 'The case was NOT resolved: ' + (e.message || 'the Blueprint refused') + ' Use the case\'s Resolve button (category Device(s) Ordered).', true);
+      });
+    }).catch(function (e) {
+      SC.sending = false; btn.disabled = false; btn.textContent = was; scSay(e.message || 'The order was not sent.', 'bad'); positionPeek();
+    });
+  }
+  function scShowNotice(lead, warn) {
+    var p = scPanel(); if (!p) return;
+    p.innerHTML = '<h4 class="sc-h">Order Sent email to the customer</h4><div class="pk-msg ' + (warn ? 'bad' : 'ok') + '" data-pk="sc-lead">' + esc(lead || 'This email is waiting for your approval. Nothing goes to the customer until you approve it.') + '</div><div class="meta">Loading the draft…</div>';
+    positionPeek();
+    var seq = P.seq;
+    scFn('supercom_rma_notice', { orderId: SC.orderId, action: 'get', payload: '{}' }).then(function (n) {
+      if (seq !== P.seq || !scPanel()) return;
+      if (n.status !== 'Pending approval') { p.innerHTML = '<h4 class="sc-h">Order Sent email to the customer</h4><div class="pk-msg ok">This email is ' + esc(n.status || 'not pending') + '. Nothing more to do here.</div>'; SC.pending = null; positionPeek(); return; }
+      p.innerHTML = '<h4 class="sc-h">Order Sent email to the customer</h4>'
+        + '<div class="pk-msg ' + (warn ? 'bad' : 'ok') + '" data-pk="sc-lead">' + esc(lead || 'This email is waiting for your approval. Nothing goes to the customer until you approve it.') + '</div>'
+        + '<label>To <input type="text" data-sc="n-to" value="' + esc(n.to || '') + '"></label>'
+        + '<label>Cc <input type="text" data-sc="n-cc" value="' + esc(n.cc || '') + '"></label>'
+        + '<label>Subject <input type="text" data-sc="n-subject" maxlength="200" value="' + esc(n.subject || '') + '"></label>'
+        + '<label class="stack"><span class="sr">Message</span><textarea data-sc="n-body" rows="9" aria-label="Message">' + esc(n.body || '') + '</textarea></label>'
+        + '<div class="send-row"><button type="button" class="btn primary" data-pk="sc-approve">Approve and send</button><button type="button" class="btn" data-pk="sc-nsave">Save edits</button><button type="button" class="btn" data-pk="sc-reject">Do not send</button>'
+        + '<span class="from">from you · reply-to ' + esc(SUPPORT_FROM) + '</span><span class="pk-msg" data-pk="sc-msg" aria-live="polite"></span></div>';
+      positionPeek();
+    }).catch(function (e) {
+      p.innerHTML = '<h4 class="sc-h">Order Sent email to the customer</h4><div class="pk-msg bad">Could not load the draft: ' + esc(e.message || 'error') + '</div>'; positionPeek();
+    });
+  }
+  function scNotice(action, btn) {
+    var p = scPanel(); if (!p) return;
+    var v = function (k) { var e = p.querySelector('[data-sc="' + k + '"]'); return e ? String(e.value || '').trim() : ''; };
+    var pl = { to: v('n-to'), cc: v('n-cc'), subject: v('n-subject'), body: v('n-body') };
+    if (action !== 'reject') {
+      if (!pl.to || !pl.subject || !pl.body) { scSay('To, subject and message are required.', 'bad'); return; }
+      var all = (pl.to + ',' + pl.cc).split(/[,;\s]+/).filter(Boolean), bad = all.filter(function (a) { return !scIsEmail(a); })[0];
+      if (bad) { scSay('Not an email address: ' + bad, 'bad'); return; }
+    }
+    var was = btn.textContent, btns = p.querySelectorAll('button'); Array.prototype.forEach.call(btns, function (b) { b.disabled = true; }); btn.textContent = action === 'approve' ? 'Sending…' : 'Working…'; scSay('');
+    scSender().then(function (me) { pl.sender_email = me; return scFn('supercom_rma_notice', { orderId: SC.orderId, action: action, payload: JSON.stringify(pl) }); }).then(function (out) {
+      var st = String(out.status || '');
+      if (action === 'approve' && out.live !== false) { SC.pending = null; p.innerHTML = '<h4 class="sc-h">Order Sent email to the customer</h4><div class="pk-msg ok">Sent to ' + esc(pl.to) + '. A note is on the case.</div>'; var b0 = document.getElementById('sc-btn'); if (b0) b0.textContent = 'Order sent'; toast('Order Sent email sent to ' + pl.to, { key: P.key, ms: 6000 }); }
+      else if (action === 'approve') { Array.prototype.forEach.call(btns, function (b) { b.disabled = false; }); btn.textContent = was; scSay('TEST MODE: a copy went to you only. ' + st + '. Nothing went to the customer.', 'ok'); }
+      else if (action === 'reject') { SC.pending = null; p.innerHTML = '<h4 class="sc-h">Order Sent email to the customer</h4><div class="pk-msg ok">Not sent. The draft is marked Rejected; write to the customer yourself if they need to hear.</div>'; var b1 = document.getElementById('sc-btn'); if (b1) b1.textContent = 'Order sent'; }
+      else { Array.prototype.forEach.call(btns, function (b) { b.disabled = false; }); btn.textContent = was; scSay('Edits saved. Still waiting for approval.', 'ok'); }
+      positionPeek();
+    }).catch(function (e) { Array.prototype.forEach.call(btns, function (b) { b.disabled = false; }); btn.textContent = was; scSay(e.message || 'That did not work.', 'bad'); positionPeek(); });
+  }
+  function scClick(what, b) {
+    if (what === 'sc-toggle') scToggle();
+    else if (what === 'sc-cancel') scToggle(false);
+    else if (what === 'sc-send') scSend(b);
+    else if (what === 'sc-approve') scNotice('approve', b);
+    else if (what === 'sc-nsave') scNotice('save', b);
+    else if (what === 'sc-reject') scNotice('reject', b);
   }
   function loadCaseDetail(id, seq) {
     var ok = function () { return seq === P.seq; };
@@ -6258,6 +6546,7 @@ function rpInit() {
       if (d.Email || d.Reported_By) extra += '<dt>Reported by</dt><dd>' + esc(d.Reported_By || '') + (d.Email ? (d.Reported_By ? ' · ' : '') + '<a href="mailto:' + esc(d.Email) + '">' + esc(d.Email) + '</a>' : '') + '</dd>';
       if (extra) $('pk-facts').insertAdjacentHTML('beforeend', extra);
       invPortals(d, seq);
+      scOffer(d, seq);
       setHTML('pk-desc-b', d.Description ? '<p class="pk-text">' + esc(clip(plain(d.Description), 900)) + '</p>' : '<p class="meta">No description.</p>');
       /* who to reach: the case's Email and Phone first, then the linked Contact's phone */
       P.reach.email = isEmail(d.Email) ? String(d.Email).trim() : '';
@@ -6339,6 +6628,7 @@ function rpInit() {
       if (seq !== P.seq || !P.reach || !rows.length) return;
       var c = rows[0], name = [c.First_Name, c.Last_Name].filter(Boolean).join(' ') || c.Full_Name || '';
       if (name) P.reach.who = name;
+      P.reach.first = String(c.First_Name || '').trim(); P.reach.byContact = true;
       if (!P.reach.contactId) P.reach.contactId = String(c.id);
       if (!P.reach.phone) { var p = telHref(c.Phone) ? c.Phone : telHref(c.Mobile) ? c.Mobile : telHref(c.Office_Phone) ? c.Office_Phone : telHref(c.Home_Phone) ? c.Home_Phone : telHref(c.Asst_Phone) ? c.Asst_Phone : ''; if (p) P.reach.phone = String(p); }
       P.reach.named = true;
@@ -6367,9 +6657,21 @@ function rpInit() {
       + composerHTML(R, r) + callLogHTML(R, r);
     positionPeek();
   }
+  /* S69 greeting: first name only. The Contact's First Name when the email lookup found one; otherwise the
+     first word of the name we have, reading "Last, First", dropping a leading title, and never using an
+     email address. "there" when nothing usable. */
+  function greetFirst(R) {
+    var f = String((R && R.first) || '').trim(); if (f) return f;
+    if (R && R.byContact) return 'there';
+    var s = String((R && R.who) || '').trim();
+    if (!s || s.indexOf('@') > -1) return 'there';
+    if (s.indexOf(',') > -1) { var after = s.split(',').slice(1).join(' ').trim(); s = after || s.split(',')[0].trim(); }
+    s = s.replace(/^(mr|mrs|ms|miss|dr|prof)\.?\s+/i, '');
+    return s.split(/\s+/)[0] || 'there';
+  }
   function composerHTML(R, r) {
     var subj = replySubject(r.Case_ID, (R.lastMail && R.lastMail.Name) || r.Subject);
-    var body = 'Hi ' + (R.who ? String(R.who).trim() : 'there') + ',\n\n\n\nThanks,\n' + (meUser().name || '') + '\nJusticePoint EM Support' + quoteBlock(R.lastMail);
+    var body = 'Hi ' + greetFirst(R) + ',\n\n\n\nThanks,\n' + (meUser().name || '') + '\nJusticePoint EM Support' + quoteBlock(R.lastMail);
     return '<div class="composer" data-pk="composer" hidden>'
       + '<label>To <input type="email" data-pk="to" value="' + esc(R.email) + '" aria-label="To"></label>'
       + '<label>Cc <input type="text" data-pk="cc" placeholder="optional, comma separated" aria-label="Cc"></label>'
@@ -7072,6 +7374,7 @@ function rpInit() {
       else if (what === 'nac-go') nacGo(b);
       else if (what === 'nac-cancel') refreshPeek(P.id);
       else if (what === 'resolve-cancel') refreshPeek(P.id);
+      else if (what && what.indexOf('sc-') === 0) scClick(what, b);
     });
     peek.addEventListener('change', function (ev) {
       var s = ev.target, what = s.getAttribute && s.getAttribute('data-pk'), r = findCase(P.id); if (!r) return;
@@ -11367,7 +11670,7 @@ renderQueue = function () { var r = agRenderQueue.apply(this, arguments); if (AG
   .dpop .dp-bar, .dpop .dp-note { max-width: min(100%, calc(100vw - 48px)); position: sticky; left: 0; }
 </style>
 <!-- jpk-s24:begin -->
-<meta name="jpk-build" content="Beau CS Home v6.13.3 (S49 Stock Alerts links) from v6.13.2 (v6.13.1 S47 + S48 cleaner calendar: times on their own line, click-anywhere date and time pickers, 30 Oct 2026)">
+<meta name="jpk-build" content="Beau CS Home v6.16.1 (S76, 5 Nov 2026: Needs you today shows "Rates to fill: N" for Administrators, from rates-model.js 1.0.1, off with ?s76=0) + v6.15.2 (S75, 3 Nov 2026: Import contacts + stakeholder gaps, off with ?s75=0) + v6.15.1 (v6.14.1 + S73 SuperCom order in the case popout, off with ?s73=0; v6.14.0 + S69 first-name greeting; v6.13.3 S49 + S65 Phase 13d: KPI row and Customer health, off with ?s13=0, 2 Nov 2026)">
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
    v6.0.2: the full-width zone below the two columns (.jpk-full) and the "Top" button (.jpk-totop).
@@ -12251,7 +12554,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'cs',
   title: 'Beau CS Home',
-  build: 'Beau CS Home v6.13.2',
+  build: 'Beau CS Home v6.15.2',
   slugs: { Collection_Requests: 'CustomModule30', Billing_Periods: 'CustomModule8', Collections_Reports: 'CustomModule29', Accessory_Order_Recommendations: 'CustomModule32', Support_Emails: 'CustomModule15', Solicitations: 'CustomModule21' },
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   views: { collectionsApproval: { module: 'Collection_Requests', cvid: '6715134000007984743' } },
@@ -13179,7 +13482,7 @@ window.JPK_SHELL = {
   var DEFAULTS = {
     home: 'cs',
     title: 'Beau CS Home',
-    build: 'Beau CS Home v6.13.2',
+    build: 'Beau CS Home v6.15.2',
     enabled: true,
     greeting: '#greeting',
     crmBase: 'https://crm.zoho.com/crm/org882980956/tab/',
@@ -13626,7 +13929,8 @@ window.JPK_SHELL = {
     approve: { tag: 'Approve', area: 'Collections' },
     renewal: { tag: 'Renewal', area: 'Contracts' },
     lost: { tag: 'Lost or damaged', area: 'Lost & Damaged Devices' },
-    verify: { tag: 'Verify', area: 'Admin Processes' }
+    verify: { tag: 'Verify', area: 'Admin Processes' },
+    rates: { tag: 'Rates', area: 'Admin Processes' }   /* S76: Rates to fill (jpk-s76-rates) */
   };
   function idCmp(a, b) { a = String(a); b = String(b); if (isId(a) && isId(b)) return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0); return a < b ? -1 : a > b ? 1 : 0; }
   /* -> { state: loading|ok, rows: [{ type, key, id, text, date (ms or null), act, go }], notes: [] }
@@ -13668,6 +13972,9 @@ window.JPK_SHELL = {
       var dd = dayOf(i.due), per = String(i.title || '').replace(/^Billing\s*/, '') || 'this month';
       add({ type: 'verify', id: String(i.id), text: 'Vendor billing to reconcile: ' + per, date: dd ? dd.getTime() : null, act: 'Open', go: { kind: 'rec', module: 'Billing_Periods', id: i.id, fallback: 'billingCheck' } });
     });
+    /* 6. S76: Rates to fill (Administrators; set by jpk-s76-rates from rates-model.js, the Rates screen's own count) */
+    var rf = root.__jpkRatesToFill;
+    if (rf && rf.n > 0) add({ type: 'rates', id: 'rates-to-fill', text: 'Rates to fill: ' + rf.n + (rf.unpriced ? ' (' + rf.unpriced + ' of ' + rf.units + ' units on leg not priced)' : ''), date: null, act: 'Open', go: { kind: 'rec', module: 'Rate_Lines', id: 'rates-to-fill', fallback: 'billingCheck' } });
     rows.sort(function (a, b) {
       if (a.date != null && b.date != null) return a.date - b.date || idCmp(a.id, b.id);
       if (a.date != null) return -1; if (b.date != null) return 1;
@@ -13711,7 +14018,7 @@ window.JPK_SHELL = {
     all.textContent = more > 0 ? 'See all (' + more + ' more)' : '';
     if (keep) { var nb = s.querySelector('[data-jpk-nt-go="' + keep + '"]'); if (nb) nb.focus(); }
   }
-  var SEE_ALL = { stock: '#z-sm', approve: '#agenda-card', renewal: '#needs-today', verify: '#agenda-card', lost: '#needs-today' };
+  var SEE_ALL = { stock: '#z-sm', approve: '#agenda-card', renewal: '#needs-today', verify: '#agenda-card', lost: '#needs-today', rates: '#needs-today' };
   function onNeedsClick(e) {
     var b = e.target.closest && e.target.closest('[data-jpk-nt-go],[data-jpk-nt-all]');
     /* v6.1: with popouts on, the whole row opens the same box as its button (the button stays the one tab stop) */
@@ -14735,9 +15042,9 @@ window.JPK_SHELL = {
       empty: function () { return 'Nothing needs you today.'; },
       rows: function () { var s = shell(), m = s && s.needs && s.needs.model(); return m && m.state === 'ok' ? m.rows : null; },
       cols: [
-        { label: 'Type', get: function (r) { return { stock: 'Stock alert', approve: 'Approve', renewal: 'Renewal', lost: 'Lost or damaged', verify: 'Verify' }[r.type] || r.type; }, filter: true },
+        { label: 'Type', get: function (r) { return { stock: 'Stock alert', approve: 'Approve', renewal: 'Renewal', lost: 'Lost or damaged', verify: 'Verify', rates: 'Rates' }[r.type] || r.type; }, filter: true },
         { label: 'Item', get: function (r) { return r.text; }, main: true },
-        { label: 'Area', get: function (r) { return { stock: 'Daily Unit Counts', approve: 'Collections', renewal: 'Contracts', lost: 'Lost & Damaged Devices', verify: 'Admin Processes' }[r.type] || ''; } }
+        { label: 'Area', get: function (r) { return { stock: 'Daily Unit Counts', approve: 'Collections', renewal: 'Contracts', lost: 'Lost & Damaged Devices', verify: 'Admin Processes', rates: 'Admin Processes' }[r.type] || ''; } }
       ],
       peek: function (r) { return needsPeek(r); },
       expect: function () { var t = tx($('jpk-nt') && $('jpk-nt').querySelector('.jpk-nt-badge')); var m = /^(\d+) open$/.exec(t); return m ? +m[1] : null; },
@@ -21367,5 +21674,914 @@ window.JPK_S38 = {"home": "cs", "frame": false, "send": true, "newList": "#new-l
 
 </script>
 <!-- jpk-s38:end -->
+<!-- jpk-s13:begin -->
+<style id="jpk-s13-css">
+/* jpk-s13-cs.css v1.0.0 (S65, Phase 13d, 2 Nov 2026): CS Home KPI row and Customer health. Off: ?s13=0 */
+#s13-kpi, #s13-cs {
+  --t-surface: light-dark(#FFFFFF, #191C20); --t-surface2: light-dark(#F7F8FA, #1F2328); --t-ink: light-dark(#1F2328, #E6E8EB);
+  --t-ink2: light-dark(#3A424B, #C9CED4); --t-muted: light-dark(#5B6470, #9AA1AB); --t-line: light-dark(#DDE1E6, #2B3038);
+  --t-accent: light-dark(#2F55A4, #7F9FE0); --t-accent-ink: light-dark(#284A90, #9DB6EA);
+  --t-bad: light-dark(#B42318, #F08A82); --t-warn: light-dark(#8A5300, #E0B055); --t-good: light-dark(#1E7A46, #5EC58C);
+  box-sizing: border-box; color: var(--t-ink);
+}
+#s13-kpi *, #s13-cs * { box-sizing: border-box; }
+#s13-kpi[hidden], #s13-cs[hidden] { display: none; }
+#s13-kpi { margin: 0 0 14px; }
+.s13-k { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 128px), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.s13-k > li { display: flex; min-width: 0; }
+.s13-kt { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 12px 14px; text-align: left; font: inherit; color: var(--t-ink);
+  background: var(--t-surface); border: 1px solid var(--t-line); border-left: 4px solid var(--t-line); border-radius: 4px; }
+button.s13-kt { cursor: pointer; } button.s13-kt:hover { border-color: var(--t-accent); }
+.s13-kt.bad { border-left-color: var(--t-bad); } .s13-kt.warn { border-left-color: var(--t-warn); } .s13-kt.good { border-left-color: var(--t-good); }
+.s13-kl { font-size: 12.5px; font-weight: 600; color: var(--t-ink2); }
+.s13-kn { font-size: 30px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.s13-km { font-size: 12px; line-height: 1.35; color: var(--t-muted); }
+#s13-cs { margin: 0 0 14px; padding: 16px 18px; background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 10px; }
+.s13-hd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0 0 10px; }
+.s13-hd h2 { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.3; color: var(--t-ink); }
+.s13-stamp { font-size: 12px; color: var(--t-muted); }
+.s13-tw { overflow-x: auto; margin: 0 -2px; }
+.s13-t { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.4; }
+.s13-t th, .s13-t td { padding: 7px 8px; text-align: left; vertical-align: top; border-top: 1px solid var(--t-line); }
+.s13-t thead th { font-size: 12px; font-weight: 600; color: var(--t-muted); border-top: 0; white-space: nowrap; }
+.s13-t tbody th { font-weight: 600; }
+.s13-t a, .s13-l a { color: var(--t-accent-ink); text-decoration: none; overflow-wrap: anywhere; }
+.s13-t a:hover, .s13-l a:hover { text-decoration: underline; }
+.s13-why { color: var(--t-ink2); min-width: 14ch; }
+.s13-nw { white-space: nowrap; }
+.s13-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--t-muted); white-space: nowrap; }
+.s13-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.s13-chip.bad { color: var(--t-bad); } .s13-chip.warn { color: var(--t-warn); } .s13-chip.good { color: var(--t-good); }
+.s13-btn { margin-top: 8px; min-height: 34px; padding: 6px 12px; font: 600 13px/1.2 inherit; color: var(--t-ink); background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 6px; cursor: pointer; }
+.s13-btn:hover { border-color: var(--t-accent); }
+.s13-kt:focus-visible, .s13-btn:focus-visible, .s13-t a:focus-visible, .s13-l a:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
+.s13-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 8px 24px; margin-top: 14px; }
+.s13-two h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.s13-two h3 span { margin-left: 6px; font-weight: 600; color: var(--t-muted); }
+.s13-two h3:focus { outline: none; }
+.s13-l { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.s13-l li { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; padding: 5px 0; border-top: 1px solid var(--t-line); }
+.s13-l li:first-child { border-top: 0; }
+.s13-l li > span:not(.s13-chip) { color: var(--t-muted); font-size: 12.5px; }
+.s13-none { margin: 0; font-size: 13px; color: var(--t-muted); }
+.s13-err { margin: 8px 0 0; font-size: 13px; color: var(--t-bad); }
+.vh13 { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 640px) {
+  #s13-cs { padding: 12px; } .s13-kn { font-size: 26px; }
+  .s13-t thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .s13-t, .s13-t tbody { display: block; }
+  .s13-t tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--t-line); }
+  .s13-t tbody th, .s13-t td { padding: 0; border-top: 0; }
+  .s13-t .s13-why { grid-column: 1 / -1; min-width: 0; }
+  .s13-t td.s13-nw, .s13-t td.s13-own { font-size: 12px; color: var(--t-muted); }
+  .s13-t td.s13-nw::before { content: "Renewal: "; } .s13-t td.s13-own { text-align: right; }
+}
+</style>
+<script id="jpk-s13">
+/* jpk-s13-cs.js v1.0.0 (S65, cohesion plan Phase 13d, mockup board 4A, 2 Nov 2026). Beau CS Home only.
+   Today tab, two new cards; every existing section is kept:
+   1. KPI row (top of Today): accounts red, accounts yellow, renewing in 90 days (count and value), onboardings in progress,
+      escalated to you. Each is a button that scrolls to its list.
+   2. "Customer health" (after Sent to Leadership): every account with a health tier, sorted by risk (lowest score first),
+      with the reason (Health_Reason, from health_score_nightly), the next contract end date and the owner; 12 rows, then Show all.
+      Under it: Onboarding in progress (Customer_Onboarding: phase, risk, go-live target, overdue tasks) and Escalated to you
+      (open cases past SLA where you are Escalate To or own the account).
+   Live data only: in preview (no Zoho SDK, or ?demo=1) labelled sample rows are shown. Read only: COQL and getCurrentUser.
+   Off switch: ?s13=0. */
+(function (root) {
+  'use strict';
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+  var ROWS = 12;
+  var TIER_RANK = { Red: 0, Yellow: 1, Green: 2 };
+
+  /* ---------------- model (pure; tested in node) ---------------- */
+  function num(v) { var n = +v; return v === '' || v == null || isNaN(n) ? null : n; }
+  function money(n) { return n == null ? '—' : '$' + Math.round(n).toLocaleString('en-US'); }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function shortDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); if (!m) return '';
+    return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function name2(f, l) { return [f, l].filter(function (x) { return x; }).join(' ').trim(); }
+  /* accounts: [{id, Account_Name, Health_Tier, Health_Score, Health_Reason, owner, ownerId}]; ends: {accountId: 'yyyy-mm-dd'} */
+  function healthRows(accounts, ends) {
+    return (accounts || []).filter(function (a) { return a && TIER_RANK[a.Health_Tier] != null && !/^TEST/.test(a.Account_Name || ''); })
+      .map(function (a) { return { id: String(a.id), name: a.Account_Name || '(no name)', tier: a.Health_Tier, score: num(a.Health_Score), reason: a.Health_Reason || '', renew: (ends && ends[a.id]) || '', owner: a.owner || '', ownerId: a.ownerId || '' }; })
+      .sort(function (x, y) {
+        return (TIER_RANK[x.tier] - TIER_RANK[y.tier]) || ((x.score == null ? 999 : x.score) - (y.score == null ? 999 : y.score)) ||
+          ((x.renew || '9999') < (y.renew || '9999') ? -1 : (x.renew || '9999') > (y.renew || '9999') ? 1 : 0) || (x.name < y.name ? -1 : 1);
+      });
+  }
+  function earliestEnds(contracts) {
+    var e = {};
+    (contracts || []).forEach(function (c) { var a = c.accountId, d = c.end; if (!a || !d) return; if (!e[a] || d < e[a]) e[a] = d; });
+    return e;
+  }
+  function renewals(deals, today) {
+    var lim = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90)), t0 = ymd(today), n = 0, v = 0, na = 0;
+    (deals || []).forEach(function (d) {
+      var c = (d.Closing_Date || '').slice(0, 10); if (!c || c > lim || c < t0) return;
+      n++; var a = num(d.Amount); if (a == null) na++; else v += a;
+    });
+    return { count: n, value: v, noAmount: na };
+  }
+  function escalated(cases, meId, myAccounts) {
+    var mine = {}; (myAccounts || []).forEach(function (id) { mine[String(id)] = 1; });
+    return (cases || []).filter(function (c) {
+      return c && c.SLA_Status === 'Breached' && c.Status !== 'Closed' && (String(c.escalateId || '') === String(meId || '-') || mine[String(c.accountId || '')]);
+    });
+  }
+  function kpis(H, R, onb, esc) {
+    var red = H.filter(function (h) { return h.tier === 'Red'; }).length, yel = H.filter(function (h) { return h.tier === 'Yellow'; }).length;
+    return [
+      { key: 'red', label: 'Accounts red', num: String(red), tone: red ? 'bad' : 'good', mean: red ? 'Lowest health first in the table below.' : 'No red accounts.', go: 's13-health' },
+      { key: 'yellow', label: 'Accounts yellow', num: String(yel), tone: yel ? 'warn' : 'good', mean: 'Watch list.', go: 's13-health' },
+      { key: 'renew', label: 'Renewing in 90 days', num: String(R.count), tone: R.noAmount ? 'warn' : 'none',
+        mean: R.count ? money(R.value) + ' value' + (R.noAmount ? ' · incomplete: ' + R.noAmount + ' with no Amount' : '') : 'No renewal opportunities close in 90 days.', go: '' },
+      { key: 'onb', label: 'Onboardings in progress', num: String(onb.length), tone: onb.some(function (o) { return o.risk && o.risk !== 'On Track'; }) ? 'warn' : 'none',
+        mean: onb.length ? plural(onb.filter(function (o) { return o.risk && o.risk !== 'On Track'; }).length, 'at risk or stalled', 'at risk or stalled') : 'None open.', go: 's13-onb' },
+      { key: 'esc', label: 'Escalated to you', num: String(esc.length), tone: esc.length ? 'bad' : 'good', mean: esc.length ? 'Open cases past SLA.' : 'No case past SLA on your accounts.', go: 's13-esc' }
+    ];
+  }
+  var model = { healthRows: healthRows, earliestEnds: earliestEnds, renewals: renewals, escalated: escalated, kpis: kpis, ymd: ymd };
+  if (typeof module !== 'undefined' && module.exports) { module.exports = model; return; }
+  if (/[?&]s13=0\b/.test(root.location.search)) return;
+
+  /* ---------------- page ---------------- */
+  var doc = root.document, html = doc.documentElement;
+  function $(id) { return doc.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function zoho() { var Z = root.ZOHO; return Z && Z.CRM && Z.CRM.API ? Z : null; }
+  function live() { return !/[?&](demo|ntdemo|preview)=1/.test(root.location.search) && !!zoho(); }
+  function timeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timed out')); }, ms); })]); }
+  function fit() { try { if (root.hlFrameFit) root.hlFrameFit.request(); } catch (e) {} }
+  function zones() { try { return (root.JPKShell && root.JPKShell.config && root.JPKShell.config.zones) || null; } catch (e) { return null; } }
+  function addZone(sel, refs, before) {
+    var Z = zones(); if (!Z) return;
+    ['main', 'narrowOrder'].forEach(function (k) {
+      var a = Z[k]; if (!Array.isArray(a) || a.indexOf(sel) >= 0) return;
+      var i = -1; refs.some(function (r) { i = a.indexOf(r); return i >= 0; });
+      if (i < 0) { if (k === 'main') a.push(sel); return; }
+      a.splice(before ? i : i + 1, 0, sel);
+    });
+  }
+  function coql(q) {
+    return timeout(root.ZOHO.CRM.API.coql({ select_query: q }), 20000).then(function (r) { return (r && r.data) || []; },
+      function (e) { if (!e || e.status === 204 || e.code === 'NO_CONTENT' || e === '') return []; throw e; });
+  }
+  function coqlAll(q) {
+    var all = [];
+    function page(p) { return coql(q + ' limit 200 offset ' + (p * 200)).then(function (rows) { all = all.concat(rows); return rows.length === 200 && p < 4 ? page(p + 1) : all; }); }
+    return page(0);
+  }
+  /* line the left and right edges up with the Needs you today card */
+  function edges(card, like) {
+    try { var cs = root.getComputedStyle(like);
+      if (card.style.marginLeft !== cs.marginLeft) card.style.marginLeft = cs.marginLeft;
+      if (card.style.marginRight !== cs.marginRight) card.style.marginRight = cs.marginRight; } catch (e) {}
+  }
+  function lk(v) { return v && typeof v === 'object' ? String(v.id || '') : v ? String(v) : ''; }
+
+  var DEMO = {
+    me: { id: 'u1', name: 'Sample user' },
+    accounts: [
+      { id: 'd1', Account_Name: 'Sample County Sheriff', Health_Tier: 'Red', Health_Score: 25, Health_Reason: 'No logged touch (-40); Renewal date passed (-25); No GPS on leg (-10)', owner: 'Sample owner', ownerId: 'u1' },
+      { id: 'd2', Account_Name: 'Sample County HHS', Health_Tier: 'Red', Health_Score: 30, Health_Reason: 'No logged touch (-40); Renewal in 59 days (-20); No GPS on leg (-10)', owner: 'Sample owner', ownerId: 'u1' },
+      { id: 'd3', Account_Name: 'Sample Pretrial Program', Health_Tier: 'Yellow', Health_Score: 60, Health_Reason: 'Renewal in 59 days (-20); 1 open case (-5)', owner: 'Sample owner', ownerId: 'u1' },
+      { id: 'd4', Account_Name: 'Sample Treatment Court', Health_Tier: 'Green', Health_Score: 95, Health_Reason: 'No risk signals', owner: 'Sample owner', ownerId: 'u1' }],
+    ends: { d2: '2027-01-01', d3: '2027-01-01', d4: '2027-06-30' },
+    deals: [{ Closing_Date: ymd(new Date(Date.now() + 40 * 864e5)), Amount: 14600 }, { Closing_Date: ymd(new Date(Date.now() + 60 * 864e5)), Amount: null }],
+    onb: [{ id: 'o1', name: 'Sample County Sheriff', phase: 'Setup', risk: 'At Risk', golive: '2026-12-01', overdue: 2 }],
+    cases: [{ id: 'c1', Subject: 'Sample: device not reporting', Status: 'New', SLA_Status: 'Breached', Due_By: '', escalateId: 'u1', accountId: 'd1', account: 'Sample County Sheriff' }]
+  };
+  var S = null, err = null, showAll = false;
+
+  function read() {
+    if (!live()) return Promise.resolve(DEMO);
+    var Z = root.ZOHO.CRM, today = new Date(), t0 = ymd(today), t90 = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90));
+    var me = (Z.CONFIG && Z.CONFIG.getCurrentUser ? timeout(Z.CONFIG.getCurrentUser(), 10000) : Promise.resolve(null)).then(function (r) {
+      var u = r && r.users && r.users[0]; return u ? { id: String(u.id), name: u.full_name || name2(u.first_name, u.last_name) } : null;
+    }).catch(function () { return null; });
+    var parts = {
+      acc: coqlAll("select id, Account_Name, Health_Tier, Health_Score, Health_Reason, Owner.id, Owner.first_name, Owner.last_name from Accounts where Health_Tier in ('Red','Yellow','Green') order by Health_Score asc"),
+      con: coqlAll("select Account.id, Final_End_Date from Contracts where (Counterparty_Type = 'Customer' and Final_End_Date >= '" + t0 + "')"),
+      deals: coqlAll("select id, Closing_Date, Amount from Deals where ((Procurement_Route = 'Renewal' and Stage_Group in ('Early','Working')) and (Closing_Date >= '" + t0 + "' and Closing_Date <= '" + t90 + "'))"),
+      onb: coql("select id, Status, Phase, Risk, Go_live_Target, Overdue_Tasks, Account.Account_Name, Account.id from Customer_Onboarding where Status in ('Not started','In progress','On hold') order by Go_live_Target asc limit 50"),
+      cases: coqlAll("select id, Subject, Status, SLA_Status, Due_By, Escalate_To, Account_Name.id, Account_Name.Account_Name from Cases where (Status != 'Closed' and SLA_Status = 'Breached')")
+    };
+    var keys = Object.keys(parts), errs = [];
+    return Promise.all([me].concat(keys.map(function (k) { return parts[k].catch(function (e) { errs.push(k); return []; }); }))).then(function (r) {
+      var o = { me: r[0], partial: errs };
+      keys.forEach(function (k, i) { o[k] = r[i + 1]; });
+      return {
+        me: o.me, partial: errs,
+        accounts: o.acc.map(function (a) { return { id: String(a.id), Account_Name: a.Account_Name, Health_Tier: a.Health_Tier, Health_Score: a.Health_Score, Health_Reason: a.Health_Reason, owner: name2(a['Owner.first_name'], a['Owner.last_name']), ownerId: String(a['Owner.id'] || '') }; }),
+        ends: earliestEnds(o.con.map(function (c) { return { accountId: String(c['Account.id'] || lk(c.Account)), end: (c.Final_End_Date || '').slice(0, 10) }; })),
+        deals: o.deals,
+        onb: o.onb.map(function (x) { return { id: String(x.id), name: x['Account.Account_Name'] || '(no account)', status: x.Status, phase: x.Phase || '', risk: x.Risk || '', golive: x.Go_live_Target || '', overdue: num(x.Overdue_Tasks) || 0 }; }),
+        cases: o.cases.map(function (c) { return { id: String(c.id), Subject: c.Subject, Status: c.Status, SLA_Status: c.SLA_Status, Due_By: c.Due_By, escalateId: lk(c.Escalate_To), accountId: String(c['Account_Name.id'] || ''), account: c['Account_Name.Account_Name'] || '' }; })
+      };
+    });
+  }
+
+  var CHIP = { Red: 'bad', Yellow: 'warn', Green: 'good' };
+  function paint() {
+    var kp = $('s13-kpi'), card = $('s13-cs'); if (!kp || !card) return;
+    var body = card.querySelector('.s13-body'), st = card.querySelector('.s13-stamp');
+    if (err) { kp.innerHTML = ''; kp.hidden = true; body.innerHTML = '<p class="s13-err">Customer health could not be read (' + esc(err) + ').</p>'; fit(); return; }
+    if (!S) { kp.hidden = true; body.innerHTML = '<p class="s13-none">Loading…</p>'; fit(); return; }
+    var H = healthRows(S.accounts, S.ends), R = renewals(S.deals, new Date());
+    var myAcc = H.filter(function (h) { return S.me && h.ownerId === S.me.id; }).map(function (h) { return h.id; });
+    var E = escalated(S.cases, S.me && S.me.id, myAcc), K = kpis(H, R, S.onb || [], E);
+    kp.hidden = false;
+    kp.innerHTML = '<h2 class="vh13">Customer success numbers</h2><ul class="s13-k">' + K.map(function (k) {
+      return '<li><' + (k.go ? 'button type="button" data-s13-go="' + k.go + '"' : 'div') + ' class="s13-kt ' + k.tone + '"><span class="s13-kl">' + esc(k.label) + '</span><span class="s13-kn">' + esc(k.num) + '</span><span class="s13-km">' + esc(k.mean) + '</span></' + (k.go ? 'button' : 'div') + '></li>';
+    }).join('') + '</ul>';
+    var rows = showAll ? H : H.slice(0, ROWS);
+    var t = H.length ? '<div class="s13-tw"><table class="s13-t"><caption class="vh13">Accounts by health, lowest first</caption><thead><tr><th scope="col">Account</th><th scope="col">Health</th><th scope="col">Why</th><th scope="col">Renewal</th><th scope="col">Owner</th></tr></thead><tbody>' +
+      rows.map(function (h) {
+        return '<tr><th scope="row"><a href="' + (live() ? ORG + 'Accounts/' + encodeURIComponent(h.id) : '#') + '" target="_top" rel="noopener">' + esc(h.name) + '</a></th>' +
+          '<td><span class="s13-chip ' + CHIP[h.tier] + '">' + esc(h.tier) + (h.score != null ? ' · ' + h.score : '') + '</span></td>' +
+          '<td class="s13-why">' + esc(h.reason || '—') + '</td><td class="s13-nw">' + esc(h.renew ? shortDate(h.renew) : 'none active') + '</td><td class="s13-own">' + esc(h.owner || '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      (H.length > ROWS ? '<button type="button" class="s13-btn" data-s13-all>' + (showAll ? 'Show the first ' + ROWS : 'Show all ' + H.length) + '</button>' : '')
+      : '<p class="s13-none">No account has a health tier yet. Health is scored each morning.</p>';
+    var onb = S.onb || [];
+    var o = '<h3 id="s13-onb">Onboarding in progress <span>' + onb.length + '</span></h3>' + (onb.length ? '<ul class="s13-l">' + onb.map(function (x) {
+      return '<li><a href="' + (live() ? ORG + 'Customer_Onboarding/' + encodeURIComponent(x.id) : '#') + '" target="_top" rel="noopener">' + esc(x.name) + '</a><span>' +
+        esc([x.phase ? 'Phase: ' + x.phase : (x.status || ''), x.golive ? 'go-live ' + shortDate(x.golive) : 'no go-live target', x.overdue ? plural(x.overdue, 'overdue task') : ''].filter(Boolean).join(' · ')) + '</span>' +
+        (x.risk ? '<span class="s13-chip ' + (x.risk === 'On Track' ? 'good' : x.risk === 'Stalled' ? 'bad' : 'warn') + '">' + esc(x.risk) + '</span>' : '') + '</li>';
+    }).join('') + '</ul>' : '<p class="s13-none">No onboarding is open (Not started, In progress or On hold).</p>');
+    var e = '<h3 id="s13-esc">Escalated to you <span>' + E.length + '</span></h3>' + (E.length ? '<ul class="s13-l">' + E.map(function (c) {
+      return '<li><a href="' + (live() ? ORG + 'Cases/' + encodeURIComponent(c.id) : '#') + '" target="_top" rel="noopener">' + esc(c.Subject || '(no subject)') + '</a><span>' + esc([c.account, 'past SLA'].filter(Boolean).join(' · ')) + '</span></li>';
+    }).join('') + '</ul>' : '<p class="s13-none">No open case is past SLA on your accounts or with you as the escalation contact.</p>');
+    body.innerHTML = t + '<div class="s13-two"><section>' + o + '</section><section>' + e + '</section></div>' +
+      (S.partial && S.partial.length ? '<p class="s13-err">Some parts could not be read: ' + esc(S.partial.join(', ')) + '.</p>' : '');
+    st.textContent = live() ? plural(H.length, 'account') + ' · health scored each morning' : 'Sample rows (preview)';
+    fit();
+  }
+  function place() {
+    var nt = $('jpk-nt'); if (!nt || !nt.parentNode) return false;
+    var kp = $('s13-kpi'), card = $('s13-cs');
+    if (!kp) {
+      kp = doc.createElement('section'); kp.id = 's13-kpi'; kp.hidden = true; kp.setAttribute('data-s27-p', 'today'); kp.style.order = '2';
+      card = doc.createElement('section'); card.id = 's13-cs'; card.setAttribute('aria-labelledby', 's13-cs-h'); card.setAttribute('data-s27-p', 'today'); card.style.order = '5';
+      card.innerHTML = '<div class="s13-hd"><h2 id="s13-cs-h">Customer health</h2><span class="s13-stamp"></span></div><div class="s13-body"></div>';
+      var go = function (e) {
+        var b = e.target.closest && e.target.closest('[data-s13-go]'); if (!b) return;
+        var t = $(b.getAttribute('data-s13-go')); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); try { t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } catch (er) {} }
+      };
+      kp.addEventListener('click', go);
+      card.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-s13-all]'); if (b) { showAll = !showAll; paint(); } });
+    }
+    addZone('#s13-kpi', ['jpk:needs'], true);
+    addZone('#s13-cs', ['#s38-sent', 'jpk:needs'], false);
+    var sent = $('s38-sent'), after = sent && sent.parentNode === nt.parentNode ? sent : nt;
+    if (kp.parentNode !== nt.parentNode || kp.nextElementSibling !== nt) nt.parentNode.insertBefore(kp, nt);
+    if (card.parentNode !== after.parentNode || card.previousElementSibling !== after) after.parentNode.insertBefore(card, after.nextSibling);
+    edges(kp, nt); edges(card, nt);
+    return true;
+  }
+  function load() { S = null; err = null; paint(); return read().then(function (d) { S = d; }, function (e) { err = (e && (e.message || e.code)) || 'could not read'; }).then(paint); }
+  var tries = 0;
+  function start() {
+    if (!place()) { if (tries++ < 60) setTimeout(start, 250); return; }
+    html.setAttribute('data-s13', 'on');
+    paint();
+    if (live()) setTimeout(load, 800); else load();
+    setInterval(function () { try { place(); } catch (e) {} }, 2000);
+  }
+  root.JPK_S13 = { refresh: load, model: model };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(start, 0); });
+  else setTimeout(start, 0);
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- jpk-s13:end -->
+<!-- jpk-s75:begin -->
+<style id="jpk-s75-css">
+/* jpk-s75.css v1.0.0 (S75, 3 Nov 2026): Contacts & stakeholders card + Import contacts. Uses the page's tokens, so light and dark follow the theme. */
+.s75-stake { margin: 12px 0 0; padding: 14px 18px; background: var(--surface, #fff); border: 1px solid var(--line, #DDE1E6); border-radius: var(--jpk-r, 10px); color: var(--ink, #1F2328); }
+.s75-stake .s75-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 8px; }
+.s75-stake h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.s75-stake h2 span { font-size: 13px; font-weight: 400; color: var(--muted, #5B6470); margin-left: 6px; }
+.s75-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; border-radius: 6px; border: 1px solid var(--line-strong, #B8BEC7); color: var(--ink, #1F2328); background: var(--surface, #fff); cursor: pointer; }
+.s75-btn.s75-pri { color: #fff; background: var(--accent, #2F55A4); border-color: transparent; }
+.s75-btn:hover { filter: brightness(1.08); }
+.s75-btn:focus-visible, .s75-link:focus-visible, .s75-list a:focus-visible, .s75-grp summary:focus-visible { outline: 2px solid var(--accent, #2F55A4); outline-offset: 2px; }
+.s75-body { display: grid; gap: 0; }
+.s75-row, .s75-grp > summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; padding: 8px 0; border-top: 1px solid var(--line, #DDE1E6); }
+.s75-body > :first-child, .s75-body > .s75-grp:first-child > summary { border-top: 0; }
+.s75-grp > summary { cursor: pointer; list-style: none; }
+.s75-grp > summary::-webkit-details-marker { display: none; }
+.s75-grp > summary::after { content: '▸'; order: 2; margin-left: auto; color: var(--muted, #5B6470); font-size: 12px; }
+.s75-grp[open] > summary::after { content: '▾'; }
+.s75-n { min-width: 28px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.s75-n.warn { color: var(--warn, #9A6700); }
+.s75-n.ok { color: var(--good, #1A7F37); }
+.s75-t { font-weight: 600; }
+.s75-of, .s75-acct, .s75-muted, .s75-foot { color: var(--muted, #5B6470); font-size: 13px; }
+.s75-okt { margin-left: auto; color: var(--good, #1A7F37); font-size: 13px; }
+.s75-link { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--accent-ink, var(--accent, #2F55A4)); text-decoration: underline; text-underline-offset: 2px; }
+.s75-chips { order: 3; display: inline-flex; flex-wrap: wrap; gap: 4px; flex-basis: 100%; padding-left: 36px; }
+.s75-chip { padding: 1px 8px; font-size: 12px; border-radius: 999px; color: var(--ink-2, #3D444D); background: var(--warn-tint, #FFF4D6); }
+.s75-chip b { font-weight: 700; }
+.s75-list { margin: 0 0 8px; padding: 0 0 0 36px; list-style: none; }
+.s75-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 5px 0; border-top: 1px dashed var(--line, #DDE1E6); }
+.s75-list li:first-child { border-top: 0; }
+.s75-list a { color: var(--ink, #1F2328); font-weight: 600; text-decoration: underline; text-decoration-color: var(--line-strong, #B8BEC7); text-underline-offset: 2px; overflow-wrap: anywhere; }
+.s75-list a:hover { text-decoration-color: currentColor; }
+.s75-miss { margin-left: auto; font-size: 12.5px; color: var(--warn, #9A6700); }
+.s75-err { margin: 6px 0; color: var(--bad, #B42318); font-size: 13px; }
+.s75-foot { margin: 6px 0 0; }
+.s75-muted { margin: 4px 0; }
+@media (max-width: 520px) {
+  .s75-stake { padding: 12px 14px; }
+  .s75-chips, .s75-list { padding-left: 0; }
+  .s75-miss, .s75-link, .s75-okt { margin-left: 0; flex-basis: 100%; }
+}
+</style>
+<script id="jpk-s75-config">
+window.JPK_S75 = {"home": "cs"};
+</script>
+<script id="jpk-s75">
+/* jpk-s75.js v1.0.0 (S75, 3 Nov 2026). BD Home and Beau CS Home: Import contacts + stakeholder gaps.
+   - "Import contacts" in the + New menu and on the card opens the Import Contacts web tab (WebTab31) in the same window.
+   - Card "Contacts & stakeholders" on the Today tab, under Sent to Leadership:
+       contacts with no account (the importer's Fix orphans fixes these);
+       CS: customer accounts (active customer contract) with no active Billing Contact / Contract Authority in Account Roles;
+       CS: renewal opportunities, BD: all open opportunities, missing a Decision Maker, Champion or Budget / Finance contact role.
+   Read-only: nothing is written. Off switch ?s75=0. Config: window.JPK_S75 = { home: 'cs' | 'bd' } (set by the patch). */
+(function () {
+  'use strict';
+  var root = window, doc = document;
+  if (/[?&]s75=0\b/.test(root.location.search)) return;
+  var C = root.JPK_S75 || {};
+  var HOME = C.home === 'cs' ? 'cs' : 'bd';
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+  var IMPORT_URL = ORG + 'WebTab31';
+  var RECORDS = ORG + 'WebTab25';
+  var TEST = /\bTEST\b/;
+  /* Opportunities > Contact Roles ids (S68; renamed in Setup, ids kept) */
+  var NEED = [
+    { id: '6715134000000006873', label: 'Decision Maker' },
+    { id: '6715134000000006877', label: 'Champion' },
+    { id: '6715134000000006875', label: 'Budget / Finance' }
+  ];
+
+  function $(id) { return doc.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function zoho() { var Z = root.ZOHO; return Z && Z.CRM && Z.CRM.API ? Z : null; }
+  function preview() { return /[?&]preview=1\b/.test(root.location.search) || !zoho(); }
+  function inFrame() { try { return root.top !== root; } catch (e) { return true; } }
+  function go(url) { try { root.top.location.href = url; } catch (e) { root.location.href = url; } }
+  function recUrl(section, id) { return RECORDS + '?widgetparams=' + encodeURIComponent(JSON.stringify({ jpk_section: section, jpk_record: String(id) })); }
+  function fit() { try { if (root.hlFrameFit) root.hlFrameFit.request(); } catch (e) {} }
+  function timeout(p, ms, label) {
+    return new Promise(function (res, rej) {
+      var t = setTimeout(function () { rej(new Error((label || 'Zoho') + ' did not answer')); }, ms);
+      Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); });
+    });
+  }
+  function rows(r) { if (!r) return []; if (Array.isArray(r)) return r; if (Array.isArray(r.data)) return r.data; return []; }
+  function noContent(e) { return !e || e === '' || e.status === 204 || e.code === 'NO_CONTENT'; }
+  /* same paging and empty-result handling as the page's own coqlAll */
+  function coqlAll(q) {
+    var out = [];
+    function page(p) {
+      return timeout(zoho().CRM.API.coql({ select_query: q + ' limit 200 offset ' + (p * 200) }), 20000, 'COQL').then(function (r) {
+        var d = rows(r); out = out.concat(d);
+        return d.length === 200 && p < 9 ? page(p + 1) : out;
+      }, function (e) { if (noContent(e)) return out; throw e; });
+    }
+    return page(0);
+  }
+  function lk(v) { return v && typeof v === 'object' ? String(v.id || '') : v ? String(v) : ''; }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  /* runs fn over items, n at a time */
+  function pool(items, n, fn) {
+    var i = 0, out = new Array(items.length);
+    function worker() { if (i >= items.length) return Promise.resolve(); var k = i++; return Promise.resolve(fn(items[k], k)).then(function (v) { out[k] = v; }, function (e) { out[k] = { error: e }; }).then(worker); }
+    var ws = []; for (var w = 0; w < Math.min(n, items.length); w++) ws.push(worker());
+    return Promise.all(ws).then(function () { return out; });
+  }
+
+  /* ---------------- data ---------------- */
+  function loadOrphans() {
+    return coqlAll("select id from Contacts where Account_Name is null").then(function (r) { return r.length; });
+  }
+  function loadAccounts() {
+    var cons = coqlAll("select Account.id, Account.Account_Name from Contracts where (Counterparty_Type = 'Customer' and Final_End_Date >= '" + today() + "')");
+    var roles = coqlAll("select Account.id, Role, Role_Status from Account_Roles where Role in ('Billing Contact','Contract Authority')");
+    return Promise.all([cons, roles]).then(function (r) {
+      var acc = {}, has = {};
+      r[0].forEach(function (c) {
+        var id = c['Account.id'] || lk(c.Account), nm = c['Account.Account_Name'] || (c.Account && c.Account.name) || '';
+        if (!id || TEST.test(nm)) return; acc[id] = nm || 'Account ' + id;
+      });
+      r[1].forEach(function (x) {
+        if (String(x.Role_Status || 'Active') === 'Ended') return;
+        var id = x['Account.id'] || lk(x.Account); if (!id) return;
+        (has[id] = has[id] || {})[x.Role] = true;
+      });
+      var list = Object.keys(acc).map(function (id) {
+        var h = has[id] || {}, miss = [];
+        if (!h['Billing Contact']) miss.push('Billing Contact');
+        if (!h['Contract Authority']) miss.push('Contract Authority');
+        return { id: id, name: acc[id], miss: miss };
+      }).filter(function (a) { return a.miss.length; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+      return { total: Object.keys(acc).length, list: list };
+    });
+  }
+  function dealQuery() {
+    /* open = Stage_Group Early or Working, as the homes' own pipeline tiles count it */
+    var sel = "select id, Deal_Name, Account_Name, Stage, Closing_Date from Deals where ";
+    return sel + (HOME === 'cs' ? "(Stage_Group in ('Early','Working') and Procurement_Route = 'Renewal')" : "Stage_Group in ('Early','Working')") + ' order by Closing_Date asc';
+  }
+  function rolesFor(id) {
+    return timeout(zoho().CRM.API.getRelatedRecords({ Entity: 'Deals', RecordID: id, RelatedList: 'Contact_Roles', page: 1, per_page: 200 }), 15000, 'Contact roles').then(function (r) {
+      return rows(r).map(function (c) { return lk(c.Contact_Role); }).filter(Boolean);
+    }, function (e) { if (noContent(e)) return []; throw e; });
+  }
+  function loadDeals() {
+    return coqlAll(dealQuery()).then(function (ds) {
+      ds = ds.filter(function (d) { return !TEST.test(d.Deal_Name || '') && !TEST.test((d.Account_Name && d.Account_Name.name) || ''); });
+      return pool(ds, 4, function (d) { return rolesFor(d.id); }).then(function (rs) {
+        var failed = 0;
+        var list = ds.map(function (d, i) {
+          var got = rs[i];
+          if (!Array.isArray(got)) { failed++; return null; }
+          var miss = NEED.filter(function (n) { return got.indexOf(n.id) < 0; }).map(function (n) { return n.label; });
+          return { id: d.id, name: d.Deal_Name || 'Opportunity', acct: (d.Account_Name && d.Account_Name.name) || '', close: d.Closing_Date || '', miss: miss };
+        }).filter(function (x) { return x && x.miss.length; });
+        return { total: ds.length, list: list, failed: failed };
+      });
+    });
+  }
+  function demo() {
+    return Promise.resolve({
+      orphans: 265,
+      accounts: HOME === 'cs' ? { total: 71, list: [
+        { id: '6715134000000666091', name: 'Racine County Pretrial Program', miss: ['Billing Contact', 'Contract Authority'] },
+        { id: '6715134000000666077', name: 'Milwaukee County Pretrial Program', miss: ['Contract Authority'] },
+        { id: '6715134000000666096', name: 'Sheboygan Co. HHSD', miss: ['Billing Contact'] }
+      ] } : null,
+      deals: { total: HOME === 'cs' ? 18 : 30, failed: 0, list: [
+        { id: '6715134000011034096', name: 'Milwaukee Co Pretrial - Renewal 2026', acct: 'Milwaukee County Pretrial Program', close: '2026-12-31', miss: ['Decision Maker', 'Champion', 'Budget / Finance'] },
+        { id: '6715134000011034095', name: 'Racine Co. Pretrial - Renewal 2026', acct: 'Racine County Pretrial Program', close: '2027-01-15', miss: ['Champion'] },
+        { id: '6715134000002098017', name: 'Door HHS', acct: 'Door Co. HHS', close: '2027-02-01', miss: ['Decision Maker', 'Budget / Finance'] }
+      ] }
+    });
+  }
+  function load() {
+    if (preview()) return demo();
+    var res = {};
+    return Promise.all([
+      loadOrphans().then(function (n) { res.orphans = n; }, function (e) { res.orphansErr = e; }),
+      HOME === 'cs' ? loadAccounts().then(function (a) { res.accounts = a; }, function (e) { res.accountsErr = e; }) : Promise.resolve(),
+      loadDeals().then(function (d) { res.deals = d; }, function (e) { res.dealsErr = e; })
+    ]).then(function () { return res; });
+  }
+
+  /* ---------------- UI ---------------- */
+  function importLink(cls, text) {
+    return '<a class="' + cls + '" href="' + esc(IMPORT_URL) + '" target="_top" data-s75-import>' + text + '</a>';
+  }
+  function menuEntry() {
+    var list = $('new-list'); if (!list || $('s75-import-item')) return;
+    var li = doc.createElement('li'); li.setAttribute('role', 'none');
+    li.innerHTML = '<a role="menuitem" id="s75-import-item" href="' + esc(IMPORT_URL) + '" target="_top">Import contacts…<span class="hint">xlsx, csv</span></a>';
+    var contact = list.querySelector('[data-new="Contacts"]');
+    var after = contact ? contact.parentNode : null;
+    if (after && after.nextSibling) list.insertBefore(li, after.nextSibling); else list.appendChild(li);
+    li.firstChild.addEventListener('click', function (e) {
+      list.hidden = true; var nb = $('new-btn'); if (nb) nb.setAttribute('aria-expanded', 'false');
+      if (inFrame()) { e.preventDefault(); go(IMPORT_URL); }
+    });
+  }
+  function card() {
+    var c = $('s75-stake'); if (c) return c;
+    c = doc.createElement('section');
+    c.id = 's75-stake'; c.className = 's75-stake'; c.setAttribute('aria-labelledby', 's75-h');
+    c.innerHTML =
+      '<div class="s75-head"><h2 id="s75-h">Contacts &amp; stakeholders<span>who is missing from the map</span></h2>' +
+        importLink('s75-btn s75-pri', '<span aria-hidden="true">↥</span> Import contacts') + '</div>' +
+      '<div class="s75-body" id="s75-body"><p class="s75-muted">Checking contacts and roles…</p></div>';
+    c.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href]');
+      if (a && inFrame() && a.getAttribute('target') === '_top') { e.preventDefault(); go(a.href); }
+    });
+    return c;
+  }
+  function place() {
+    var c = card(), anchor = $('s38-sent');
+    var cfg = root.JPK_S38 || {};
+    if (!anchor) anchor = cfg.sentAfter ? doc.querySelector(cfg.sentAfter) : null;
+    if (!anchor || !anchor.parentNode) return false;
+    if (cfg.sentTabAttr) c.setAttribute(cfg.sentTabAttr, cfg.sentTabVal || 'today');
+    if (anchor.style.order) c.style.order = anchor.style.order;
+    try {
+      var Z = root.JPKShell && root.JPKShell.config && root.JPKShell.config.zones;
+      if (Z) ['main', 'narrowOrder'].forEach(function (k) {
+        var a = Z[k]; if (!Array.isArray(a) || a.indexOf('#s75-stake') >= 0) return;
+        var i = a.indexOf('#s38-sent'); if (i < 0) { if (k === 'main') a.push('#s75-stake'); return; }
+        a.splice(i + 1, 0, '#s75-stake');
+      });
+    } catch (e) {}
+    if (c.parentNode !== anchor.parentNode || c.previousElementSibling !== anchor) anchor.parentNode.insertBefore(c, anchor.nextSibling);
+    try {
+      var cs = root.getComputedStyle(anchor);
+      c.style.marginLeft = cs.marginLeft; c.style.marginRight = cs.marginRight;
+    } catch (e) {}
+    return true;
+  }
+  function errText(e) { var m = e && (e.message || (e.data && e.data.message) || e.code); return m ? String(m) : 'Zoho did not answer'; }
+  function chips(list, labels) {
+    return labels.map(function (l) {
+      var n = list.filter(function (x) { return x.miss.indexOf(l) >= 0; }).length;
+      return n ? '<span class="s75-chip">No ' + esc(l) + ' <b>' + n + '</b></span>' : '';
+    }).join('');
+  }
+  function group(key, title, sub, list, total, labels, rowHtml) {
+    var n = list.length;
+    var head = '<span class="s75-n' + (n ? ' warn' : ' ok') + '">' + n + '</span><span class="s75-t">' + title + '</span>' +
+      '<span class="s75-of">of ' + total + ' ' + esc(sub) + '</span>';
+    if (!n) return '<div class="s75-row s75-done">' + head + '<span class="s75-okt">All covered</span></div>';
+    return '<details class="s75-grp" data-s75="' + key + '"><summary>' + head + '<span class="s75-chips">' + chips(list, labels) + '</span></summary>' +
+      '<ul class="s75-list">' + list.map(rowHtml).join('') + '</ul></details>';
+  }
+  function paint(res) {
+    var body = $('s75-body'); if (!body) return;
+    var h = [];
+    /* orphans */
+    if (res.orphansErr) h.push('<p class="s75-err">Contacts could not be read (' + esc(errText(res.orphansErr)) + ').</p>');
+    else if (res.orphans != null) {
+      h.push('<div class="s75-row">' +
+        '<span class="s75-n' + (res.orphans ? ' warn' : ' ok') + '">' + res.orphans + '</span>' +
+        '<span class="s75-t">contacts with no account</span>' +
+        (res.orphans ? importLink('s75-link', 'Link them with Fix orphans ↗') : '<span class="s75-okt">All linked</span>') + '</div>');
+    }
+    if (HOME === 'cs') {
+      if (res.accountsErr) h.push('<p class="s75-err">Account roles could not be read (' + esc(errText(res.accountsErr)) + ').</p>');
+      else if (res.accounts) h.push(group('acc', 'customer accounts missing a billing or contract contact', 'with an active contract', res.accounts.list, res.accounts.total,
+        ['Billing Contact', 'Contract Authority'], function (a) {
+          return '<li><a href="' + esc(recUrl('accounts', a.id)) + '" target="_top">' + esc(a.name) + '</a><span class="s75-miss">No ' + a.miss.map(esc).join(', no ') + '</span></li>';
+        }));
+    }
+    if (res.dealsErr) h.push('<p class="s75-err">Opportunity contact roles could not be read (' + esc(errText(res.dealsErr)) + ').</p>');
+    else if (res.deals) {
+      var dl = res.deals;
+      h.push(group('deal', HOME === 'cs' ? 'renewal opportunities missing a buying role' : 'opportunities missing a buying role', HOME === 'cs' ? 'open renewals' : 'open',
+        dl.list, dl.total, NEED.map(function (n) { return n.label; }), function (d) {
+          var u = typeof root.JPKRecordsDealUrl === 'function' ? root.JPKRecordsDealUrl(d.id) : recUrl('deals', d.id);
+          return '<li><a href="' + esc(u) + '" target="_top">' + esc(d.name) + '</a>' + (d.acct ? '<span class="s75-acct">' + esc(d.acct) + '</span>' : '') +
+            '<span class="s75-miss">No ' + d.miss.map(esc).join(', no ') + '</span></li>';
+        }));
+      if (dl.failed) h.push('<p class="s75-muted">' + dl.failed + ' opportunit' + (dl.failed === 1 ? 'y' : 'ies') + ' could not be checked.</p>');
+    }
+    h.push('<p class="s75-foot">Fill a gap from the Stakeholders panel on the account or opportunity.' + (preview() ? ' <em>Preview data.</em>' : '') + '</p>');
+    body.innerHTML = h.join('');
+    fit();
+  }
+  var loading = false;
+  function refresh() {
+    if (loading) return; loading = true;
+    var body = $('s75-body'); if (body && !body.querySelector('.s75-row,.s75-grp')) body.innerHTML = '<p class="s75-muted">Checking contacts and roles…</p>';
+    load().then(paint, function (e) { var b = $('s75-body'); if (b) b.innerHTML = '<p class="s75-err">Could not check stakeholders (' + esc(errText(e)) + ').</p>'; })
+      .then(function () { loading = false; });
+  }
+  function start() {
+    menuEntry();
+    var tries = 0;
+    (function tryPlace() {
+      if (place()) { refresh(); return; }
+      if (++tries < 40) setTimeout(tryPlace, 250);
+    })();
+    /* other layers re-place their cards on resize and tab switches; keep this one under Sent to Leadership */
+    var keep = function () { if ($('s75-stake')) place(); menuEntry(); };
+    root.addEventListener('resize', keep);
+    doc.addEventListener('click', function (e) {
+      var t = e.target; if (!t || !t.closest) return;
+      if (t.closest('#refresh')) setTimeout(refresh, 400);
+      if (t.closest('[role=tab],.s27-tab,.s38-tab')) setTimeout(keep, 50);
+    }, true);
+    setTimeout(keep, 3000); setTimeout(keep, 8000);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+<!-- jpk-s75:end -->
+<script id="rates-model">
+/* rates-model.js v1.0.1 (S76, 5 Nov 2026; 1.0.1: Part B rows carry rateVendorId and flags, e.g. 'No vendor on rate line') - ONE pricing model for the Leadership "Margin by vendor" tile and Processes > Rates.
+   Pure: no DOM, no Zoho. Browser: window.RatesModel; node: require. The tile inlines this file byte for byte (check: tests/check-inline.js).
+
+   build({ units, lines, contracts, today }) -> { partA, partB, totals, tile }
+     units      Daily_Unit_Counts rows: Count_Date, Account, Account.Account_Name, SmartView_Customer, Device_Family, Vendor,
+                Supplied_Through, Hardware_Version, Acquisition, On_Leg
+     lines      Rate_Lines rows (any status): id, Parent_Id, Parent_Id.Name, Rate_Type, Rate_Device, Rate_Vendor, Rate_Vendor.Vendor_Name,
+                Rate_Daily_Amount, Rate_Terms, Line_Status, Line_Verified, Superseded_By, Effective_Date, Tier_Min_Units
+     contracts  Contracts rows: id, Name, Account, Account.Account_Name, Vendor, Counterparty_Type, Contract_Status, Final_End_Date, Rate_Basis
+     Lookups may arrive as {id, name} objects (REST) or bare ids (widget COQL); names then come from the dotted columns.
+
+   RULES (step 0, read from Leadership Home v47.10 and written into the S76 plan; changes from v47.10 marked *)
+   Units
+     - Count day: each unit VENDOR's latest Count_Date in the rows given (vendor, not vendor x family).
+     - Vendor: Vendor = SCRAM and Supplied_Through = Allied -> Allied; else Vendor; empty Vendor with Hardware_Version starting
+       AT1 / RTC / 1-Piece Beacon / Beacon -> Allied; anything else has no vendor and is left out of the counts.
+     - Family: Hardware_Version "Base Station*" -> left out (bundled with the bracelet); PureProtect or Device_Family "Victim / DV"
+       -> Victim / DV; Device_Family GPS / Remote Breath / CAM -> itself; anything else left out.
+     - Double rows: rows for the same account, family and day are SUMMED. On 4 Nov every such pair is two hardware versions
+       (Ramsey and Vernon GPS: AT1 LTE A + AT1 LTE V) or bracelet + base station (base station left out), not a double import.
+     - Owned: Acquisition says Purchased/Owned, or the account's only customer rate for the family is marked purchased/owned.
+   Vendor cost (Part A)
+     - Vendor card: a contract named "<Allied|SCRAM|SuperCom|Buddi|Sentinel> ... vendor pricing". Allied units on an account named
+       "Sheboygan County Sheriff" use the "(Sheboygan)" card first, then the standard one.
+     - Current line: Verified (Line_Status, or Line_Verified when no status), Superseded_By empty, *Effective_Date empty or not after today.
+     - Lines whose Rate_Terms mention "purchased" or "monitoring" are monitoring-only costs: used only for owned units, and an owned unit
+       is never priced at the lease cost.
+     - Rate Device -> family is exact: GPS, Remote Breath, CAM, Victim / DV. (CAM Landline, Wrist-worn GPS, 2-Piece GPS are not used.)
+     - *More than one current line for a card and device: the newest id is used, and Part A shows Conflict, unless the lines are tiers
+       (Tier_Min_Units set) or a bundle (a term says "bundle:", "part of the ... bundle" or "component"), which is OK and uses the highest amount.
+   Customer rate (Part B)
+     - The account's contracts: Counterparty_Type not Vendor, Contract_Status not Ended. The active contract is the one with status
+       Active/Complete, else the latest Final_End_Date.
+     - Current Verified "Customer rate" line with Rate_Device = family; GPS falls back to "Hybrid GPS + Alcohol". When the account has
+       several contracts, a line on an Active/Complete contract wins. *Lines over $100/day are one-time charges and are left out.
+     - Priced: a current customer rate above $0 AND a vendor cost. Margin = (rate - cost) / rate, weighted by units on leg.
+   Flag (Part B): 'No vendor on rate line' when the verified customer line has no Rate Vendor. The screen and tile still price it
+     (vendor from the units), but em_margin_build does not, so EM Margin and the Account fields stay blank until it is set.
+   Status (Part B), in the order Beau fixes them
+     No account > No contract > Account mismatch > No customer rate > Proposed, not Verified > No vendor cost > Priced
+     - Account mismatch: no rate of this family for the account (Verified or Proposed) but another account with the same first word
+       (the county) holds one and has no units of that family on leg itself, e.g. Sawyer Co. Pretrial units vs Sawyer Co HHS rates. Checked before "No contract", because the fix is
+       the same whether or not the account has its own contract. */
+(function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.RatesModel = factory(); })(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  var VERSION = '1.0.1', DAILY_MAX = 100, FLOOR = 20, TARGET = 30;
+  var FAMS = ['GPS', 'Remote Breath', 'CAM', 'Victim / DV'];
+  var CARD_RE = /^(Allied|SCRAM|SuperCom|Buddi|Sentinel)\b.*vendor pricing/i;
+  var STATUS = ['No account', 'No contract', 'Account mismatch', 'No customer rate', 'Proposed, not Verified', 'No vendor cost', 'Priced'];
+
+  function s(v) { return v == null || v === '-None-' ? '' : String(v); }
+  function num(v) { return v == null || v === '' || isNaN(+v) ? null : +v; }
+  /* a lookup as {id, name}, whatever shape it arrived in; dotted = the "X.Name" column value */
+  function ref(v, dotted) {
+    if (v && typeof v === 'object') return { id: s(v.id), name: s(v.name) || s(dotted) };
+    return { id: s(v), name: s(dotted) };
+  }
+  function idCmp(a, b) { var x = s(a.id), y = s(b.id); return x.length - y.length || (x < y ? -1 : x > y ? 1 : 0); }
+  function round(n, d) { var p = Math.pow(10, d || 2); return Math.round(n * p) / p; }
+  function county(name) { var w = s(name).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean); return w[0] || ''; }
+
+  function lineStatus(l) {
+    var st = s(l.Line_Status), sb = s(l.Superseded_By);
+    if (st === 'Superseded' || st === 'Rejected') return st;
+    if (sb) return /^Rejected/.test(sb) ? 'Rejected' : 'Superseded';
+    if (st) return st;
+    return l.Line_Verified === true || l.Line_Verified === 'true' ? 'Verified' : 'Proposed';
+  }
+  function effectiveOk(l, today) { var e = s(l.Effective_Date); return !e || !today || e <= today; }
+  function monitoringOnly(t) { return /purchas|monitoring/i.test(s(t)); }
+  function bought(t) { return /purchas|owned/i.test(s(t)); }
+
+  /* ---------- the unit rules ---------- */
+  function famOf(u) {
+    var hv = s(u.Hardware_Version), f = s(u.Device_Family);
+    if (/^Base Station/i.test(hv)) return '';
+    if (/PureProtect/i.test(hv) || f === 'Victim / DV') return 'Victim / DV';
+    return f === 'GPS' || f === 'Remote Breath' || f === 'CAM' ? f : '';
+  }
+  function vendorOf(u) {
+    var v = s(u.Vendor);
+    if (v === 'SCRAM' && s(u.Supplied_Through) === 'Allied') return 'Allied';
+    if (v) return v;
+    return /^(AT1|RTC|1-Piece Beacon|Beacon)/i.test(s(u.Hardware_Version)) ? 'Allied' : '';
+  }
+  function viaOf(u) { var v = s(u.Vendor), st = s(u.Supplied_Through); return v === 'SCRAM' && st === 'Allied' ? 'SCRAM via Allied' : vendorOf(u); }
+
+  function build(inp) {
+    var today = inp.today || '', units = inp.units || [], lines = (inp.lines || []).slice().sort(idCmp), contracts = inp.contracts || [];
+    /* contracts */
+    var con = {}, cards = {}, byAcct = {}, acctName = {};
+    contracts.forEach(function (c) {
+      var a = ref(c.Account, c['Account.Account_Name']), v = ref(c.Vendor, c['Vendor.Vendor_Name']);
+      var o = { id: s(c.id), name: s(c.Name), acct: a.id, acctName: a.name, vendorId: v.id, type: s(c.Counterparty_Type), status: s(c.Contract_Status), end: s(c.Final_End_Date), basis: s(c.Rate_Basis) };
+      con[o.id] = o; if (a.id && a.name) acctName[a.id] = a.name;
+      var m = CARD_RE.exec(o.name); if (m) cards[o.id] = { id: o.id, name: o.name, vendor: m[1], vendorId: o.vendorId, sheb: /sheboygan/i.test(o.name), lines: {} };
+      if (o.type !== 'Vendor' && !m && a.id && o.status !== 'Ended') (byAcct[a.id] = byAcct[a.id] || []).push(o);
+    });
+    function activeOf(aid) {
+      var cs = (byAcct[aid] || []).slice(); if (!cs.length) return null;
+      cs.sort(function (x, y) { return (y.status === 'Active/Complete') - (x.status === 'Active/Complete') || (y.end || '0').localeCompare(x.end || '0'); });
+      return cs[0];
+    }
+    /* lines: vendor cost per card, customer rates per account */
+    var cust = {}; /* acct|device -> { verified: [..], proposed: [..] } */
+    lines.forEach(function (l) {
+      var p = ref(l.Parent_Id, l['Parent_Id.Name']), type = s(l.Rate_Type), dev = s(l.Rate_Device), st = lineStatus(l), amt = num(l.Rate_Daily_Amount);
+      var card = cards[p.id] || (!con[p.id] && CARD_RE.test(p.name) ? (cards[p.id] = { id: p.id, name: p.name, vendor: CARD_RE.exec(p.name)[1], vendorId: '', sheb: /sheboygan/i.test(p.name), lines: {} }) : null);
+      var vend = ref(l.Rate_Vendor, l['Rate_Vendor.Vendor_Name']);
+      var x = { id: s(l.id), contractId: p.id, device: dev, amt: amt, status: st, terms: s(l.Rate_Terms), tier: num(l.Tier_Min_Units) != null, effOk: effectiveOk(l, today), vendorId: vend.id, vendorName: vend.name };
+      if (type === 'Vendor cost' && card) { (card.lines[dev] = card.lines[dev] || []).push(x); return; }
+      if (type !== 'Customer rate') return;
+      var c = con[p.id]; if (!c || c.type === 'Vendor' || c.status === 'Ended' || !c.acct) return;
+      if (st !== 'Verified' && st !== 'Proposed') return;
+      if (!x.effOk || amt == null || amt > DAILY_MAX) return;
+      x.active = c.status === 'Active/Complete'; x.contractName = c.name; x.bought = bought(x.terms) || c.basis === 'Purchased units';
+      var k = c.acct + '|' + dev, b = cust[k] || (cust[k] = { verified: [], proposed: [] });
+      (st === 'Verified' ? b.verified : b.proposed).push(x);
+    });
+    /* the cost a card gives for a device: { amt, line, state, lines } */
+    function cardCost(card, dev, owned) {
+      var all = (card && card.lines[dev]) || [];
+      var cur = all.filter(function (x) { return x.status === 'Verified' && x.effOk && x.amt != null && monitoringOnly(x.terms) === !!owned; });
+      if (!cur.length) return { amt: null, line: null, state: all.some(function (x) { return monitoringOnly(x.terms) === !!owned; }) ? 'Superseded only' : 'Missing', lines: [] };
+      if (cur.length === 1) return { amt: cur[0].amt, line: cur[0], state: 'OK', lines: cur };
+      var distinct = cur.filter(function (x, i) { return cur.findIndex(function (y) { return y.amt === x.amt; }) === i; }).length;
+      var bundle = cur.some(function (x) { return x.tier || /bundle:|part of the [^)]*bundle|component/i.test(x.terms); });
+      if (bundle) { var hi = cur.slice().sort(function (a, b) { return b.amt - a.amt; })[0]; return { amt: hi.amt, line: hi, state: 'OK', lines: cur, note: 'tiers or bundle' }; }
+      var newest = cur[cur.length - 1];
+      return { amt: newest.amt, line: newest, state: distinct > 1 ? 'Conflict' : 'OK', lines: cur };
+    }
+    function cardsFor(vendor, aname) {
+      var cs = Object.keys(cards).map(function (k) { return cards[k]; }).filter(function (k) { return k.vendor.toLowerCase() === s(vendor).toLowerCase(); });
+      var sheb = vendor === 'Allied' && /sheboygan county sheriff/i.test(s(aname));
+      return cs.sort(function (a, b) { return sheb ? b.sheb - a.sheb : a.sheb - b.sheb; });
+    }
+    function costFor(vendor, dev, owned, aname) {
+      var cs = cardsFor(vendor, aname);
+      for (var i = 0; i < cs.length; i++) { if (sheb(cs[i], vendor, aname)) { var r = cardCost(cs[i], dev, owned); if (r.amt != null) return { amt: r.amt, card: cs[i], line: r.line }; } }
+      return { amt: null, card: cs[0] || null, line: null };
+    }
+    function sheb(card, vendor, aname) { return !card.sheb || (vendor === 'Allied' && /sheboygan county sheriff/i.test(s(aname))); }
+    function pickRate(list) {
+      if (!list || !list.length) return null;
+      var act = list.filter(function (x) { return x.active; }); return (act.length ? act : list)[(act.length ? act : list).length - 1];
+    }
+    function rateFor(aid, fam, owned) {
+      var g = cust[aid + '|' + fam] || (fam === 'GPS' ? cust[aid + '|Hybrid GPS + Alcohol'] : null) || { verified: [], proposed: [] };
+      var vb = g.verified.filter(function (x) { return x.bought; }), vl = g.verified.filter(function (x) { return !x.bought; });
+      var v = owned ? (pickRate(vb) || pickRate(vl)) : (pickRate(vl) || pickRate(vb));
+      return { verified: v, proposed: pickRate(g.proposed), group: g };
+    }
+    function ownedOf(u, aid, fam) {
+      if (/purchas|owned/i.test(s(u.Acquisition))) return true;
+      var g = cust[aid + '|' + fam]; if (!g || !g.verified.length) return false;
+      return g.verified.every(function (x) { return x.bought; });
+    }
+    /* ---------- units ---------- */
+    var latest = {};
+    units.forEach(function (u) { var v = vendorOf(u); if (v && (!latest[v] || s(u.Count_Date) > latest[v])) latest[v] = s(u.Count_Date); });
+    var groups = {}, order = [], asof = '';
+    units.forEach(function (u) {
+      var v = vendorOf(u), fam = famOf(u), on = num(u.On_Leg) || 0;
+      if (!v || !fam || s(u.Count_Date) !== latest[v] || on <= 0) return;
+      if (s(u.Count_Date) > asof) asof = s(u.Count_Date);
+      var a = ref(u.Account, u['Account.Account_Name']), owned = a.id ? ownedOf(u, a.id, fam) : /purchas|owned/i.test(s(u.Acquisition));
+      var key = (a.id || 'sv:' + s(u.SmartView_Customer)) + '|' + fam + '|' + v + '|' + (owned ? 1 : 0);
+      var g = groups[key];
+      if (!g) { g = groups[key] = { key: key, accountId: a.id, account: a.name || acctName[a.id] || '', smartView: s(u.SmartView_Customer), family: fam, vendor: v, via: viaOf(u), owned: owned, units: 0, rows: 0 }; order.push(key); }
+      g.units += on; g.rows++;
+    });
+    /* ---------- Part B ---------- */
+    var acctsByCounty = {}; Object.keys(cust).forEach(function (k) { var aid = k.split('|')[0], nm = acctName[aid]; if (nm) (acctsByCounty[county(nm)] = acctsByCounty[county(nm)] || {})[aid] = 1; });
+    var hasUnits = {}; order.forEach(function (k) { var g = groups[k]; if (g.accountId) hasUnits[g.accountId + '|' + g.family] = 1; });
+    var partB = order.map(function (k) {
+      var g = groups[k], r = { key: g.key, accountId: g.accountId, account: g.account, smartView: g.smartView, family: g.family, vendor: g.vendor, via: g.via, owned: g.owned, units: g.units,
+        contractId: '', contract: '', rate: null, rateLineId: '', proposedLineId: '', proposedRate: null, cost: null, costCardId: '', costCard: '', costLineId: '', margin: null, marginDay: null, status: '', note: '', mismatch: null, rateVendorId: '', cardVendorId: '', flags: [] };
+      var c = g.accountId ? activeOf(g.accountId) : null; if (c) { r.contractId = c.id; r.contract = c.name; }
+      var cf = costFor(g.vendor, g.family, g.owned, g.account); r.cost = cf.amt; if (cf.card) { r.costCardId = cf.card.id; r.costCard = cf.card.name; } if (cf.line) r.costLineId = cf.line.id;
+      var rt = g.accountId ? rateFor(g.accountId, g.family, g.owned) : { verified: null, proposed: null, group: { verified: [], proposed: [] } };
+      if (cf.card) r.cardVendorId = cf.card.vendorId || '';
+      if (rt.verified) { r.rate = rt.verified.amt; r.rateLineId = rt.verified.id; r.rateVendorId = rt.verified.vendorId; if (!r.contractId) { r.contractId = rt.verified.contractId; r.contract = rt.verified.contractName; } }
+      if (rt.proposed) { r.proposedLineId = rt.proposed.id; r.proposedRate = rt.proposed.amt; }
+      var hasOwn = !!(rt.group.verified.length || rt.group.proposed.length);
+      if (!g.accountId) r.status = 'No account';
+      else {
+        if (!hasOwn) {
+          var sib = Object.keys((acctsByCounty[county(g.account)] || {})).filter(function (aid) { return aid !== g.accountId && !hasUnits[aid + '|' + g.family] && (cust[aid + '|' + g.family] || (g.family === 'GPS' && cust[aid + '|Hybrid GPS + Alcohol'])); })[0];
+          if (sib) {
+            var sg = cust[sib + '|' + g.family] || cust[sib + '|Hybrid GPS + Alcohol'], sl = pickRate(sg.verified) || pickRate(sg.proposed);
+            r.mismatch = { accountId: sib, account: acctName[sib] || '', contractId: sl.contractId, contract: sl.contractName, lineId: sl.id, rate: sl.amt, device: sl.device, targetContractId: c ? c.id : '' };
+            r.status = 'Account mismatch';
+          }
+        }
+        if (!r.status && !c) r.status = 'No contract';
+        else if (!r.status && !rt.verified && rt.proposed) r.status = 'Proposed, not Verified';
+        else if (!r.status && !rt.verified) r.status = 'No customer rate';
+        else if (!r.status && (r.cost == null)) r.status = 'No vendor cost';
+        else if (!r.status && !r.rate) r.status = 'No customer rate';
+        else if (!r.status) r.status = 'Priced';
+      }
+      if (r.status === 'Priced') { r.marginDay = round(r.rate - r.cost); r.margin = round((r.rate - r.cost) / r.rate * 100, 1); }
+      /* em_margin_build never guesses a vendor: a verified line without Rate Vendor stays an EM Margin exception */
+      if (r.rateLineId && !r.rateVendorId) r.flags.push('No vendor on rate line');
+      r.rank = STATUS.indexOf(r.status);
+      return r;
+    });
+    partB.sort(function (a, b) { return a.rank - b.rank || b.units - a.units || a.account.localeCompare(b.account); });
+    /* ---------- Part A: vendor x family, for every family with units on leg plus every card line ---------- */
+    /* one row per card x family x (lease | owned): its units are the Part B units that card prices (or would price) */
+    var aRows = {}, partA = [];
+    function aRow(cd, vendor, fam, owned) {
+      var k = (cd ? cd.id : 'none:' + vendor) + '|' + fam + '|' + (owned ? 1 : 0);
+      if (!aRows[k]) {
+        var cc = cd ? cardCost(cd, fam, owned) : { amt: null, line: null, state: 'No pricing record', lines: [] };
+        aRows[k] = { key: k, vendor: cd ? cd.vendor : vendor, family: fam, owned: !!owned, cardId: cd ? cd.id : '', card: cd ? cd.name : '', vendorId: cd ? cd.vendorId : '', units: 0,
+          cost: cc.amt, lineId: cc.line ? cc.line.id : '', status: cc.state, note: cc.note || '', lines: cc.lines.map(function (x) { return { id: x.id, amt: x.amt, terms: x.terms }; }) };
+      }
+      return aRows[k];
+    }
+    partB.forEach(function (r) { var cd = r.costCardId ? cards[r.costCardId] : null; aRow(cd, r.vendor, r.family, r.owned).units += r.units; });
+    Object.keys(cards).forEach(function (id) { var cd = cards[id]; Object.keys(cd.lines).forEach(function (dev) {
+      if (FAMS.indexOf(dev) < 0) return;
+      [false, true].forEach(function (o) { if (cd.lines[dev].some(function (x) { return monitoringOnly(x.terms) === o && x.status === 'Verified'; })) aRow(cd, cd.vendor, dev, o); });
+    }); });
+    Object.keys(aRows).forEach(function (k) { partA.push(aRows[k]); });
+    var AR = { 'Conflict': 0, 'Missing': 1, 'Superseded only': 2, 'No pricing record': 3, 'OK': 4 };
+    partA.sort(function (a, b) { return AR[a.status] - AR[b.status] || b.units - a.units || a.vendor.localeCompare(b.vendor); });
+    /* ---------- totals and the tile's vendor rows ---------- */
+    var tot = { units: 0, priced: 0, rev: 0, cost: 0 }, vrows = {}, vorder = [];
+    partB.forEach(function (r) {
+      tot.units += r.units;
+      var k = r.vendor + ' · ' + r.family + (r.owned ? ' (owned)' : ''), g = vrows[k] || (vrows[k] = { label: k, on: 0, priced: 0, rev: 0, cst: 0 }); if (vorder.indexOf(k) < 0) vorder.push(k);
+      g.on += r.units; if (r.status !== 'Priced') return;
+      tot.priced += r.units; tot.rev += r.units * r.rate; tot.cost += r.units * r.cost; g.priced += r.units; g.rev += r.units * r.rate; g.cst += r.units * r.cost;
+    });
+    var tileRows = vorder.map(function (k) { var g = vrows[k]; return { label: k, on: g.on, priced: g.priced, rate: g.priced ? g.rev / g.priced : null, cost: g.priced ? g.cst / g.priced : null, margin: g.rev ? (g.rev - g.cst) / g.rev * 100 : null }; })
+      .sort(function (a, b) { return b.on - a.on; });
+    var totals = { units: tot.units, priced: tot.priced, unpriced: tot.units - tot.priced, margin: tot.rev ? round((tot.rev - tot.cost) / tot.rev * 100, 1) : null, asof: asof,
+      byStatus: STATUS.map(function (st) { var rs = partB.filter(function (r) { return r.status === st; }); return { status: st, rows: rs.length, units: rs.reduce(function (t, r) { return t + r.units; }, 0) }; }) };
+    return { version: VERSION, partA: partA, partB: partB, totals: totals, tile: { rows: tileRows, total: totals.margin, unpriced: totals.unpriced, units: totals.units, asof: asof } };
+  }
+
+  /* ---------- write payloads (pure). Rate_Lines is a subform: a row left out of an update is DELETED, so every write sends every row. ---------- */
+  function fullPayload(rows, changes, add) {
+    if (!Array.isArray(rows)) return null;
+    changes = changes || {};
+    var ids = {}; rows.forEach(function (r) { ids[s(r.id)] = 1; });
+    if (Object.keys(changes).some(function (k) { return !ids[k]; })) return null;
+    var out = rows.map(function (r) { var c = changes[s(r.id)]; return c ? Object.assign({ id: r.id }, c) : { id: r.id }; });
+    (Array.isArray(add) ? add : add ? [add] : []).forEach(function (a) { out.push(a); });
+    return out;
+  }
+  function verifyFields() { return { Line_Status: 'Verified', Line_Verified: true, Superseded_By: null }; }
+  function supersedeFields(byId) { return { Line_Status: 'Superseded', Line_Verified: false, Superseded_By: byId ? s(byId) : 'Superseded in review' }; }
+  function familyDevice(f) { return FAMS.indexOf(f) >= 0 ? f : 'Other'; }
+  function sourceRef(date, user) { return 'Rates screen ' + date + (user ? ' ' + user : ''); }
+  function tone(m) { return m == null ? '' : m < 0 ? 'bad' : m < FLOOR ? 'bad' : m < TARGET ? 'warn' : 'good'; }
+
+  return { VERSION: VERSION, FLOOR: FLOOR, TARGET: TARGET, FAMS: FAMS, STATUS: STATUS, build: build, famOf: famOf, vendorOf: vendorOf, lineStatus: lineStatus,
+    fullPayload: fullPayload, verifyFields: verifyFields, supersedeFields: supersedeFields, familyDevice: familyDevice, sourceRef: sourceRef, tone: tone, monitoringOnly: monitoringOnly };
+});
+</script>
+<script id="jpk-s76-rates">
+/* jpk-s76-rates.js v1.0.0 (S76, 5 Nov 2026): "Rates to fill: N" for Needs you today. Off with ?s76=0.
+   Administrators only. Reads Daily Unit Counts (last 8 days), Rate Lines (customer rate + vendor cost) and Contracts, runs
+   RatesModel.build (the Rates screen's model), and publishes { n, unpriced, units } on window.__jpkRatesToFill, then re-renders the list.
+   N = Part B rows to fix (not Priced, or flagged), the same as Processes > Rates to fill "To fix". Read-only. Demo: a labelled sample. */
+(function (root) {
+  'use strict';
+  if (/[?&]s76=0\b/.test(root.location.search)) return;
+  function Z() { var z = root.ZOHO; return z && z.CRM && z.CRM.API && z.CRM.CONFIG ? z.CRM : null; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function publish(v) { root.__jpkRatesToFill = v; try { if (root.JPKShell && root.JPKShell.needs) root.JPKShell.needs.render(); } catch (e) { /* the list re-renders on its next refresh */ } }
+  function coqlAll(q) {
+    var all = [];
+    function page(off) {
+      return Z().API.coql({ select_query: q + ' order by id asc limit 200 offset ' + off }).then(function (r) {
+        var rows = (r && r.data) || []; all = all.concat(rows); return rows.length === 200 && all.length < 6000 ? page(off + 200) : all;
+      }, function (e) { if (!e || e.status === 204 || e.code === 'NO_CONTENT' || e === '') return all; throw e; });
+    }
+    return page(0);
+  }
+  function isAdmin(u) { var id = ''; try { id = String(root.JPKR && root.JPKR().admin_id || ''); } catch (e) {} return !!(u && ((u.profile && /^administrator$/i.test(u.profile.name || '')) || (id && String(u.id) === id))); }
+  function run() {
+    if (!root.RatesModel) return;
+    var demo = /[?&](demo|ntdemo)=1/.test(root.location.search) || !Z();
+    if (demo) { publish({ n: 6, unpriced: 67, units: 244, demo: true }); return; }
+    Z().CONFIG.getCurrentUser().then(function (r) {
+      var u = r && r.users && r.users[0]; if (!isAdmin(u)) return;
+      var d8 = new Date(); d8.setDate(d8.getDate() - 8);
+      return Promise.all([
+        coqlAll("select Count_Date, Account, Account.Account_Name, SmartView_Customer, Device_Family, Vendor, Supplied_Through, Hardware_Version, Acquisition, On_Leg from Daily_Unit_Counts where (Count_Date >= '" + ymd(d8) + "' and On_Leg > 0)"),
+        coqlAll("select id, Parent_Id, Parent_Id.Name, Rate_Type, Rate_Device, Rate_Vendor, Rate_Vendor.Vendor_Name, Rate_Daily_Amount, Rate_Terms, Line_Status, Line_Verified, Superseded_By, Effective_Date, Tier_Min_Units from Rate_Lines where Rate_Type in ('Customer rate','Vendor cost')"),
+        coqlAll("select id, Name, Account, Account.Account_Name, Vendor, Counterparty_Type, Contract_Status, Final_End_Date, Rate_Basis from Contracts where Counterparty_Type in ('Customer','Vendor')")
+      ]).then(function (x) {
+        var out = root.RatesModel.build({ units: x[0], lines: x[1], contracts: x[2], today: ymd(new Date()) });
+        var n = out.partB.filter(function (r) { return r.status !== 'Priced' || (r.flags && r.flags.length); }).length;
+        publish({ n: n, unpriced: out.totals.unpriced, units: out.totals.units });
+      });
+    }).catch(function () { /* no line: the home page stays as it was */ });
+  }
+  /* wait for the page shell (and the SDK init it does) before reading */
+  var tries = 0;
+  (function wait() {
+    if (root.JPKShell && root.JPKShell.needs && (Z() || tries > 20)) { setTimeout(run, 1500); return; }
+    if (++tries < 60) setTimeout(wait, 500);
+  })();
+})(window);
+</script>
 </body>
 </html>

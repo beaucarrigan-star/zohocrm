@@ -564,7 +564,7 @@ html[data-s48="on"][data-s32="on"] .s32-now b { left: -58px; width: 54px; paddin
 <script id="leadership-js">
 (function () {
   'use strict';
-  var BUILD = 'Leadership Home v47.4 · 27 Oct 2026';
+  var BUILD = 'Leadership Home v47.10 · 5 Nov 2026';
   var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
   /* Native reports in the "Leadership measures" folder (S15). Links stay off until S15 is confirmed final. */
   var REPORTS_LIVE = true;
@@ -778,7 +778,7 @@ html[data-s48="on"][data-s32="on"] .s32-now b { left: -58px; width: 54px; paddin
   window.__lead = { MEASURES: MEASURES, REPORTS: REPORTS, refresh: refresh, trust: function () { return TRUST; } };
 })();
 </script>
-<meta name="jpk-build" content="Leadership Home v47.5 (v47.4 S39 + S48 cleaner calendar: times on their own line, click-anywhere date and time pickers, 30 Oct 2026)">
+<meta name="jpk-build" content="Leadership Home v47.11.1 (S76, 5 Nov 2026: Margin by vendor uses rates-model.js v1.0.1, shared with Processes > Rates; lookup names selected) + v47.10.2 (5 Nov 2026: a customer line marked purchased makes that account and device owned even when the unit feed says Leased) + v47.10.1 (5 Nov 2026: Margin by vendor prices purchased units against monitoring-only vendor lines, rate lines read newest-last) + v47.10 (S79, 4 Nov 2026: full-width page, off with ?s79=0) + v47.9 (S78, 4 Nov 2026: More > Contracts and Opportunities open in Records) + v47.8.1 (S77, 5 Nov 2026: demo tiles for the 5 Nov leadership demo, off with ?s77=0) + v47.7 (S74, 3 Nov 2026: renewal opportunities open in Records) + v47.6 (v47.5 S48 + S65 Phase 13e: Pipeline and risk tiles and Pricing sign-offs, off with ?s13=0, 2 Nov 2026)">
 <!-- jpk-s24:begin -->
 <style id="jpk-shell-css">
 /* jpk-shell.css v0.2.1 (S24 v6.0.3, 22 Oct 2026): the page frame for Beau CS Home, in line with Beau's mockup. Pairs with jpk-shell.js.
@@ -1658,7 +1658,7 @@ html[data-jpk-popouts="on"] .jpk-mo-fine { margin: 0; font-size: var(--fs-sm); c
 window.JPK_SHELL = {
   home: 'lead',
   title: 'Leadership Home',
-  build: 'Leadership Home v47.5',
+  build: 'Leadership Home v47.10',
   popouts: { enabled: true, cap: 50, maxPages: 3, contractPeek: 'facts' },
   enabled: true,
   greeting: '#greeting',
@@ -1668,8 +1668,8 @@ window.JPK_SHELL = {
     { key: 'meetings', one: 'meeting today',    many: 'meetings today',    from: 'calendar.today',      zone: 'jpk:calendar' }
   ],
   actions: [
-    { id: 'contracts', label: 'Contracts', kind: 'tab', module: 'Contracts', icon: 'layers', tip: 'Opens Contracts.' },
-    { id: 'opps', label: 'Opportunities', kind: 'tab', module: 'Deals', icon: 'layers', tip: 'Opens Opportunities.' },
+    { id: 'contracts', label: 'Contracts', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab25?widgetparams=%7B%22jpk_section%22%3A%22contracts%22%7D', icon: 'layers', tip: 'Opens Contracts in Records.' },   /* v47.9 S78: Records, not the native module */
+    { id: 'opps', label: 'Opportunities', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/WebTab25?widgetparams=%7B%22jpk_section%22%3A%22deals%22%7D', icon: 'layers', tip: 'Opens Opportunities in Records.' },   /* v47.9 S78 */
     { id: 'collections', label: 'Collections reports', kind: 'tab', module: 'Collections_Reports', icon: 'mail', tip: 'Opens Collections Reports.' },
     { id: 'reports', label: 'Leadership reports', kind: 'href', href: 'https://crm.zoho.com/crm/org882980956/tab/Reports', icon: 'search', tip: 'Opens Reports. The measures are in the Leadership measures folder.' },
     { id: 'newMeeting', label: 'New meeting', kind: 'meeting', mode: 'zoho', durationMin: 30, primary: true, icon: 'plus', tip: 'Opens the new meeting form in Zoho CRM.', popout: 'calMonthNew', popTip: 'Adds a meeting to your Zoho CRM calendar from a box on this page.' }
@@ -7799,5 +7799,1035 @@ window.JPK_S38 = {"home": "lead", "frame": true, "lead": true, "tabs": [{"id": "
 
 </script>
 <!-- jpk-s38:end -->
+<!-- jpk-s13:begin -->
+<style id="jpk-s13-css">
+/* jpk-s13-lead.css v1.0.0 (S65, Phase 13e, 2 Nov 2026): Leadership tiles and the Pricing sign-off queue. Off: ?s13=0 */
+#s13-lead, #s13-queue {
+  --t-surface: light-dark(#FFFFFF, #191C20); --t-surface2: light-dark(#F7F8FA, #1F2328); --t-ink: light-dark(#1F2328, #E6E8EB);
+  --t-ink2: light-dark(#3A424B, #C9CED4); --t-muted: light-dark(#5B6470, #9AA1AB); --t-line: light-dark(#DDE1E6, #2B3038);
+  --t-accent: light-dark(#2F55A4, #7F9FE0); --t-accent-ink: light-dark(#284A90, #9DB6EA);
+  --t-bad: light-dark(#B42318, #F08A82); --t-warn: light-dark(#8A5300, #E0B055); --t-good: light-dark(#1E7A46, #5EC58C);
+  margin: 0 0 14px; padding: 14px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; color: var(--ink); box-sizing: border-box;
+}
+#s13-lead *, #s13-queue * { box-sizing: border-box; }
+#s13-lead[hidden], #s13-queue[hidden] { display: none; }
+.s13-hd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0 0 10px; }
+.s13-hd h2 { margin: 0; font: 600 16px/1.3 var(--head, inherit); color: var(--t-ink); }
+.s13-stamp { font-size: 12px; color: var(--t-muted); }
+.s13-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.s13-tile { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 150px; padding: 14px 16px; background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 4px; color: var(--t-ink); }
+.s13-lbl { font-size: 13px; font-weight: 600; color: var(--t-ink2); overflow-wrap: anywhere; }
+.s13-num { font: 700 30px/1.05 var(--head, inherit); font-variant-numeric: tabular-nums; color: var(--t-ink); overflow-wrap: anywhere; }
+.s13-sub { font-size: 12.5px; line-height: 1.4; color: var(--t-ink2); }
+.s13-chips { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.s13-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--t-muted); }
+.s13-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.s13-chip.bad { color: var(--t-bad); } .s13-chip.warn { color: var(--t-warn); } .s13-chip.good { color: var(--t-good); }
+.s13-list { margin: 2px 0 0; padding: 0; list-style: none; font-size: 12.5px; line-height: 1.45; color: var(--t-ink2); }
+.s13-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; border-top: 1px solid var(--t-line); padding: 3px 0; }
+.s13-list li:first-child { border-top: 0; }
+.s13-list .n { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--t-ink); }
+.s13-list .a { min-width: 0; overflow-wrap: break-word; }
+.s13-list a.s13-deal { color: var(--t-ink); text-decoration: underline; text-decoration-color: var(--t-line); text-underline-offset: 2px; }
+.s13-list a.s13-deal:hover, .s13-list a.s13-deal:focus-visible { text-decoration-color: currentColor; }
+.s13-list .n { text-align: right; }
+.s13-list .d { grid-column: 1 / -1; font-size: 12px; color: var(--t-muted); }
+.s13-mean { margin-top: auto; font-size: 12px; line-height: 1.4; color: var(--t-muted); }
+.s13-err { margin: 0; font-size: 13px; color: var(--t-bad); }
+.s13-none { margin: 0; font-size: 13px; color: var(--t-muted); }
+.s13-q { margin: 0; padding: 0; list-style: none; }
+.s13-q > li { padding: 10px 0; border-top: 1px solid var(--t-line); }
+.s13-q > li:first-child { border-top: 0; padding-top: 2px; }
+.s13-qt { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.s13-qt a { font-weight: 600; color: var(--t-accent-ink); text-decoration: none; overflow-wrap: anywhere; }
+.s13-qt a:hover { text-decoration: underline; }
+.s13-qm { margin: 4px 0 0; font-size: 12.5px; color: var(--t-ink2); }
+.s13-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.s13-btn { min-height: 34px; padding: 6px 12px; font: 600 13px/1.2 inherit; color: var(--t-ink); background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 4px; cursor: pointer; }
+.s13-btn:hover { border-color: var(--t-accent); }
+.s13-btn.pri { color: light-dark(#FFFFFF, #10151C); background: var(--t-accent); border-color: var(--t-accent); }
+.s13-btn:focus-visible, .s13-qt a:focus-visible, .s13-ask textarea:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
+.s13-btn[disabled] { opacity: .55; cursor: default; }
+.s13-ask { margin-top: 8px; padding: 10px 12px; background: var(--t-surface2); border: 1px solid var(--t-line); border-radius: 4px; }
+.s13-ask[hidden] { display: none; }
+.s13-ask label { display: block; margin: 0 0 6px; font-size: 12.5px; font-weight: 600; color: var(--t-ink2); }
+.s13-ask textarea { width: 100%; min-height: 60px; padding: 6px 8px; font: 13px/1.4 inherit; color: var(--t-ink); background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 4px; resize: vertical; }
+.s13-msg { margin: 6px 0 0; font-size: 12.5px; color: var(--t-muted); }
+.s13-msg[hidden] { display: none; }
+.s13-msg.bad { color: var(--t-bad); } .s13-msg.good { color: var(--t-good); }
+@media (max-width: 560px) { #s13-lead, #s13-queue { padding: 12px; } .s13-num { font-size: 26px; } }
+</style>
+<script id="jpk-s13">
+/* jpk-s13-lead.js v1.0.0 (S65, cohesion plan Phase 13e, mockup board 4B, 2 Nov 2026). Leadership Home only.
+   1. "Pipeline and risk" (Today tab, at the top, above "Needs you today" as on mockup 4B): weighted pipeline by entity, renewal risk in 90 days, cases past SLA,
+      margin by customer against the floor. Read from CRM variable LEADERSHIP_TILES (written each morning by leadership_tiles_nightly).
+      A tile says "incomplete" when deals have no Amount; the margin tile says how many customers have a margin at all.
+   2. "Pricing sign-offs" (Today tab, under the tiles): open Cases with a Pricing Scenario, read live by COQL. On a case you own: Approve,
+      Ask for a second scenario, Decline. Each adds a Note to the case ("Leadership decision: ..." plus your comment) and sets
+      Status Closed. A comment is required for Decline and Ask for a second scenario. Other leaders' cases are listed without buttons.
+   Live data only: with ?demo=1 or outside Zoho the page shows labelled sample numbers and writes nothing.
+   Reads: getOrgVariable, COQL on Cases and Pricing_Scenarios, getCurrentUser. Writes: one Notes insert and one Cases update, from Confirm only.
+   Off switch: ?s13=0. */
+(function (root) {
+  'use strict';
+  var VAR = 'LEADERSHIP_TILES';
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+  var ENTITY_ORDER = ['JusticePoint EM', 'JusticePoint Programs', 'Sirona Programs', 'TDP Pipeline', 'Standard Pipeline'];
+
+  /* ---------------- model (pure; tested in node) ---------------- */
+  function num(v) { var n = +v; return v === '' || v == null || isNaN(n) ? null : n; }
+  function money(n) { return n == null ? '—' : '$' + Math.round(n).toLocaleString('en-US'); }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function shortDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); if (!m) return '';
+    return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  function tiles(T) {
+    if (!T || typeof T !== 'object') return null;
+    var out = [];
+    /* 1. weighted pipeline by entity */
+    var P = (T.pipeline || []).slice().sort(function (a, b) {
+      var ia = ENTITY_ORDER.indexOf(a.entity), ib = ENTITY_ORDER.indexOf(b.entity);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    var w = 0, deals = 0, noAmt = 0;
+    P.forEach(function (p) { w += num(p.weighted) || 0; deals += num(p.deals) || 0; noAmt += num(p.no_amount) || 0; });
+    out.push({ key: 'pipeline', label: 'Weighted pipeline', num: money(w),
+      sub: plural(deals, 'open deal') + ' · Amount × stage probability',
+      chips: noAmt ? [{ tone: 'warn', text: 'Incomplete: ' + plural(noAmt, 'deal') + ' with no Amount' }] : (deals ? [{ tone: 'good', text: 'Every open deal has an Amount' }] : []),
+      list: P.map(function (p) { var na = num(p.no_amount) || 0; return { a: p.entity, n: money(num(p.weighted)), d: plural(num(p.deals) || 0, 'deal') + (na ? ' · ' + na + ' with no Amount' : '') }; }),
+      mean: 'Open deals in Early or Working stages, by entity.' });
+    /* 2. renewal risk, 90 days */
+    var R = T.renewal90 || {}, rc = num(R.count) || 0, rn = num(R.no_amount) || 0, red = num(R.red_accounts) || 0;
+    var rchips = [];
+    if (red) rchips.push({ tone: 'bad', text: plural(red, 'on a red account', 'on red accounts') });
+    if (rn) rchips.push({ tone: 'warn', text: 'Incomplete: ' + rn + ' with no Amount' });
+    if (!rc) rchips.push({ tone: 'good', text: 'None due' });
+    out.push({ key: 'renewal', label: 'Renewal risk · 90 days', num: String(rc),
+      sub: rc ? money(num(R.value)) + ' value' + (rn ? ' (without the ' + rn + ' with no Amount)' : '') : 'No renewal opportunities close in 90 days',
+      chips: rchips,
+      list: (R.top || []).slice(0, 3).map(function (t) { return { a: t.a || '(no account)', n: (t.v === '' || t.v == null ? 'no Amount' : money(num(t.v))) + (t.c ? ' · ' + shortDate(t.c) : ''), deal: t.id ? String(t.id) : '' }; }),
+      mean: 'Open renewal opportunities closing within 90 days. Red is account health from the night before.' });
+    /* 3. cases past SLA */
+    var S = T.sla || {}, br = num(S.breached) || 0, mi = num(S.missed) || 0;
+    out.push({ key: 'sla', label: 'Cases past SLA', num: String(br),
+      sub: 'Answered late, all time: ' + mi,
+      chips: [br ? { tone: 'bad', text: plural(br, 'case') + ' unanswered past the first-response time' } : { tone: 'good', text: 'None past SLA now' }],
+      list: [], mean: 'New cases still unanswered after their 1-business-day Due By.' });
+    /* 4. margin vs floor */
+    var M = T.margin || {}, cust = num(M.customers) || 0, bf = num(M.below_floor) || 0, bt = num(M.below_target) || 0;
+    var floor = num(M.floor), target = num(M.target);
+    var mchips = [];
+    if (bf) mchips.push({ tone: 'bad', text: bf + ' below the ' + floor + '% floor' });
+    if (bt) mchips.push({ tone: 'warn', text: bt + ' below the ' + target + '% target' });
+    if (cust && !bf && !bt) mchips.push({ tone: 'good', text: 'All at or above target' });
+    out.push({ key: 'margin', label: 'Margin by customer', num: cust ? bf + ' of ' + cust : '—',
+      sub: cust ? 'customers below the ' + floor + '% EM floor (lowest line)' : 'No customer has a margin yet',
+      chips: mchips,
+      list: (M.worst || []).slice(0, 3).map(function (x) { return { a: x.a, n: (num(x.low) == null ? '—' : num(x.low) + '%') + ' lowest' }; }),
+      mean: cust ? 'Incomplete: only ' + plural(cust, 'customer has', 'customers have') + ' a margin today (EM, from contract rate lines). Programs and Sirona have no floor set.' : 'Margins come from contract rate lines.' });
+    return out;
+  }
+  function stamp(T) { return T && T.at ? 'As of ' + T.at + ' CT · updated each morning' : ''; }
+  var ACTIONS = {
+    approve: { label: 'Approve', note: 'Approved', needs: false },
+    second: { label: 'Ask for a second scenario', note: 'Asked for a second scenario', needs: true },
+    decline: { label: 'Decline', note: 'Declined', needs: true }
+  };
+  function decision(kind, comment, who, when) {
+    var a = ACTIONS[kind]; if (!a) return { error: 'Unknown action' };
+    var c = String(comment || '').trim();
+    if (a.needs && !c) return { error: kind === 'decline' ? 'Say why you are declining.' : 'Say what the second scenario should change.' };
+    return {
+      note: { Note_Title: 'Leadership decision: ' + a.note, Note_Content: a.note + ' by ' + (who || 'Leadership') + ' on ' + when + '.' + (c ? '\n\n' + c : '') },
+      update: { Status: 'Closed' }
+    };
+  }
+  var model = { tiles: tiles, stamp: stamp, decision: decision, ACTIONS: ACTIONS, money: money };
+  if (typeof module !== 'undefined' && module.exports) { module.exports = model; return; }
+  if (/[?&]s13=0\b/.test(root.location.search)) return;
+
+  /* ---------------- page ---------------- */
+  var doc = root.document, html = doc.documentElement;
+  var DEMO = /[?&](demo|ntdemo)=1/.test(root.location.search);
+  function $(id) { return doc.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function zoho() { var Z = root.ZOHO; return Z && Z.CRM && Z.CRM.API ? Z : null; }
+  function live() { return !DEMO && !!zoho(); }
+  function timeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timed out')); }, ms); })]); }
+  function fit() { try { if (root.hlFrameFit) root.hlFrameFit.request(); } catch (e) {} }
+  function zones() { try { return (root.JPKShell && root.JPKShell.config && root.JPKShell.config.zones) || null; } catch (e) { return null; } }
+  function addZone(sel, ref) {
+    var Z = zones(); if (!Z) return;
+    ['main', 'narrowOrder'].forEach(function (k) {
+      var a = Z[k]; if (!Array.isArray(a) || a.indexOf(sel) >= 0) return;
+      var i = a.indexOf('#s38-needs'); if (i < 0) i = a.indexOf(ref);
+      if (i < 0) { if (k === 'main') a.push(sel); return; }
+      a.splice(i, 0, sel);
+    });
+  }
+  var DEMO_T = { v: 1, at: 'sample', pipeline: [{ entity: 'JusticePoint EM', deals: 4, amount: 100000, weighted: 25000, no_amount: 1 }, { entity: 'JusticePoint Programs', deals: 2, amount: 20000, weighted: 4000, no_amount: 0 }],
+    renewal90: { count: 2, value: 30000, no_amount: 1, red_accounts: 1, top: [{ a: 'Sample County A', c: '2026-12-31', v: 30000 }, { a: 'Sample County B', c: '2027-01-15', v: '' }] },
+    sla: { breached: 1, missed: 2 }, margin: { customers: 3, below_floor: 1, below_target: 2, floor: 20, target: 30, worst: [{ a: 'Sample County C', low: 12.5 }, { a: 'Sample County D', low: 24 }] }, queue: [] };
+  var DEMO_Q = [{ id: 'demo1', Subject: 'Pricing sign-off: Sample County GPS lease', Status: 'New', Due_By: '', mine: true, from: 'Sample sender', margin: '31.2%', missing: 0 },
+    { id: 'demo2', Subject: 'Pricing sign-off: Sample County CAM purchase', Status: 'New', Due_By: '', mine: false, owner: 'Another leader', from: 'Sample sender', margin: '18%', missing: 1 }];
+  /* T: undefined = loading, null = not computed yet, object = data */
+  var T, tErr = null, Q = null, qErr = null, me = null, busy = {};
+
+  function readTiles() {
+    if (!live()) return Promise.resolve(DEMO_T);
+    return timeout(root.ZOHO.CRM.API.getOrgVariable(VAR), 10000).then(function (r) {
+      var v = r && r.Success && r.Success.Content; if (v == null && r && r.Content) v = r.Content;
+      return v ? JSON.parse(v) : null;
+    });
+  }
+  function readMe() {
+    if (!live() || !(root.ZOHO.CRM.CONFIG && root.ZOHO.CRM.CONFIG.getCurrentUser)) return Promise.resolve(null);
+    return timeout(root.ZOHO.CRM.CONFIG.getCurrentUser(), 10000).then(function (r) {
+      var u = r && r.users && r.users[0]; return u ? { id: String(u.id), name: u.full_name || [u.first_name, u.last_name].join(' ').trim() } : null;
+    }).catch(function () { return null; });
+  }
+  function coql(q) {
+    return timeout(root.ZOHO.CRM.API.coql({ select_query: q }), 15000).then(function (r) { return (r && r.data) || []; },
+      function (e) { if (!e || e.status === 204 || e.code === 'NO_CONTENT' || e === '') return []; throw e; });
+  }
+  function readQueue() {
+    if (!live()) return Promise.resolve(DEMO_Q);
+    return coql("select id, Subject, Status, Due_By, Owner.id, Owner.first_name, Owner.last_name, Created_By.first_name, Created_By.last_name, Pricing_Scenario.id from Cases where (Pricing_Scenario is not null and Status != 'Closed') order by Created_Time desc limit 25")
+      .then(function (rows) {
+        var ids = rows.map(function (r) { return r['Pricing_Scenario.id']; }).filter(Boolean);
+        var sc = ids.length ? coql("select id, Est_Margin_Pct, Missing_Costs from Pricing_Scenarios where id in ('" + ids.join("','") + "')").catch(function () { return []; }) : Promise.resolve([]);
+        return sc.then(function (srows) {
+          var by = {}; srows.forEach(function (s) { by[s.id] = s; });
+          return rows.map(function (r) {
+            var s = by[r['Pricing_Scenario.id']] || {}, m = num(s.Est_Margin_Pct);
+            return { id: String(r.id), Subject: r.Subject, Status: r.Status, Due_By: r.Due_By,
+              mine: !!(me && String(r['Owner.id']) === me.id),
+              owner: [r['Owner.first_name'], r['Owner.last_name']].join(' ').trim(),
+              from: [r['Created_By.first_name'], r['Created_By.last_name']].join(' ').trim(),
+              margin: m == null ? '' : (Math.round(m * 10) / 10) + '%', missing: num(s.Missing_Costs) || 0 };
+          });
+        });
+      });
+  }
+
+  /* S74 (3 Nov 2026): a renewal opportunity in the tile opens in Records (Opportunities section, on that record). Needs the id that
+     leadership_tiles_nightly writes from 3 Nov; rows without one stay plain text. Off switch ?s74=0. */
+  function dealHref(id) {
+    if (!/^\d{6,25}$/.test(String(id)) || /[?&]s74=0\b/.test(location.search)) return '';
+    return 'https://crm.zoho.com/crm/org882980956/tab/WebTab25?widgetparams=' + encodeURIComponent(JSON.stringify({ jpk_section: 'deals', jpk_record: String(id) }));
+  }
+  function tileHtml(t) {
+    return '<li class="s13-tile" data-s13-tile="' + t.key + '"><span class="s13-lbl">' + esc(t.label) + '</span><span class="s13-num">' + esc(t.num) + '</span>' +
+      '<span class="s13-sub">' + esc(t.sub) + '</span>' +
+      (t.chips.length ? '<span class="s13-chips">' + t.chips.map(function (c) { return '<span class="s13-chip ' + c.tone + '">' + esc(c.text) + '</span>'; }).join('') + '</span>' : '') +
+      (t.list.length ? '<ul class="s13-list">' + t.list.map(function (x) { return '<li>' + (x.deal && dealHref(x.deal) ? '<a class="a s13-deal" href="' + esc(dealHref(x.deal)) + '" target="_top" title="Open this opportunity in Records">' + esc(x.a) + '</a>' : '<span class="a">' + esc(x.a) + '</span>') + '<span class="n">' + esc(x.n) + '</span>' + (x.d ? '<span class="d">' + esc(x.d) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '') +
+      '<span class="s13-mean">' + esc(t.mean) + '</span></li>';
+  }
+  function paintTiles() {
+    var card = $('s13-lead'); if (!card) return;
+    var body = card.querySelector('.s13-body'), st = card.querySelector('.s13-stamp'), h;
+    if (tErr) h = '<p class="s13-err">These numbers could not be read (' + esc(tErr) + '). The measures below still work.</p>';
+    else if (T === undefined) h = '<p class="s13-none">Loading…</p>';
+    else if (T === null) h = '<p class="s13-none">Not computed yet. These numbers are worked out each morning.</p>';
+    else h = '<ul class="s13-tiles">' + tiles(T).map(tileHtml).join('') + '</ul>';
+    if (body.__h !== h) { body.__h = h; body.innerHTML = h; }
+    st.textContent = !live() ? 'Sample numbers (demo)' : tErr ? '' : stamp(T);
+    fit();
+  }
+  function rowHtml(r) {
+    var meta = [r.from ? 'From ' + r.from : '', r.Due_By ? 'due ' + shortDate(r.Due_By) : '', r.margin ? r.margin + ' expected margin' : 'margin not on the scenario',
+      r.mine ? '' : 'owned by ' + (r.owner || 'another leader')].filter(Boolean).join(' · ');
+    var href = r.id.indexOf('demo') === 0 ? '#' : ORG + 'Cases/' + encodeURIComponent(r.id);
+    var acts = r.mine ? '<div class="s13-acts">' + Object.keys(ACTIONS).map(function (k) {
+      return '<button type="button" class="s13-btn' + (k === 'approve' ? ' pri' : '') + '" data-s13-act="' + k + '" data-s13-id="' + esc(r.id) + '">' + esc(ACTIONS[k].label) + '</button>';
+    }).join('') + '</div>' +
+      '<div class="s13-ask" data-s13-ask="' + esc(r.id) + '" hidden><label for="s13-c-' + esc(r.id) + '"></label><textarea id="s13-c-' + esc(r.id) + '"></textarea>' +
+      '<div class="s13-acts"><button type="button" class="s13-btn pri" data-s13-ok="' + esc(r.id) + '">Confirm</button><button type="button" class="s13-btn" data-s13-cancel="' + esc(r.id) + '">Cancel</button></div></div>' : '';
+    return '<li data-s13-row="' + esc(r.id) + '"><div class="s13-qt"><a href="' + href + '" target="_top" rel="noopener">' + esc(r.Subject || '(no subject)') + '</a>' +
+      (r.missing ? '<span class="s13-chip bad">' + esc(plural(r.missing, 'missing cost')) + ': margin is overstated</span>' : '') + '</div>' +
+      '<p class="s13-qm">' + esc(meta) + '</p>' + acts + '<p class="s13-msg" data-s13-msg="' + esc(r.id) + '" aria-live="polite" hidden></p></li>';
+  }
+  function paintQueue() {
+    var card = $('s13-queue'); if (!card) return;
+    var body = card.querySelector('.s13-body'), h;
+    if (qErr) h = '<p class="s13-err">Sign-off cases could not be read (' + esc(qErr) + ').</p>';
+    else if (Q === null) h = '<p class="s13-none">Loading…</p>';
+    else if (!Q.length) h = '<p class="s13-none">No pricing sign-offs waiting. Business Development sends them from BD Home: + New, Send to Leadership, Pricing sign-off.</p>';
+    else h = '<ul class="s13-q">' + Q.map(rowHtml).join('') + '</ul>';
+    body.innerHTML = h;
+    var n = card.querySelector('.s13-count'); if (n) n.textContent = (Q && Q.length ? Q.length + ' waiting' : '') + (Q && !live() ? ' · sample (demo)' : '');
+    fit();
+  }
+  function msg(id, text, tone) {
+    var p = doc.querySelector('[data-s13-msg="' + id + '"]'); if (!p) return;
+    p.textContent = text; p.className = 's13-msg' + (tone ? ' ' + tone : ''); p.hidden = !text;
+  }
+  function openAsk(id, kind) {
+    var box = doc.querySelector('[data-s13-ask="' + id + '"]'); if (!box) return;
+    box.setAttribute('data-kind', kind);
+    var a = ACTIONS[kind];
+    box.querySelector('label').textContent = a.needs ? (kind === 'decline' ? 'Why are you declining? (needed)' : 'What should the second scenario change? (needed)') : 'Comment (optional)';
+    box.querySelector('[data-s13-ok]').textContent = 'Confirm: ' + a.label;
+    box.hidden = false; msg(id, '', '');
+    try { box.querySelector('textarea').focus(); } catch (e) {}
+    fit();
+  }
+  function closeAsk(id) { var box = doc.querySelector('[data-s13-ask="' + id + '"]'); if (box) { box.hidden = true; box.querySelector('textarea').value = ''; } fit(); }
+  function setBtns(id, off) { [].forEach.call(doc.querySelectorAll('[data-s13-row="' + id + '"] button'), function (b) { b.disabled = off; }); }
+  function confirmAsk(id) {
+    if (busy[id]) return;
+    var box = doc.querySelector('[data-s13-ask="' + id + '"]'); if (!box) return;
+    var kind = box.getAttribute('data-kind'), when = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    var d = decision(kind, box.querySelector('textarea').value, me && me.name, when);
+    if (d.error) { msg(id, d.error, 'bad'); return; }
+    if (!live() || id.indexOf('demo') === 0) { closeAsk(id); msg(id, 'Preview: would add the note "' + d.note.Note_Title + '" and close the case. Nothing was saved.', 'good'); return; }
+    busy[id] = true; setBtns(id, true); msg(id, 'Saving…', '');
+    var API = root.ZOHO.CRM.API;
+    var note = { Note_Title: d.note.Note_Title, Note_Content: d.note.Note_Content, Parent_Id: { id: id }, $se_module: 'Cases' };
+    var okOf = function (r) { var x = r && r.data && r.data[0]; return !x || !x.code || x.code === 'SUCCESS' ? null : (x.message || x.code); };
+    timeout(API.insertRecord({ Entity: 'Notes', APIData: note }), 15000)
+      .then(function (r) { var bad = okOf(r); if (bad) throw new Error(bad); })
+      .then(function () { return timeout(API.updateRecord({ Entity: 'Cases', APIData: { id: id, Status: d.update.Status }, Trigger: ['workflow'] }), 15000); })
+      .then(function (r) {
+        var bad = okOf(r); if (bad) throw new Error('the note was saved, but the case was not closed: ' + bad);
+        busy[id] = false; closeAsk(id); msg(id, 'Saved: ' + ACTIONS[kind].note + '. The case is closed.', 'good');
+        setTimeout(loadQueue, 2500);
+      })
+      .catch(function (e) {
+        busy[id] = false; setBtns(id, false);
+        msg(id, 'Not saved: ' + ((e && (e.message || e.code)) || 'Zoho refused the change') + '. Open the case to finish it there.', 'bad');
+      });
+  }
+  function build() {
+    var grid = $('grid'); if (!grid || !grid.parentNode) return false;
+    var lead = $('s13-lead'), queue = $('s13-queue');
+    if (!lead) {
+      lead = doc.createElement('section'); lead.id = 's13-lead'; lead.setAttribute('aria-labelledby', 's13-lead-h'); lead.setAttribute('data-s38-p', 'today');
+      lead.innerHTML = '<div class="s13-hd"><h2 id="s13-lead-h">Pipeline and risk</h2><span class="s13-stamp"></span></div><div class="s13-body"></div>';
+      queue = doc.createElement('section'); queue.id = 's13-queue'; queue.setAttribute('aria-labelledby', 's13-queue-h'); queue.setAttribute('data-s38-p', 'today');
+      queue.innerHTML = '<div class="s13-hd"><h2 id="s13-queue-h">Pricing sign-offs</h2><span class="s13-stamp s13-count"></span></div><div class="s13-body"></div>';
+      queue.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('button'); if (!b) return;
+        if (b.hasAttribute('data-s13-act')) openAsk(b.getAttribute('data-s13-id'), b.getAttribute('data-s13-act'));
+        else if (b.hasAttribute('data-s13-ok')) confirmAsk(b.getAttribute('data-s13-ok'));
+        else if (b.hasAttribute('data-s13-cancel')) closeAsk(b.getAttribute('data-s13-cancel'));
+      });
+      queue.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var a = e.target.closest && e.target.closest('[data-s13-ask]'); if (a) { e.stopPropagation(); closeAsk(a.getAttribute('data-s13-ask')); }
+      });
+    }
+    /* S38 keeps "Needs you today" right above the measures, so these cards go just above it (above the measures when it is absent) */
+    addZone('#s13-lead', '#grid'); addZone('#s13-queue', '#grid');
+    var needs = $('s38-needs'), anchor = needs && !needs.hidden && needs.parentNode === grid.parentNode ? needs : grid;
+    if (queue.parentNode !== anchor.parentNode || queue.nextElementSibling !== anchor) anchor.parentNode.insertBefore(queue, anchor);
+    if (lead.parentNode !== queue.parentNode || lead.nextElementSibling !== queue) queue.parentNode.insertBefore(lead, queue);
+    return true;
+  }
+  function loadTiles() {
+    T = undefined; tErr = null; paintTiles();
+    return readTiles().then(function (t) { T = t || null; }, function (e) { tErr = (e && (e.message || e.code)) || 'could not read'; }).then(paintTiles);
+  }
+  function loadQueue() {
+    qErr = null;
+    return readQueue().then(function (q) { Q = q; }, function (e) { qErr = (e && (e.message || e.code)) || 'could not read'; Q = []; }).then(paintQueue);
+  }
+  var tries = 0;
+  function start() {
+    if (!build()) { if (tries++ < 40) setTimeout(start, 250); return; }
+    html.setAttribute('data-s13', 'on');
+    paintTiles(); paintQueue();
+    var go = function () { readMe().then(function (u) { me = u; }).then(function () { loadTiles(); loadQueue(); }); };
+    if (live()) setTimeout(go, 600); else go();
+    /* the shell re-places its zones when Zoho resizes the frame; keep both cards in place */
+    setInterval(function () { try { build(); } catch (e) {} }, 2000);
+    var r = $('refresh'); if (r) r.addEventListener('click', function () { loadTiles(); loadQueue(); });
+  }
+  root.JPK_S13 = { refresh: function () { loadTiles(); loadQueue(); }, model: model };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(start, 0); });
+  else setTimeout(start, 0);
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- jpk-s13:end -->
+<!-- jpk-s77:begin -->
+<style id="jpk-s77-css">
+/* jpk-s77-demo.css v1.0.0 (S77, 5 Nov 2026): the seven demo tiles for the 5 Nov leadership demo, laid out as the Leadership Home mockup. Off: ?s77=0 */
+#s77-demo {
+  --t-surface: light-dark(#FFFFFF, #191C20); --t-surface2: light-dark(#F7F8FA, #1F2328); --t-ink: light-dark(#1F2328, #E6E8EB);
+  --t-ink2: light-dark(#3A424B, #C9CED4); --t-muted: light-dark(#5B6470, #9AA1AB); --t-line: light-dark(#DDE1E6, #2B3038); --t-line2: light-dark(#EEF0F3, #262B33);
+  --t-accent: light-dark(#2F55A4, #7F9FE0); --t-accent-ink: light-dark(#284A90, #9DB6EA);
+  --t-bad: light-dark(#B42318, #F08A82); --t-warn: light-dark(#9A4E0A, #E0B055); --t-good: light-dark(#1E7A46, #5EC58C);
+  --t-bad-bg: light-dark(#FBE9E7, #3A1D1A); --t-warn-bg: light-dark(#FDF1E6, #3A2A14); --t-good-bg: light-dark(#E6F2EA, #163524);
+  margin: 0 0 14px; color: var(--ink); box-sizing: border-box; display: flex; flex-direction: column; gap: 14px;
+}
+#s77-demo * { box-sizing: border-box; }
+#s77-demo[hidden] { display: none; }
+.s77-hd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.s77-hd h2 { margin: 0; font: 600 16px/1.3 var(--head, inherit); color: var(--t-ink); }
+.s77-stamp { font-size: 12px; color: var(--t-muted); }
+.s77-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.s77-links a { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid var(--t-line); border-radius: 4px; background: var(--t-surface); font: 600 12.5px/1 inherit; color: var(--t-ink); text-decoration: none; }
+.s77-links a.pri { background: var(--t-accent); border-color: var(--t-accent); color: light-dark(#FFFFFF, #10151C); }
+.s77-links a:hover { border-color: var(--t-accent); }
+.s77-links a:focus-visible, .s77-card a:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
+.s77-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.s77-kpi { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 14px 16px; background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 4px; }
+.s77-kpi .l { font-size: 12px; font-weight: 600; color: var(--t-muted); }
+.s77-kpi .v { font: 600 27px/1.1 var(--head, inherit); font-variant-numeric: tabular-nums; color: var(--t-ink); overflow-wrap: anywhere; }
+.s77-kpi .s { font-size: 12px; color: var(--t-muted); }
+.s77-kpi .s.bad { color: var(--t-bad); }
+.s77-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+.s77-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px 18px; background: var(--t-surface); border: 1px solid var(--t-line); border-radius: 4px; color: var(--t-ink); }
+.s77-ch { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 10px; }
+.s77-ch h3 { margin: 0; font: 600 15px/1.3 var(--head, inherit); color: var(--t-ink); }
+.s77-ch .t { display: flex; align-items: baseline; gap: 10px; }
+.s77-ch a { font-size: 12.5px; font-weight: 600; color: var(--t-accent-ink); text-decoration: none; white-space: nowrap; }
+.s77-ch a:hover { text-decoration: underline; }
+.s77-pill { font-size: 11px; font-weight: 600; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; background: var(--t-warn-bg); color: var(--t-warn); }
+.s77-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+.s77-stats > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.s77-stats b { font: 600 20px/1.1 var(--head, inherit); font-variant-numeric: tabular-nums; color: var(--t-ink); }
+.s77-stats span { font-size: 12px; color: var(--t-muted); }
+.s77-card table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.s77-card th { padding: 6px 0; border-bottom: 1px solid var(--t-line); font-size: 12px; font-weight: 600; color: var(--t-muted); text-align: left; }
+.s77-card td { padding: 7px 0; border-bottom: 1px solid var(--t-line2); vertical-align: top; }
+.s77-card tr:last-child td { border-bottom: 0; }
+.s77-card th.r, .s77-card td.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.s77-card td.b { font-weight: 600; }
+.s77-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 18px; font-size: 13px; }
+.s77-two .k { font-size: 12px; font-weight: 600; color: var(--t-muted); margin: 0 0 6px; }
+.s77-kv { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--t-line2); }
+.s77-kv:last-child { border-bottom: 0; }
+.s77-kv b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.s77-bar { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.s77-bar > span:first-child { flex: 0 0 118px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s77-bar .tr { flex: 1 1 auto; height: 10px; background: var(--t-line2); border-radius: 2px; overflow: hidden; }
+.s77-bar .tr i { display: block; height: 100%; background: var(--t-accent); }
+.s77-bar .tr i.bad { background: var(--t-bad); }
+.s77-bar > b { flex: 0 0 30px; text-align: right; font-variant-numeric: tabular-nums; }
+.s77-tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--t-line); white-space: nowrap; }
+.s77-tag.good { color: var(--t-good); } .s77-tag.warn { color: var(--t-warn); } .s77-tag.bad { color: var(--t-bad); }
+.s77-chips { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; }
+.s77-chip { padding: 2px 10px; border-radius: 999px; font-weight: 600; background: var(--t-line2); color: var(--t-ink); }
+.s77-chip.good { background: var(--t-good-bg); color: var(--t-good); } .s77-chip.warn { background: var(--t-warn-bg); color: var(--t-warn); } .s77-chip.bad { background: var(--t-bad-bg); color: var(--t-bad); }
+.s77-chip.line { background: transparent; border: 1px solid var(--t-line); }
+.s77-foot { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-top: 8px; border-top: 1px solid var(--t-line2); font-size: 12.5px; color: var(--t-muted); }
+.s77-foot b { color: var(--t-ink); }
+.s77-foot .bad, .s77-foot .bad b { color: var(--t-bad); }
+.s77-note { margin: 0; font-size: 12px; line-height: 1.4; color: var(--t-muted); }
+.s77-tasks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.s77-tasks li { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--t-line); border-radius: 4px; }
+.s77-tasks .tt { display: flex; justify-content: space-between; gap: 8px; }
+.s77-tasks .tt a { font-weight: 600; color: var(--t-ink); text-decoration: none; overflow-wrap: anywhere; }
+.s77-tasks .tt a:hover { text-decoration: underline; }
+.s77-tasks .due { font-size: 12px; color: var(--t-muted); white-space: nowrap; }
+.s77-tasks .due.bad { color: var(--t-bad); }
+.s77-tasks .who { font-size: 12px; color: var(--t-muted); }
+.s77-empty { padding: 20px; border: 1px dashed var(--t-line); border-radius: 4px; text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.s77-empty p { margin: 0; font-size: 13px; color: var(--t-ink2); }
+.s77-hbar { display: flex; height: 14px; border-radius: 2px; overflow: hidden; background: var(--t-line2); }
+.s77-hbar i { display: block; height: 100%; }
+.s77-err { margin: 0; font-size: 13px; color: var(--t-bad); }
+.s77-none { margin: 0; font-size: 13px; color: var(--t-muted); }
+@media (max-width: 560px) { .s77-card { padding: 12px; } .s77-kpi .v { font-size: 22px; } .s77-bar > span:first-child { flex-basis: 90px; } }
+</style>
+<script id="rates-model">
+/* rates-model.js v1.0.1 (S76, 5 Nov 2026; 1.0.1: Part B rows carry rateVendorId and flags, e.g. 'No vendor on rate line') - ONE pricing model for the Leadership "Margin by vendor" tile and Processes > Rates.
+   Pure: no DOM, no Zoho. Browser: window.RatesModel; node: require. The tile inlines this file byte for byte (check: tests/check-inline.js).
+
+   build({ units, lines, contracts, today }) -> { partA, partB, totals, tile }
+     units      Daily_Unit_Counts rows: Count_Date, Account, Account.Account_Name, SmartView_Customer, Device_Family, Vendor,
+                Supplied_Through, Hardware_Version, Acquisition, On_Leg
+     lines      Rate_Lines rows (any status): id, Parent_Id, Parent_Id.Name, Rate_Type, Rate_Device, Rate_Vendor, Rate_Vendor.Vendor_Name,
+                Rate_Daily_Amount, Rate_Terms, Line_Status, Line_Verified, Superseded_By, Effective_Date, Tier_Min_Units
+     contracts  Contracts rows: id, Name, Account, Account.Account_Name, Vendor, Counterparty_Type, Contract_Status, Final_End_Date, Rate_Basis
+     Lookups may arrive as {id, name} objects (REST) or bare ids (widget COQL); names then come from the dotted columns.
+
+   RULES (step 0, read from Leadership Home v47.10 and written into the S76 plan; changes from v47.10 marked *)
+   Units
+     - Count day: each unit VENDOR's latest Count_Date in the rows given (vendor, not vendor x family).
+     - Vendor: Vendor = SCRAM and Supplied_Through = Allied -> Allied; else Vendor; empty Vendor with Hardware_Version starting
+       AT1 / RTC / 1-Piece Beacon / Beacon -> Allied; anything else has no vendor and is left out of the counts.
+     - Family: Hardware_Version "Base Station*" -> left out (bundled with the bracelet); PureProtect or Device_Family "Victim / DV"
+       -> Victim / DV; Device_Family GPS / Remote Breath / CAM -> itself; anything else left out.
+     - Double rows: rows for the same account, family and day are SUMMED. On 4 Nov every such pair is two hardware versions
+       (Ramsey and Vernon GPS: AT1 LTE A + AT1 LTE V) or bracelet + base station (base station left out), not a double import.
+     - Owned: Acquisition says Purchased/Owned, or the account's only customer rate for the family is marked purchased/owned.
+   Vendor cost (Part A)
+     - Vendor card: a contract named "<Allied|SCRAM|SuperCom|Buddi|Sentinel> ... vendor pricing". Allied units on an account named
+       "Sheboygan County Sheriff" use the "(Sheboygan)" card first, then the standard one.
+     - Current line: Verified (Line_Status, or Line_Verified when no status), Superseded_By empty, *Effective_Date empty or not after today.
+     - Lines whose Rate_Terms mention "purchased" or "monitoring" are monitoring-only costs: used only for owned units, and an owned unit
+       is never priced at the lease cost.
+     - Rate Device -> family is exact: GPS, Remote Breath, CAM, Victim / DV. (CAM Landline, Wrist-worn GPS, 2-Piece GPS are not used.)
+     - *More than one current line for a card and device: the newest id is used, and Part A shows Conflict, unless the lines are tiers
+       (Tier_Min_Units set) or a bundle (a term says "bundle:", "part of the ... bundle" or "component"), which is OK and uses the highest amount.
+   Customer rate (Part B)
+     - The account's contracts: Counterparty_Type not Vendor, Contract_Status not Ended. The active contract is the one with status
+       Active/Complete, else the latest Final_End_Date.
+     - Current Verified "Customer rate" line with Rate_Device = family; GPS falls back to "Hybrid GPS + Alcohol". When the account has
+       several contracts, a line on an Active/Complete contract wins. *Lines over $100/day are one-time charges and are left out.
+     - Priced: a current customer rate above $0 AND a vendor cost. Margin = (rate - cost) / rate, weighted by units on leg.
+   Flag (Part B): 'No vendor on rate line' when the verified customer line has no Rate Vendor. The screen and tile still price it
+     (vendor from the units), but em_margin_build does not, so EM Margin and the Account fields stay blank until it is set.
+   Status (Part B), in the order Beau fixes them
+     No account > No contract > Account mismatch > No customer rate > Proposed, not Verified > No vendor cost > Priced
+     - Account mismatch: no rate of this family for the account (Verified or Proposed) but another account with the same first word
+       (the county) holds one and has no units of that family on leg itself, e.g. Sawyer Co. Pretrial units vs Sawyer Co HHS rates. Checked before "No contract", because the fix is
+       the same whether or not the account has its own contract. */
+(function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.RatesModel = factory(); })(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  var VERSION = '1.0.1', DAILY_MAX = 100, FLOOR = 20, TARGET = 30;
+  var FAMS = ['GPS', 'Remote Breath', 'CAM', 'Victim / DV'];
+  var CARD_RE = /^(Allied|SCRAM|SuperCom|Buddi|Sentinel)\b.*vendor pricing/i;
+  var STATUS = ['No account', 'No contract', 'Account mismatch', 'No customer rate', 'Proposed, not Verified', 'No vendor cost', 'Priced'];
+
+  function s(v) { return v == null || v === '-None-' ? '' : String(v); }
+  function num(v) { return v == null || v === '' || isNaN(+v) ? null : +v; }
+  /* a lookup as {id, name}, whatever shape it arrived in; dotted = the "X.Name" column value */
+  function ref(v, dotted) {
+    if (v && typeof v === 'object') return { id: s(v.id), name: s(v.name) || s(dotted) };
+    return { id: s(v), name: s(dotted) };
+  }
+  function idCmp(a, b) { var x = s(a.id), y = s(b.id); return x.length - y.length || (x < y ? -1 : x > y ? 1 : 0); }
+  function round(n, d) { var p = Math.pow(10, d || 2); return Math.round(n * p) / p; }
+  function county(name) { var w = s(name).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean); return w[0] || ''; }
+
+  function lineStatus(l) {
+    var st = s(l.Line_Status), sb = s(l.Superseded_By);
+    if (st === 'Superseded' || st === 'Rejected') return st;
+    if (sb) return /^Rejected/.test(sb) ? 'Rejected' : 'Superseded';
+    if (st) return st;
+    return l.Line_Verified === true || l.Line_Verified === 'true' ? 'Verified' : 'Proposed';
+  }
+  function effectiveOk(l, today) { var e = s(l.Effective_Date); return !e || !today || e <= today; }
+  function monitoringOnly(t) { return /purchas|monitoring/i.test(s(t)); }
+  function bought(t) { return /purchas|owned/i.test(s(t)); }
+
+  /* ---------- the unit rules ---------- */
+  function famOf(u) {
+    var hv = s(u.Hardware_Version), f = s(u.Device_Family);
+    if (/^Base Station/i.test(hv)) return '';
+    if (/PureProtect/i.test(hv) || f === 'Victim / DV') return 'Victim / DV';
+    return f === 'GPS' || f === 'Remote Breath' || f === 'CAM' ? f : '';
+  }
+  function vendorOf(u) {
+    var v = s(u.Vendor);
+    if (v === 'SCRAM' && s(u.Supplied_Through) === 'Allied') return 'Allied';
+    if (v) return v;
+    return /^(AT1|RTC|1-Piece Beacon|Beacon)/i.test(s(u.Hardware_Version)) ? 'Allied' : '';
+  }
+  function viaOf(u) { var v = s(u.Vendor), st = s(u.Supplied_Through); return v === 'SCRAM' && st === 'Allied' ? 'SCRAM via Allied' : vendorOf(u); }
+
+  function build(inp) {
+    var today = inp.today || '', units = inp.units || [], lines = (inp.lines || []).slice().sort(idCmp), contracts = inp.contracts || [];
+    /* contracts */
+    var con = {}, cards = {}, byAcct = {}, acctName = {};
+    contracts.forEach(function (c) {
+      var a = ref(c.Account, c['Account.Account_Name']), v = ref(c.Vendor, c['Vendor.Vendor_Name']);
+      var o = { id: s(c.id), name: s(c.Name), acct: a.id, acctName: a.name, vendorId: v.id, type: s(c.Counterparty_Type), status: s(c.Contract_Status), end: s(c.Final_End_Date), basis: s(c.Rate_Basis) };
+      con[o.id] = o; if (a.id && a.name) acctName[a.id] = a.name;
+      var m = CARD_RE.exec(o.name); if (m) cards[o.id] = { id: o.id, name: o.name, vendor: m[1], vendorId: o.vendorId, sheb: /sheboygan/i.test(o.name), lines: {} };
+      if (o.type !== 'Vendor' && !m && a.id && o.status !== 'Ended') (byAcct[a.id] = byAcct[a.id] || []).push(o);
+    });
+    function activeOf(aid) {
+      var cs = (byAcct[aid] || []).slice(); if (!cs.length) return null;
+      cs.sort(function (x, y) { return (y.status === 'Active/Complete') - (x.status === 'Active/Complete') || (y.end || '0').localeCompare(x.end || '0'); });
+      return cs[0];
+    }
+    /* lines: vendor cost per card, customer rates per account */
+    var cust = {}; /* acct|device -> { verified: [..], proposed: [..] } */
+    lines.forEach(function (l) {
+      var p = ref(l.Parent_Id, l['Parent_Id.Name']), type = s(l.Rate_Type), dev = s(l.Rate_Device), st = lineStatus(l), amt = num(l.Rate_Daily_Amount);
+      var card = cards[p.id] || (!con[p.id] && CARD_RE.test(p.name) ? (cards[p.id] = { id: p.id, name: p.name, vendor: CARD_RE.exec(p.name)[1], vendorId: '', sheb: /sheboygan/i.test(p.name), lines: {} }) : null);
+      var vend = ref(l.Rate_Vendor, l['Rate_Vendor.Vendor_Name']);
+      var x = { id: s(l.id), contractId: p.id, device: dev, amt: amt, status: st, terms: s(l.Rate_Terms), tier: num(l.Tier_Min_Units) != null, effOk: effectiveOk(l, today), vendorId: vend.id, vendorName: vend.name };
+      if (type === 'Vendor cost' && card) { (card.lines[dev] = card.lines[dev] || []).push(x); return; }
+      if (type !== 'Customer rate') return;
+      var c = con[p.id]; if (!c || c.type === 'Vendor' || c.status === 'Ended' || !c.acct) return;
+      if (st !== 'Verified' && st !== 'Proposed') return;
+      if (!x.effOk || amt == null || amt > DAILY_MAX) return;
+      x.active = c.status === 'Active/Complete'; x.contractName = c.name; x.bought = bought(x.terms) || c.basis === 'Purchased units';
+      var k = c.acct + '|' + dev, b = cust[k] || (cust[k] = { verified: [], proposed: [] });
+      (st === 'Verified' ? b.verified : b.proposed).push(x);
+    });
+    /* the cost a card gives for a device: { amt, line, state, lines } */
+    function cardCost(card, dev, owned) {
+      var all = (card && card.lines[dev]) || [];
+      var cur = all.filter(function (x) { return x.status === 'Verified' && x.effOk && x.amt != null && monitoringOnly(x.terms) === !!owned; });
+      if (!cur.length) return { amt: null, line: null, state: all.some(function (x) { return monitoringOnly(x.terms) === !!owned; }) ? 'Superseded only' : 'Missing', lines: [] };
+      if (cur.length === 1) return { amt: cur[0].amt, line: cur[0], state: 'OK', lines: cur };
+      var distinct = cur.filter(function (x, i) { return cur.findIndex(function (y) { return y.amt === x.amt; }) === i; }).length;
+      var bundle = cur.some(function (x) { return x.tier || /bundle:|part of the [^)]*bundle|component/i.test(x.terms); });
+      if (bundle) { var hi = cur.slice().sort(function (a, b) { return b.amt - a.amt; })[0]; return { amt: hi.amt, line: hi, state: 'OK', lines: cur, note: 'tiers or bundle' }; }
+      var newest = cur[cur.length - 1];
+      return { amt: newest.amt, line: newest, state: distinct > 1 ? 'Conflict' : 'OK', lines: cur };
+    }
+    function cardsFor(vendor, aname) {
+      var cs = Object.keys(cards).map(function (k) { return cards[k]; }).filter(function (k) { return k.vendor.toLowerCase() === s(vendor).toLowerCase(); });
+      var sheb = vendor === 'Allied' && /sheboygan county sheriff/i.test(s(aname));
+      return cs.sort(function (a, b) { return sheb ? b.sheb - a.sheb : a.sheb - b.sheb; });
+    }
+    function costFor(vendor, dev, owned, aname) {
+      var cs = cardsFor(vendor, aname);
+      for (var i = 0; i < cs.length; i++) { if (sheb(cs[i], vendor, aname)) { var r = cardCost(cs[i], dev, owned); if (r.amt != null) return { amt: r.amt, card: cs[i], line: r.line }; } }
+      return { amt: null, card: cs[0] || null, line: null };
+    }
+    function sheb(card, vendor, aname) { return !card.sheb || (vendor === 'Allied' && /sheboygan county sheriff/i.test(s(aname))); }
+    function pickRate(list) {
+      if (!list || !list.length) return null;
+      var act = list.filter(function (x) { return x.active; }); return (act.length ? act : list)[(act.length ? act : list).length - 1];
+    }
+    function rateFor(aid, fam, owned) {
+      var g = cust[aid + '|' + fam] || (fam === 'GPS' ? cust[aid + '|Hybrid GPS + Alcohol'] : null) || { verified: [], proposed: [] };
+      var vb = g.verified.filter(function (x) { return x.bought; }), vl = g.verified.filter(function (x) { return !x.bought; });
+      var v = owned ? (pickRate(vb) || pickRate(vl)) : (pickRate(vl) || pickRate(vb));
+      return { verified: v, proposed: pickRate(g.proposed), group: g };
+    }
+    function ownedOf(u, aid, fam) {
+      if (/purchas|owned/i.test(s(u.Acquisition))) return true;
+      var g = cust[aid + '|' + fam]; if (!g || !g.verified.length) return false;
+      return g.verified.every(function (x) { return x.bought; });
+    }
+    /* ---------- units ---------- */
+    var latest = {};
+    units.forEach(function (u) { var v = vendorOf(u); if (v && (!latest[v] || s(u.Count_Date) > latest[v])) latest[v] = s(u.Count_Date); });
+    var groups = {}, order = [], asof = '';
+    units.forEach(function (u) {
+      var v = vendorOf(u), fam = famOf(u), on = num(u.On_Leg) || 0;
+      if (!v || !fam || s(u.Count_Date) !== latest[v] || on <= 0) return;
+      if (s(u.Count_Date) > asof) asof = s(u.Count_Date);
+      var a = ref(u.Account, u['Account.Account_Name']), owned = a.id ? ownedOf(u, a.id, fam) : /purchas|owned/i.test(s(u.Acquisition));
+      var key = (a.id || 'sv:' + s(u.SmartView_Customer)) + '|' + fam + '|' + v + '|' + (owned ? 1 : 0);
+      var g = groups[key];
+      if (!g) { g = groups[key] = { key: key, accountId: a.id, account: a.name || acctName[a.id] || '', smartView: s(u.SmartView_Customer), family: fam, vendor: v, via: viaOf(u), owned: owned, units: 0, rows: 0 }; order.push(key); }
+      g.units += on; g.rows++;
+    });
+    /* ---------- Part B ---------- */
+    var acctsByCounty = {}; Object.keys(cust).forEach(function (k) { var aid = k.split('|')[0], nm = acctName[aid]; if (nm) (acctsByCounty[county(nm)] = acctsByCounty[county(nm)] || {})[aid] = 1; });
+    var hasUnits = {}; order.forEach(function (k) { var g = groups[k]; if (g.accountId) hasUnits[g.accountId + '|' + g.family] = 1; });
+    var partB = order.map(function (k) {
+      var g = groups[k], r = { key: g.key, accountId: g.accountId, account: g.account, smartView: g.smartView, family: g.family, vendor: g.vendor, via: g.via, owned: g.owned, units: g.units,
+        contractId: '', contract: '', rate: null, rateLineId: '', proposedLineId: '', proposedRate: null, cost: null, costCardId: '', costCard: '', costLineId: '', margin: null, marginDay: null, status: '', note: '', mismatch: null, rateVendorId: '', cardVendorId: '', flags: [] };
+      var c = g.accountId ? activeOf(g.accountId) : null; if (c) { r.contractId = c.id; r.contract = c.name; }
+      var cf = costFor(g.vendor, g.family, g.owned, g.account); r.cost = cf.amt; if (cf.card) { r.costCardId = cf.card.id; r.costCard = cf.card.name; } if (cf.line) r.costLineId = cf.line.id;
+      var rt = g.accountId ? rateFor(g.accountId, g.family, g.owned) : { verified: null, proposed: null, group: { verified: [], proposed: [] } };
+      if (cf.card) r.cardVendorId = cf.card.vendorId || '';
+      if (rt.verified) { r.rate = rt.verified.amt; r.rateLineId = rt.verified.id; r.rateVendorId = rt.verified.vendorId; if (!r.contractId) { r.contractId = rt.verified.contractId; r.contract = rt.verified.contractName; } }
+      if (rt.proposed) { r.proposedLineId = rt.proposed.id; r.proposedRate = rt.proposed.amt; }
+      var hasOwn = !!(rt.group.verified.length || rt.group.proposed.length);
+      if (!g.accountId) r.status = 'No account';
+      else {
+        if (!hasOwn) {
+          var sib = Object.keys((acctsByCounty[county(g.account)] || {})).filter(function (aid) { return aid !== g.accountId && !hasUnits[aid + '|' + g.family] && (cust[aid + '|' + g.family] || (g.family === 'GPS' && cust[aid + '|Hybrid GPS + Alcohol'])); })[0];
+          if (sib) {
+            var sg = cust[sib + '|' + g.family] || cust[sib + '|Hybrid GPS + Alcohol'], sl = pickRate(sg.verified) || pickRate(sg.proposed);
+            r.mismatch = { accountId: sib, account: acctName[sib] || '', contractId: sl.contractId, contract: sl.contractName, lineId: sl.id, rate: sl.amt, device: sl.device, targetContractId: c ? c.id : '' };
+            r.status = 'Account mismatch';
+          }
+        }
+        if (!r.status && !c) r.status = 'No contract';
+        else if (!r.status && !rt.verified && rt.proposed) r.status = 'Proposed, not Verified';
+        else if (!r.status && !rt.verified) r.status = 'No customer rate';
+        else if (!r.status && (r.cost == null)) r.status = 'No vendor cost';
+        else if (!r.status && !r.rate) r.status = 'No customer rate';
+        else if (!r.status) r.status = 'Priced';
+      }
+      if (r.status === 'Priced') { r.marginDay = round(r.rate - r.cost); r.margin = round((r.rate - r.cost) / r.rate * 100, 1); }
+      /* em_margin_build never guesses a vendor: a verified line without Rate Vendor stays an EM Margin exception */
+      if (r.rateLineId && !r.rateVendorId) r.flags.push('No vendor on rate line');
+      r.rank = STATUS.indexOf(r.status);
+      return r;
+    });
+    partB.sort(function (a, b) { return a.rank - b.rank || b.units - a.units || a.account.localeCompare(b.account); });
+    /* ---------- Part A: vendor x family, for every family with units on leg plus every card line ---------- */
+    /* one row per card x family x (lease | owned): its units are the Part B units that card prices (or would price) */
+    var aRows = {}, partA = [];
+    function aRow(cd, vendor, fam, owned) {
+      var k = (cd ? cd.id : 'none:' + vendor) + '|' + fam + '|' + (owned ? 1 : 0);
+      if (!aRows[k]) {
+        var cc = cd ? cardCost(cd, fam, owned) : { amt: null, line: null, state: 'No pricing record', lines: [] };
+        aRows[k] = { key: k, vendor: cd ? cd.vendor : vendor, family: fam, owned: !!owned, cardId: cd ? cd.id : '', card: cd ? cd.name : '', vendorId: cd ? cd.vendorId : '', units: 0,
+          cost: cc.amt, lineId: cc.line ? cc.line.id : '', status: cc.state, note: cc.note || '', lines: cc.lines.map(function (x) { return { id: x.id, amt: x.amt, terms: x.terms }; }) };
+      }
+      return aRows[k];
+    }
+    partB.forEach(function (r) { var cd = r.costCardId ? cards[r.costCardId] : null; aRow(cd, r.vendor, r.family, r.owned).units += r.units; });
+    Object.keys(cards).forEach(function (id) { var cd = cards[id]; Object.keys(cd.lines).forEach(function (dev) {
+      if (FAMS.indexOf(dev) < 0) return;
+      [false, true].forEach(function (o) { if (cd.lines[dev].some(function (x) { return monitoringOnly(x.terms) === o && x.status === 'Verified'; })) aRow(cd, cd.vendor, dev, o); });
+    }); });
+    Object.keys(aRows).forEach(function (k) { partA.push(aRows[k]); });
+    var AR = { 'Conflict': 0, 'Missing': 1, 'Superseded only': 2, 'No pricing record': 3, 'OK': 4 };
+    partA.sort(function (a, b) { return AR[a.status] - AR[b.status] || b.units - a.units || a.vendor.localeCompare(b.vendor); });
+    /* ---------- totals and the tile's vendor rows ---------- */
+    var tot = { units: 0, priced: 0, rev: 0, cost: 0 }, vrows = {}, vorder = [];
+    partB.forEach(function (r) {
+      tot.units += r.units;
+      var k = r.vendor + ' · ' + r.family + (r.owned ? ' (owned)' : ''), g = vrows[k] || (vrows[k] = { label: k, on: 0, priced: 0, rev: 0, cst: 0 }); if (vorder.indexOf(k) < 0) vorder.push(k);
+      g.on += r.units; if (r.status !== 'Priced') return;
+      tot.priced += r.units; tot.rev += r.units * r.rate; tot.cost += r.units * r.cost; g.priced += r.units; g.rev += r.units * r.rate; g.cst += r.units * r.cost;
+    });
+    var tileRows = vorder.map(function (k) { var g = vrows[k]; return { label: k, on: g.on, priced: g.priced, rate: g.priced ? g.rev / g.priced : null, cost: g.priced ? g.cst / g.priced : null, margin: g.rev ? (g.rev - g.cst) / g.rev * 100 : null }; })
+      .sort(function (a, b) { return b.on - a.on; });
+    var totals = { units: tot.units, priced: tot.priced, unpriced: tot.units - tot.priced, margin: tot.rev ? round((tot.rev - tot.cost) / tot.rev * 100, 1) : null, asof: asof,
+      byStatus: STATUS.map(function (st) { var rs = partB.filter(function (r) { return r.status === st; }); return { status: st, rows: rs.length, units: rs.reduce(function (t, r) { return t + r.units; }, 0) }; }) };
+    return { version: VERSION, partA: partA, partB: partB, totals: totals, tile: { rows: tileRows, total: totals.margin, unpriced: totals.unpriced, units: totals.units, asof: asof } };
+  }
+
+  /* ---------- write payloads (pure). Rate_Lines is a subform: a row left out of an update is DELETED, so every write sends every row. ---------- */
+  function fullPayload(rows, changes, add) {
+    if (!Array.isArray(rows)) return null;
+    changes = changes || {};
+    var ids = {}; rows.forEach(function (r) { ids[s(r.id)] = 1; });
+    if (Object.keys(changes).some(function (k) { return !ids[k]; })) return null;
+    var out = rows.map(function (r) { var c = changes[s(r.id)]; return c ? Object.assign({ id: r.id }, c) : { id: r.id }; });
+    (Array.isArray(add) ? add : add ? [add] : []).forEach(function (a) { out.push(a); });
+    return out;
+  }
+  function verifyFields() { return { Line_Status: 'Verified', Line_Verified: true, Superseded_By: null }; }
+  function supersedeFields(byId) { return { Line_Status: 'Superseded', Line_Verified: false, Superseded_By: byId ? s(byId) : 'Superseded in review' }; }
+  function familyDevice(f) { return FAMS.indexOf(f) >= 0 ? f : 'Other'; }
+  function sourceRef(date, user) { return 'Rates screen ' + date + (user ? ' ' + user : ''); }
+  function tone(m) { return m == null ? '' : m < 0 ? 'bad' : m < FLOOR ? 'bad' : m < TARGET ? 'warn' : 'good'; }
+
+  return { VERSION: VERSION, FLOOR: FLOOR, TARGET: TARGET, FAMS: FAMS, STATUS: STATUS, build: build, famOf: famOf, vendorOf: vendorOf, lineStatus: lineStatus,
+    fullPayload: fullPayload, verifyFields: verifyFields, supersedeFields: supersedeFields, familyDevice: familyDevice, sourceRef: sourceRef, tone: tone, monitoringOnly: monitoringOnly };
+});
+</script>
+<script id="jpk-s77">
+/* jpk-s77-demo.js v1.1.0 (5 Nov 2026: purchased units priced against monitoring-only vendor lines) + v1.0.0 (S77, 5 Nov 2026, spec: claude/leadership-home-demo.md, mockup: "Leadership Home mockup" canvas). Leadership Home only.
+   One section at the top of the Today tab, above "Pipeline and risk": a KPI strip and seven cards.
+     1. Collections (latest run of Collection_Requests)       2. Open cases by status and queue, last 7 days opened/resolved
+     3. Margin by account (Accounts.Avg_Margin)               4. Margin by vendor: a LIVE ESTIMATE from Verified Rate_Lines and last night's Daily_Unit_Counts,
+                                                                  labelled as such until EM_Margin is populated by the billing run
+     5. Pricing Studio launch tile (Pricing_Scenarios count)  6. Awaiting your review: open Tasks owned by Leadership users, split by who sent them (BD vs CS)
+     7. Customer health (Accounts.Health_Tier) and Inventory runway (EM_Stock_Alerts, Alert_Key RUNWAY|*)
+   Read-only: COQL selects only, nothing is written. Every tile paints on its own so one failed read does not blank the rest.
+   COQL in this org rejects group by, so rows are fetched (paged, up to 2000) and totalled here.
+   Off switch: ?s77=0. Outside Zoho or with ?demo=1 the section shows labelled sample numbers. */
+(function (root) {
+  'use strict';
+  if (/[?&]s77=0\b/.test(root.location.search)) return;
+  var doc = root.document, html = doc.documentElement;
+  var ORG = 'https://crm.zoho.com/crm/org882980956/tab/';
+  /* Web tab links (ids from the modules list, 4 Nov 2026): Support = WebTab26, Pricing Studio (EM_Pricing_Studio) = WebTab4,
+     Customer Margins = WebTab30, EM Inventory Runway = WebTab32. */
+  var TABS = { support: ORG + 'WebTab26', pricing: ORG + 'WebTab4', margins: ORG + 'WebTab30',
+    collections: ORG + 'Collection_Requests', tasks: ORG + 'Activities', alerts: ORG + 'WebTab32', accounts: ORG + 'Accounts' };
+  /* Leadership users (profile Leadership, read 4 Nov 2026) and who counts as BD / CS when they create a task. getAllUsers refreshes this when it can. */
+  var LEADERS = { '6715134000000774001': 'Edward Gordon', '6715134000000779001': 'Nick Sayner', '6715134000000781001': 'Stacey Anick' };
+  var TEAM_BY_USER = { '6715134000001216001': 'BD', '6715134000000503001': 'CS', '6715134000000879001': 'CS' };
+  var NAMES = { '6715134000001216001': 'Joe Steinhaus', '6715134000000503001': 'Beau Carrigan', '6715134000000879001': 'Peter Marcks', '6715134000001952001': 'Stacey Loosen', '6715134000001952003': 'Brittany Mueller', '6715134000003334001': 'Miranda Wilson' };
+  var PROFILE_TEAM = { 'Business Development': 'BD', 'Administrator': 'CS', 'Standard': 'CS', 'EM Support': 'EM Support', 'PDEC': 'PDEC', 'Leadership': 'Leadership', 'System Support': 'CS' };
+  var FLOOR = 20, TARGET = 30; /* EM margin tiers: Thin below the floor, Strong at or above target */
+
+  var DEMO = /[?&](demo|ntdemo)=1/.test(root.location.search);
+  function $(id) { return doc.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function zoho() { var Z = root.ZOHO; return Z && Z.CRM && Z.CRM.API ? Z : null; }
+  function live() { return !DEMO && !!zoho(); }
+  function timeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timed out')); }, ms); })]); }
+  function fit() { try { if (root.hlFrameFit) root.hlFrameFit.request(); } catch (e) {} }
+  function num(v) { if (v == null || v === '') return null; var n = Number(v); return isNaN(n) ? null : n; }
+  function nn(v) { return Number(v) || 0; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+  function tz(d) { var o = -d.getTimezoneOffset(), s = o >= 0 ? '+' : '-'; o = Math.abs(o); return s + pad(Math.floor(o / 60)) + ':' + pad(o % 60); }
+  function stampOf(d) { return ymd(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00' + tz(d); }
+  function money(n) { n = nn(n); return '$' + n.toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
+  function pct(n, dp) { return n == null ? '—' : (Math.round(n * Math.pow(10, dp == null ? 1 : dp)) / Math.pow(10, dp == null ? 1 : dp)) + '%'; }
+  function shortDate(s) { if (!s) return ''; var d = new Date(String(s).length > 10 ? s : s + 'T12:00:00'); return isNaN(d) ? String(s) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function lname(v) { return v && typeof v === 'object' ? (v.name || '') : (v || ''); }
+  function lid(v) { return v && typeof v === 'object' ? String(v.id || '') : ''; }
+  function zones() { try { return (root.JPKShell && root.JPKShell.config && root.JPKShell.config.zones) || null; } catch (e) { return null; } }
+  function addZone(sel, ref) {
+    var Z = zones(); if (!Z) return;
+    ['main', 'narrowOrder'].forEach(function (k) {
+      var a = Z[k]; if (!Array.isArray(a) || a.indexOf(sel) >= 0) return;
+      var i = a.indexOf(ref); if (i < 0) i = a.indexOf('#s38-needs'); if (i < 0) i = a.indexOf('#grid');
+      if (i < 0) { if (k === 'main') a.push(sel); return; }
+      a.splice(i, 0, sel);
+    });
+  }
+  function coqlAll(q) {
+    var all = [];
+    function page(p) {
+      return timeout(root.ZOHO.CRM.API.coql({ select_query: q + ' limit 200 offset ' + (p * 200) }), 20000).then(function (r) {
+        var rows = (r && r.data) || []; all = all.concat(rows); return rows.length === 200 && p < 9 ? page(p + 1) : all;
+      }, function (e) { if (!e || e.status === 204 || e.code === 'NO_CONTENT' || e === '') return all; throw e; });
+    }
+    return page(0);
+  }
+
+  /* ---------------- reads ---------------- */
+  function queries() {
+    var now = new Date(), d7 = addDays(now, -7);
+    var leaderIds = Object.keys(LEADERS);
+    return {
+      coll: "select Account.Account_Name, Report_Date, Open_Balance, Oldest_Days_Past_Due, Email_Status from Collection_Requests where Report_Date >= '" + ymd(addDays(now, -180)) + "' order by Report_Date desc",
+      cases: "select id, Status, Priority, Case_Category, Handling_Team, Queue, Owner.id, Created_Time from Cases where Status not in ('Closed','Resolved')",
+      opened7: "select id from Cases where Created_Time >= '" + stampOf(d7) + "'",
+      resolved7: "select id from Cases where (Status in ('Closed','Resolved') and Modified_Time >= '" + stampOf(d7) + "')",
+      accts: "select Account_Name, Avg_Margin, Lowest_Margin, Health_Tier, Former_Customer, Brand from Accounts where (Avg_Margin is not null or Health_Tier is not null)",
+      units: "select Count_Date, Account, Account.Account_Name, SmartView_Customer, Device_Family, Vendor, Supplied_Through, Hardware_Version, Acquisition, On_Leg from Daily_Unit_Counts where (Count_Date >= '" + ymd(addDays(now, -8)) + "' and On_Leg > 0) order by Count_Date desc",
+      rates: "select id, Parent_Id, Parent_Id.Name, Rate_Type, Rate_Device, Rate_Vendor, Rate_Vendor.Vendor_Name, Rate_Daily_Amount, Rate_Terms, Line_Status, Line_Verified, Superseded_By, Effective_Date, Tier_Min_Units from Rate_Lines where Line_Status = 'Verified' order by id",
+      contracts: "select id, Name, Account, Account.Account_Name, Counterparty_Type, Contract_Status, Final_End_Date, Rate_Basis from Contracts where Counterparty_Type = 'Customer'",
+      scen: "select id, Scenario_Status from Pricing_Scenarios where id is not null",
+      tasks: "select id, Subject, Status, Due_Date, Priority, Owner, Created_By, What_Id, Who_Id from Tasks where (Status not in ('Completed','Cancelled') and Owner in ('" + leaderIds.join("','") + "'))",
+      alerts: "select Name, Hardware_Model, Runway_Days, Alert_Status, Action_Needed, Weekly_Growth from EM_Stock_Alerts where (Alert_Key like 'RUNWAY|%' and Status not in ('Dismissed','Resolved'))"
+    };
+  }
+  function demoData() {
+    var now = new Date();
+    return { demo: true,
+      coll: [{ 'Account.Account_Name': 'Sample County Sheriff', Report_Date: '2026-11-02', Open_Balance: 2000.52, Oldest_Days_Past_Due: 74, Email_Status: 'Sent' },
+        { 'Account.Account_Name': 'Sample County HHS', Report_Date: '2026-11-02', Open_Balance: 990.94, Oldest_Days_Past_Due: 41, Email_Status: 'Sent' },
+        { 'Account.Account_Name': 'Sample Treatment Court', Report_Date: '2026-11-02', Open_Balance: 155, Oldest_Days_Past_Due: 22, Email_Status: 'Awaiting approval' }],
+      cases: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(function (i) { return { id: 'c' + i, Status: ['New', 'In Progress', 'Waiting on Customer', 'Escalated'][i % 4], Case_Category: ['Device Issue', 'Order Device(s)', 'Lost Equipment', 'Billing Question'][i % 4], Handling_Team: i % 3 ? 'EM Support' : 'Customer Success', Queue: i % 5 ? 'Personal' : 'Team' }; }),
+      opened7: [1, 2, 3, 4, 5], resolved7: [1, 2, 3],
+      accts: [{ Account_Name: 'Sample County A', Avg_Margin: 36.3, Health_Tier: 'Green' }, { Account_Name: 'Sample County B', Avg_Margin: 30, Health_Tier: 'Green' }, { Account_Name: 'Sample County C', Avg_Margin: 27.4, Health_Tier: 'Yellow' },
+        { Account_Name: 'Sample County D', Avg_Margin: 23.5, Health_Tier: 'Green' }, { Account_Name: 'Sample County E', Avg_Margin: 21.3, Health_Tier: 'Red' }, { Account_Name: 'Sample County F', Avg_Margin: 14.2, Health_Tier: 'Yellow' }, { Account_Name: 'Sample County G', Avg_Margin: -3, Health_Tier: 'Red' }],
+      units: [{ Count_Date: ymd(addDays(now, -1)), Account: { id: 'a1', name: 'Sample County A' }, Device_Family: 'GPS', Vendor: null, Hardware_Version: 'AT1 LTE V', On_Leg: 146 },
+        { Count_Date: ymd(addDays(now, -1)), Account: { id: 'a2', name: 'Sample County B' }, Device_Family: 'Remote Breath', Vendor: 'SCRAM', Supplied_Through: 'Allied', Hardware_Version: 'Remote Breath Pro', On_Leg: 162 },
+        { Count_Date: ymd(addDays(now, -1)), Account: { id: 'a3', name: 'Sample County C' }, Device_Family: 'CAM', Vendor: 'SCRAM', Supplied_Through: 'Direct', Hardware_Version: 'CAM Bracelet', On_Leg: 29 },
+        { Count_Date: ymd(addDays(now, -1)), Account: { id: 'a4', name: 'Sample County D' }, Device_Family: 'GPS', Vendor: 'SuperCom', Supplied_Through: 'Direct', Hardware_Version: 'PureOne', On_Leg: 25 },
+        { Count_Date: ymd(addDays(now, -1)), Account: { id: 'a5', name: 'Sample County E' }, Device_Family: 'GPS', Vendor: null, Hardware_Version: 'AT1 LTE V', On_Leg: 9 }],
+      rates: [{ Parent_Id: { id: 'v1', name: 'Allied - vendor pricing (standard)' }, Rate_Device: 'GPS', Rate_Type: 'Vendor cost', Rate_Daily_Amount: 2.85 },
+        { Parent_Id: { id: 'v1', name: 'Allied - vendor pricing (standard)' }, Rate_Device: 'Remote Breath', Rate_Type: 'Vendor cost', Rate_Daily_Amount: 3.5 },
+        { Parent_Id: { id: 'v2', name: 'SCRAM - vendor pricing' }, Rate_Device: 'CAM', Rate_Type: 'Vendor cost', Rate_Daily_Amount: 6.94 },
+        { Parent_Id: { id: 'v3', name: 'SuperCom - vendor pricing' }, Rate_Device: 'GPS', Rate_Type: 'Vendor cost', Rate_Daily_Amount: 3 },
+        { Parent_Id: { id: 'k1', name: 'Sample County A' }, Rate_Device: 'GPS', Rate_Type: 'Customer rate', Rate_Daily_Amount: 5.75 },
+        { Parent_Id: { id: 'k2', name: 'Sample County B' }, Rate_Device: 'Remote Breath', Rate_Type: 'Customer rate', Rate_Daily_Amount: 5 },
+        { Parent_Id: { id: 'k3', name: 'Sample County C' }, Rate_Device: 'CAM', Rate_Type: 'Customer rate', Rate_Daily_Amount: 12 },
+        { Parent_Id: { id: 'k4', name: 'Sample County D' }, Rate_Device: 'GPS', Rate_Type: 'Customer rate', Rate_Daily_Amount: 4.25 }],
+      contracts: [{ id: 'k1', Account: { id: 'a1' }, Contract_Status: 'Active/Complete', Final_End_Date: ymd(addDays(now, 40)) }, { id: 'k2', Account: { id: 'a2' }, Contract_Status: 'Active/Complete' }, { id: 'k3', Account: { id: 'a3' }, Contract_Status: 'Active/Complete' }, { id: 'k4', Account: { id: 'a4' }, Contract_Status: 'Active/Complete', Final_End_Date: ymd(addDays(now, 80)) }],
+      scen: [],
+      tasks: [{ id: 't1', Subject: 'Approve Sample County renewal terms', Due_Date: ymd(addDays(now, -2)), Owner: { id: '6715134000000774001' }, Created_By: { id: '6715134000001216001', name: 'Joe Steinhaus' }, What_Id: { name: 'Sample County A' } },
+        { id: 't2', Subject: 'Review at-risk account plan', Due_Date: ymd(addDays(now, 3)), Owner: { id: '6715134000000779001' }, Created_By: { id: '6715134000000503001', name: 'Beau Carrigan' }, What_Id: { name: 'Sample County E' } }],
+      alerts: [{ Name: 'Runway: 1 Piece GPS - Allied', Hardware_Model: '1 Piece GPS - Allied', Runway_Days: 11, Alert_Status: 'Needs action' }, { Name: 'Runway: SCRAM Remote Breath', Hardware_Model: 'SCRAM Remote Breath', Runway_Days: 24, Alert_Status: '' }] };
+  }
+  var D = {}, ERR = {}, loading = false;
+  function readAll() {
+    if (!live()) { var d = demoData(); D = d; ERR = {}; return Promise.resolve(); }
+    var Q = queries(), keys = Object.keys(Q); ERR = {};
+    return Promise.all(keys.map(function (k) {
+      return coqlAll(Q[k]).then(function (rows) { D[k] = rows; paint(); }, function (e) { ERR[k] = (e && (e.message || e.code)) || 'could not read'; D[k] = null; paint(); });
+    })).then(function () { return refreshTeams(); });
+  }
+  function refreshTeams() {
+    var Z = zoho(); if (!Z || !Z.CRM.API.getAllUsers) return;
+    return timeout(Z.CRM.API.getAllUsers({ Type: 'ActiveUsers' }), 10000).then(function (r) {
+      var users = (r && r.users) || []; if (!users.length) return;
+      users.forEach(function (u) { var p = u.profile && u.profile.name; if (p && PROFILE_TEAM[p]) TEAM_BY_USER[String(u.id)] = PROFILE_TEAM[p]; if (u.full_name) NAMES[String(u.id)] = u.full_name; if (p === 'Leadership') LEADERS[String(u.id)] = u.full_name || ''; });
+      paint();
+    }).catch(function () {});
+  }
+
+  /* ---------------- models ---------------- */
+  function collections() {
+    var rows = D.coll; if (!rows) return null;
+    if (!rows.length) return { none: true };
+    var date = rows[0].Report_Date; rows.forEach(function (r) { if (r.Report_Date > date) date = r.Report_Date; });
+    var run = rows.filter(function (r) { return r.Report_Date === date; });
+    var total = 0, over60 = 0, st = {};
+    run.forEach(function (r) { total += nn(r.Open_Balance); if (nn(r.Oldest_Days_Past_Due) >= 60) over60++; var s = r.Email_Status || 'No status'; st[s] = (st[s] || 0) + 1; });
+    var top = run.slice().sort(function (a, b) { return nn(b.Open_Balance) - nn(a.Open_Balance); }).slice(0, 5);
+    return { date: date, total: total, n: run.length, over60: over60, st: st, top: top };
+  }
+  function cases() {
+    var rows = D.cases; if (!rows) return null;
+    var st = {}, cat = {}, unassigned = 0;
+    rows.forEach(function (r) {
+      var s = r.Status || 'No status'; st[s] = (st[s] || 0) + 1;
+      var c = r.Case_Category && r.Case_Category !== '-None-' ? r.Case_Category : (r.Handling_Team || 'Uncategorised'); cat[c] = (cat[c] || 0) + 1;
+      if (r.Handling_Team === 'EM Support' && r.Queue === 'Team') unassigned++;
+    });
+    var order = ['New', 'In Progress', 'Waiting on Customer', 'Waiting on Vendor', 'On Hold', 'Escalated'];
+    var stList = Object.keys(st).sort(function (a, b) { var i = order.indexOf(a), j = order.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); }).map(function (k) { return [k, st[k]]; });
+    var catList = Object.keys(cat).sort(function (a, b) { return cat[b] - cat[a]; }).slice(0, 6).map(function (k) { return [k, cat[k]]; });
+    return { n: rows.length, st: stList, cat: catList, unassigned: unassigned, opened: D.opened7 ? D.opened7.length : null, resolved: D.resolved7 ? D.resolved7.length : null };
+  }
+  function tierOf(m) { return m == null ? '' : m < 0 ? 'Negative' : m < FLOOR ? 'Thin' : m < TARGET ? 'Normal' : 'Strong'; }
+  function accounts() {
+    var rows = D.accts; if (!rows) return null;
+    var cur = rows.filter(function (r) { return !r.Former_Customer; });
+    var scored = cur.filter(function (r) { return num(r.Avg_Margin) != null; }).sort(function (a, b) { return nn(b.Avg_Margin) - nn(a.Avg_Margin); });
+    var tiers = { Strong: 0, Normal: 0, Thin: 0, Negative: 0 }, sum = 0;
+    scored.forEach(function (r) { tiers[tierOf(num(r.Avg_Margin))]++; sum += nn(r.Avg_Margin); });
+    var health = { Green: 0, Yellow: 0, Red: 0 };
+    cur.forEach(function (r) { if (health[r.Health_Tier] != null) health[r.Health_Tier]++; });
+    return { scored: scored, avg: scored.length ? sum / scored.length : null, tiers: tiers, top: scored.slice(0, 5), bottom: scored.slice(-5).reverse(), health: health, healthN: health.Green + health.Yellow + health.Red };
+  }
+  /* vendor margin estimate: rates-model.js (S76), the same rules as Processes > Rates. Its notes list the rules. */
+  function vendors() {
+    if (!D.units || !D.rates || !D.contracts) return (D.units === null || D.rates === null || D.contracts === null) ? null : undefined;
+    if (!root.RatesModel) return null;
+    /* the tile reads Verified lines only, so a row without Line_Status (the demo rows) is Verified */
+    var lines = D.rates.map(function (l) { return l.Line_Status ? l : Object.assign({ Line_Status: 'Verified' }, l); });
+    return root.RatesModel.build({ units: D.units, lines: lines, contracts: D.contracts, today: ymd(new Date()) }).tile;
+  }
+  function pricing() {
+    var s = D.scen, c = D.contracts; var now = ymd(new Date()), in90 = ymd(addDays(new Date(), 90));
+    return { scen: s ? s.length : null, scenErr: s === null, renewing: c ? c.filter(function (x) { return x.Final_End_Date && x.Final_End_Date >= now && x.Final_End_Date <= in90; }).length : null };
+  }
+  function review() {
+    var rows = D.tasks; if (!rows) return null;
+    var today = ymd(new Date()), from = { BD: 0, CS: 0, other: 0 }, overdue = 0;
+    var list = rows.map(function (r) {
+      var cid = lid(r.Created_By), team = TEAM_BY_USER[cid] || (LEADERS[cid] ? 'Leadership' : 'other'); from[team === 'BD' || team === 'CS' ? team : 'other']++;
+      var od = !!(r.Due_Date && r.Due_Date < today); if (od) overdue++;
+      return { id: String(r.id), subject: r.Subject || '(no subject)', due: r.Due_Date, overdue: od, from: NAMES[cid] || LEADERS[cid] || lname(r.Created_By), team: team, about: lname(r.What_Id) || lname(r.Who_Id), owner: LEADERS[lid(r.Owner)] || '' };
+    }).sort(function (a, b) { return (a.due || '9') < (b.due || '9') ? -1 : 1; });
+    return { n: rows.length, from: from, overdue: overdue, list: list.slice(0, 6) };
+  }
+  function runway() {
+    var rows = D.alerts; if (!rows) return null;
+    var list = rows.filter(function (r) { return !/UNMAPPED/i.test(r.Name || ''); }).map(function (r) {
+      var d = num(r.Runway_Days), act = r.Alert_Status === 'Needs action' || r.Action_Needed === 'Needs action';
+      return { label: r.Hardware_Model || String(r.Name || '').replace(/^Runway:\s*/i, ''), days: d, tone: act ? 'bad' : 'warn', text: (d == null ? 'no runway' : d + ' days') + (act ? ' · needs action' : ' · watch') };
+    }).sort(function (a, b) { return (a.days == null ? 999 : a.days) - (b.days == null ? 999 : b.days); });
+    var unmapped = rows.some(function (r) { return /UNMAPPED/i.test(r.Name || ''); });
+    return { list: list, unmapped: unmapped };
+  }
+
+  /* ---------------- paint ---------------- */
+  function err(k, what) { return '<p class="s77-err">' + esc(what) + ' could not be read from Zoho (' + esc(ERR[k] || 'no data') + ').</p>'; }
+  function loadingP() { return '<p class="s77-none">Counting…</p>'; }
+  function kpi(l, v, s, bad) { return '<li class="s77-kpi"><span class="l">' + esc(l) + '</span><span class="v">' + v + '</span><span class="s' + (bad ? ' bad' : '') + '">' + s + '</span></li>'; }
+  function kpis(C, K, A, R, V) {
+    return '<ul class="s77-kpis">' +
+      kpi('Open balance', C === null ? '—' : C === undefined ? '…' : C.none ? '$0' : money(C.total), C && !C.none ? plural(C.n, 'account') + ' · ' + shortDate(C.date) + ' run' : C === null ? 'could not read' : 'no collection runs') +
+      kpi('Open cases', K === null ? '—' : K === undefined ? '…' : K.n, K ? K.unassigned + ' unassigned · EM Support' : '', K && K.unassigned > 0) +
+      kpi('Avg account margin', A === null ? '—' : A === undefined ? '…' : pct(A.avg), A ? plural(A.scored.length, 'EM customer') + ' scored' : '') +
+      kpi('Accounts at risk', A === null ? '—' : A === undefined ? '…' : A.health.Red, A ? 'Health tier Red · ' + A.health.Yellow + ' Yellow' : '') +
+      kpi('Awaiting your review', R === null ? '—' : R === undefined ? '…' : R.n, R ? plural(R.overdue, 'task') + ' overdue' : '', R && R.overdue > 0) +
+      '</ul>';
+  }
+  function card(id, title, link, body, pill) {
+    return '<section class="s77-card" aria-labelledby="s77-' + id + '-h"><div class="s77-ch"><div class="t"><h3 id="s77-' + id + '-h">' + esc(title) + '</h3>' + (pill ? '<span class="s77-pill">' + esc(pill) + '</span>' : '') + '</div>' +
+      (link ? '<a href="' + esc(link[0]) + '" target="_top" rel="noopener">' + esc(link[1]) + '</a>' : '') + '</div>' + body + '</section>';
+  }
+  function tagOf(status) { var t = /^Sent/.test(status || '') ? 'good' : /Awaiting|Sending/.test(status || '') ? 'warn' : /Rejected|failed|Needs|No recipient/i.test(status || '') ? 'bad' : ''; return '<span class="s77-tag ' + t + '">' + esc(status || '—') + '</span>'; }
+  function collBody(C) {
+    if (C === null) return err('coll', 'Collection requests'); if (C === undefined) return loadingP();
+    if (C.none) return '<p class="s77-none">No collection runs in the last 180 days.</p>';
+    var sent = C.st.Sent || 0, wait = C.st['Awaiting approval'] || 0, rej = (C.st.Rejected || 0) + (C.st['Send failed'] || 0);
+    return '<div class="s77-stats"><div><b>' + money(C.total) + '</b><span>Open balance · ' + plural(C.n, 'account') + '</span></div><div><b>' + C.over60 + '</b><span>60+ days past due</span></div><div><b>' + sent + ' sent</b><span>' + wait + ' awaiting approval' + (rej ? ' · ' + rej + ' rejected or failed' : '') + '</span></div></div>' +
+      '<table><thead><tr><th>Account</th><th class="r">Balance</th><th class="r">Oldest</th><th class="r">Notice</th></tr></thead><tbody>' +
+      C.top.map(function (r) { return '<tr><td>' + esc(r['Account.Account_Name'] || lname(r.Account) || '(no account)') + '</td><td class="r">' + money(r.Open_Balance) + '</td><td class="r">' + (num(r.Oldest_Days_Past_Due) == null ? '—' : nn(r.Oldest_Days_Past_Due) + ' days') + '</td><td class="r">' + tagOf(r.Email_Status) + '</td></tr>'; }).join('') +
+      '</tbody></table><p class="s77-note">As of the ' + esc(shortDate(C.date)) + ' collections run.</p>';
+  }
+  function bars(list, max, bad) {
+    return list.map(function (b) { return '<div class="s77-bar"><span title="' + esc(b[0]) + '">' + esc(b[0]) + '</span><div class="tr"><i class="' + (bad && bad.test(b[0]) ? 'bad' : '') + '" style="width:' + Math.round(b[1] / Math.max(max, 1) * 100) + '%"></i></div><b>' + b[1] + '</b></div>'; }).join('');
+  }
+  function casesBody(K) {
+    if (K === null) return err('cases', 'Cases'); if (K === undefined) return loadingP();
+    var max = K.st.reduce(function (m, b) { return Math.max(m, b[1]); }, 0);
+    return '<div class="s77-two"><div><p class="k">By status · ' + K.n + ' open</p>' + (K.st.length ? bars(K.st, max, /Escalated/) : '<p class="s77-none">No open cases.</p>') + '</div>' +
+      '<div><p class="k">By category</p>' + K.cat.map(function (c) { return '<div class="s77-kv"><span>' + esc(c[0]) + '</span><b>' + c[1] + '</b></div>'; }).join('') + '</div></div>' +
+      '<div class="s77-foot"><span>Last 7 days: <b>' + (K.opened == null ? '—' : K.opened + ' opened') + '</b></span><span><b>' + (K.resolved == null ? '—' : K.resolved + ' resolved') + '</b></span><span class="' + (K.unassigned ? 'bad' : '') + '"><b>' + K.unassigned + ' unassigned</b> in EM Support (team queue, no owner)</span></div>';
+  }
+  function mCls(m) { return m == null ? '' : m < FLOOR ? (m < 0 ? 'bad' : 'warn') : m >= TARGET ? 'good' : ''; }
+  function acctBody(A) {
+    if (A === null) return err('accts', 'Accounts'); if (A === undefined) return loadingP();
+    if (!A.scored.length) return '<p class="s77-none">No account has a margin yet. Margins come from Verified contract rate lines.</p>';
+    function kv(r) { var m = num(r.Avg_Margin), c = mCls(m); return '<div class="s77-kv"><span>' + esc(r.Account_Name) + '</span><b' + (c ? ' style="color:var(--t-' + c + ')"' : '') + '>' + pct(m) + '</b></div>'; }
+    return '<div class="s77-chips"><span class="s77-chip good">Strong ' + A.tiers.Strong + '</span><span class="s77-chip">Normal ' + A.tiers.Normal + '</span><span class="s77-chip warn">Thin ' + A.tiers.Thin + '</span><span class="s77-chip bad">Negative ' + A.tiers.Negative + '</span></div>' +
+      '<div class="s77-two"><div><p class="k">Highest</p>' + A.top.map(kv).join('') + '</div><div><p class="k">Lowest</p>' + A.bottom.map(kv).join('') + '</div></div>' +
+      '<p class="s77-note">Simple average ' + pct(A.avg) + ' across ' + plural(A.scored.length, 'customer') + '. Thin is below the ' + FLOOR + '% floor; Strong is at or above the ' + TARGET + '% target.</p>';
+  }
+  function vendBody(V) {
+    if (V === null) return err(D.units === null ? 'units' : D.rates === null ? 'rates' : 'contracts', 'Units or rate lines'); if (V === undefined) return loadingP();
+    if (!V.rows.length) return '<p class="s77-none">No unit counts in the last 8 days.</p>';
+    return '<div class="s77-stats"><div><b>' + pct(V.total) + '</b><span>Estimated blended margin</span></div><div><b>' + (V.units - V.unpriced) + ' of ' + V.units + '</b><span>units on leg priced both sides</span></div></div>' +
+      '<table><thead><tr><th>Vendor · family</th><th class="r">On leg</th><th class="r">Avg rate</th><th class="r">Avg cost</th><th class="r">Margin</th></tr></thead><tbody>' +
+      V.rows.map(function (r) { var c = mCls(r.margin); return '<tr><td>' + esc(r.label) + '</td><td class="r">' + r.on + (r.priced < r.on ? ' <span class="s77-note">(' + r.priced + ' priced)</span>' : '') + '</td><td class="r">' + (r.rate == null ? '—' : '$' + r.rate.toFixed(2)) + '</td><td class="r">' + (r.cost == null ? '—' : '$' + r.cost.toFixed(2)) + '</td><td class="r b"' + (c ? ' style="color:var(--t-' + c + ')"' : '') + '>' + pct(r.margin) + '</td></tr>'; }).join('') +
+      '</tbody></table><p class="s77-note">Estimate from Verified contract rate lines (customer rate and vendor cost) and ' + (V.asof ? 'the ' + esc(shortDate(V.asof)) : "last night's") + ' unit counts, weighted by units on leg. ' + (V.unpriced ? plural(V.unpriced, 'unit') + ' unpriced (no customer rate or vendor cost on file) and left out. ' : '') + 'Base stations are not priced per unit. Billing-run margins appear here once EM Margin is populated.</p>';
+  }
+  function priceBody(P) {
+    return '<div class="s77-stats"><div><b>' + (P.scenErr ? '—' : P.scen == null ? '…' : P.scen) + '</b><span>Saved scenarios</span></div><div><b>' + (P.renewing == null ? '—' : P.renewing) + '</b><span>Customer contracts ending in 90 days</span></div></div>' +
+      (P.scen ? '<p class="s77-note">' + plural(P.scen, 'scenario') + ' on file. Open the Pricing Studio to compare them.</p>'
+        : '<div class="s77-empty"><p>No pricing scenarios yet. Model a bid or renewal to compare margin across vendors and rate models.</p><div class="s77-links"><a class="pri" href="' + esc(TABS.pricing) + '" target="_top" rel="noopener">New scenario</a></div></div>');
+  }
+  function reviewBody(R) {
+    if (R === null) return err('tasks', 'Tasks'); if (R === undefined) return loadingP();
+    var head = '<div class="s77-chips"><span class="s77-chip line">From BD · ' + R.from.BD + '</span><span class="s77-chip line">From CS · ' + R.from.CS + '</span>' + (R.from.other ? '<span class="s77-chip line">Other · ' + R.from.other + '</span>' : '') + '</div>';
+    if (!R.n) return head + '<p class="s77-none">Nothing waiting. Tasks that Business Development or Customer Success assign to a leader show here.</p>';
+    return head + '<ul class="s77-tasks">' + R.list.map(function (t) {
+      var href = /^\d{6,}$/.test(t.id) ? ORG + 'Activities/' + t.id : '#';
+      return '<li><div class="tt"><a href="' + esc(href) + '" target="_top" rel="noopener">' + esc(t.subject) + '</a><span class="due' + (t.overdue ? ' bad' : '') + '">' + (t.due ? 'Due ' + esc(shortDate(t.due)) + (t.overdue ? ' · overdue' : '') : 'No due date') + '</span></div>' +
+        '<span class="who">' + esc([t.from ? 'From ' + t.from + (t.team === 'BD' || t.team === 'CS' ? ' (' + t.team + ')' : '') : '', t.about, t.owner ? 'for ' + t.owner : ''].filter(Boolean).join(' · ')) + '</span></li>';
+    }).join('') + '</ul>' + (R.n > R.list.length ? '<p class="s77-note">' + (R.n - R.list.length) + ' more in Tasks.</p>' : '');
+  }
+  function healthBody(A) {
+    if (A === null) return err('accts', 'Accounts'); if (A === undefined) return loadingP();
+    var h = A.health, n = A.healthN; if (!n) return '<p class="s77-none">No health tiers yet.</p>';
+    function w(k) { return Math.round(h[k] / n * 100); }
+    return '<div class="s77-hbar" role="img" aria-label="Green ' + h.Green + ', Yellow ' + h.Yellow + ', Red ' + h.Red + '"><i style="width:' + w('Green') + '%;background:var(--t-good)"></i><i style="width:' + w('Yellow') + '%;background:light-dark(#D98A1E,#E0B055)"></i><i style="width:' + w('Red') + '%;background:var(--t-bad)"></i></div>' +
+      '<div class="s77-foot" style="border-top:0;padding-top:0"><span><b style="color:var(--t-good)">' + h.Green + '</b> Green</span><span><b style="color:var(--t-warn)">' + h.Yellow + '</b> Yellow</span><span><b style="color:var(--t-bad)">' + h.Red + '</b> Red</span><span>of ' + n + ' scored (Health_Tier, last night)</span></div>';
+  }
+  function runwayBody(W) {
+    if (W === null) return err('alerts', 'Stock alerts'); if (W === undefined) return loadingP();
+    return (W.list.length ? W.list.map(function (r) { return '<div class="s77-kv"><span>' + esc(r.label) + '</span><b style="color:var(--t-' + r.tone + ')">' + esc(r.text) + '</b></div>'; }).join('') : '') +
+      '<div class="s77-kv"><span>' + (W.list.length ? 'All other groups' : 'All device groups') + '</span><b style="color:var(--t-good)">OK</b></div>' +
+      (W.unmapped ? '<p class="s77-note">Some device losses could not be placed in a group; see the "Unmapped losses" alert.</p>' : '') +
+      '<p class="s77-note">Needs action: runway at or under the vendor lead time plus 5 business days. Watch: up to 28 days.</p>';
+  }
+  function paint() {
+    var sec = $('s77-demo'); if (!sec) return;
+    var C = D.coll === undefined ? undefined : collections(), K = D.cases === undefined ? undefined : cases(), A = D.accts === undefined ? undefined : accounts();
+    var V = vendors(), R = D.tasks === undefined ? undefined : review(), W = D.alerts === undefined ? undefined : runway(), P = pricing();
+    var h = '<div class="s77-hd"><div><h2>How the business is doing today</h2><span class="s77-stamp">' + (!live() ? 'Sample numbers (demo)' : loading ? 'Counting…' : 'Updated ' + new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + (C && !C.none ? ' · Collections as of the ' + esc(shortDate(C.date)) + ' run' : '') + ' · Units as of last night') + '</span></div>' +
+      '<div class="s77-links"><a href="' + esc(TABS.margins) + '" target="_top" rel="noopener">Customer Margins</a><a href="' + esc(TABS.support) + '" target="_top" rel="noopener">Support board</a><a class="pri" href="' + esc(TABS.pricing) + '" target="_top" rel="noopener">Open Pricing Studio</a></div></div>' +
+      kpis(C, K, A, R, V) +
+      '<div class="s77-row">' + card('coll', 'Collections', [TABS.collections, 'All requests'], collBody(C)) + card('cases', 'Open cases', [TABS.support, 'Support board'], casesBody(K)) + '</div>' +
+      '<div class="s77-row">' + card('acct', 'Margin by account', [TABS.margins, 'Customer Margins'], acctBody(A)) + card('vend', 'Margin by vendor', [ORG + 'Vendors', 'Vendors'], vendBody(V), 'ESTIMATE') + '</div>' +
+      '<div class="s77-row">' + card('review', 'Awaiting your review', [TABS.tasks, 'All tasks'], reviewBody(R)) + card('price', 'Pricing Studio', [TABS.pricing, 'Open'], priceBody(P)) + '</div>' +
+      '<div class="s77-row">' + card('health', 'Customer health', [TABS.accounts, 'Accounts'], healthBody(A)) + card('runway', 'Inventory runway', [TABS.alerts, 'Inventory runway'], runwayBody(W)) + '</div>';
+    if (sec.__h !== h) { sec.__h = h; sec.innerHTML = h; }
+    fit();
+  }
+
+  /* ---------------- mount: top of the Today tab, above "Pipeline and risk" (S13), else above Needs you today / the measures ---------------- */
+  function build() {
+    var grid = $('grid'); if (!grid || !grid.parentNode) return false;
+    var sec = $('s77-demo');
+    if (!sec) { sec = doc.createElement('section'); sec.id = 's77-demo'; sec.setAttribute('aria-label', 'Demo tiles'); sec.setAttribute('data-s38-p', 'today'); }
+    addZone('#s77-demo', '#s13-lead');
+    var anchor = $('s13-lead') || $('s13-queue'); if (!anchor || anchor.parentNode !== grid.parentNode) { var needs = $('s38-needs'); anchor = needs && !needs.hidden && needs.parentNode === grid.parentNode ? needs : grid; }
+    if (sec.parentNode !== anchor.parentNode || sec.nextElementSibling !== anchor) anchor.parentNode.insertBefore(sec, anchor);
+    return true;
+  }
+  function load() {
+    D = {}; loading = true; paint();
+    return readAll().then(function () { loading = false; paint(); }, function () { loading = false; paint(); });
+  }
+  var tries = 0;
+  function start() {
+    if (!build()) { if (tries++ < 40) setTimeout(start, 250); return; }
+    html.setAttribute('data-s77', 'on');
+    paint();
+    if (live()) setTimeout(load, 500); else load();
+    setInterval(function () { try { build(); } catch (e) {} }, 2000);
+    var r = $('refresh'); if (r) r.addEventListener('click', load);
+  }
+  root.JPK_S77 = { refresh: load, data: function () { return D; }, errors: function () { return ERR; }, model: { collections: collections, cases: cases, accounts: accounts, vendors: vendors, review: review, runway: runway, pricing: pricing }, tabs: TABS };
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(start, 0); });
+  else setTimeout(start, 0);
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- jpk-s77:end -->
+<!-- jpk-s79:begin -->
+<style id="jpk-s79-css">
+/* S79 (4 Nov 2026, v47.10): the page runs out to the edges of the web tab instead of a centered 1440px column. Off with ?s79=0. */
+html:not([data-s79="off"]) .wrap { max-width: none; padding-left: 24px; padding-right: 24px; }
+@media (max-width: 640px) { html:not([data-s79="off"]) .wrap { padding-left: 16px; padding-right: 16px; } }
+</style>
+<script id="jpk-s79">if (/[?&]s79=0\b/.test(location.search)) document.documentElement.setAttribute('data-s79', 'off');</script>
+<!-- jpk-s79:end -->
 </body>
 </html>

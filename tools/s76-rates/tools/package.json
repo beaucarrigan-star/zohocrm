@@ -1,0 +1,11 @@
+{
+  "name": "s76-rates-tools",
+  "version": "1.0.1",
+  "private": true,
+  "description": "S76 Rates to fill: patch tools and the Playwright demo checks (npm install here, then run the tests from tools/s76-rates).",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

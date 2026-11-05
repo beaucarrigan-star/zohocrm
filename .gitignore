@@ -39,3 +39,7 @@ bulk_state.json
 # logos are the only images allowed
 !**/*logo*.png
 _to_delete/
+
+# S76 rates: the test fixture copies live Zoho data; build output and local Playwright install
+tools/s76-rates/tests/fixture-*.js
+tools/s76-rates/out/
