@@ -35,3 +35,16 @@ td.why{min-width:180px}
   .dl{grid-template-columns:1fr}
   .dl dt{margin-top:6px}
 }
+/* S78: Edit rates form in the line popout */
+.me-wrap{margin:4px 0 10px}
+.me-wrap>summary{list-style:none;cursor:pointer;width:max-content}
+.me-wrap>summary::-webkit-details-marker{display:none}
+.me-wrap[open]>summary{background:var(--surface2)}
+.me-form{display:grid;gap:12px;margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface2)}
+.me-form .jp-fld input,.me-form .jp-fld select{max-width:260px}
+.me-preview{margin:0;font-size:13px}
+.me-acts{display:flex;gap:8px;flex-wrap:wrap}
+.me-acts .btn{min-height:36px}
+.me-msg{margin:0;font-size:13px;font-weight:600;color:var(--muted)}
+.me-msg.good{color:var(--good)}.me-msg.bad{color:var(--bad)}
+#home{white-space:nowrap}

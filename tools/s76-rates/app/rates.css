@@ -1,0 +1,22 @@
+/* Processes > Rates to fill (S76 v1.0.0). Uses the records.css tokens; everything is scoped under .rt. */
+.rt .rt-strip{display:flex;flex-wrap:wrap;gap:12px;padding:0 24px 12px}
+.rt .rt-big{flex:1 1 220px;min-width:0;border:1px solid var(--line);border-radius:var(--r-sm,6px);padding:10px 12px;background:var(--surface,transparent)}
+.rt .rt-big b{display:block;font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums}
+.rt .rt-big b.good{color:var(--good,#1d7a46)}.rt .rt-big b.warn{color:var(--warn,#9a6700)}.rt .rt-big b.bad{color:var(--bad,#B02F28)}
+.rt .rt-big span{display:block;font-size:12px;color:var(--muted)}
+.rt .rt-bar{height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}.rt .rt-bar i{display:block;height:100%;background:var(--good,#1d7a46)}
+.rt .rt-pills{flex-wrap:wrap;align-items:center}
+.rt .rt-q{margin-left:auto;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:var(--r-sm,6px);background:var(--surface-2,transparent);color:var(--ink);min-width:0;width:220px;max-width:100%}
+.rt .rt-sec{padding:4px 0 8px}.rt .rt-sec h2{font-size:15px;margin:12px 24px 2px}.rt .rt-sub{margin:0 24px 8px;font-size:12px}
+.rt .tw{max-width:100%;overflow-x:auto}
+.rt tr.rt-det>td{background:var(--surface-2,transparent);white-space:normal}
+.rt .rt-card p{margin:4px 0 8px;font-size:13px;white-space:normal}
+.rt .rt-form{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:6px 0}
+.rt .rt-form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600}
+.rt .rt-form input{font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:var(--r-sm,6px);background:var(--surface,transparent);color:var(--ink);max-width:100%;width:150px}
+.rt .rt-msg{margin:0 24px 8px;font-size:13px}.rt .rt-msg.good{color:var(--good,#1d7a46)}.rt .rt-msg.bad{color:var(--bad,#B02F28)}
+.rt .rt-foot{padding:12px 24px 0;font-size:12px}
+.rt .rt-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.rt .rt-box{background:var(--surface,#fff);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md,10px);max-width:560px;width:100%;padding:18px 20px;max-height:90vh;overflow:auto}
+.rt .rt-box h3{margin:0 0 6px;font-size:16px}.rt .rt-box ul{margin:8px 0 14px;padding-left:18px;font-size:13px}.rt .rt-box li{margin:4px 0}
+@media (max-width:640px){.rt .rt-strip,.rt .rt-sub,.rt .rt-msg,.rt .rt-foot{padding-left:16px;padding-right:16px}.rt .rt-sec h2{margin-left:16px}.rt .rt-q{margin-left:0;width:100%}.rt .rt-form input{width:100%}.rt .rt-form label{flex:1 1 140px}}
